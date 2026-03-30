@@ -40,8 +40,6 @@ class _GoalSaveDebugScreenState extends State<GoalSaveDebugScreen> {
 
     try {
       final goalService = NutritionGoalService(widget.dbService);
-      final today = DateTime.now();
-
       _log('🔍 Test 1: Prüfe aktuelles Goal');
       final currentGoal = await goalService.getCurrentGoal();
       if (currentGoal != null) {
@@ -200,9 +198,7 @@ class _GoalSaveDebugScreenState extends State<GoalSaveDebugScreen> {
                         color: color?.withValues(alpha: 0.1),
                         child: ListTile(
                           dense: true,
-                          leading: icon != null
-                              ? Icon(icon, color: color, size: 20)
-                              : null,
+                          leading: Icon(icon, color: color, size: 20),
                           title: Text(
                             log,
                             style: TextStyle(

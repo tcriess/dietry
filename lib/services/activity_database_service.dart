@@ -73,7 +73,7 @@ class ActivityDatabaseService {
       
       if (response == null) return null;
       
-      return ActivityItem.fromJson(response as Map<String, dynamic>);
+      return ActivityItem.fromJson(response);
     } catch (e) {
       print('❌ Fehler beim Laden der Aktivität: $e');
       return null;

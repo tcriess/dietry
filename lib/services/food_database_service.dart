@@ -73,7 +73,7 @@ class FoodDatabaseService {
       
       if (response == null) return null;
       
-      return FoodItem.fromJson(response as Map<String, dynamic>);
+      return FoodItem.fromJson(response);
     } catch (e) {
       print('❌ Fehler beim Laden des Foods: $e');
       return null;
@@ -293,7 +293,7 @@ class FoodDatabaseService {
         return null;
       }
       
-      final food = FoodItem.fromJson(response as Map<String, dynamic>);
+      final food = FoodItem.fromJson(response);
       print('✅ Food gefunden: ${food.name}');
       return food;
     } catch (e) {

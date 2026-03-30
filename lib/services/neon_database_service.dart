@@ -8,7 +8,6 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'jwt_helper.dart';
 import 'user_service.dart';
-import '../app_config.dart';
 import 'server_config_service.dart';
 
 class NeonDatabaseService {

@@ -300,7 +300,7 @@ class LoginScreen extends StatelessWidget {
                     // Port 0 → OS assigns a free port; read it back via server.port.
                     final server = await shelf_io.serve(handler, 'localhost', 0);
                     callbackUrl = 'http://localhost:${server.port}/callback';
-                    desktopCallbackCompleter!.future.timeout(
+                    desktopCallbackCompleter.future.timeout(
                       const Duration(minutes: 5),
                       onTimeout: () => '',
                     ).whenComplete(() => server.close());

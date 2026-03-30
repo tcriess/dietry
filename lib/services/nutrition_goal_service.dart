@@ -42,7 +42,7 @@ class NutritionGoalService {
       
       if (response == null) return null;
       
-      return NutritionGoal.fromJson(response as Map<String, dynamic>);
+      return NutritionGoal.fromJson(response);
     } catch (e) {
       print('❌ Fehler beim Abrufen des aktuellen Goals: $e');
       return null;
@@ -81,7 +81,7 @@ class NutritionGoalService {
       
       if (response == null) return null;
       
-      return NutritionGoal.fromJson(response as Map<String, dynamic>);
+      return NutritionGoal.fromJson(response);
     } catch (e) {
       print('❌ Fehler beim Abrufen des Goals für ${date.toIso8601String().split('T')[0]}: $e');
       return null;

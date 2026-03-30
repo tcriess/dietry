@@ -35,13 +35,12 @@ class UserBodyDataService {
           .order('measured_at', ascending: false)
           .limit(1);
 
-      if (response == null || (response as List).isEmpty) {
+      if (response.isEmpty) {
         print('ℹ️ Keine Körperdaten gefunden');
         return null;
       }
 
-      final data = (response as List).first as Map<String, dynamic>;
-      return UserBodyData.fromJson(data);
+      return UserBodyData.fromJson(response.first);
     } catch (e) {
       print('❌ Fehler beim Abrufen der Körperdaten: $e');
       return null;
@@ -71,10 +70,8 @@ class UserBodyDataService {
           .eq('user_id', userId)
           .order('measured_at', ascending: false);
 
-      if (response == null) return [];
-
-      return (response as List)
-          .map((item) => UserBodyData.fromJson(item as Map<String, dynamic>))
+      return response
+          .map((item) => UserBodyData.fromJson(item))
           .toList();
     } catch (e) {
       print('❌ Fehler beim Abrufen aller Körperdaten: $e');
@@ -263,7 +260,7 @@ class UserBodyDataService {
           .eq('measured_at', dateStr)
           .single();
 
-      return UserBodyData.fromJson(response as Map<String, dynamic>);
+      return UserBodyData.fromJson(response);
     } catch (e) {
       print('❌ Fehler beim Abrufen der Körperdaten für $date: $e');
       return null;
@@ -298,9 +295,7 @@ class UserBodyDataService {
 
       final response = await query;
 
-      if (response == null) return [];
-
-      return (response as List).map((item) => item as Map<String, dynamic>).toList();
+      return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('❌ Fehler beim Abrufen des Gewichtsverlaufs: $e');
       return [];
