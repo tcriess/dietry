@@ -1,0 +1,10 @@
+{
+  "ENVIRONMENT": "production",
+  "EDITION": "community",
+  "DATA_API_URL": "https://<prod-endpoint>.apirest.c-3.eu-central-1.aws.neon.tech/<db>/rest/v1",
+  "AUTH_BASE_URL": "https://<prod-endpoint>.neonauth.c-3.eu-central-1.aws.neon.tech/<db>/auth",
+  "USDA_API_KEY": "<key-from-api.data.gov>",
+  "APP_ORIGIN": "https://<domain>",
+  "ANDROID_CALLBACK_URL": "https://<domain>/auth/callback_app",
+  "PASSWORD_RESET_REDIRECT_URL": "https://<domain>/reset_password.html"
+}

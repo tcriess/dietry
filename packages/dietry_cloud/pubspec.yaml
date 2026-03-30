@@ -1,0 +1,14 @@
+name: dietry_cloud
+description: >
+  Dietry Cloud Edition feature stubs (Community Edition).
+  In the cloud edition this package is replaced via dependency_overrides
+  with the private cloud implementation.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.2 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter

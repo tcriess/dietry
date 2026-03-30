@@ -1,0 +1,520 @@
+{
+  "appTitle": "Dietry",
+  "overviewTitle": "Übersicht",
+  "addFoodTitle": "Eintragen",
+  "nutrientCalories": "Kalorien",
+  "nutrientProtein": "Eiweiß",
+  "nutrientFat": "Fett",
+  "nutrientCarbs": "Kohlenhydrate",
+  "nutrientFiber": "Ballaststoffe",
+  "nutrientSugar": "Zucker",
+  "nutrientSalt": "Salz",
+  "goal": "Ziel",
+  "consumed": "Verbraucht",
+  "remaining": "Verbleibend",
+  "today": "Heute",
+  "cancel": "Abbrechen",
+  "save": "Speichern",
+  "saving": "Speichere...",
+  "delete": "Löschen",
+  "edit": "Bearbeiten",
+  "add": "Hinzufügen",
+  "requiredField": "Erforderlich",
+  "errorPrefix": "Fehler: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "previousDay": "Vorheriger Tag",
+  "nextDay": "Nächster Tag",
+  "loading": "Lade Daten...",
+  "navOverview": "Übersicht",
+  "navEntries": "Einträge",
+  "navActivities": "Aktivitäten",
+  "mealBreakfast": "Frühstück",
+  "mealLunch": "Mittagessen",
+  "mealDinner": "Abendessen",
+  "mealSnack": "Snack",
+  "genderMale": "Männlich",
+  "genderFemale": "Weiblich",
+  "activityLevelSedentary": "Wenig Bewegung (Bürojob)",
+  "activityLevelLight": "Leicht aktiv (1-3x/Woche Sport)",
+  "activityLevelModerate": "Moderat aktiv (3-5x/Woche Sport)",
+  "activityLevelActive": "Sehr aktiv (6-7x/Woche Sport)",
+  "activityLevelVeryActive": "Extrem aktiv (2x täglich Training)",
+  "weightGoalLose": "Abnehmen (0.5 kg/Woche)",
+  "weightGoalMaintain": "Gewicht halten",
+  "weightGoalGain": "Zunehmen (Muskelaufbau)",
+  "caloriesBurned": "Verbrannt",
+  "netCalories": "Netto",
+  "date": "Datum",
+  "noGoalTitle": "Kein Ernährungsziel",
+  "noGoalMessage": "Erstelle dein erstes Ernährungsziel, um deine Fortschritte zu tracken.",
+  "createGoal": "Ernährungsziel erstellen",
+  "entriesTitle": "Einträge",
+  "entriesEmpty": "Noch keine Einträge",
+  "entriesEmptyHint": "Füge deine erste Mahlzeit hinzu!",
+  "deleteEntryTitle": "Eintrag löschen?",
+  "deleteEntryConfirm": "Möchtest du \"{name}\" wirklich löschen?",
+  "@deleteEntryConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "entryDeleted": "Eintrag gelöscht",
+  "myFoods": "Meine Lebensmittel",
+  "addEntry": "Eintrag hinzufügen",
+  "activitiesTitle": "Aktivitäten",
+  "activitiesEmpty": "Keine Aktivitäten",
+  "activitiesEmptyHint": "Füge deine erste Aktivität hinzu!",
+  "deleteActivityTitle": "Aktivität löschen?",
+  "deleteActivityConfirm": "Möchtest du \"{name}\" wirklich löschen?",
+  "@deleteActivityConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "activityDeleted": "Aktivität gelöscht",
+  "addActivity": "Aktivität hinzufügen",
+  "myActivities": "Meine Aktivitäten",
+  "importHealthConnect": "Aus Health Connect importieren",
+  "healthConnectImporting": "Importiere Aktivitäten...",
+  "healthConnectNoResults": "Keine neuen Aktivitäten gefunden",
+  "healthConnectSuccess": "{count} Aktivitäten importiert",
+  "@healthConnectSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "healthConnectError": "Import fehlgeschlagen: {error}",
+  "@healthConnectError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "healthConnectUnavailable": "Health Connect ist auf diesem Gerät nicht verfügbar",
+  "healthConnectSuccessBody": "{count} Messwerte importiert",
+  "@healthConnectSuccessBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importRangeTitle": "Importzeitraum",
+  "importRangeSinceGoal": "Ab Tracking-Start ({date})",
+  "@importRangeSinceGoal": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "importRangeAll": "Alle verfügbaren Daten",
+  "addFoodScreenTitle": "Lebensmittel hinzufügen",
+  "searchHint": "z.B. Apfel, Reis, Hähnchen...",
+  "onlineSearch": "Online-Suche",
+  "myDatabase": "Meine Datenbank",
+  "amount": "Menge",
+  "unit": "Einheit",
+  "mealType": "Mahlzeit",
+  "manualEntry": "Manuell",
+  "useFood": "Verwenden",
+  "saveToDatabase": "Zur Datenbank hinzufügen",
+  "entrySaved": "Eintrag gespeichert!",
+  "searchEnterHint": "Enter drücken zum Suchen",
+  "caloriesLabel": "Kalorien",
+  "proteinLabel": "Protein",
+  "fatLabel": "Fett",
+  "carbsLabel": "Kohlenhydrate",
+  "foodDatabaseTitle": "Meine Lebensmittel",
+  "foodAdded": "\"{name}\" hinzugefügt",
+  "@foodAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "foodUpdated": "\"{name}\" aktualisiert",
+  "@foodUpdated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "foodDeleted": "Gelöscht",
+  "deleteFoodTitle": "Lebensmittel löschen?",
+  "deleteFoodConfirm": "\"{name}\" wird unwiderruflich gelöscht. Bestehende Einträge bleiben erhalten.",
+  "@deleteFoodConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "foodName": "Name",
+  "foodCaloriesPer100": "Kalorien (kcal/100g)",
+  "foodProteinPer100": "Protein (g/100g)",
+  "foodFatPer100": "Fett (g/100g)",
+  "foodCarbsPer100": "Kohlenhydrate (g/100g)",
+  "foodCategory": "Kategorie (optional)",
+  "foodBrand": "Marke (optional)",
+  "foodPortionsTitle": "Portionsgrößen",
+  "foodPortionsEmpty": "Keine Portionen definiert – Eingabe immer in g/ml",
+  "foodPublic": "Für alle Nutzer sichtbar",
+  "foodPublicOn": "Jeder kann dieses Lebensmittel finden",
+  "foodPublicOff": "Nur du siehst diesen Eintrag",
+  "newFood": "Neues Lebensmittel",
+  "nutritionPer100": "Nährwerte pro 100g",
+  "statusPublic": "Öffentlich",
+  "statusPending": "Ausstehend",
+  "editEntryTitle": "Eintrag bearbeiten",
+  "entryUpdated": "Änderungen gespeichert!",
+  "profileTitle": "Profil",
+  "profileDataTitle": "Profildaten",
+  "profileDataEmpty": "Profil noch nicht eingerichtet",
+  "setupProfile": "Profil einrichten",
+  "editProfile": "Profil bearbeiten",
+  "goalCardTitle": "Ernährungsziel",
+  "goalEmpty": "Kein Ernährungsziel vorhanden",
+  "createGoalButton": "Ziel erstellen",
+  "adjustGoal": "Ziel anpassen",
+  "measurementTitle": "Aktuelle Messung",
+  "measurementEmpty": "Keine Messung vorhanden",
+  "addWeight": "Gewicht eingeben",
+  "weight": "Gewicht",
+  "height": "Größe",
+  "birthdate": "Geburtsdatum",
+  "ageYears": "{age} Jahre",
+  "@ageYears": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "gender": "Geschlecht",
+  "activityLevelLabel": "Aktivitätslevel",
+  "weightGoalLabel": "Gewichtsziel",
+  "bodyFat": "Körperfett",
+  "muscleMass": "Muskelmasse",
+  "waist": "Taillenumfang",
+  "weightProgress": "Gewichtsverlauf",
+  "rangeMonth1": "1 Monat",
+  "rangeMonths3": "3 Monate",
+  "rangeMonths6": "6 Monate",
+  "rangeYear1": "1 Jahr",
+  "rangeAll": "Alles",
+  "deleteMeasurementTitle": "Messung löschen?",
+  "deleteMeasurementConfirm": "Messung vom {date} löschen?",
+  "@deleteMeasurementConfirm": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "measurementDeleted": "Messung gelöscht",
+  "profileInfoText": "Deine Daten werden für personalisierte Empfehlungen verwendet.",
+  "measurementsSection": "Messungen ({count})",
+  "@measurementsSection": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "latestBadge": "Aktuell",
+  "profileSetupTitle": "Profil einrichten",
+  "profileEditTitle": "Profil bearbeiten",
+  "birthdateRequired": "Bitte Geburtsdatum wählen",
+  "heightLabel": "Größe *",
+  "heightInvalid": "Ungültige Größe (100-250cm)",
+  "genderLabel": "Geschlecht",
+  "activityLevelFieldLabel": "Aktivitätslevel",
+  "weightGoalFieldLabel": "Gewichtsziel",
+  "profileSaved": "Profil gespeichert!",
+  "addMeasurementTitle": "Messung eingeben",
+  "editMeasurementTitle": "Messung bearbeiten",
+  "measurementDate": "Messdatum",
+  "weightRequired": "Bitte Gewicht eingeben",
+  "weightInvalid": "Ungültiges Gewicht (30-300kg)",
+  "bodyFatOptional": "Körperfett (optional)",
+  "bodyFatInvalid": "Ungültig (0-50%)",
+  "muscleOptional": "Muskelmasse (optional)",
+  "waistOptional": "Taillenumfang (optional)",
+  "notesOptional": "Notizen (optional)",
+  "notesHint": "z.B. morgens nüchtern, nach Sport...",
+  "measurementSaved": "Messung gespeichert!",
+  "advancedOptional": "Erweitert (optional)",
+  "goalRecTitle": "Goal-Empfehlung",
+  "bodyDataTitle": "Deine Körperdaten",
+  "weightLabel": "Gewicht",
+  "weightInvalidRec": "Bitte gültiges Gewicht (30-300 kg)",
+  "heightRecLabel": "Größe",
+  "heightRecInvalid": "Bitte gültige Größe (100-250 cm)",
+  "birthdateLabel": "Geburtsdatum",
+  "birthdateSelect": "Datum auswählen",
+  "birthdateDisplay": "{date}  ({age} Jahre)",
+  "@birthdateDisplay": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "birthdateSelectSnackbar": "Bitte Geburtsdatum auswählen",
+  "genderRecLabel": "Geschlecht",
+  "activitySectionTitle": "Deine Aktivität",
+  "activityRecLabel": "Aktivitätslevel",
+  "goalSectionTitle": "Dein Ziel",
+  "weightGoalRecLabel": "Gewichtsziel",
+  "calculateButton": "Empfehlung berechnen",
+  "calculating": "Berechne...",
+  "recommendationTitle": "Deine Empfehlung",
+  "trackingMethodLabel": "Tracking-Methode: {method}",
+  "@trackingMethodLabel": {
+    "placeholders": {
+      "method": {
+        "type": "String"
+      }
+    }
+  },
+  "bmrLabel": "Grundumsatz (BMR):",
+  "tdeeLabel": "Gesamtumsatz (TDEE):",
+  "targetCalories": "Zielkalorien:",
+  "macronutrients": "Makronährstoffe",
+  "saveAsGoal": "Als Ziel speichern",
+  "saveBodyData": "Körperdaten für Tracking speichern",
+  "goalSaved": "Goal und Körperdaten gespeichert!",
+  "goalSavedOnly": "Goal gespeichert!",
+  "goalSavedDialogTitle": "Ziel gespeichert!",
+  "goalSavedDialogContent": "Dein Ernährungsziel wurde erfolgreich gespeichert.",
+  "goalTargetLine": "Ziel: {calories} kcal/Tag",
+  "@goalTargetLine": {
+    "placeholders": {
+      "calories": {
+        "type": "int"
+      }
+    }
+  },
+  "toOverview": "Zur Übersicht",
+  "personalizedRecTitle": "Personalisierte Empfehlung",
+  "personalizedRecDesc": "Basierend auf deinen Körperdaten berechnen wir deinen individuellen Kalorienbedarf und Makronährstoff-Empfehlungen.",
+  "goalExplainLose": "Mit einem Defizit von ca. 500 kcal/Tag kannst du etwa 0.5 kg pro Woche abnehmen.",
+  "goalExplainMaintain": "Diese Kalorienmenge sollte dein aktuelles Gewicht halten.",
+  "goalExplainGain": "Mit einem Überschuss von ca. 300 kcal/Tag kannst du gesund Muskelmasse aufbauen.",
+  "trackingChooseTitle": "Tracking-Methode wählen",
+  "trackingHowToTrack": "Wie möchtest du tracken?",
+  "trackingDescription": "Wähle die Methode, die am besten zu deinem Lifestyle passt. Du kannst sie jederzeit ändern.",
+  "trackingRecommendedForYou": "Deine Empfehlung",
+  "trackingWhatToTrack": "Was solltest du tracken?",
+  "trackingUseMethod": "Diese Methode verwenden",
+  "appSubtitle": "Dein persönliches Ernährungstagebuch",
+  "featureTrackTitle": "Kalorien & Makros tracken",
+  "featureTrackSubtitle": "Mahlzeiten einfach erfassen und auswerten",
+  "featureDatabaseTitle": "Große Lebensmitteldatenbank",
+  "featureDatabaseSubtitle": "Open Food Facts, USDA und eigene Einträge",
+  "featureActivitiesTitle": "Aktivitäten erfassen",
+  "featureActivitiesSubtitle": "Sport & Bewegung in der Tagesbilanz",
+  "featureGoalsTitle": "Individuelle Ziele",
+  "featureGoalsSubtitle": "Empfehlungen basierend auf deinen Körperdaten",
+  "loginWithGoogle": "Mit Google anmelden",
+  "orContinueWith": "Oder fortfahren mit",
+  "loginWithEmail": "Mit E-Mail anmelden",
+  "signUpWithEmail": "Registrieren",
+  "emailLabel": "E-Mail",
+  "passwordLabel": "Passwort",
+  "nameOptionalLabel": "Name (optional)",
+  "passwordTooShort": "Passwort zu kurz (mind. 8 Zeichen)",
+  "alreadyHaveAccount": "Bereits registriert? Anmelden",
+  "noAccount": "Noch kein Konto? Registrieren",
+  "signUpSuccess": "Registrierung erfolgreich!",
+  "privacyNote": "Mit der Anmeldung stimmst du unseren Datenschutzrichtlinien zu. Deine Daten werden sicher gespeichert und nicht weitergegeben.",
+  "impressumLink": "Impressum & Datenschutz",
+  "loginFailed": "Login fehlgeschlagen: {error}",
+  "@loginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "infoTitle": "Info & Impressum",
+  "infoImpressumSection": "Impressum",
+  "infoPrivacySection": "Datenschutz",
+  "infoExternalServices": "Externe Dienste & Datenquellen",
+  "infoOpenSource": "Open-Source-Bibliotheken",
+  "infoDisclaimerSection": "Haftungsausschluss",
+  "infoVersion": "Version {version}",
+  "@infoVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "infoDisclaimerText": "Die Ernährungsempfehlungen und Kalorienberechnungen in dieser App basieren auf wissenschaftlichen Formeln und dienen nur als Orientierung. Sie ersetzen keine professionelle ernährungs- oder medizinische Beratung.",
+  "infoTmgNotice": "Angaben gemäß § 5 TMG",
+  "infoContact": "Kontakt",
+  "infoEmail": "E-Mail: info@dietry.de",
+  "infoResponsible": "Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV: Thorsten Rieß (Anschrift wie oben)",
+  "infoDataStoredTitle": "Welche Daten werden gespeichert?",
+  "infoDataGoogleAccount": "Google-Konto-Daten (E-Mail, Name) für die Authentifizierung",
+  "infoDataBody": "Körperdaten (Gewicht, Größe, Geburtsdatum, Geschlecht)",
+  "infoDataMeals": "Mahlzeiteneinträge und Lebensmitteldatenbank",
+  "infoDataActivities": "Aktivitäten und Ernährungsziele",
+  "infoDataStorageText": "Alle Daten werden in einer gesicherten Datenbank (Neon PostgreSQL) gespeichert. Es werden keine Daten an Dritte weitergegeben. Die Authentifizierung erfolgt über Google OAuth 2.0 via Neon Auth.",
+  "infoDataDeletion": "Daten können jederzeit durch Löschen des Kontos entfernt werden.",
+  "infoOpenSourceText": "Diese App wurde mit Flutter entwickelt und nutzt folgende Pakete:",
+  "infoOffDescription": "Weltweite Lebensmitteldatenbank für Nährwertinformationen. Daten stehen unter der Open Database License (ODbL).",
+  "infoUsdaDescription": "Lebensmittelnährstoffdatenbank des US-amerikanischen Landwirtschaftsministeriums.",
+  "infoNeonName": "Neon (Datenbank & Authentifizierung)",
+  "infoNeonDescription": "Serverlose PostgreSQL-Datenbank und OAuth 2.0-Authentifizierungsdienst.",
+  "infoNeonLicense": "Proprietärer Dienst",
+  "infoGoogleDescription": "Authentifizierung über Google-Konto. Es werden nur E-Mail-Adresse und Name übertragen.",
+  "cannotNavigateToFuture": "Du kannst nicht in die Zukunft blättern",
+  "noGoalForDate": "Kein Ernährungsziel für {date} vorhanden",
+  "@noGoalForDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "infoCopyright": "© 2025 Simon Span · dietry.de",
+  "offlineMode": "Offline – Änderungen werden synchronisiert sobald die Verbindung steht",
+  "pendingSyncCount": "Änderungen warten auf Synchronisierung",
+  "syncNow": "Jetzt sync",
+  "appBarTitle": "Dietry",
+  "profileTooltip": "Profil",
+  "infoTooltip": "Info & Impressum",
+  "languageTooltip": "Sprache wechseln",
+  "logoutTooltip": "Logout",
+  "accountSectionTitle": "Konto & Daten",
+  "exportDataButton": "Daten exportieren",
+  "exportDataDescription": "Alle deine Einträge als CSV-Dateien herunterladen",
+  "deleteAccountButton": "Konto löschen",
+  "deleteAccountDescription": "Alle deine Daten unwiderruflich löschen und abmelden",
+  "deleteAccountConfirmTitle": "Konto wirklich löschen?",
+  "deleteAccountConfirmText": "Alle deine Ernährungseinträge, Aktivitäten, Körpermaße und Ziele werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+  "deleteAccountConfirmButton": "Unwiderruflich löschen",
+  "deleteAccountSuccess": "Alle Daten wurden gelöscht.",
+  "exportDataSuccess": "Export erfolgreich",
+  "exportDataError": "Export fehlgeschlagen: {error}",
+  "@exportDataError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteAccountError": "Löschen fehlgeschlagen: {error}",
+  "@deleteAccountError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "emailVerificationTitle": "Bitte bestätige deine E-Mail-Adresse!",
+  "emailVerificationBody": "Wir haben einen Bestätigungslink an {email} gesendet. Klicke darauf, um dein Konto zu aktivieren, und melde dich dann an.",
+  "@emailVerificationBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "emailVerificationBack": "Zurück zur Anmeldung",
+  "forgotPassword": "Passwort vergessen?",
+  "resetPasswordTitle": "Passwort zurücksetzen",
+  "sendResetLink": "Reset-Link senden",
+  "resetLinkSent": "Link gesendet!",
+  "resetLinkSentBody": "Wir haben einen Link zum Zurücksetzen des Passworts an {email} gesendet.",
+  "@resetLinkSentBody": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "waterTitle": "Wasseraufnahme",
+  "waterGoalLabel": "Ziel: {amount} ml",
+  "@waterGoalLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "int"
+      }
+    }
+  },
+  "waterAdd": "+250 ml hinzufügen",
+  "waterRemove": "-250 ml entfernen",
+  "devBannerText": "⚠️ Vorab-Version · Entwicklungsdatenbank · Daten werden nicht dauerhaft gespeichert",
+  "waterGoalFieldLabel": "Wasserziel",
+  "waterGoalFieldHint": "Empfehlung: ca. 35 ml pro kg Körpergewicht",
+  "waterReminderTitle": "Trink-Erinnerungen",
+  "waterReminderSubtitle": "Alle 4 Stunden an Wasser trinken erinnern",
+  "cheatDayTitle": "Cheat Day",
+  "cheatDayBanner": "Cheat Day! Gönn dir — wird in Berichten nicht gezählt.",
+  "markAsCheatDay": "Cheat Day",
+  "cheatDayMarked": "Cheat Day markiert ✓",
+  "cheatDayRemoved": "Cheat Day entfernt",
+  "cheatDayMonthlyNudge": "Du hattest diesen Monat {count} Cheat Days. Alles gut, kein Stress!",
+  "@cheatDayMonthlyNudge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakDays": "{count}-Tage-Streak",
+  "@streakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakStart": "Starte heute deinen Streak!",
+  "streakBestLabel": "Rekord: {count}",
+  "@streakBestLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakMilestoneTitle": "Meilenstein erreicht!",
+  "streakMilestoneBody": "Du hast einen {count}-Tage-Streak geschafft. Weiter so!",
+  "@streakMilestoneBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "serverConfigButton": "Serverkonfiguration",
+  "serverConfigTitle": "Serverkonfiguration",
+  "serverConfigDescription": "Für selbst gehostete Installationen können Sie die App auf Ihre eigenen Neon-PostgREST- und Auth-Endpunkte verweisen. Unverändert lassen, um den Standard-Server zu verwenden.",
+  "serverConfigDataApiUrl": "PostgREST API-URL",
+  "serverConfigAuthBaseUrl": "Auth-Basis-URL",
+  "serverConfigCustomActive": "Eigener Server aktiv – es werden Ihre eigenen Endpunkte verwendet.",
+  "serverConfigReset": "Auf Standardwerte zurücksetzen"
+}

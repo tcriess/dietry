@@ -1,0 +1,1053 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appTitle => 'Dietry';
+
+  @override
+  String get overviewTitle => 'Overview';
+
+  @override
+  String get addFoodTitle => 'Add Food';
+
+  @override
+  String get nutrientCalories => 'Calories';
+
+  @override
+  String get nutrientProtein => 'Protein';
+
+  @override
+  String get nutrientFat => 'Fat';
+
+  @override
+  String get nutrientCarbs => 'Carbohydrates';
+
+  @override
+  String get nutrientFiber => 'Fiber';
+
+  @override
+  String get nutrientSugar => 'Sugar';
+
+  @override
+  String get nutrientSalt => 'Salt';
+
+  @override
+  String get goal => 'Goal';
+
+  @override
+  String get consumed => 'Consumed';
+
+  @override
+  String get remaining => 'Remaining';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get saving => 'Saving...';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get requiredField => 'Required';
+
+  @override
+  String errorPrefix(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String get previousDay => 'Previous Day';
+
+  @override
+  String get nextDay => 'Next Day';
+
+  @override
+  String get loading => 'Loading...';
+
+  @override
+  String get navOverview => 'Overview';
+
+  @override
+  String get navEntries => 'Entries';
+
+  @override
+  String get navActivities => 'Activities';
+
+  @override
+  String get mealBreakfast => 'Breakfast';
+
+  @override
+  String get mealLunch => 'Lunch';
+
+  @override
+  String get mealDinner => 'Dinner';
+
+  @override
+  String get mealSnack => 'Snack';
+
+  @override
+  String get genderMale => 'Male';
+
+  @override
+  String get genderFemale => 'Female';
+
+  @override
+  String get activityLevelSedentary => 'Sedentary (Office job)';
+
+  @override
+  String get activityLevelLight => 'Light (1-3x/week exercise)';
+
+  @override
+  String get activityLevelModerate => 'Moderate (3-5x/week exercise)';
+
+  @override
+  String get activityLevelActive => 'Active (6-7x/week exercise)';
+
+  @override
+  String get activityLevelVeryActive => 'Very active (2x daily training)';
+
+  @override
+  String get weightGoalLose => 'Lose Weight (0.5 kg/week)';
+
+  @override
+  String get weightGoalMaintain => 'Maintain Weight';
+
+  @override
+  String get weightGoalGain => 'Gain Weight (Build Muscle)';
+
+  @override
+  String get caloriesBurned => 'Burned';
+
+  @override
+  String get netCalories => 'Net';
+
+  @override
+  String get date => 'Date';
+
+  @override
+  String get noGoalTitle => 'No Nutrition Goal';
+
+  @override
+  String get noGoalMessage =>
+      'Create your first nutrition goal to track your progress.';
+
+  @override
+  String get createGoal => 'Create Nutrition Goal';
+
+  @override
+  String get entriesTitle => 'Entries';
+
+  @override
+  String get entriesEmpty => 'No entries yet';
+
+  @override
+  String get entriesEmptyHint => 'Add your first meal!';
+
+  @override
+  String get deleteEntryTitle => 'Delete Entry?';
+
+  @override
+  String deleteEntryConfirm(String name) {
+    return 'Do you really want to delete \"$name\"?';
+  }
+
+  @override
+  String get entryDeleted => 'Entry deleted';
+
+  @override
+  String get myFoods => 'My Foods';
+
+  @override
+  String get addEntry => 'Add Entry';
+
+  @override
+  String get activitiesTitle => 'Activities';
+
+  @override
+  String get activitiesEmpty => 'No Activities';
+
+  @override
+  String get activitiesEmptyHint => 'Add your first activity!';
+
+  @override
+  String get deleteActivityTitle => 'Delete Activity?';
+
+  @override
+  String deleteActivityConfirm(String name) {
+    return 'Do you really want to delete \"$name\"?';
+  }
+
+  @override
+  String get activityDeleted => 'Activity deleted';
+
+  @override
+  String get addActivity => 'Add Activity';
+
+  @override
+  String get myActivities => 'My Activities';
+
+  @override
+  String get importHealthConnect => 'Import from Health Connect';
+
+  @override
+  String get healthConnectImporting => 'Importing activities...';
+
+  @override
+  String get healthConnectNoResults => 'No new activities found';
+
+  @override
+  String healthConnectSuccess(int count) {
+    return '$count activities imported';
+  }
+
+  @override
+  String healthConnectError(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String get healthConnectUnavailable =>
+      'Health Connect not available on this device';
+
+  @override
+  String healthConnectSuccessBody(int count) {
+    return '$count measurements imported';
+  }
+
+  @override
+  String get importRangeTitle => 'Import range';
+
+  @override
+  String importRangeSinceGoal(String date) {
+    return 'Since tracking start ($date)';
+  }
+
+  @override
+  String get importRangeAll => 'All available data';
+
+  @override
+  String get addFoodScreenTitle => 'Add Food';
+
+  @override
+  String get searchHint => 'e.g., Apple, Rice, Chicken...';
+
+  @override
+  String get onlineSearch => 'Online Search';
+
+  @override
+  String get myDatabase => 'My Database';
+
+  @override
+  String get amount => 'Amount';
+
+  @override
+  String get unit => 'Unit';
+
+  @override
+  String get mealType => 'Meal';
+
+  @override
+  String get manualEntry => 'Manual';
+
+  @override
+  String get useFood => 'Use';
+
+  @override
+  String get saveToDatabase => 'Add to Database';
+
+  @override
+  String get entrySaved => 'Entry saved!';
+
+  @override
+  String get searchEnterHint => 'Press Enter to search';
+
+  @override
+  String get caloriesLabel => 'Calories';
+
+  @override
+  String get proteinLabel => 'Protein';
+
+  @override
+  String get fatLabel => 'Fat';
+
+  @override
+  String get carbsLabel => 'Carbohydrates';
+
+  @override
+  String get foodDatabaseTitle => 'My Foods';
+
+  @override
+  String foodAdded(String name) {
+    return '\"$name\" added';
+  }
+
+  @override
+  String foodUpdated(String name) {
+    return '\"$name\" updated';
+  }
+
+  @override
+  String get foodDeleted => 'Deleted';
+
+  @override
+  String get deleteFoodTitle => 'Delete Food?';
+
+  @override
+  String deleteFoodConfirm(String name) {
+    return '\"$name\" will be permanently deleted. Existing entries are preserved.';
+  }
+
+  @override
+  String get foodName => 'Name';
+
+  @override
+  String get foodCaloriesPer100 => 'Calories (kcal/100g)';
+
+  @override
+  String get foodProteinPer100 => 'Protein (g/100g)';
+
+  @override
+  String get foodFatPer100 => 'Fat (g/100g)';
+
+  @override
+  String get foodCarbsPer100 => 'Carbohydrates (g/100g)';
+
+  @override
+  String get foodCategory => 'Category (optional)';
+
+  @override
+  String get foodBrand => 'Brand (optional)';
+
+  @override
+  String get foodPortionsTitle => 'Portion Sizes';
+
+  @override
+  String get foodPortionsEmpty => 'No portions defined – always enter in g/ml';
+
+  @override
+  String get foodPublic => 'Visible to all users';
+
+  @override
+  String get foodPublicOn => 'Everyone can find this food';
+
+  @override
+  String get foodPublicOff => 'Only you see this entry';
+
+  @override
+  String get newFood => 'New Food';
+
+  @override
+  String get nutritionPer100 => 'Nutrition per 100g';
+
+  @override
+  String get statusPublic => 'Public';
+
+  @override
+  String get statusPending => 'Pending';
+
+  @override
+  String get editEntryTitle => 'Edit Entry';
+
+  @override
+  String get entryUpdated => 'Changes saved!';
+
+  @override
+  String get profileTitle => 'Profile';
+
+  @override
+  String get profileDataTitle => 'Profile Data';
+
+  @override
+  String get profileDataEmpty => 'Profile not set up yet';
+
+  @override
+  String get setupProfile => 'Set Up Profile';
+
+  @override
+  String get editProfile => 'Edit Profile';
+
+  @override
+  String get goalCardTitle => 'Nutrition Goal';
+
+  @override
+  String get goalEmpty => 'No nutrition goal set';
+
+  @override
+  String get createGoalButton => 'Create Goal';
+
+  @override
+  String get adjustGoal => 'Adjust Goal';
+
+  @override
+  String get measurementTitle => 'Current Measurement';
+
+  @override
+  String get measurementEmpty => 'No measurement recorded';
+
+  @override
+  String get addWeight => 'Enter Weight';
+
+  @override
+  String get weight => 'Weight';
+
+  @override
+  String get height => 'Height';
+
+  @override
+  String get birthdate => 'Date of Birth';
+
+  @override
+  String ageYears(int age) {
+    return '$age years';
+  }
+
+  @override
+  String get gender => 'Gender';
+
+  @override
+  String get activityLevelLabel => 'Activity Level';
+
+  @override
+  String get weightGoalLabel => 'Weight Goal';
+
+  @override
+  String get bodyFat => 'Body Fat';
+
+  @override
+  String get muscleMass => 'Muscle Mass';
+
+  @override
+  String get waist => 'Waist Circumference';
+
+  @override
+  String get weightProgress => 'Weight Progress';
+
+  @override
+  String get rangeMonth1 => '1 Month';
+
+  @override
+  String get rangeMonths3 => '3 Months';
+
+  @override
+  String get rangeMonths6 => '6 Months';
+
+  @override
+  String get rangeYear1 => '1 Year';
+
+  @override
+  String get rangeAll => 'All';
+
+  @override
+  String get deleteMeasurementTitle => 'Delete Measurement?';
+
+  @override
+  String deleteMeasurementConfirm(String date) {
+    return 'Delete measurement from $date?';
+  }
+
+  @override
+  String get measurementDeleted => 'Measurement deleted';
+
+  @override
+  String get profileInfoText =>
+      'Your data is used for personalized recommendations.';
+
+  @override
+  String measurementsSection(int count) {
+    return 'Measurements ($count)';
+  }
+
+  @override
+  String get latestBadge => 'Latest';
+
+  @override
+  String get profileSetupTitle => 'Set Up Profile';
+
+  @override
+  String get profileEditTitle => 'Edit Profile';
+
+  @override
+  String get birthdateRequired => 'Please select date of birth';
+
+  @override
+  String get heightLabel => 'Height *';
+
+  @override
+  String get heightInvalid => 'Invalid height (100-250cm)';
+
+  @override
+  String get genderLabel => 'Gender';
+
+  @override
+  String get activityLevelFieldLabel => 'Activity Level';
+
+  @override
+  String get weightGoalFieldLabel => 'Weight Goal';
+
+  @override
+  String get profileSaved => 'Profile saved!';
+
+  @override
+  String get addMeasurementTitle => 'Enter Measurement';
+
+  @override
+  String get editMeasurementTitle => 'Edit Measurement';
+
+  @override
+  String get measurementDate => 'Measurement Date';
+
+  @override
+  String get weightRequired => 'Please enter weight';
+
+  @override
+  String get weightInvalid => 'Invalid weight (30-300kg)';
+
+  @override
+  String get bodyFatOptional => 'Body Fat (optional)';
+
+  @override
+  String get bodyFatInvalid => 'Invalid (0-50%)';
+
+  @override
+  String get muscleOptional => 'Muscle Mass (optional)';
+
+  @override
+  String get waistOptional => 'Waist Circumference (optional)';
+
+  @override
+  String get notesOptional => 'Notes (optional)';
+
+  @override
+  String get notesHint => 'e.g., morning fasting, after exercise...';
+
+  @override
+  String get measurementSaved => 'Measurement saved!';
+
+  @override
+  String get advancedOptional => 'Advanced (optional)';
+
+  @override
+  String get goalRecTitle => 'Goal Recommendation';
+
+  @override
+  String get bodyDataTitle => 'Your Body Data';
+
+  @override
+  String get weightLabel => 'Weight';
+
+  @override
+  String get weightInvalidRec => 'Please enter valid weight (30-300 kg)';
+
+  @override
+  String get heightRecLabel => 'Height';
+
+  @override
+  String get heightRecInvalid => 'Please enter valid height (100-250 cm)';
+
+  @override
+  String get birthdateLabel => 'Date of Birth';
+
+  @override
+  String get birthdateSelect => 'Select date';
+
+  @override
+  String birthdateDisplay(String date, int age) {
+    return '$date  ($age years)';
+  }
+
+  @override
+  String get birthdateSelectSnackbar => 'Please select date of birth';
+
+  @override
+  String get genderRecLabel => 'Gender';
+
+  @override
+  String get activitySectionTitle => 'Your Activity';
+
+  @override
+  String get activityRecLabel => 'Activity Level';
+
+  @override
+  String get goalSectionTitle => 'Your Goal';
+
+  @override
+  String get weightGoalRecLabel => 'Weight Goal';
+
+  @override
+  String get calculateButton => 'Calculate Recommendation';
+
+  @override
+  String get calculating => 'Calculating...';
+
+  @override
+  String get recommendationTitle => 'Your Recommendation';
+
+  @override
+  String trackingMethodLabel(String method) {
+    return 'Tracking Method: $method';
+  }
+
+  @override
+  String get bmrLabel => 'Basal Metabolic Rate (BMR):';
+
+  @override
+  String get tdeeLabel => 'Total Daily Energy Expenditure (TDEE):';
+
+  @override
+  String get targetCalories => 'Target Calories:';
+
+  @override
+  String get macronutrients => 'Macronutrients';
+
+  @override
+  String get saveAsGoal => 'Save as Goal';
+
+  @override
+  String get saveBodyData => 'Save body data for tracking';
+
+  @override
+  String get goalSaved => 'Goal and body data saved!';
+
+  @override
+  String get goalSavedOnly => 'Goal saved!';
+
+  @override
+  String get goalSavedDialogTitle => 'Goal Saved!';
+
+  @override
+  String get goalSavedDialogContent =>
+      'Your nutrition goal has been saved successfully.';
+
+  @override
+  String goalTargetLine(int calories) {
+    return 'Goal: $calories kcal/day';
+  }
+
+  @override
+  String get toOverview => 'To Overview';
+
+  @override
+  String get personalizedRecTitle => 'Personalized Recommendation';
+
+  @override
+  String get personalizedRecDesc =>
+      'Based on your body data we calculate your individual calorie needs and macronutrient recommendations.';
+
+  @override
+  String get goalExplainLose =>
+      'With a deficit of ~500 kcal/day you can lose about 0.5 kg per week.';
+
+  @override
+  String get goalExplainMaintain =>
+      'This calorie amount should maintain your current weight.';
+
+  @override
+  String get goalExplainGain =>
+      'With a surplus of ~300 kcal/day you can build muscle mass healthily.';
+
+  @override
+  String get trackingChooseTitle => 'Choose Tracking Method';
+
+  @override
+  String get trackingHowToTrack => 'How do you want to track?';
+
+  @override
+  String get trackingDescription =>
+      'Choose the method that best fits your lifestyle. You can change it anytime.';
+
+  @override
+  String get trackingRecommendedForYou => 'Your Recommendation';
+
+  @override
+  String get trackingWhatToTrack => 'What should you track?';
+
+  @override
+  String get trackingUseMethod => 'Use This Method';
+
+  @override
+  String get appSubtitle => 'Your personal nutrition diary';
+
+  @override
+  String get featureTrackTitle => 'Track Calories & Macros';
+
+  @override
+  String get featureTrackSubtitle => 'Easily record and analyze meals';
+
+  @override
+  String get featureDatabaseTitle => 'Large Food Database';
+
+  @override
+  String get featureDatabaseSubtitle =>
+      'Open Food Facts, USDA and custom entries';
+
+  @override
+  String get featureActivitiesTitle => 'Track Activities';
+
+  @override
+  String get featureActivitiesSubtitle => 'Sport & exercise in daily balance';
+
+  @override
+  String get featureGoalsTitle => 'Individual Goals';
+
+  @override
+  String get featureGoalsSubtitle => 'Recommendations based on your body data';
+
+  @override
+  String get loginWithGoogle => 'Sign in with Google';
+
+  @override
+  String get orContinueWith => 'Or continue with';
+
+  @override
+  String get loginWithEmail => 'Sign in with email';
+
+  @override
+  String get signUpWithEmail => 'Sign up';
+
+  @override
+  String get emailLabel => 'Email';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get nameOptionalLabel => 'Name (optional)';
+
+  @override
+  String get passwordTooShort => 'Password too short (min. 8 characters)';
+
+  @override
+  String get alreadyHaveAccount => 'Already have an account? Sign in';
+
+  @override
+  String get noAccount => 'No account yet? Sign up';
+
+  @override
+  String get signUpSuccess => 'Registration successful!';
+
+  @override
+  String get privacyNote =>
+      'By signing in you agree to our privacy policy. Your data is stored securely and not shared.';
+
+  @override
+  String get impressumLink => 'Legal Notice & Privacy';
+
+  @override
+  String loginFailed(String error) {
+    return 'Login failed: $error';
+  }
+
+  @override
+  String get infoTitle => 'Info & Legal Notice';
+
+  @override
+  String get infoImpressumSection => 'Legal Notice';
+
+  @override
+  String get infoPrivacySection => 'Privacy';
+
+  @override
+  String get infoExternalServices => 'External Services & Data Sources';
+
+  @override
+  String get infoOpenSource => 'Open Source Libraries';
+
+  @override
+  String get infoDisclaimerSection => 'Disclaimer';
+
+  @override
+  String infoVersion(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get infoDisclaimerText =>
+      'The nutritional recommendations and calorie calculations in this app are based on scientific formulas and serve only as guidance. They do not replace professional nutritional or medical advice.';
+
+  @override
+  String get infoTmgNotice => 'Information according to § 5 TMG';
+
+  @override
+  String get infoContact => 'Contact';
+
+  @override
+  String get infoEmail => 'Email: info@dietry.de';
+
+  @override
+  String get infoResponsible =>
+      'Responsible for content according to § 55 para. 2 RStV: Thorsten Rieß (address as above)';
+
+  @override
+  String get infoDataStoredTitle => 'What data is stored?';
+
+  @override
+  String get infoDataGoogleAccount =>
+      'Google account data (email, name) for authentication';
+
+  @override
+  String get infoDataBody =>
+      'Body data (weight, height, date of birth, gender)';
+
+  @override
+  String get infoDataMeals => 'Meal entries and food database';
+
+  @override
+  String get infoDataActivities => 'Activities and nutrition goals';
+
+  @override
+  String get infoDataStorageText =>
+      'All data is stored in a secure database (Neon PostgreSQL). No data is shared with third parties. Authentication is handled via Google OAuth 2.0 through Neon Auth.';
+
+  @override
+  String get infoDataDeletion =>
+      'Data can be removed at any time by deleting the account.';
+
+  @override
+  String get infoOpenSourceText =>
+      'This app was built with Flutter and uses the following packages:';
+
+  @override
+  String get infoOffDescription =>
+      'Worldwide food database for nutritional information. Data is available under the Open Database License (ODbL).';
+
+  @override
+  String get infoUsdaDescription =>
+      'Food nutrient database from the U.S. Department of Agriculture.';
+
+  @override
+  String get infoNeonName => 'Neon (Database & Authentication)';
+
+  @override
+  String get infoNeonDescription =>
+      'Serverless PostgreSQL database and OAuth 2.0 authentication service.';
+
+  @override
+  String get infoNeonLicense => 'Proprietary service';
+
+  @override
+  String get infoGoogleDescription =>
+      'Authentication via Google account. Only email address and name are transmitted.';
+
+  @override
+  String get cannotNavigateToFuture => 'You cannot navigate into the future';
+
+  @override
+  String noGoalForDate(String date) {
+    return 'No nutrition goal found for $date';
+  }
+
+  @override
+  String get infoCopyright => '© 2025 Simon Span · dietry.de';
+
+  @override
+  String get offlineMode =>
+      'Offline – changes will sync when connection is restored';
+
+  @override
+  String get pendingSyncCount => 'changes pending sync';
+
+  @override
+  String get syncNow => 'Sync now';
+
+  @override
+  String get appBarTitle => 'Dietry';
+
+  @override
+  String get profileTooltip => 'Profile';
+
+  @override
+  String get infoTooltip => 'Info & Legal Notice';
+
+  @override
+  String get languageTooltip => 'Change language';
+
+  @override
+  String get logoutTooltip => 'Logout';
+
+  @override
+  String get accountSectionTitle => 'Account & Data';
+
+  @override
+  String get exportDataButton => 'Export data';
+
+  @override
+  String get exportDataDescription => 'Download all your entries as CSV files';
+
+  @override
+  String get deleteAccountButton => 'Delete account';
+
+  @override
+  String get deleteAccountDescription =>
+      'Permanently delete all your data and sign out';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Really delete account?';
+
+  @override
+  String get deleteAccountConfirmText =>
+      'All your food entries, activities, body measurements and goals will be permanently deleted. This action cannot be undone.';
+
+  @override
+  String get deleteAccountConfirmButton => 'Delete permanently';
+
+  @override
+  String get deleteAccountSuccess => 'All data has been deleted.';
+
+  @override
+  String get exportDataSuccess => 'Export successful';
+
+  @override
+  String exportDataError(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String deleteAccountError(String error) {
+    return 'Deletion failed: $error';
+  }
+
+  @override
+  String get emailVerificationTitle => 'Check your inbox!';
+
+  @override
+  String emailVerificationBody(String email) {
+    return 'We sent a confirmation link to $email. Please click it to activate your account, then sign in.';
+  }
+
+  @override
+  String get emailVerificationBack => 'Back to sign in';
+
+  @override
+  String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get resetPasswordTitle => 'Reset password';
+
+  @override
+  String get sendResetLink => 'Send reset link';
+
+  @override
+  String get resetLinkSent => 'Link sent!';
+
+  @override
+  String resetLinkSentBody(String email) {
+    return 'We sent a password reset link to $email.';
+  }
+
+  @override
+  String get waterTitle => 'Water intake';
+
+  @override
+  String waterGoalLabel(int amount) {
+    return 'Goal: $amount ml';
+  }
+
+  @override
+  String get waterAdd => 'Add +250 ml';
+
+  @override
+  String get waterRemove => 'Remove -250 ml';
+
+  @override
+  String get devBannerText =>
+      '⚠️ Preview build · Development database · Data is not permanently stored';
+
+  @override
+  String get waterGoalFieldLabel => 'Water goal';
+
+  @override
+  String get waterGoalFieldHint =>
+      'Recommended: approx. 35 ml per kg body weight';
+
+  @override
+  String get waterReminderTitle => 'Drink reminders';
+
+  @override
+  String get waterReminderSubtitle => 'Remind to drink water every 4 hours';
+
+  @override
+  String get cheatDayTitle => 'Cheat Day';
+
+  @override
+  String get cheatDayBanner =>
+      'Cheat Day! Enjoy yourself — excluded from reports.';
+
+  @override
+  String get markAsCheatDay => 'Cheat Day';
+
+  @override
+  String get cheatDayMarked => 'Cheat day marked ✓';
+
+  @override
+  String get cheatDayRemoved => 'Cheat day removed';
+
+  @override
+  String cheatDayMonthlyNudge(int count) {
+    return 'You\'ve had $count cheat days this month. All good, no judgement!';
+  }
+
+  @override
+  String streakDays(int count) {
+    return '$count day streak';
+  }
+
+  @override
+  String get streakStart => 'Start your streak today!';
+
+  @override
+  String streakBestLabel(int count) {
+    return 'Best: $count';
+  }
+
+  @override
+  String get streakMilestoneTitle => 'Milestone reached!';
+
+  @override
+  String streakMilestoneBody(int count) {
+    return 'You\'ve completed a $count-day streak. Keep it up!';
+  }
+
+  @override
+  String get serverConfigButton => 'Server configuration';
+
+  @override
+  String get serverConfigTitle => 'Server configuration';
+
+  @override
+  String get serverConfigDescription =>
+      'For self-hosted installations you can point the app to your own Neon PostgREST and Auth endpoints. Leave unchanged to use the default managed server.';
+
+  @override
+  String get serverConfigDataApiUrl => 'PostgREST API URL';
+
+  @override
+  String get serverConfigAuthBaseUrl => 'Auth base URL';
+
+  @override
+  String get serverConfigCustomActive =>
+      'Custom server active — using your own endpoints.';
+
+  @override
+  String get serverConfigReset => 'Reset to defaults';
+}

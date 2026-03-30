@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#673ab7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Login - Dietry</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #ffffff;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+        }
+        h1 {
+            margin: 0 0 1rem 0;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #5f6368;
+        }
+        button {
+            margin-top: 2rem;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        button:hover {
+            background: #1765cc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.16);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #5f6368;
+        }
+        .success {
+            background: #e6f4ea;
+            color: #1e8e3e;
+        }
+        .error {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a73e8;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="spinner" class="spinner" style="display: none;"></div>
+        <h1 id="title">Dietry</h1>
+        <p id="subtitle">Anmeldung läuft...</p>
+
+        <button id="loginBtn" onclick="startLogin()" style="display: none;">
+            Mit Google anmelden
+        </button>
+
+        <div id="status" style="display: none;">
+            Authentifizierung läuft...
+        </div>
+    </div>
+
+    <script>
+        console.log('🔍 NEON AUTH CALLBACK - VERSION 2026-03-27-DYNAMIC-AUTH-URL');
+
+        const AUTH_BASE_URL = localStorage.getItem('dietry_auth_base_url')
+            || 'https://ep-restless-mode-ale048t6.neonauth.c-3.eu-central-1.aws.neon.tech/neondb/auth';
+
+        console.log('🔍 AUTH_BASE_URL:', AUTH_BASE_URL);
+
+        // ========================================
+        // SCHRITT 1: Check ob Verifier in URL (OAuth Callback)
+        // ========================================
+        (async function checkCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const verifier = urlParams.get('neon_auth_session_verifier');
+
+            if (verifier) {
+                // Callback von Google OAuth - Verifier vorhanden
+                console.log('✅ OAuth Callback empfangen - Verifier:', verifier);
+                document.getElementById('loginBtn').style.display = 'none';
+
+                await handleCallback(verifier);
+            } else {
+                // Kein Verifier - wurde direkt aufgerufen (z.B. von Flutter)
+                // → Starte OAuth automatisch!
+                console.log('ℹ️ Keine Callback-Parameter - starte OAuth automatisch...');
+
+                // Zeige Spinner und Status
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('spinner').style.display = 'block';
+                document.getElementById('subtitle').textContent = 'Starte Anmeldung...';
+
+                // Starte OAuth nach kurzer Verzögerung (für bessere UX)
+                setTimeout(() => {
+                    startLogin();
+                }, 500);
+            }
+        })();
+
+        // ========================================
+        // SCHRITT 2: Start OAuth Flow (Button-Click)
+        // ========================================
+        async function startLogin() {
+            const loginBtn = document.getElementById('loginBtn');
+            const statusDiv = document.getElementById('status');
+            const spinner = document.getElementById('spinner');
+            const subtitle = document.getElementById('subtitle');
+
+            loginBtn.disabled = true;
+            loginBtn.style.display = 'none';
+            spinner.style.display = 'block';
+            subtitle.textContent = 'Verbinde mit Google...';
+
+            try {
+                console.log('🚀 Starte OAuth-Flow mit Google...');
+                console.log('   Callback-URL:', window.location.origin + window.location.pathname);
+
+                // ✅ KRITISCH: credentials: 'include' damit Browser Cookies automatisch managed!
+                const response = await fetch(AUTH_BASE_URL + '/sign-in/social', {
+                    method: 'POST',
+                    credentials: 'include',  // ← Browser speichert Challenge-Cookie!
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        provider: 'google',
+                        callbackURL: window.location.href.split('?')[0],  // Clean URL ohne Query params
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('OAuth start failed: ' + response.status);
+                }
+
+                const data = await response.json();
+                const oauthUrl = data.url;
+
+                if (!oauthUrl) {
+                    throw new Error('No OAuth URL received');
+                }
+
+                console.log('✅ OAuth URL erhalten');
+                console.log('🍪 Browser hat Challenge-Cookie gespeichert (credentials: include)');
+                console.log('🔄 Redirecte zu Google OAuth...');
+
+                // Prüfe ob Cookie wirklich gespeichert wurde
+                console.log('DEBUG: document.cookie =', document.cookie);
+
+                subtitle.textContent = 'Redirecte zu Google...';
+
+                // Redirect zur Google OAuth-Seite
+                setTimeout(() => {
+                    window.location.href = oauthUrl;
+                }, 500);
+
+            } catch (error) {
+                console.error('❌ Fehler beim OAuth-Start:', error);
+                statusDiv.textContent = 'Fehler: ' + error.message;
+                statusDiv.className = 'error';
+                loginBtn.disabled = false;
+            }
+        }
+
+        // ========================================
+        // SCHRITT 3: Handle OAuth Callback
+        // ========================================
+        async function handleCallback(verifier) {
+            const statusDiv = document.getElementById('status');
+            const spinner = document.getElementById('spinner');
+            const subtitle = document.getElementById('subtitle');
+
+            spinner.style.display = 'block';
+            subtitle.textContent = 'Erstelle Session...';
+
+            try {
+                console.log('🔑 Hole Session mit Verifier...');
+                console.log('   Verifier:', verifier);
+                console.log('   DEBUG: document.cookie =', document.cookie);
+                console.log('   Request: GET /get-session?neon_auth_session_verifier=' + verifier);
+                console.log('   Credentials: include (Browser sendet Challenge-Cookie automatisch!)');
+
+                // ✅ KRITISCH: credentials: 'include' sendet Challenge-Cookie automatisch mit!
+                const response = await fetch(AUTH_BASE_URL + '/get-session?neon_auth_session_verifier=' + verifier, {
+                    method: 'GET',
+                    credentials: 'include',  // ← Browser sendet Challenge-Cookie!
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
+
+                console.log('📥 Response Status:', response.status);
+                console.log('   Response Headers:', Object.fromEntries(response.headers.entries()));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Session-Erstellung fehlgeschlagen:', response.status);
+                    console.error('   Error:', errorText);
+
+                    // Detaillierte Fehleranalyse
+                    if (errorText.includes('CHALLANGE_COOKIE_NOT_FOUND')) {
+                        console.error('💡 Problem: Challenge-Cookie fehlt!');
+                        console.error('   Das bedeutet:');
+                        console.error('   1. OAuth-Start wurde nicht über diese Seite gemacht');
+                        console.error('   2. Oder: Browser hat Cookie nicht gespeichert');
+                        console.error('   3. Oder: Cookie wurde durch Page-Reload gelöscht');
+                        console.error('');
+                        console.error('📋 LÖSUNG: Klicke den "Mit Google anmelden" Button auf DIESER Seite!');
+                        console.error('   (Nicht von Flutter-App starten!)');
+
+                        statusDiv.textContent = 'Fehler: Challenge-Cookie fehlt! Bitte klicke den Login-Button auf dieser Seite.';
+                        statusDiv.className = 'error';
+
+                        // Zeige Login-Button wieder
+                        document.getElementById('loginBtn').style.display = 'block';
+                        return;
+                    }
+
+                    throw new Error('Session creation failed: ' + errorText);
+                }
+
+                const sessionData = await response.json();
+                console.log('📦 Session-Data:', sessionData);
+                console.log('   Session Keys:', Object.keys(sessionData.session || {}));
+                console.log('   User:', sessionData.user?.email);
+
+                if (!sessionData || !sessionData.session) {
+                    throw new Error('No session in response');
+                }
+
+                // ✅ Session erfolgreich erstellt!
+                console.log('✅ SESSION ERFOLGREICH ERSTELLT!');
+                console.log('   Session ID:', sessionData.session?.id);
+
+                // Hilfsfunktion: Prüft ob ein Token ein gültiges 3-teiliges JWT ist
+                function isValidJwt(token) {
+                    return token && typeof token === 'string' && token.split('.').length === 3;
+                }
+
+                // JWT extrahieren - WICHTIG: Das ist das echte JWT für Datenbank-Zugriff!
+                let jwt = null;
+
+                // 1. /token endpoint - primäre Quelle, gibt echtes JWT zurück
+                subtitle.textContent = 'Hole JWT-Token...';
+                try {
+                    const tokenResponse = await fetch(AUTH_BASE_URL + '/token', {
+                        method: 'GET',
+                        credentials: 'include',
+                    });
+                    if (tokenResponse.ok) {
+                        const tokenData = await tokenResponse.json();
+                        const candidate = tokenData.token || tokenData.access_token;
+                        if (isValidJwt(candidate)) {
+                            jwt = candidate;
+                            console.log('✅ JWT von /token endpoint erhalten');
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ /token endpoint Fehler:', e.message);
+                }
+
+                // 2. Fallback: session.token (nur wenn echtes JWT)
+                if (!jwt && isValidJwt(sessionData.session.token)) {
+                    jwt = sessionData.session.token;
+                    console.log('✅ JWT aus sessionData.session.token extrahiert');
+                }
+
+                // 3. Fallback: access_token
+                if (!jwt && isValidJwt(sessionData.session.access_token)) {
+                    jwt = sessionData.session.access_token;
+                    console.log('✅ JWT aus sessionData.session.access_token extrahiert');
+                }
+
+                // 4. Retry /token für neue Nutzer (Konto-Erstellung braucht kurz)
+                if (!jwt) {
+                    console.log('⏳ Kein JWT - neuer Nutzer? Warte auf Konto-Erstellung...');
+                    for (let attempt = 1; attempt <= 4; attempt++) {
+                        subtitle.textContent = `Warte auf Konto (${attempt}/4)...`;
+                        await new Promise(r => setTimeout(r, 1500));
+                        try {
+                            const retryResponse = await fetch(AUTH_BASE_URL + '/token', {
+                                method: 'GET',
+                                credentials: 'include',
+                            });
+                            if (retryResponse.ok) {
+                                const data = await retryResponse.json();
+                                const candidate = data.token || data.access_token;
+                                if (isValidJwt(candidate)) {
+                                    jwt = candidate;
+                                    console.log(`✅ JWT nach ${attempt} Versuchen erhalten`);
+                                    break;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+
+                if (jwt) {
+                    console.log('🎉 GÜLTIGES JWT-TOKEN erhalten!');
+                    console.log('   JWT Preview:', jwt.substring(0, 50) + '...');
+
+                    // Speichere JWT in localStorage (Flutter App liest es aus!)
+                    localStorage.setItem('neon_jwt', jwt);
+                    localStorage.setItem('neon_user_email', sessionData.user?.email || '');
+                    localStorage.setItem('neon_session_id', sessionData.session?.id || '');
+                    console.log('✅ JWT in localStorage gespeichert (Key: "neon_jwt")');
+                } else {
+                    console.error('❌ KEIN JWT ERHALTEN!');
+                    console.error('   Session-Response:', sessionData);
+                    throw new Error('Kein gültiges JWT-Token erhalten von Neon Auth');
+                }
+
+                // Entferne Verifier aus URL
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, '', cleanUrl);
+
+                // Zeige Erfolg
+                subtitle.textContent = 'Anmeldung erfolgreich!';
+                subtitle.style.color = '#1e8e3e';
+
+                // Redirecte zur Hauptseite nach kurzer Verzögerung
+                console.log('🔄 Redirecte zur Hauptseite in 1 Sekunde...');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+
+            } catch (error) {
+                console.error('❌ Fehler beim Callback-Handling:', error);
+                statusDiv.textContent = 'Fehler: ' + error.message;
+                statusDiv.className = 'error';
+
+                // Zeige Login-Button wieder
+                document.getElementById('loginBtn').style.display = 'block';
+            }
+        }
+
+        // ========================================
+        // Check Session beim Page Load
+        // ========================================
+        (async function checkExistingSession() {
+            const jwt = localStorage.getItem('neon_jwt');
+            if (jwt) {
+                console.log('ℹ️ JWT in localStorage gefunden - prüfe ob gültig...');
+
+                // Validiere JWT-Format (muss 3 Teile haben)
+                if (jwt.split('.').length !== 3) {
+                    console.error('❌ JWT hat ungültiges Format - cleane localStorage');
+                    localStorage.removeItem('neon_jwt');
+                    localStorage.removeItem('neon_user_email');
+                    localStorage.removeItem('neon_session_id');
+                    // Starte neu ein
+                    checkPageLoad();
+                    return;
+                }
+
+                try {
+                    const response = await fetch(AUTH_BASE_URL + '/get-session', {
+                        method: 'GET',
+                        credentials: 'include',
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.session) {
+                            console.log('✅ Aktive Session gefunden!');
+                            console.log('   User:', data.user?.email);
+
+                            // Update localStorage (nur wenn echtes JWT)
+                            const newToken = data.session.token;
+                            if (newToken && newToken.split('.').length === 3) {
+                                localStorage.setItem('neon_jwt', newToken);
+                            }
+
+                            // Prüfe ob wir von einem OAuth-Callback kommen
+                            const urlParams = new URLSearchParams(window.location.search);
+                            if (!urlParams.has('neon_auth_session_verifier')) {
+                                // Kein Verifier in URL = User ist bereits eingeloggt
+                                // → Weiterleitung zur Flutter-App (nicht hier bleiben!)
+                                console.log('🔄 JWT vorhanden, redirecte zur Flutter-App...');
+                                window.location.href = '/';
+                                return;
+                            }
+                        } else {
+                            // Session existiert nicht mehr - cleane localStorage
+                            console.warn('⚠️ Keine aktive Session - cleane localStorage');
+                            localStorage.removeItem('neon_jwt');
+                            localStorage.removeItem('neon_user_email');
+                            localStorage.removeItem('neon_session_id');
+                        }
+                    } else {
+                        // Session-Check fehlgeschlagen - cleane localStorage
+                        console.warn('⚠️ Session-Check fehlgeschlagen (Status: ' + response.status + ') - cleane localStorage');
+                        localStorage.removeItem('neon_jwt');
+                        localStorage.removeItem('neon_user_email');
+                        localStorage.removeItem('neon_session_id');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Session-Check Error:', error);
+                    // Bei Fehler localStorage cleanen
+                    localStorage.removeItem('neon_jwt');
+                    localStorage.removeItem('neon_user_email');
+                    localStorage.removeItem('neon_session_id');
+                }
+            }
+        })();
+
+        // ========================================
+        // Logout
+        // ========================================
+        async function logout() {
+            try {
+                await fetch(AUTH_BASE_URL + '/sign-out', {
+                    method: 'POST',
+                    credentials: 'include',
+                });
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+
+            localStorage.clear();
+            window.location.reload();
+        }
+
+        // ========================================
+        // Test Database Connection
+        // ========================================
+        async function testDatabaseConnection() {
+            const jwt = localStorage.getItem('neon_jwt');
+            if (!jwt) {
+                alert('Kein JWT Token vorhanden!');
+                return;
+            }
+
+            console.log('🗄️ Teste Datenbank-Connection mit JWT...');
+            console.log('   JWT:', jwt.substring(0, 50) + '...');
+
+            // TODO: Implementiere Datenbank-Test
+            alert('Datenbank-Test noch nicht implementiert. JWT ist vorhanden:\n' + jwt.substring(0, 50) + '...');
+        }
+    </script>
+</body>
+</html>
+
