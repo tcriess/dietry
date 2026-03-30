@@ -6,9 +6,9 @@ name: Build & Release
 # • workflow_dispatch → manual run with optional server deploy
 on:
   push:
-    branches: [main]
+    branches: [main, develop, feature/*, issue/*]
   pull_request:
-    branches: [main]
+    branches: [main, develop, feature/*, issue/*]
   release:
     types: [published]
   workflow_dispatch:
@@ -32,8 +32,15 @@ on:
 
 # ── Global env ────────────────────────────────────────────────────────────────
 env:
-  FLUTTER_VERSION: '3.32.0'   # pin for reproducible builds; bump deliberately
+  FLUTTER_VERSION: '3.41.5'   # pin for reproducible builds; bump deliberately
   JAVA_VERSION: '17'
+  CE_CONFIG_JSON: ${{ github.ref_name == 'main' && secrets.CE_PROD_CONFIG_JSON || secrets.CE_DEV_CONFIG_JSON }}  # Must contain the full JSON config for CE builds
+  DEPLOY_SSH_KEY: ${{ github.ref_name == 'main' && secrets.DEPLOY_PROD_SSH_KEY || secrets.DEPLOY_DEV_SSH_KEY}}  # Optional: required for server deploy step
+  DEPLOY_HOST: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_HOST || vars.DEPLOY_DEV_HOST }}
+  DEPLOY_USER: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_USER || vars.DEPLOY_DEV_USER }}
+  DEPLOY_PORT: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_PORT || vars.DEPLOY_DEV_PORT || '22' }}
+  DEPLOY_PATH: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_PATH || vars.DEPLOY_DEV_PATH }}
+  DEPLOY_TMP_PATH: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_TMP_PATH || vars.DEPLOY_DEV_TMP_PATH || '/tmp' }}
 
 # Cancel in-progress runs on the same branch/PR (saves CI minutes)
 concurrency:
@@ -56,9 +63,6 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
-
-      - name: Upgrade flutter dart sdk
-        run: flutter upgrade --force
 
       - name: Install dependencies
         run: flutter pub get
@@ -88,7 +92,7 @@ jobs:
       - name: Write production config
         # CE_PROD_CONFIG_JSON secret must contain the full JSON, e.g.:
         # { "DATA_API_URL": "...", "AUTH_BASE_URL": "...", "ENVIRONMENT": "production", "EDITION": "community" }
-        run: echo '${{ secrets.CE_PROD_CONFIG_JSON }}' > config/ce-prod.json
+        run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
       - name: Install dependencies
         run: flutter pub get
@@ -96,7 +100,7 @@ jobs:
       - name: Build web (WebAssembly)
         run: |
           flutter build web --release --wasm \
-            --dart-define-from-file=config/ce-prod.json
+            --dart-define-from-file=config/ce.json
 
       - name: Package
         run: tar -C build/web -czf dietry-ce-web.tar.gz .
@@ -123,19 +127,17 @@ jobs:
           (github.event_name == 'workflow_dispatch' && inputs.deploy_web == true)
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ env.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          DEPLOY_PORT="${{ secrets.DEPLOY_PORT || '22' }}"
-          DEPLOY_TMP_PATH="${{ secrets.DEPLOY_TMP_PATH || '/tmp' }}"
-          scp -i ~/.ssh/deploy_key -P "$DEPLOY_PORT" \
+          scp -i ~/.ssh/deploy_key -P "${{ env.DEPLOY_PORT}}" \
               -o StrictHostKeyChecking=no \
               dietry-ce-web.tar.gz \
-              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${DEPLOY_TMP_PATH}/dietry-ce-web.tar.gz"
-          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+              "${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_TMP_PATH }}/dietry-ce-web.tar.gz"
+          ssh -i ~/.ssh/deploy_key -p "${{ env.DEPLOY_PORT }}" \
               -o StrictHostKeyChecking=no \
-              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-              "tar -C '${{ secrets.DEPLOY_PATH }}' -xzf ${DEPLOY_TMP_PATH}/dietry-ce-web.tar.gz \
-               && rm ${DEPLOY_TMP_PATH}/dietry-ce-web.tar.gz"
+              "${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}" \
+              "tar -C '${{ env.DEPLOY_PATH }}' -xzf ${{ env.DEPLOY_TMP_PATH}}/dietry-ce-web.tar.gz \
+               && rm ${{ env.DEPLOY_TMP_PATH }}/dietry-ce-web.tar.gz"
 
 
   # ── 3. Linux Desktop ────────────────────────────────────────────────────────
@@ -161,7 +163,7 @@ jobs:
           cache: true
 
       - name: Write production config
-        run: echo '${{ secrets.CE_PROD_CONFIG_JSON }}' > config/ce-prod.json
+        run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
       - name: Install dependencies
         run: flutter pub get
@@ -169,7 +171,7 @@ jobs:
       - name: Build Linux
         run: |
           flutter build linux --release \
-            --dart-define-from-file=config/ce-prod.json
+            --dart-define-from-file=config/ce.json
 
       - name: Package
         run: |
@@ -212,7 +214,7 @@ jobs:
           cache: true
 
       - name: Write production config
-        run: echo '${{ secrets.CE_PROD_CONFIG_JSON }}' > config/ce-prod.json
+        run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
       - name: Decode keystore
         # ANDROID_KEYSTORE_BASE64: base64-encoded .jks file
@@ -236,7 +238,7 @@ jobs:
       - name: Build APK (direct install)
         run: |
           flutter build apk --release \
-            --dart-define-from-file=config/ce-prod.json \
+            --dart-define-from-file=config/ce.json \
             --build-name="${{ github.ref_name }}" \
             --build-number="${{ github.run_number }}"
 
@@ -290,7 +292,7 @@ jobs:
           cache: true
 
       - name: Write production config
-        run: echo '${{ secrets.CE_PROD_CONFIG_JSON }}' > config/ce-prod.json
+        run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
       - name: Install dependencies
         run: flutter pub get
@@ -298,7 +300,7 @@ jobs:
       - name: Build macOS
         run: |
           flutter build macos --release \
-            --dart-define-from-file=config/ce-prod.json
+            --dart-define-from-file=config/ce.json
 
       - name: Package
         run: |
@@ -330,7 +332,7 @@ jobs:
           cache: true
 
       - name: Write production config
-        run: echo '${{ secrets.CE_PROD_CONFIG_JSON }}' > config/ce-prod.json
+        run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
       - name: Install dependencies
         run: flutter pub get
@@ -338,7 +340,7 @@ jobs:
       - name: Build Windows
         run: |
           flutter build windows --release `
-            --dart-define-from-file=config/ce-prod.json
+            --dart-define-from-file=config/ce.json
         shell: pwsh
 
       - name: Package
@@ -372,7 +374,7 @@ jobs:
           cache: true
 
       - name: Write production config
-        run: echo '${{ secrets.CE_PROD_CONFIG_JSON }}' > config/ce-prod.json
+        run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
       - name: Import signing certificate
         # IOS_CERTIFICATE_BASE64: base64-encoded .p12 file
@@ -409,7 +411,7 @@ jobs:
       - name: Build IPA
         run: |
           flutter build ipa --release \
-            --dart-define-from-file=config/ce-prod.json \
+            --dart-define-from-file=config/ce.json \
             --build-name="${{ github.ref_name }}" \
             --build-number="${{ github.run_number }}" \
             --export-options-plist=ios/ExportOptions.plist
