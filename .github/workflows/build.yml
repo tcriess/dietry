@@ -247,7 +247,7 @@ jobs:
       - name: Build App Bundle (Play Store)
         run: |
           flutter build appbundle --release \
-            --dart-define-from-file=config/ce-prod.json \
+            --dart-define-from-file=config/ce.json \
             --build-name="${{ github.ref_name }}" \
             --build-number="${{ github.run_number }}"
 
