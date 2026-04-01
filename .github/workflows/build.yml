@@ -33,7 +33,7 @@ on:
 # ── Global env ────────────────────────────────────────────────────────────────
 env:
   FLUTTER_VERSION: '3.41.5'   # pin for reproducible builds; bump deliberately
-  JAVA_VERSION: '21'
+  JAVA_VERSION: '17'
   ANDROID_KEYSTORE_BASE64: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEYSTORE_BASE64 || secrets.ANDROID_DEV_KEYSTORE_BASE64 }}
   ANDROID_KEYSTORE_PASSWORD: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEYSTORE_PASSWORD || secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
   ANDROID_KEY_PASSWORD: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEY_PASSWORD || secrets.ANDROID_DEV_KEY_PASSWORD }}
