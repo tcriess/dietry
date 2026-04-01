@@ -106,6 +106,40 @@ class MealTemplateLogData {
   });
 }
 
+// ── Typen für Reports-Daten (Übergabe CE → Cloud) ────────────────────────────
+
+class ReportsCloudNutritionRow {
+  final String date; // 'YYYY-MM-DD'
+  final double calories;
+  final double protein;
+  final double fat;
+  final double carbs;
+
+  const ReportsCloudNutritionRow({
+    required this.date,
+    required this.calories,
+    required this.protein,
+    required this.fat,
+    required this.carbs,
+  });
+}
+
+class ReportsCloudWaterRow {
+  final String date;
+  final int amountMl;
+
+  const ReportsCloudWaterRow({required this.date, required this.amountMl});
+}
+
+class ReportsCloudWeightRow {
+  final String date;
+  final double weight;
+  final double? bodyFatPct;
+
+  const ReportsCloudWeightRow(
+      {required this.date, required this.weight, this.bodyFatPct});
+}
+
 // ── Globale Instanz ───────────────────────────────────────────────────────────
 
 /// Globale Premium-Feature-Instanz.
@@ -202,6 +236,56 @@ abstract class PremiumFeatures {
     required String authToken,
     required String apiUrl,
   });
+
+  // ── Cloud-Berichte ────────────────────────────────────────────────────────
+
+  /// Rendert die Cloud-exklusiven Report-Sektionen (Aktivität, Kalorienbilanz,
+  /// Mahlzeiten-Timing, Zielerreichung) als Widget.
+  /// In der CE-Stub-Implementierung: gibt [SizedBox.shrink()] zurück.
+  /// [range]: 'week' | 'month' | 'year' | 'allTime'
+  /// [role]: 'free' | 'basic' | 'pro' — steuert welche Sektionen sichtbar sind.
+  Widget buildReportsCloudSections({
+    required String range,
+    required String role,
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    String? fromDate,
+    required String toDate,
+    required List<ReportsCloudNutritionRow> nutritionRows,
+    double? calorieGoal,
+    double? proteinGoal,
+    double? fatGoal,
+    double? carbsGoal,
+    int? waterGoalMl,
+  });
+
+  /// Exportiert alle sichtbaren Report-Daten als CSV-Dateien.
+  /// [ceExporter]: Plattform-spezifische Export-Funktion aus der CE
+  ///   (vermeidet zirkuläre Paket-Abhängigkeiten).
+  /// Gibt [true] zurück wenn der Export ausgelöst wurde, [false] falls
+  /// das Feature nicht verfügbar ist (CE-Stub).
+  Future<bool> exportReportsData({
+    required Future<void> Function({
+      required String timestamp,
+      required Map<String, String> files,
+    }) ceExporter,
+    required String range,
+    required String role,
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    String? fromDate,
+    required String toDate,
+    required List<ReportsCloudNutritionRow> nutritionRows,
+    required List<ReportsCloudWaterRow> waterRows,
+    required List<ReportsCloudWeightRow> weightRows,
+    double? calorieGoal,
+    double? proteinGoal,
+    double? fatGoal,
+    double? carbsGoal,
+    int? waterGoalMl,
+  });
 }
 
 // ── No-Op Implementierung (Community Edition) ─────────────────────────────────
@@ -282,4 +366,46 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String authToken,
     required String apiUrl,
   }) async {}
+
+  @override
+  Widget buildReportsCloudSections({
+    required String range,
+    required String role,
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    String? fromDate,
+    required String toDate,
+    required List<ReportsCloudNutritionRow> nutritionRows,
+    double? calorieGoal,
+    double? proteinGoal,
+    double? fatGoal,
+    double? carbsGoal,
+    int? waterGoalMl,
+  }) =>
+      const SizedBox.shrink();
+
+  @override
+  Future<bool> exportReportsData({
+    required Future<void> Function({
+      required String timestamp,
+      required Map<String, String> files,
+    }) ceExporter,
+    required String range,
+    required String role,
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    String? fromDate,
+    required String toDate,
+    required List<ReportsCloudNutritionRow> nutritionRows,
+    required List<ReportsCloudWaterRow> waterRows,
+    required List<ReportsCloudWeightRow> weightRows,
+    double? calorieGoal,
+    double? proteinGoal,
+    double? fatGoal,
+    double? carbsGoal,
+    int? waterGoalMl,
+  }) async =>
+      false;
 }

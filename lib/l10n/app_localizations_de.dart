@@ -95,6 +95,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get navActivities => 'Aktivitäten';
 
   @override
+  String get navReports => 'Berichte';
+
+  @override
   String get mealBreakfast => 'Frühstück';
 
   @override
@@ -917,6 +920,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deleteAccountConfirmButton => 'Unwiderruflich löschen';
 
   @override
+  String get deleteAccountCredentialsHint =>
+      'Hinweis: Aufgrund aktueller Einschränkungen des Authentifizierungsanbieters (Neon Auth) können deine Zugangsdaten nicht automatisch zusammen mit deinen Daten gelöscht werden. Bitte wende dich an den Support, falls du auch diese entfernen möchtest.';
+
+  @override
   String get deleteAccountSuccess => 'Alle Daten wurden gelöscht.';
 
   @override
@@ -969,10 +976,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get waterAdd => '+250 ml hinzufügen';
+  String get waterAdd => 'Wasser hinzufügen';
 
   @override
-  String get waterRemove => '-250 ml entfernen';
+  String get waterRemove => 'Wasser entfernen';
 
   @override
   String get devBannerText =>
@@ -1055,4 +1062,125 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serverConfigReset => 'Auf Standardwerte zurücksetzen';
+
+  @override
+  String get feedbackTitle => 'Feedback senden';
+
+  @override
+  String get feedbackTooltip => 'Feedback senden';
+
+  @override
+  String get feedbackEarlyAccessNote =>
+      'Du nutzt eine Early-Access-Version. Dein Feedback hilft uns, die App zu verbessern!';
+
+  @override
+  String get feedbackTypeLabel => 'Typ';
+
+  @override
+  String get feedbackTypeBug => 'Fehler';
+
+  @override
+  String get feedbackTypeFeature => 'Feature-Wunsch';
+
+  @override
+  String get feedbackTypeGeneral => 'Allgemein';
+
+  @override
+  String get feedbackRatingLabel => 'Bewertung (optional)';
+
+  @override
+  String get feedbackMessageLabel => 'Nachricht';
+
+  @override
+  String get feedbackMessageHint =>
+      'Beschreibe den Fehler, deine Idee oder deine Erfahrung…';
+
+  @override
+  String get feedbackMessageTooShort => 'Bitte mindestens 10 Zeichen eingeben.';
+
+  @override
+  String get feedbackSubmit => 'Absenden';
+
+  @override
+  String get feedbackThankYou => 'Vielen Dank für dein Feedback!';
+
+  @override
+  String get reportsTitle => 'Berichte';
+
+  @override
+  String get reportsRangeWeek => 'Woche';
+
+  @override
+  String get reportsRangeMonth => 'Monat';
+
+  @override
+  String get reportsRangeYear => 'Jahr';
+
+  @override
+  String get reportsRangeAllTime => 'Gesamt';
+
+  @override
+  String get reportsSummary => 'Übersicht';
+
+  @override
+  String get reportsCalorieTrend => 'Kalorientrend';
+
+  @override
+  String get reportsMacroAverage => 'Ø Makronährstoffe';
+
+  @override
+  String get reportsWaterIntake => 'Wasseraufnahme';
+
+  @override
+  String get reportsBodyWeight => 'Körpergewicht';
+
+  @override
+  String get reportsNoData => 'Keine Daten für diesen Zeitraum.';
+
+  @override
+  String get reportsAvgCalories => 'Ø tägl. Kalorien';
+
+  @override
+  String get reportsDaysTracked => 'Tage erfasst';
+
+  @override
+  String get reportsDaysOnTarget => 'Tage im Ziel';
+
+  @override
+  String get reportsAvgWater => 'Ø tägl. Wasser';
+
+  @override
+  String get reportsGoalLine => 'Ziel';
+
+  @override
+  String get reportsBodyFat => 'Körperfett %';
+
+  @override
+  String get reportsCaloriesBurned => 'Verbrannt';
+
+  @override
+  String get reportsConsumed => 'Aufgenommen';
+
+  @override
+  String get reportsBalance => 'Bilanz';
+
+  @override
+  String get reportsUpsellBasic => 'Verfügbar in der Cloud Edition (Basic+)';
+
+  @override
+  String get reportsUpsellPro => 'Verfügbar für Pro-Nutzer';
+
+  @override
+  String get reportsLoading => 'Berichte werden geladen…';
+
+  @override
+  String get reportsExportTooltip => 'Als CSV exportieren';
+
+  @override
+  String get reportsExportSuccess => 'Export erfolgreich';
+
+  @override
+  String reportsExportError(String error) {
+    return 'Export fehlgeschlagen: $error';
+  }
 }

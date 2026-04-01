@@ -71,6 +71,10 @@ class AppFeatures {
   /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).
   static bool get streaks => _isCloud;
 
+  /// Berichte-Export als CSV.
+  /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).
+  static bool get reportsExport => _isCloud;
+
   /// Erweiterte Analysen: Wochen-/Monatsberichte, Trend-Charts.
   static bool get advancedAnalytics => isPro;
 

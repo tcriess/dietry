@@ -1196,7 +1196,22 @@ class _AccountSectionState extends State<_AccountSection> {
         final ld = AppLocalizations.of(ctx)!;
         return AlertDialog(
           title: Text(ld.deleteAccountConfirmTitle),
-          content: Text(ld.deleteAccountConfirmText),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(ld.deleteAccountConfirmText),
+              const SizedBox(height: 12),
+              Text(
+                ld.deleteAccountCredentialsHint,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../app_config.dart';
 import '../app_features.dart';
@@ -44,9 +45,37 @@ class InfoScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  l.infoVersion('1.0.0'),
-                  style: const TextStyle(color: Colors.grey),
+                FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snap) {
+                    final version = snap.data != null
+                        ? '${snap.data!.version}+${snap.data!.buildNumber}'
+                        : '…';
+                    final hash = AppConfig.gitHash;
+                    final date = AppConfig.buildDate;
+                    final edition = AppConfig.isCloudEdition ? 'Cloud' : 'CE';
+                    final buildLine = [
+                      edition,
+                      if (hash != 'dev') hash,
+                      if (date.isNotEmpty) date,
+                    ].join(' · ');
+                    return Column(
+                      children: [
+                        Text(
+                          l.infoVersion(version),
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        if (buildLine.isNotEmpty)
+                          Text(
+                            buildLine,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 11,
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 8),
                 _EditionBadge(),

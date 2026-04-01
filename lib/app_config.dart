@@ -76,4 +76,17 @@ class AppConfig {
 
   /// True wenn dieser Build die Cloud-Edition ist (Premium-Features möglich).
   static bool get isCloudEdition => edition == 'cloud';
+
+  // ── Build-Metadaten ───────────────────────────────────────────────────────
+
+  /// Short git commit hash injected by CI via --dart-define=GIT_HASH=...
+  /// Falls back to 'dev' for local builds.
+  static const String gitHash = String.fromEnvironment(
+    'GIT_HASH',
+    defaultValue: 'dev',
+  );
+
+  /// ISO date of the build injected by CI via --dart-define=BUILD_DATE=...
+  /// Empty for local builds.
+  static const String buildDate = String.fromEnvironment('BUILD_DATE');
 }

@@ -31,6 +31,8 @@ import 'services/water_reminder_service.dart';
 import 'services/cheat_day_service.dart';
 import 'app_config.dart';
 import 'services/server_config_service.dart';
+import 'services/feedback_service.dart';
+import 'widgets/feedback_dialog.dart';
 
 // Models
 import 'models/models.dart';
@@ -41,6 +43,7 @@ import 'screens/food_entries_list_screen.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/info_screen.dart';
+import 'screens/reports_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1249,6 +1252,13 @@ class DietryHomeWithLogout extends StatefulWidget {
 
 class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
   final _dietryHomeKey = GlobalKey<_DietryHomeState>();
+  late final FeedbackService _feedbackService;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedbackService = FeedbackService(widget.dbService);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1281,6 +1291,12 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               )
             : null,
         actions: [
+          // Feedback
+          IconButton(
+            icon: const Icon(Icons.feedback_outlined),
+            tooltip: l.feedbackTooltip,
+            onPressed: () => FeedbackDialog.show(context, _feedbackService),
+          ),
           // Sprache wechseln
           PopupMenuButton<Locale?>(
             icon: const Icon(Icons.language),
@@ -1410,9 +1426,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ],
         ),
         duration: const Duration(seconds: 6),
-        action: SnackBarAction(label: '+250 ml', onPressed: () {
+        action: SnackBarAction(label: '+200 ml', onPressed: () {
           // Immer zum heutigen Tag hinzufügen, unabhängig vom angezeigten Tag.
-          _addWaterToday(250);
+          _addWaterToday(200);
         }),
       ),
     );
@@ -1709,6 +1725,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
               ),
+              ReportsScreen(
+                dbService: widget.dbService,
+                goal: _store.goal,
+              ),
             ],
           ),
           if (_store.isLoading)
@@ -1791,6 +1811,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           BottomNavigationBarItem(
             icon: const Icon(Icons.directions_run),
             label: l.navActivities,
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.bar_chart),
+            label: l.navReports,
           ),
         ],
       ),
@@ -1875,28 +1899,9 @@ class OverviewScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.filled(
-                  icon: const Icon(Icons.remove),
-                  style: IconButton.styleFrom(backgroundColor: Colors.blue.shade100, foregroundColor: Colors.blue),
-                  onPressed: waterIntakeMl >= 250 ? () => onWaterChanged(-250) : null,
-                  tooltip: l.waterRemove,
-                ),
-                const SizedBox(width: 24),
-                Text(
-                  '+250 ml',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
-                const SizedBox(width: 24),
-                IconButton.filled(
-                  icon: const Icon(Icons.add),
-                  style: IconButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                  onPressed: () => onWaterChanged(250),
-                  tooltip: l.waterAdd,
-                ),
-              ],
+            _WaterAmountControls(
+              waterIntakeMl: waterIntakeMl,
+              onWaterChanged: onWaterChanged,
             ),
           ],
         ),
@@ -2174,6 +2179,74 @@ class OverviewScreen extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// Water intake +/− controls with selectable step (100 / 200 / 300 ml)
+class _WaterAmountControls extends StatefulWidget {
+  final int waterIntakeMl;
+  final void Function(int deltaMl) onWaterChanged;
+
+  const _WaterAmountControls({
+    required this.waterIntakeMl,
+    required this.onWaterChanged,
+  });
+
+  @override
+  State<_WaterAmountControls> createState() => _WaterAmountControlsState();
+}
+
+class _WaterAmountControlsState extends State<_WaterAmountControls> {
+  int _selectedMl = 200;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton.filled(
+          icon: const Icon(Icons.remove),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.blue.shade100,
+            foregroundColor: Colors.blue,
+          ),
+          tooltip: l.waterRemove,
+          onPressed: widget.waterIntakeMl >= _selectedMl
+              ? () => widget.onWaterChanged(-_selectedMl)
+              : null,
+        ),
+        const SizedBox(width: 8),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 100, label: Text('100')),
+            ButtonSegment(value: 200, label: Text('200')),
+            ButtonSegment(value: 300, label: Text('300')),
+          ],
+          selected: {_selectedMl},
+          onSelectionChanged: (s) => setState(() => _selectedMl = s.first),
+          style: SegmentedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'ml',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filled(
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+          tooltip: l.waterAdd,
+          onPressed: () => widget.onWaterChanged(_selectedMl),
+        ),
+      ],
     );
   }
 }

@@ -268,6 +268,12 @@ abstract class AppLocalizations {
   /// **'Aktivitäten'**
   String get navActivities;
 
+  /// No description provided for @navReports.
+  ///
+  /// In de, this message translates to:
+  /// **'Berichte'**
+  String get navReports;
+
   /// No description provided for @mealBreakfast.
   ///
   /// In de, this message translates to:
@@ -1780,6 +1786,12 @@ abstract class AppLocalizations {
   /// **'Unwiderruflich löschen'**
   String get deleteAccountConfirmButton;
 
+  /// No description provided for @deleteAccountCredentialsHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Hinweis: Aufgrund aktueller Einschränkungen des Authentifizierungsanbieters (Neon Auth) können deine Zugangsdaten nicht automatisch zusammen mit deinen Daten gelöscht werden. Bitte wende dich an den Support, falls du auch diese entfernen möchtest.'**
+  String get deleteAccountCredentialsHint;
+
   /// No description provided for @deleteAccountSuccess.
   ///
   /// In de, this message translates to:
@@ -1867,13 +1879,13 @@ abstract class AppLocalizations {
   /// No description provided for @waterAdd.
   ///
   /// In de, this message translates to:
-  /// **'+250 ml hinzufügen'**
+  /// **'Wasser hinzufügen'**
   String get waterAdd;
 
   /// No description provided for @waterRemove.
   ///
   /// In de, this message translates to:
-  /// **'-250 ml entfernen'**
+  /// **'Wasser entfernen'**
   String get waterRemove;
 
   /// No description provided for @devBannerText.
@@ -2013,6 +2025,240 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Auf Standardwerte zurücksetzen'**
   String get serverConfigReset;
+
+  /// No description provided for @feedbackTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Feedback senden'**
+  String get feedbackTitle;
+
+  /// No description provided for @feedbackTooltip.
+  ///
+  /// In de, this message translates to:
+  /// **'Feedback senden'**
+  String get feedbackTooltip;
+
+  /// No description provided for @feedbackEarlyAccessNote.
+  ///
+  /// In de, this message translates to:
+  /// **'Du nutzt eine Early-Access-Version. Dein Feedback hilft uns, die App zu verbessern!'**
+  String get feedbackEarlyAccessNote;
+
+  /// No description provided for @feedbackTypeLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Typ'**
+  String get feedbackTypeLabel;
+
+  /// No description provided for @feedbackTypeBug.
+  ///
+  /// In de, this message translates to:
+  /// **'Fehler'**
+  String get feedbackTypeBug;
+
+  /// No description provided for @feedbackTypeFeature.
+  ///
+  /// In de, this message translates to:
+  /// **'Feature-Wunsch'**
+  String get feedbackTypeFeature;
+
+  /// No description provided for @feedbackTypeGeneral.
+  ///
+  /// In de, this message translates to:
+  /// **'Allgemein'**
+  String get feedbackTypeGeneral;
+
+  /// No description provided for @feedbackRatingLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Bewertung (optional)'**
+  String get feedbackRatingLabel;
+
+  /// No description provided for @feedbackMessageLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Nachricht'**
+  String get feedbackMessageLabel;
+
+  /// No description provided for @feedbackMessageHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Beschreibe den Fehler, deine Idee oder deine Erfahrung…'**
+  String get feedbackMessageHint;
+
+  /// No description provided for @feedbackMessageTooShort.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte mindestens 10 Zeichen eingeben.'**
+  String get feedbackMessageTooShort;
+
+  /// No description provided for @feedbackSubmit.
+  ///
+  /// In de, this message translates to:
+  /// **'Absenden'**
+  String get feedbackSubmit;
+
+  /// No description provided for @feedbackThankYou.
+  ///
+  /// In de, this message translates to:
+  /// **'Vielen Dank für dein Feedback!'**
+  String get feedbackThankYou;
+
+  /// No description provided for @reportsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Berichte'**
+  String get reportsTitle;
+
+  /// No description provided for @reportsRangeWeek.
+  ///
+  /// In de, this message translates to:
+  /// **'Woche'**
+  String get reportsRangeWeek;
+
+  /// No description provided for @reportsRangeMonth.
+  ///
+  /// In de, this message translates to:
+  /// **'Monat'**
+  String get reportsRangeMonth;
+
+  /// No description provided for @reportsRangeYear.
+  ///
+  /// In de, this message translates to:
+  /// **'Jahr'**
+  String get reportsRangeYear;
+
+  /// No description provided for @reportsRangeAllTime.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt'**
+  String get reportsRangeAllTime;
+
+  /// No description provided for @reportsSummary.
+  ///
+  /// In de, this message translates to:
+  /// **'Übersicht'**
+  String get reportsSummary;
+
+  /// No description provided for @reportsCalorieTrend.
+  ///
+  /// In de, this message translates to:
+  /// **'Kalorientrend'**
+  String get reportsCalorieTrend;
+
+  /// No description provided for @reportsMacroAverage.
+  ///
+  /// In de, this message translates to:
+  /// **'Ø Makronährstoffe'**
+  String get reportsMacroAverage;
+
+  /// No description provided for @reportsWaterIntake.
+  ///
+  /// In de, this message translates to:
+  /// **'Wasseraufnahme'**
+  String get reportsWaterIntake;
+
+  /// No description provided for @reportsBodyWeight.
+  ///
+  /// In de, this message translates to:
+  /// **'Körpergewicht'**
+  String get reportsBodyWeight;
+
+  /// No description provided for @reportsNoData.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Daten für diesen Zeitraum.'**
+  String get reportsNoData;
+
+  /// No description provided for @reportsAvgCalories.
+  ///
+  /// In de, this message translates to:
+  /// **'Ø tägl. Kalorien'**
+  String get reportsAvgCalories;
+
+  /// No description provided for @reportsDaysTracked.
+  ///
+  /// In de, this message translates to:
+  /// **'Tage erfasst'**
+  String get reportsDaysTracked;
+
+  /// No description provided for @reportsDaysOnTarget.
+  ///
+  /// In de, this message translates to:
+  /// **'Tage im Ziel'**
+  String get reportsDaysOnTarget;
+
+  /// No description provided for @reportsAvgWater.
+  ///
+  /// In de, this message translates to:
+  /// **'Ø tägl. Wasser'**
+  String get reportsAvgWater;
+
+  /// No description provided for @reportsGoalLine.
+  ///
+  /// In de, this message translates to:
+  /// **'Ziel'**
+  String get reportsGoalLine;
+
+  /// No description provided for @reportsBodyFat.
+  ///
+  /// In de, this message translates to:
+  /// **'Körperfett %'**
+  String get reportsBodyFat;
+
+  /// No description provided for @reportsCaloriesBurned.
+  ///
+  /// In de, this message translates to:
+  /// **'Verbrannt'**
+  String get reportsCaloriesBurned;
+
+  /// No description provided for @reportsConsumed.
+  ///
+  /// In de, this message translates to:
+  /// **'Aufgenommen'**
+  String get reportsConsumed;
+
+  /// No description provided for @reportsBalance.
+  ///
+  /// In de, this message translates to:
+  /// **'Bilanz'**
+  String get reportsBalance;
+
+  /// No description provided for @reportsUpsellBasic.
+  ///
+  /// In de, this message translates to:
+  /// **'Verfügbar in der Cloud Edition (Basic+)'**
+  String get reportsUpsellBasic;
+
+  /// No description provided for @reportsUpsellPro.
+  ///
+  /// In de, this message translates to:
+  /// **'Verfügbar für Pro-Nutzer'**
+  String get reportsUpsellPro;
+
+  /// No description provided for @reportsLoading.
+  ///
+  /// In de, this message translates to:
+  /// **'Berichte werden geladen…'**
+  String get reportsLoading;
+
+  /// No description provided for @reportsExportTooltip.
+  ///
+  /// In de, this message translates to:
+  /// **'Als CSV exportieren'**
+  String get reportsExportTooltip;
+
+  /// No description provided for @reportsExportSuccess.
+  ///
+  /// In de, this message translates to:
+  /// **'Export erfolgreich'**
+  String get reportsExportSuccess;
+
+  /// No description provided for @reportsExportError.
+  ///
+  /// In de, this message translates to:
+  /// **'Export fehlgeschlagen: {error}'**
+  String reportsExportError(String error);
 }
 
 class _AppLocalizationsDelegate

@@ -95,6 +95,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navActivities => 'Activities';
 
   @override
+  String get navReports => 'Reports';
+
+  @override
   String get mealBreakfast => 'Breakfast';
 
   @override
@@ -912,6 +915,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccountConfirmButton => 'Delete permanently';
 
   @override
+  String get deleteAccountCredentialsHint =>
+      'Note: Due to current limitations of the authentication provider (Neon Auth), your login credentials cannot be removed automatically along with your data. Please contact support if you also need those removed.';
+
+  @override
   String get deleteAccountSuccess => 'All data has been deleted.';
 
   @override
@@ -964,10 +971,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get waterAdd => 'Add +250 ml';
+  String get waterAdd => 'Add water';
 
   @override
-  String get waterRemove => 'Remove -250 ml';
+  String get waterRemove => 'Remove water';
 
   @override
   String get devBannerText =>
@@ -1050,4 +1057,125 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serverConfigReset => 'Reset to defaults';
+
+  @override
+  String get feedbackTitle => 'Send Feedback';
+
+  @override
+  String get feedbackTooltip => 'Send feedback';
+
+  @override
+  String get feedbackEarlyAccessNote =>
+      'You\'re using an early access version. Your feedback helps us improve!';
+
+  @override
+  String get feedbackTypeLabel => 'Type';
+
+  @override
+  String get feedbackTypeBug => 'Bug';
+
+  @override
+  String get feedbackTypeFeature => 'Feature request';
+
+  @override
+  String get feedbackTypeGeneral => 'General';
+
+  @override
+  String get feedbackRatingLabel => 'Rating (optional)';
+
+  @override
+  String get feedbackMessageLabel => 'Message';
+
+  @override
+  String get feedbackMessageHint =>
+      'Describe the bug, your idea, or your experience…';
+
+  @override
+  String get feedbackMessageTooShort => 'Please enter at least 10 characters.';
+
+  @override
+  String get feedbackSubmit => 'Submit';
+
+  @override
+  String get feedbackThankYou => 'Thank you for your feedback!';
+
+  @override
+  String get reportsTitle => 'Reports';
+
+  @override
+  String get reportsRangeWeek => 'Week';
+
+  @override
+  String get reportsRangeMonth => 'Month';
+
+  @override
+  String get reportsRangeYear => 'Year';
+
+  @override
+  String get reportsRangeAllTime => 'All time';
+
+  @override
+  String get reportsSummary => 'Summary';
+
+  @override
+  String get reportsCalorieTrend => 'Calorie Trend';
+
+  @override
+  String get reportsMacroAverage => 'Average Macros';
+
+  @override
+  String get reportsWaterIntake => 'Water Intake';
+
+  @override
+  String get reportsBodyWeight => 'Body Weight';
+
+  @override
+  String get reportsNoData => 'No data for this period.';
+
+  @override
+  String get reportsAvgCalories => 'Avg. daily calories';
+
+  @override
+  String get reportsDaysTracked => 'Days tracked';
+
+  @override
+  String get reportsDaysOnTarget => 'Days on target';
+
+  @override
+  String get reportsAvgWater => 'Avg. daily water';
+
+  @override
+  String get reportsGoalLine => 'Goal';
+
+  @override
+  String get reportsBodyFat => 'Body fat %';
+
+  @override
+  String get reportsCaloriesBurned => 'Burned';
+
+  @override
+  String get reportsConsumed => 'Consumed';
+
+  @override
+  String get reportsBalance => 'Balance';
+
+  @override
+  String get reportsUpsellBasic => 'Available in Cloud Edition (Basic+)';
+
+  @override
+  String get reportsUpsellPro => 'Available for Pro users';
+
+  @override
+  String get reportsLoading => 'Loading reports…';
+
+  @override
+  String get reportsExportTooltip => 'Export as CSV';
+
+  @override
+  String get reportsExportSuccess => 'Export successful';
+
+  @override
+  String reportsExportError(String error) {
+    return 'Export failed: $error';
+  }
 }
