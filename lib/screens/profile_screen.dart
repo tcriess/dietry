@@ -228,8 +228,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         saved++;
       }
 
-      // Auto-adjust nutrition goal silently (fire-and-forget)
-      NutritionGoalService.autoAdjustGoal(widget.dbService);
+      // Auto-adjust nutrition goal and wait for completion so profile reloads with updated goal
+      await NutritionGoalService.autoAdjustGoal(widget.dbService);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -809,11 +809,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Switch(
             value: _waterReminderEnabled,
             activeColor: Colors.lightBlue,
-            onChanged: (value) async {
-              final actual = await WaterReminderService.setEnabled(value);
-              if (mounted) {
-                setState(() => _waterReminderEnabled = actual);
-              }
+            onChanged: (value) {
+              // Optimistic update: show the new state immediately
+              setState(() => _waterReminderEnabled = value);
+
+              // Then persist it asynchronously
+              WaterReminderService.setEnabled(value).then((actual) {
+                // If the actual state differs from what we showed, revert
+                if (mounted && actual != value) {
+                  setState(() => _waterReminderEnabled = actual);
+                }
+              }).catchError((e) {
+                // On error, revert to previous state
+                if (mounted) {
+                  setState(() => _waterReminderEnabled = !value);
+                }
+              });
             },
           ),
         ],
@@ -1158,6 +1169,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   try {
                     final service = UserBodyMeasurementsService(widget.dbService);
                     await service.deleteMeasurement(measurement.id!);
+
+                    // Auto-adjust nutrition goal based on new current measurement
+                    await NutritionGoalService.autoAdjustGoal(widget.dbService);
 
                     if (mounted) {
                       final lCtx = AppLocalizations.of(context)!;

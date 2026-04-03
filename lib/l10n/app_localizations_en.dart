@@ -689,6 +689,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trackingUseMethod => 'Use This Method';
 
   @override
+  String get trackingMethodBmrOnlyName => 'BMR + Tracking';
+
+  @override
+  String get trackingMethodBmrOnlyShort => 'Track all activities';
+
+  @override
+  String get trackingMethodBmrOnlyDetail =>
+      'Your calorie goal is based solely on your Basal Metabolic Rate (BMR). You must track ALL physical activities (walking, exercise, housework). This method is the most accurate but requires consistent tracking.';
+
+  @override
+  String get trackingMethodBmrOnlyRecommended =>
+      'Recommended for:\n• Maximum precision\n• You enjoy tracking everything\n• Highly variable activity levels';
+
+  @override
+  String get trackingMethodBmrOnlyActivityHint =>
+      'Activity Level is ignored (always = 1.0)';
+
+  @override
+  String get trackingMethodBmrOnlyTrackingGuideline =>
+      '✅ Track: ALL activities\n• Walking (>10 min)\n• Exercise (gym, running, etc.)\n• Housework (cleaning, gardening)\n• Climbing stairs (>5 flights)';
+
+  @override
+  String get trackingMethodTdeeCompleteName => 'TDEE Complete';
+
+  @override
+  String get trackingMethodTdeeCompleteShort => 'Minimal tracking needed';
+
+  @override
+  String get trackingMethodTdeeCompleteDetail =>
+      'Your calorie goal is based on your Total Daily Energy Expenditure (TDEE) including your activity level. Your daily activities are already accounted for. You only need to track exceptional activities (e.g., 2-hour hike, marathon). Ideal for consistent routines.';
+
+  @override
+  String get trackingMethodTdeeCompleteRecommended =>
+      'Recommended for:\n• Minimal tracking effort\n• Consistent daily routine\n• Regular exercise (same amount)';
+
+  @override
+  String get trackingMethodTdeeCompleteActivityHint =>
+      'Choose your Activity Level based on TOTAL daily activity (including exercise)';
+
+  @override
+  String get trackingMethodTdeeCompleteTrackingGuideline =>
+      '✅ Track: Only exceptional activities\n• Marathon / Half-marathon\n• All-day hiking trip\n• Extra long training sessions (>2h)\n\n❌ DO NOT track: Normal daily activities\n• Regular training\n• Daily movement';
+
+  @override
+  String get trackingMethodTdeeHybridName => 'TDEE + Sport Tracking';
+
+  @override
+  String get trackingMethodTdeeHybridShort => 'Track sports only';
+
+  @override
+  String get trackingMethodTdeeHybridDetail =>
+      'Your calorie goal is based on your Total Daily Energy Expenditure (TDEE) for daily life only. Choose your Activity Level based on your daily work (e.g., desk job = sedentary). Track all exercise activities (gym, running, etc.) separately. Ideal for variable exercise routines.';
+
+  @override
+  String get trackingMethodTdeeHybridRecommended =>
+      'Recommended for:\n• Balance between accuracy and effort\n• Variable exercise routine\n• Clear separation of daily vs. exercise';
+
+  @override
+  String get trackingMethodTdeeHybridActivityHint =>
+      'Choose your Activity Level ONLY based on your daily work (without exercise)';
+
+  @override
+  String get trackingMethodTdeeHybridTrackingGuideline =>
+      '✅ Track: All exercise activities\n• Gym / Strength training\n• Running / Jogging\n• Cycling\n• Swimming\n• Sports classes\n\n❌ DO NOT track: Daily movement\n• Commute\n• Shopping\n• Normal housework';
+
+  @override
   String get appSubtitle => 'Your personal nutrition diary';
 
   @override

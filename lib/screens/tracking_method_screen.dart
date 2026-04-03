@@ -122,7 +122,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        _selectedMethod.trackingGuideline,
+                        _selectedMethod.localizedTrackingGuideline(l),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
@@ -146,6 +146,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
   }
 
   Widget _buildMethodCard(TrackingMethod method) {
+    final l = AppLocalizations.of(context)!;
     final isSelected = _selectedMethod == method;
 
     return Card(
@@ -184,13 +185,13 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          method.displayName,
+                          method.localizedName(l),
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                         ),
                         Text(
-                          method.shortDescription,
+                          method.localizedShortDescription(l),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -200,7 +201,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                method.detailedDescription,
+                method.localizedDetailedDescription(l),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -211,7 +212,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  method.recommendedFor,
+                  method.localizedRecommendedFor(l),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -228,7 +229,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        method.activityLevelHint,
+                        method.localizedActivityLevelHint(l),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
