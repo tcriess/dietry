@@ -863,22 +863,24 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 },
               ),
               
-              const SizedBox(height: 16),
+              if (_showManualEntry) ...[
+                const SizedBox(height: 16),
 
-              // Flüssigkeit
-              SwitchListTile(
-                value: _isLiquid,
-                onChanged: (v) => setState(() => _isLiquid = v),
-                title: Text(l.foodIsLiquid),
-                subtitle: Text(l.foodIsLiquidHint),
-                contentPadding: EdgeInsets.zero,
-                secondary: Icon(
-                  _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                  color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                // Flüssigkeit (nur bei manuellen Einträgen)
+                SwitchListTile(
+                  value: _isLiquid,
+                  onChanged: (v) => setState(() => _isLiquid = v),
+                  title: Text(l.foodIsLiquid),
+                  subtitle: Text(l.foodIsLiquidHint),
+                  contentPadding: EdgeInsets.zero,
+                  secondary: Icon(
+                    _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
+                    color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 24),
+              ] else ...[
+                const SizedBox(height: 24),
+              ],
 
               // Hinweis: Nährwerte pro 100g/ml
               if (_showManualEntry)

@@ -43,9 +43,10 @@ class DataStore extends ChangeNotifier {
   NutritionGoal? get goal => _goal;
   int get waterIntakeMl => _waterIntakeMl;
 
-  /// Computed water intake from liquid food entries (isLiquid=true with amountMl set)
+  /// Computed water intake from liquid food entries and meals with liquid content
+  /// Checks amountMl (set for both liquid foods and mixed meals with liquid ingredients)
   int get liquidFoodIntakeMl => _foodEntries
-      .where((e) => e.isLiquid && e.amountMl != null)
+      .where((e) => e.amountMl != null)
       .fold(0, (sum, e) => sum + e.amountMl!.round());
 
   bool get isCheatDay => _isCheatDay;

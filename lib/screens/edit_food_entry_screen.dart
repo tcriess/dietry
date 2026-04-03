@@ -46,20 +46,33 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     _nameController = TextEditingController(text: widget.entry.name);
     _amountController = TextEditingController(text: widget.entry.amount.toStringAsFixed(0));
 
-    // Calculate per-100g values from stored totals
-    final per100gNutrition = _calculatePer100g(
-      widget.entry.amount,
-      widget.entry.unit,
-      widget.entry.calories,
-      widget.entry.protein,
-      widget.entry.fat,
-      widget.entry.carbs,
-    );
+    // For meal entries (unit="Portion"), show totals directly
+    // For food entries, convert totals to per-100g
+    final isMealEntry = widget.entry.unit == 'Portion';
 
-    _caloriesController = TextEditingController(text: per100gNutrition['calories']!.toStringAsFixed(0));
-    _proteinController = TextEditingController(text: per100gNutrition['protein']!.toStringAsFixed(1));
-    _fatController = TextEditingController(text: per100gNutrition['fat']!.toStringAsFixed(1));
-    _carbsController = TextEditingController(text: per100gNutrition['carbs']!.toStringAsFixed(1));
+    if (isMealEntry) {
+      // Meal entries: show total nutrition values for the current portion count
+      _caloriesController = TextEditingController(text: widget.entry.calories.toStringAsFixed(0));
+      _proteinController = TextEditingController(text: widget.entry.protein.toStringAsFixed(1));
+      _fatController = TextEditingController(text: widget.entry.fat.toStringAsFixed(1));
+      _carbsController = TextEditingController(text: widget.entry.carbs.toStringAsFixed(1));
+    } else {
+      // Food entries: calculate per-100g values from stored totals
+      final per100gNutrition = _calculatePer100g(
+        widget.entry.amount,
+        widget.entry.unit,
+        widget.entry.calories,
+        widget.entry.protein,
+        widget.entry.fat,
+        widget.entry.carbs,
+      );
+
+      _caloriesController = TextEditingController(text: per100gNutrition['calories']!.toStringAsFixed(0));
+      _proteinController = TextEditingController(text: per100gNutrition['protein']!.toStringAsFixed(1));
+      _fatController = TextEditingController(text: per100gNutrition['fat']!.toStringAsFixed(1));
+      _carbsController = TextEditingController(text: per100gNutrition['carbs']!.toStringAsFixed(1));
+    }
+
     _selectedMealType = widget.entry.mealType;
     _isLiquid = widget.entry.isLiquid;
 
@@ -172,33 +185,54 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     try {
       final rawAmount = double.parse(_amountController.text);
       final displayUnit = _selectedPortion?.name ?? _customUnit;
+      final isMealEntry = widget.entry.unit == 'Portion';
 
-      // Convert per-100g values back to totals
-      final per100gCalories = double.parse(_caloriesController.text);
-      final per100gProtein = double.parse(_proteinController.text);
-      final per100gFat = double.parse(_fatController.text);
-      final per100gCarbs = double.parse(_carbsController.text);
-
-      // Calculate grams for the current unit/amount
-      final grams = _selectedPortion != null
-          ? rawAmount * _selectedPortion!.amountG
-          : (displayUnit == 'g' || displayUnit == 'ml' ? rawAmount : rawAmount);
-
-      // Convert back to totals
-      final totalCalories = per100gCalories * grams / 100.0;
-      final totalProtein = per100gProtein * grams / 100.0;
-      final totalFat = per100gFat * grams / 100.0;
-      final totalCarbs = per100gCarbs * grams / 100.0;
-
-      // Calculate amountMl for liquid foods
+      double totalCalories;
+      double totalProtein;
+      double totalFat;
+      double totalCarbs;
       double? amountMl;
-      if (_isLiquid) {
-        if (_selectedPortion != null) {
-          // Portion: amount * portion.amountG (treating G as ml for liquid foods)
-          amountMl = rawAmount * _selectedPortion!.amountG;
-        } else if (_customUnit == 'ml') {
-          // Direct ml entry
-          amountMl = rawAmount;
+
+      if (isMealEntry) {
+        // For meal entries: the shown values are totals for the current portion count
+        // Scale them by the ratio of new amount / old amount
+        final scaleFactor = rawAmount / widget.entry.amount;
+        totalCalories = double.parse(_caloriesController.text) * scaleFactor;
+        totalProtein = double.parse(_proteinController.text) * scaleFactor;
+        totalFat = double.parse(_fatController.text) * scaleFactor;
+        totalCarbs = double.parse(_carbsController.text) * scaleFactor;
+
+        // Scale liquid ml contribution proportionally
+        if (widget.entry.amountMl != null) {
+          amountMl = widget.entry.amountMl! * scaleFactor;
+        }
+      } else {
+        // For food entries: convert per-100g values back to totals
+        final per100gCalories = double.parse(_caloriesController.text);
+        final per100gProtein = double.parse(_proteinController.text);
+        final per100gFat = double.parse(_fatController.text);
+        final per100gCarbs = double.parse(_carbsController.text);
+
+        // Calculate grams for the current unit/amount
+        final grams = _selectedPortion != null
+            ? rawAmount * _selectedPortion!.amountG
+            : (displayUnit == 'g' || displayUnit == 'ml' ? rawAmount : rawAmount);
+
+        // Convert back to totals
+        totalCalories = per100gCalories * grams / 100.0;
+        totalProtein = per100gProtein * grams / 100.0;
+        totalFat = per100gFat * grams / 100.0;
+        totalCarbs = per100gCarbs * grams / 100.0;
+
+        // Calculate amountMl for liquid foods
+        if (_isLiquid) {
+          if (_selectedPortion != null) {
+            // Portion: amount * portion.amountG (treating G as ml for liquid foods)
+            amountMl = rawAmount * _selectedPortion!.amountG;
+          } else if (_customUnit == 'ml') {
+            // Direct ml entry
+            amountMl = rawAmount;
+          }
         }
       }
 
@@ -381,26 +415,13 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
               },
             ),
 
-            const SizedBox(height: 16),
-
-            // Flüssigkeit
-            SwitchListTile(
-              value: _isLiquid,
-              onChanged: (v) => setState(() => _isLiquid = v),
-              title: Text(l.foodIsLiquid),
-              subtitle: Text(l.foodIsLiquidHint),
-              contentPadding: EdgeInsets.zero,
-              secondary: Icon(
-                _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                color: _isLiquid ? Colors.lightBlue : Colors.grey,
-              ),
-            ),
-
             const SizedBox(height: 24),
 
             // Nährwerte
             Text(
-              l.nutritionPer100,
+              widget.entry.unit == 'Portion'
+                  ? 'Nährwerte (Gesamt für ${widget.entry.amount.toStringAsFixed(1)} Portionen)'
+                  : l.nutritionPer100,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),

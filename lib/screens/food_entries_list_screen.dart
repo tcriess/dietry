@@ -182,6 +182,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
               portions: r.food.portions
                   .map((p) => (name: p.name, weightG: p.amountG))
                   .toList(),
+              isLiquid: r.food.isLiquid,
             )).toList();
           } else {
             final items = await FoodDatabaseService(widget.dbService)
@@ -199,6 +200,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
               portions: f.portions
                   .map((p) => (name: p.name, weightG: p.amountG))
                   .toList(),
+              isLiquid: f.isLiquid,
             )).toList();
           }
         },
@@ -218,6 +220,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             fiber: data.fiber,
             sugar: data.sugar,
             sodium: data.sodium,
+            // Meals are never marked as isLiquid (they can be mixed)
+            // But amountMl is set if there are liquid ingredients
+            isLiquid: false,
+            amountMl: data.liquidMlContribution,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );

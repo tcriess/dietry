@@ -32,6 +32,7 @@ class MealIngredientCandidate {
   final double? sodium;
   final String? source;
   final List<({String name, double weightG})> portions;
+  final bool isLiquid;
 
   const MealIngredientCandidate({
     this.id,
@@ -45,6 +46,7 @@ class MealIngredientCandidate {
     this.sodium,
     this.source,
     this.portions = const [],
+    this.isLiquid = false,
   });
 
   bool get isOnlineOnly => id == null || id!.isEmpty;
@@ -91,6 +93,9 @@ class MealTemplateLogData {
   /// Mahlzeit-Typ als String: 'breakfast' | 'lunch' | 'dinner' | 'snack'
   final String mealType;
 
+  /// Wenn die Mahlzeit Flüssigkeitsanteile enthält, die ml-Summe davon
+  final double? liquidMlContribution;
+
   const MealTemplateLogData({
     required this.name,
     required this.amount,
@@ -103,6 +108,7 @@ class MealTemplateLogData {
     this.sugar,
     this.sodium,
     required this.mealType,
+    this.liquidMlContribution,
   });
 }
 
