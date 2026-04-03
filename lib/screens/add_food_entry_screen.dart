@@ -65,6 +65,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   String _customUnit = 'g';       // 'g' oder 'ml' wenn _selectedPortion == null
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
+  bool _isLiquid = false;
 
   @override
   void initState() {
@@ -140,18 +141,20 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         _amountController.text = '1';
       } else {
         _selectedPortion = null;
-        // Einheit aus servingUnit ableiten
+        // Einheit aus servingUnit ableiten, aber ml wenn Flüssigkeit
         final unit = food.servingUnit ?? 'g';
-        _customUnit = unit.startsWith('ml') ? 'ml' : 'g';
+        _customUnit = (unit.startsWith('ml') || food.isLiquid) ? 'ml' : 'g';
         _amountController.text =
             food.servingSize != null ? food.servingSize!.toInt().toString() : '100';
       }
-      
+
+      _isLiquid = food.isLiquid;
+
       // Berechne Nährwerte für Portion
       if (_amountController.text.isNotEmpty) {
         _calculateNutrition();
       }
-      
+
       // Verberge Suchergebnisse
       _searchResults = [];
       _showManualEntry = false;
@@ -248,6 +251,19 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       }
       
       final rawAmount = double.parse(_amountController.text);
+
+      // Calculate amountMl for liquid foods
+      double? amountMl;
+      if (_isLiquid) {
+        if (_selectedPortion != null) {
+          // Portion: amount * portion.amountG (treating G as ml for liquid foods)
+          amountMl = rawAmount * _selectedPortion!.amountG;
+        } else if (_customUnit == 'ml') {
+          // Direct ml entry
+          amountMl = rawAmount;
+        }
+      }
+
       final entry = FoodEntry(
         id: '',  // Wird von DB generiert
         userId: userId,
@@ -261,6 +277,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         protein: double.parse(_proteinController.text),
         fat: double.parse(_fatController.text),
         carbs: double.parse(_carbsController.text),
+        isLiquid: _isLiquid,
+        amountMl: amountMl,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -486,6 +504,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lebensmittel hinzufügen'),
@@ -844,8 +863,23 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 },
               ),
               
+              const SizedBox(height: 16),
+
+              // Flüssigkeit
+              SwitchListTile(
+                value: _isLiquid,
+                onChanged: (v) => setState(() => _isLiquid = v),
+                title: Text(l.foodIsLiquid),
+                subtitle: Text(l.foodIsLiquidHint),
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
+                  color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                ),
+              ),
+
               const SizedBox(height: 24),
-              
+
               // Hinweis: Nährwerte pro 100g/ml
               if (_showManualEntry)
                 Container(

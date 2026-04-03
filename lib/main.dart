@@ -1390,7 +1390,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _silentRefresh());
     WaterReminderService.onInAppReminder = _showWaterReminder;
     WaterReminderService.getWaterStatus = () =>
-        (_store.waterIntakeMl, _store.goal?.waterGoalMl ?? 2000);
+        (_store.waterIntakeMl + _store.liquidFoodIntakeMl, _store.goal?.waterGoalMl ?? 2000);
   }
 
   @override
@@ -1706,6 +1706,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 entries: _store.foodEntries,
                 activities: _store.activities,
                 waterIntakeMl: _store.waterIntakeMl,
+                liquidFoodIntakeMl: _store.liquidFoodIntakeMl,
                 selectedDay: _selectedDay,
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
@@ -1832,6 +1833,7 @@ class OverviewScreen extends StatelessWidget {
   final List<FoodEntry> entries;
   final List<PhysicalActivity> activities;
   final int waterIntakeMl;
+  final int liquidFoodIntakeMl;
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
@@ -1848,6 +1850,7 @@ class OverviewScreen extends StatelessWidget {
     required this.entries,
     required this.activities,
     required this.waterIntakeMl,
+    required this.liquidFoodIntakeMl,
     required this.selectedDay,
     required this.onChangeDay,
     required this.onJumpToToday,
@@ -2116,7 +2119,8 @@ class OverviewScreen extends StatelessWidget {
   Widget _buildWaterCard(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final waterGoal = goal.waterGoalMl ?? 2000;
-    final progress = (waterIntakeMl / waterGoal).clamp(0.0, 1.0);
+    final totalLiquidMl = waterIntakeMl + liquidFoodIntakeMl;
+    final progress = (totalLiquidMl / waterGoal).clamp(0.0, 1.0);
 
     return Card(
       child: Padding(
@@ -2142,10 +2146,34 @@ class OverviewScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('$waterIntakeMl ml', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('$totalLiquidMl ml', style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text(l.waterGoalLabel(waterGoal)),
               ],
             ),
+            // Show breakdown if there's liquid food contribution
+            if (liquidFoodIntakeMl > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text(
+                      '💧 $waterIntakeMl ml ${l.waterManual}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '•',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '🥤 $liquidFoodIntakeMl ml ${l.waterFromFood}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
             _WaterAmountControls(
               waterIntakeMl: waterIntakeMl,
@@ -2571,6 +2599,9 @@ class AddFoodScreen extends StatelessWidget {
                                 '${entry.unit == 'g' || entry.unit == 'ml' ? '${entry.amount.toStringAsFixed(0)}${entry.unit}' : '${entry.amount == entry.amount.truncateToDouble() ? entry.amount.toInt() : entry.amount.toStringAsFixed(1)} × ${entry.unit}'} | '
                                 'Kcal: ${entry.calories.toStringAsFixed(0)}',
                               ),
+                              trailing: entry.isLiquid && entry.unit == 'ml'
+                                  ? const Icon(Icons.water_drop, color: Colors.lightBlue, size: 20)
+                                  : null,
                             ),
                           )),
                     ],

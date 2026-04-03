@@ -42,6 +42,12 @@ class DataStore extends ChangeNotifier {
   List<PhysicalActivity> get activities => _activities;
   NutritionGoal? get goal => _goal;
   int get waterIntakeMl => _waterIntakeMl;
+
+  /// Computed water intake from liquid food entries (isLiquid=true with amountMl set)
+  int get liquidFoodIntakeMl => _foodEntries
+      .where((e) => e.isLiquid && e.amountMl != null)
+      .fold(0, (sum, e) => sum + e.amountMl!.round());
+
   bool get isCheatDay => _isCheatDay;
   int get streak => _streak;
   int get bestStreak => _bestStreak;

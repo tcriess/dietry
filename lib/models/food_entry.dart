@@ -28,7 +28,12 @@ class FoodEntry {
   
   // Notizen
   final String? notes;
-  
+
+  // Flüssigkeitsmarkierung - wenn true, zählt zur Wasseraufnahme
+  final bool isLiquid;
+  // For liquid foods: the ml amount (null for non-liquid entries)
+  final double? amountMl;
+
   // Metadaten
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -50,6 +55,8 @@ class FoodEntry {
     this.sugar,
     this.sodium,
     this.notes,
+    this.isLiquid = false,
+    this.amountMl,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -73,6 +80,8 @@ class FoodEntry {
       sugar: json['sugar'] != null ? (json['sugar'] as num).toDouble() : null,
       sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
       notes: json['notes'] as String?,
+      isLiquid: json['is_liquid'] as bool? ?? false,
+      amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -97,6 +106,8 @@ class FoodEntry {
       if (sugar != null) 'sugar': sugar,
       if (sodium != null) 'sodium': sodium,
       if (notes != null) 'notes': notes,
+      'is_liquid': isLiquid,
+      if (amountMl != null) 'amount_ml': amountMl,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -120,6 +131,8 @@ class FoodEntry {
     double? sugar,
     double? sodium,
     String? notes,
+    bool? isLiquid,
+    double? amountMl,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -140,6 +153,8 @@ class FoodEntry {
       sugar: sugar ?? this.sugar,
       sodium: sodium ?? this.sodium,
       notes: notes ?? this.notes,
+      isLiquid: isLiquid ?? this.isLiquid,
+      amountMl: amountMl ?? this.amountMl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

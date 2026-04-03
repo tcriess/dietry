@@ -358,6 +358,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get foodPublicOff => 'Only you see this entry';
 
   @override
+  String get foodIsLiquid => 'Liquid food';
+
+  @override
+  String get foodIsLiquidHint => 'Amount counted toward daily water intake';
+
+  @override
   String get newFood => 'New Food';
 
   @override
@@ -1058,6 +1064,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get waterReminderSubtitle => 'Remind to drink water every 4 hours';
+
+  @override
+  String get waterFromFood => 'from food';
+
+  @override
+  String get waterManual => 'manual';
 
   @override
   String get cheatDayTitle => 'Cheat Day';

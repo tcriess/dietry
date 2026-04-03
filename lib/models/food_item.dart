@@ -39,6 +39,9 @@ class FoodItem {
   // Nutzer-Markierung
   final bool isFavourite;
 
+  // Flüssigkeitsmarkierung - wenn true, Einheit standardmäßig ml, Menge zählt zur Wasseraufnahme
+  final bool isLiquid;
+
   // Metadaten
   final String? source;
   final DateTime createdAt;
@@ -64,6 +67,7 @@ class FoodItem {
     required this.isPublic,
     required this.isApproved,
     this.isFavourite = false,
+    this.isLiquid = false,
     this.source,
     required this.createdAt,
     required this.updatedAt,
@@ -91,6 +95,7 @@ class FoodItem {
       isPublic: json['is_public'] as bool,
       isApproved: json['is_approved'] as bool? ?? false,
       isFavourite: json['is_favourite'] as bool? ?? false,
+      isLiquid: json['is_liquid'] as bool? ?? false,
       source: json['source'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -137,6 +142,7 @@ class FoodItem {
       'is_public': isPublic,
       'is_approved': isApproved,
       'is_favourite': isFavourite,
+      'is_liquid': isLiquid,
       if (source != null) 'source': source,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -182,6 +188,7 @@ class FoodItem {
     bool? isPublic,
     bool? isApproved,
     bool? isFavourite,
+    bool? isLiquid,
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -206,6 +213,7 @@ class FoodItem {
       isPublic: isPublic ?? this.isPublic,
       isApproved: isApproved ?? this.isApproved,
       isFavourite: isFavourite ?? this.isFavourite,
+      isLiquid: isLiquid ?? this.isLiquid,
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
