@@ -361,6 +361,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   late final TextEditingController _brandController;
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
   late bool _isPublic;
+  late bool _isLiquid;
 
   bool get _isEdit => widget.food != null;
 
@@ -387,6 +388,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       ));
     }
     _isPublic = f?.isPublic ?? false;
+    _isLiquid = f?.isLiquid ?? false;
   }
 
   @override
@@ -436,6 +438,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       barcode: widget.food?.barcode,
       isPublic: _isPublic,
       isApproved: false,  // Immer zurücksetzen – Admin muss erneut freigeben
+      isLiquid: _isLiquid,
       source: widget.food?.source ?? 'Custom',
       createdAt: widget.food?.createdAt ?? now,
       updatedAt: now,
@@ -686,6 +689,19 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                   secondary: Icon(
                     _isPublic ? Icons.public : Icons.lock_outline,
                     color: _isPublic ? Colors.green : Colors.grey,
+                  ),
+                ),
+
+                // Flüssigkeit
+                SwitchListTile(
+                  value: _isLiquid,
+                  onChanged: (v) => setState(() => _isLiquid = v),
+                  title: Text(l.foodIsLiquid),
+                  subtitle: Text(l.foodIsLiquidHint),
+                  contentPadding: EdgeInsets.zero,
+                  secondary: Icon(
+                    _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
+                    color: _isLiquid ? Colors.lightBlue : Colors.grey,
                   ),
                 ),
               ],

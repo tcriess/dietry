@@ -754,6 +754,18 @@ abstract class AppLocalizations {
   /// **'Nur du siehst diesen Eintrag'**
   String get foodPublicOff;
 
+  /// No description provided for @foodIsLiquid.
+  ///
+  /// In de, this message translates to:
+  /// **'Flüssigkeit'**
+  String get foodIsLiquid;
+
+  /// No description provided for @foodIsLiquidHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Menge zählt zur täglichen Wasseraufnahme'**
+  String get foodIsLiquidHint;
+
   /// No description provided for @newFood.
   ///
   /// In de, this message translates to:
@@ -2025,6 +2037,18 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Alle 4 Stunden an Wasser trinken erinnern'**
   String get waterReminderSubtitle;
+
+  /// No description provided for @waterFromFood.
+  ///
+  /// In de, this message translates to:
+  /// **'aus Mahlzeiten'**
+  String get waterFromFood;
+
+  /// No description provided for @waterManual.
+  ///
+  /// In de, this message translates to:
+  /// **'manuell'**
+  String get waterManual;
 
   /// No description provided for @cheatDayTitle.
   ///
