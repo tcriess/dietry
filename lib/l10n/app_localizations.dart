@@ -1378,6 +1378,114 @@ abstract class AppLocalizations {
   /// **'Diese Methode verwenden'**
   String get trackingUseMethod;
 
+  /// No description provided for @trackingMethodBmrOnlyName.
+  ///
+  /// In de, this message translates to:
+  /// **'BMR + Tracking'**
+  String get trackingMethodBmrOnlyName;
+
+  /// No description provided for @trackingMethodBmrOnlyShort.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Aktivitäten tracken'**
+  String get trackingMethodBmrOnlyShort;
+
+  /// No description provided for @trackingMethodBmrOnlyDetail.
+  ///
+  /// In de, this message translates to:
+  /// **'Dein Kalorienziel basiert nur auf deinem Grundumsatz (BMR). Du musst ALLE körperlichen Aktivitäten tracken (Gehen, Sport, Hausarbeit). Diese Methode ist am genauesten, erfordert aber konsequentes Tracking.'**
+  String get trackingMethodBmrOnlyDetail;
+
+  /// No description provided for @trackingMethodBmrOnlyRecommended.
+  ///
+  /// In de, this message translates to:
+  /// **'Empfohlen für:\n• Maximale Präzision\n• Du trackst gerne alles\n• Sehr variable Aktivität'**
+  String get trackingMethodBmrOnlyRecommended;
+
+  /// No description provided for @trackingMethodBmrOnlyActivityHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Activity Level wird ignoriert (immer = 1.0)'**
+  String get trackingMethodBmrOnlyActivityHint;
+
+  /// No description provided for @trackingMethodBmrOnlyTrackingGuideline.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ Tracken: ALLE Aktivitäten\n• Gehen (>10 Min)\n• Sport (Gym, Laufen, etc.)\n• Hausarbeit (Putzen, Gartenarbeit)\n• Treppen steigen (>5 Etagen)'**
+  String get trackingMethodBmrOnlyTrackingGuideline;
+
+  /// No description provided for @trackingMethodTdeeCompleteName.
+  ///
+  /// In de, this message translates to:
+  /// **'TDEE komplett'**
+  String get trackingMethodTdeeCompleteName;
+
+  /// No description provided for @trackingMethodTdeeCompleteShort.
+  ///
+  /// In de, this message translates to:
+  /// **'Kaum Tracking nötig'**
+  String get trackingMethodTdeeCompleteShort;
+
+  /// No description provided for @trackingMethodTdeeCompleteDetail.
+  ///
+  /// In de, this message translates to:
+  /// **'Dein Kalorienziel basiert auf deinem Gesamtumsatz (TDEE) inkl. deinem Aktivitätslevel. Deine täglichen Aktivitäten sind bereits eingerechnet. Du musst nur außergewöhnliche Aktivitäten tracken (z.B. 2h Wandern, Marathon). Ideal bei konstanter Routine.'**
+  String get trackingMethodTdeeCompleteDetail;
+
+  /// No description provided for @trackingMethodTdeeCompleteRecommended.
+  ///
+  /// In de, this message translates to:
+  /// **'Empfohlen für:\n• Wenig Tracking-Aufwand\n• Konstante tägliche Routine\n• Regelmäßiger Sport (gleiche Menge)'**
+  String get trackingMethodTdeeCompleteRecommended;
+
+  /// No description provided for @trackingMethodTdeeCompleteActivityHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Wähle dein Activity Level basierend auf GESAMTER täglicher Aktivität (inkl. Sport)'**
+  String get trackingMethodTdeeCompleteActivityHint;
+
+  /// No description provided for @trackingMethodTdeeCompleteTrackingGuideline.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ Tracken: Nur außergewöhnliche Aktivitäten\n• Marathon / Halbmarathon\n• Ganztags-Wanderung\n• Extra lange Trainingseinheiten (>2h)\n\n❌ NICHT tracken: Normale tägliche Aktivitäten\n• Reguläres Training\n• Alltags-Bewegung'**
+  String get trackingMethodTdeeCompleteTrackingGuideline;
+
+  /// No description provided for @trackingMethodTdeeHybridName.
+  ///
+  /// In de, this message translates to:
+  /// **'TDEE + Sport-Tracking'**
+  String get trackingMethodTdeeHybridName;
+
+  /// No description provided for @trackingMethodTdeeHybridShort.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur Sport tracken'**
+  String get trackingMethodTdeeHybridShort;
+
+  /// No description provided for @trackingMethodTdeeHybridDetail.
+  ///
+  /// In de, this message translates to:
+  /// **'Dein Kalorienziel basiert auf deinem Gesamtumsatz (TDEE) nur für den Alltag. Wähle dein Activity Level basierend auf deiner täglichen Arbeit (z.B. Bürojob = sedentary). Alle sportlichen Aktivitäten (Gym, Laufen, etc.) trackst du separat. Ideal bei variabler Sport-Routine.'**
+  String get trackingMethodTdeeHybridDetail;
+
+  /// No description provided for @trackingMethodTdeeHybridRecommended.
+  ///
+  /// In de, this message translates to:
+  /// **'Empfohlen für:\n• Balance zwischen Genauigkeit und Aufwand\n• Variable Sport-Routine\n• Klare Trennung Alltag/Sport'**
+  String get trackingMethodTdeeHybridRecommended;
+
+  /// No description provided for @trackingMethodTdeeHybridActivityHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Wähle dein Activity Level NUR basierend auf deiner täglichen Arbeit (ohne Sport)'**
+  String get trackingMethodTdeeHybridActivityHint;
+
+  /// No description provided for @trackingMethodTdeeHybridTrackingGuideline.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ Tracken: Alle sportlichen Aktivitäten\n• Gym / Krafttraining\n• Laufen / Joggen\n• Radfahren\n• Schwimmen\n• Sport-Kurse\n\n❌ NICHT tracken: Alltags-Bewegung\n• Arbeitsweg\n• Einkaufen\n• Normale Hausarbeit'**
+  String get trackingMethodTdeeHybridTrackingGuideline;
+
   /// No description provided for @appSubtitle.
   ///
   /// In de, this message translates to:

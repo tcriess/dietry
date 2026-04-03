@@ -112,8 +112,8 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
       final service = UserBodyMeasurementsService(widget.dbService);
       await service.saveMeasurement(measurement);
 
-      // Auto-adjust nutrition goal silently (fire-and-forget)
-      NutritionGoalService.autoAdjustGoal(widget.dbService);
+      // Auto-adjust nutrition goal and wait for completion so profile reloads with updated goal
+      await NutritionGoalService.autoAdjustGoal(widget.dbService);
 
       if (mounted) {
         final lCtx = AppLocalizations.of(context)!;
