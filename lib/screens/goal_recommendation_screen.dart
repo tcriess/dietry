@@ -628,7 +628,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          l.trackingMethodLabel(rec.method.displayName),
+                          l.trackingMethodLabel(rec.method.localizedName(l)),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -640,7 +640,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    rec.method.shortDescription,
+                    rec.method.localizedShortDescription(l),
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.purple.shade800,
@@ -810,7 +810,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    rec.method.trackingGuideline,
+                    rec.method.localizedTrackingGuideline(l),
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.blue.shade800,
