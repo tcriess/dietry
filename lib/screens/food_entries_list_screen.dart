@@ -556,22 +556,40 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             child: const Icon(Icons.storage_outlined),
           ),
           const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'fab_add',
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AddFoodEntryScreen(
-                    dbService: widget.dbService,
-                    selectedDate: widget.selectedDay,
+          if (MediaQuery.of(context).size.width >= 550)
+            FloatingActionButton.extended(
+              heroTag: 'fab_add',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddFoodEntryScreen(
+                      dbService: widget.dbService,
+                      selectedDate: widget.selectedDay,
+                    ),
                   ),
-                ),
-              );
-              // DataStore is updated directly by AddFoodEntryScreen.
-            },
-            icon: const Icon(Icons.add),
-            label: Text(l.addEntry),
-          ),
+                );
+                // DataStore is updated directly by AddFoodEntryScreen.
+              },
+              icon: const Icon(Icons.add),
+              label: Text(l.addEntry),
+            )
+          else
+            FloatingActionButton(
+              heroTag: 'fab_add',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddFoodEntryScreen(
+                      dbService: widget.dbService,
+                      selectedDate: widget.selectedDay,
+                    ),
+                  ),
+                );
+                // DataStore is updated directly by AddFoodEntryScreen.
+              },
+              tooltip: l.addEntry,
+              child: const Icon(Icons.add),
+            ),
         ],
       ),
     );

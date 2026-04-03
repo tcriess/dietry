@@ -48,6 +48,9 @@ import 'screens/reports_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize AppFeatures from environment (for PREMIUM_ROLE override in dev/test)
+  AppFeatures.initializeFromEnvironment();
+
   // sqflite needs FFI on Linux/Windows/macOS desktop (not web, not Android/iOS)
   if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.linux ||
       defaultTargetPlatform == TargetPlatform.windows ||
@@ -1865,6 +1868,251 @@ class OverviewScreen extends StatelessWidget {
   // ✅ Berechne verbrannte Kalorien aus activities
   double get totalCaloriesBurned => activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
 
+  Widget _buildNutrientCard(
+    BuildContext context,
+    String label,
+    String goalValue,
+    String consumedValue,
+    String burnedValue,
+    String remainingValue,
+    Color? color,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (color != null)
+                  Container(
+                    width: 8,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.goal,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      goalValue,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.consumed,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      consumedValue,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                if (burnedValue != '-')
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.caloriesBurned,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        burnedValue,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.remaining,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    remainingValue,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: (int.tryParse(remainingValue.split(' ').first) ?? 0) >= 0
+                          ? Colors.green
+                          : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutritionOverview(BuildContext context, AppLocalizations l) {
+    final remainingCalories = (goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2);
+    final remainingProtein = (goal.protein - totalProtein).clamp(0, goal.protein);
+    final remainingFat = (goal.fat - totalFat).clamp(0, goal.fat);
+    final remainingCarbs = (goal.carbs - totalCarbs).clamp(0, goal.carbs);
+
+    final isMobile = MediaQuery.of(context).size.width < 550;
+
+    if (isMobile) {
+      // Mobile: Card-based layout
+      return Column(
+        children: [
+          _buildNutrientCard(
+            context,
+            l.nutrientCalories,
+            '${goal.calories.toStringAsFixed(0)} kcal',
+            '${totalCalories.toStringAsFixed(0)} kcal',
+            totalCaloriesBurned > 0 ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal' : '-',
+            '${remainingCalories.toStringAsFixed(0)} kcal',
+            Colors.deepPurple,
+          ),
+          _buildNutrientCard(
+            context,
+            l.nutrientProtein,
+            '${goal.protein.toStringAsFixed(1)} g',
+            '${totalProtein.toStringAsFixed(1)} g',
+            '-',
+            '${remainingProtein.toStringAsFixed(1)} g',
+            Colors.red,
+          ),
+          _buildNutrientCard(
+            context,
+            l.nutrientFat,
+            '${goal.fat.toStringAsFixed(1)} g',
+            '${totalFat.toStringAsFixed(1)} g',
+            '-',
+            '${remainingFat.toStringAsFixed(1)} g',
+            Colors.orange,
+          ),
+          _buildNutrientCard(
+            context,
+            l.nutrientCarbs,
+            '${goal.carbs.toStringAsFixed(1)} g',
+            '${totalCarbs.toStringAsFixed(1)} g',
+            '-',
+            '${remainingCarbs.toStringAsFixed(1)} g',
+            Colors.amber,
+          ),
+        ],
+      );
+    } else {
+      // Desktop/Medium: Table layout (with horizontal scroll on medium screens)
+      final table = DataTable(
+        horizontalMargin: 12,
+        columnSpacing: 12,
+        columns: [
+          const DataColumn(label: Text('')),
+          DataColumn(label: Text(l.goal, overflow: TextOverflow.ellipsis)),
+          DataColumn(label: Text(l.consumed, overflow: TextOverflow.ellipsis)),
+          DataColumn(label: Text(l.caloriesBurned, overflow: TextOverflow.ellipsis)),
+          DataColumn(label: Text(l.remaining, overflow: TextOverflow.ellipsis)),
+        ],
+        rows: [
+          DataRow(cells: [
+            DataCell(Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.calories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalCalories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(
+              totalCaloriesBurned.toStringAsFixed(0),
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.green.shade700),
+            )),
+            DataCell(Text(
+              remainingCalories.toStringAsFixed(0),
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: remainingCalories >= 0 ? Colors.green : Colors.red,
+              ),
+            )),
+          ]),
+          DataRow(cells: [
+            DataCell(Text(l.nutrientProtein, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.protein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalProtein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingProtein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+          ]),
+          DataRow(cells: [
+            DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.fat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalFat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingFat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+          ]),
+          DataRow(cells: [
+            DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.carbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalCarbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingCarbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+          ]),
+        ],
+      );
+
+      // Wrap in horizontal scroll if screen is narrower than 700px
+      if (MediaQuery.of(context).size.width < 700) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: table,
+        );
+      }
+      return table;
+    }
+  }
+
   Widget _buildWaterCard(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final waterGoal = goal.waterGoalMl ?? 2000;
@@ -2112,59 +2360,11 @@ class OverviewScreen extends StatelessWidget {
           // Wasser-Tracking
           _buildWaterCard(context),
           const SizedBox(height: 24),
-          // Nährwert-Tabelle mit verbrannten Kalorien
-          DataTable(
-            columns: [
-              const DataColumn(label: Text('')),
-              DataColumn(label: Text(l.goal)),
-              DataColumn(label: Text(l.consumed)),
-              DataColumn(label: Text(l.caloriesBurned)),  // ✅ Neue Spalte
-              DataColumn(label: Text(l.remaining)),
-            ],
-            rows: [
-              DataRow(cells: [
-                DataCell(Text(l.nutrientCalories)),
-                DataCell(Text(goal.calories.toStringAsFixed(0))),
-                DataCell(Text(totalCalories.toStringAsFixed(0))),
-                DataCell(Text(
-                  totalCaloriesBurned.toStringAsFixed(0),
-                  style: TextStyle(color: Colors.green.shade700),
-                )),
-                DataCell(Text(
-                  ((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0),
-                  style: TextStyle(
-                    color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
-                        ? Colors.green
-                        : Colors.red,
-                  ),
-                )),
-              ]),
-              DataRow(cells: [
-                DataCell(Text(l.nutrientProtein)),
-                DataCell(Text(goal.protein.toStringAsFixed(1))),
-                DataCell(Text(totalProtein.toStringAsFixed(1))),
-                const DataCell(Text('-')),  // Keine verbrannten Makros
-                DataCell(Text((goal.protein - totalProtein).clamp(0, goal.protein).toStringAsFixed(1))),
-              ]),
-              DataRow(cells: [
-                DataCell(Text(l.nutrientFat)),
-                DataCell(Text(goal.fat.toStringAsFixed(1))),
-                DataCell(Text(totalFat.toStringAsFixed(1))),
-                const DataCell(Text('-')),  // Keine verbrannten Makros
-                DataCell(Text((goal.fat - totalFat).clamp(0, goal.fat).toStringAsFixed(1))),
-              ]),
-              DataRow(cells: [
-                DataCell(Text(l.nutrientCarbs)),
-                DataCell(Text(goal.carbs.toStringAsFixed(1))),
-                DataCell(Text(totalCarbs.toStringAsFixed(1))),
-                const DataCell(Text('-')),  // Keine verbrannten Makros
-                DataCell(Text((goal.carbs - totalCarbs).clamp(0, goal.carbs).toStringAsFixed(1))),
-              ]),
-            ],
-          ),
+          // Responsive nutrition overview (cards on mobile, table on desktop)
+          _buildNutritionOverview(context, l),
           // Mikronährstoff-Karte (Premium, konfigurierbar)
           if (AppFeatures.microNutrients) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Builder(builder: (context) {
               final jwt = dbService.jwt;
               final userId = dbService.userId;
@@ -2203,6 +2403,47 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final isMobile = MediaQuery.of(context).size.width < 550;
+
+    if (isMobile) {
+      // Mobile: Simplified view with +/- buttons only (200 ml fixed)
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton.filled(
+            icon: const Icon(Icons.remove),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.blue.shade100,
+              foregroundColor: Colors.blue,
+            ),
+            tooltip: l.waterRemove,
+            onPressed: widget.waterIntakeMl >= 200
+                ? () => widget.onWaterChanged(-200)
+                : null,
+          ),
+          const SizedBox(width: 16),
+          Text(
+            '200 ml',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 16),
+          IconButton.filled(
+            icon: const Icon(Icons.add),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            tooltip: l.waterAdd,
+            onPressed: () => widget.onWaterChanged(200),
+          ),
+        ],
+      );
+    }
+
+    // Desktop: Full controls with selector
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
