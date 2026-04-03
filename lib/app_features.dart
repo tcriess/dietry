@@ -23,6 +23,15 @@ class AppFeatures {
 
   static String _role = 'community';
 
+  /// Initialisiert AppFeatures mit dem PREMIUM_ROLE-Override (vor dem Login).
+  /// Wird einmal beim App-Start aufgerufen, wenn PREMIUM_ROLE gesetzt ist.
+  /// Nur für Entwicklung/Tests (wird vom PREMIUM_ROLE dart-define überschrieben).
+  static void initializeFromEnvironment() {
+    if (_kPremiumRoleOverride.isNotEmpty && AppConfig.isCloudEdition) {
+      _role = _kPremiumRoleOverride;
+    }
+  }
+
   /// Setzt die Rolle aus dem JWT-Payload nach erfolgreichem Login.
   /// Wird von [_onAuthChanged] in main.dart aufgerufen.
   static void setFromJwt(String jwt) {
@@ -32,8 +41,6 @@ class AppFeatures {
     _role = (_kPremiumRoleOverride.isNotEmpty && AppConfig.isCloudEdition)
         ? _kPremiumRoleOverride
         : jwtRole;
-    // ignore: avoid_print
-    print('🔑 AppFeatures: role=$_role (isCloud=${AppConfig.isCloudEdition})');
   }
 
   /// Setzt die Rolle zurück (beim Logout).

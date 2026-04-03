@@ -890,6 +890,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String value,
     required Color color,
   }) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+
+    if (isMobile) {
+      // Mobile: Vertical layout to avoid text wrapping
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Desktop: Horizontal layout
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
