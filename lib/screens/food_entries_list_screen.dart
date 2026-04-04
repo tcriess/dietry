@@ -393,13 +393,14 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                         ),
                                       ),
                                       const Spacer(),
-                                      // Summe für diese Mahlzeit
-                                      Text(
-                                        '${mealEntries.fold(0.0, (sum, e) => sum + e.calories).toStringAsFixed(0)} kcal',
-                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          color: Colors.grey.shade600,
+                                      // Summe für diese Mahlzeit (only show if not macro-only mode)
+                                      if (_store.goal?.macroOnly != true)
+                                        Text(
+                                          '${mealEntries.fold(0.0, (sum, e) => sum + e.calories).toStringAsFixed(0)} kcal',
+                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                            color: Colors.grey.shade600,
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -452,8 +453,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                       ),
                                       title: Text(entry.name),
                                       subtitle: Text(
-                                        '${_formatEntryAmount(entry)} • '
-                                        '${entry.calories.toStringAsFixed(0)} kcal',
+                                        _store.goal?.macroOnly == true
+                                            ? _formatEntryAmount(entry)
+                                            : '${_formatEntryAmount(entry)} • ${entry.calories.toStringAsFixed(0)} kcal',
                                       ),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,

@@ -369,12 +369,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           )
                         else ...[
-                          _buildDataRow(
-                            icon: Icons.local_fire_department,
-                            label: l.nutrientCalories,
-                            value: '${_goal!.calories.toInt()} kcal',
-                            color: Colors.orange,
-                          ),
+                          if (!_goal!.macroOnly)
+                            _buildDataRow(
+                              icon: Icons.local_fire_department,
+                              label: l.nutrientCalories,
+                              value: '${_goal!.calories.toInt()} kcal',
+                              color: Colors.orange,
+                            ),
                           _buildDataRow(
                             icon: Icons.egg_alt,
                             label: l.nutrientProtein,

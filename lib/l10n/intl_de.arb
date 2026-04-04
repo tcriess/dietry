@@ -586,5 +586,6 @@
     "placeholders": {
       "error": {"type": "String"}
     }
-  }
+  },
+  "macroOnlyMode": "Nur Makros tracken (kein Kalorienziel)"
 }
