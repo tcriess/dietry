@@ -34,6 +34,10 @@ class FoodEntry {
   // For liquid foods: the ml amount (null for non-liquid entries)
   final double? amountMl;
 
+  // Meal vs food: if true, nutrition values are totals for the whole entry (meal)
+  // if false, nutrition values are totals for the specified amount (food)
+  final bool isMeal;
+
   // Metadaten
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -57,6 +61,7 @@ class FoodEntry {
     this.notes,
     this.isLiquid = false,
     this.amountMl,
+    this.isMeal = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -82,6 +87,7 @@ class FoodEntry {
       notes: json['notes'] as String?,
       isLiquid: json['is_liquid'] as bool? ?? false,
       amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
+      isMeal: json['is_meal'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -108,6 +114,7 @@ class FoodEntry {
       if (notes != null) 'notes': notes,
       'is_liquid': isLiquid,
       if (amountMl != null) 'amount_ml': amountMl,
+      'is_meal': isMeal,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -133,6 +140,7 @@ class FoodEntry {
     String? notes,
     bool? isLiquid,
     double? amountMl,
+    bool? isMeal,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -155,6 +163,7 @@ class FoodEntry {
       notes: notes ?? this.notes,
       isLiquid: isLiquid ?? this.isLiquid,
       amountMl: amountMl ?? this.amountMl,
+      isMeal: isMeal ?? this.isMeal,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

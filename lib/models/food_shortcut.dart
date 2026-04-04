@@ -20,6 +20,7 @@ class FoodShortcut {
   final double? sodium;
   final bool isLiquid;
   final double? amountMl;
+  final bool isMeal;
 
   const FoodShortcut({
     required this.id,
@@ -37,6 +38,7 @@ class FoodShortcut {
     this.sodium,
     this.isLiquid = false,
     this.amountMl,
+    this.isMeal = false,
   });
 
   factory FoodShortcut.fromJson(Map<String, dynamic> json) => FoodShortcut(
@@ -55,6 +57,7 @@ class FoodShortcut {
         sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
         isLiquid: json['is_liquid'] as bool? ?? false,
         amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
+        isMeal: json['is_meal'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -73,6 +76,7 @@ class FoodShortcut {
         if (sodium != null) 'sodium': sodium,
         'is_liquid': isLiquid,
         if (amountMl != null) 'amount_ml': amountMl,
+        'is_meal': isMeal,
       };
 
   static FoodShortcut fromJsonString(String s) =>
