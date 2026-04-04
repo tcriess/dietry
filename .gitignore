@@ -54,6 +54,7 @@ app.*.map.json
 archive/
 /.claude
 /CLAUDE.md
+/.claudeignore
 /docs/assetlinks.json.template
 
 # not ready yet
