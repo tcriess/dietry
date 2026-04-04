@@ -1132,6 +1132,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   late final TextEditingController _brandController;
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
   bool _isPublic = false;
+  bool _isLiquid = false;
   
   @override
   void initState() {
@@ -1201,6 +1202,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       brand: _brandController.text.isNotEmpty ? _brandController.text : null,
       barcode: null,
       isPublic: _isPublic,
+      isLiquid: _isLiquid,
       isApproved: false,
       source: 'Custom',
       createdAt: DateTime.now(),
@@ -1283,7 +1285,22 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              
+
+              const SizedBox(height: 12),
+
+              // Flüssigkeit
+              SwitchListTile(
+                value: _isLiquid,
+                onChanged: (v) => setState(() => _isLiquid = v),
+                title: const Text('Flüssigkeit'),
+                subtitle: const Text('Wird in ml statt g eingegeben'),
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
+                  color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                ),
+              ),
+
               // Portionsgrößen
               const SizedBox(height: 16),
               Row(
