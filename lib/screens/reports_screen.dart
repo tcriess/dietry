@@ -104,6 +104,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
   static String _fmt(DateTime d) => d.toIso8601String().split('T')[0];
 
   Future<_ReportsData> _load() async {
+    // Ensure token is valid before fetching data
+    final tokenValid = await widget.dbService.ensureValidToken(minMinutesValid: 5);
+    if (!tokenValid) {
+      throw Exception('Token validation failed');
+    }
+
     final (from, to) = _range.dates;
 
     final results = await Future.wait([
@@ -283,14 +289,17 @@ class _ReportsBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── CE charts ──────────────────────────────────────────────────────
-        _StatsSummaryCard(nutrition: data.nutrition, water: data.water, goal: goal),
-        const SizedBox(height: 12),
-        _CalorieTrendCard(
-          nutrition: data.nutrition,
-          range: range,
-          goal: goal,
-        ),
-        const SizedBox(height: 12),
+        // Hide calorie-related reports in macro-only mode
+        if (goal?.macroOnly != true) ...[
+          _StatsSummaryCard(nutrition: data.nutrition, water: data.water, goal: goal),
+          const SizedBox(height: 12),
+          _CalorieTrendCard(
+            nutrition: data.nutrition,
+            range: range,
+            goal: goal,
+          ),
+          const SizedBox(height: 12),
+        ],
         _ReportCard(
           title: l.reportsMacroAverage,
           child: _MacroAverageRow(nutrition: data.nutrition),

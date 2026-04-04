@@ -1256,4 +1256,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String reportsExportError(String error) {
     return 'Export failed: $error';
   }
+
+  @override
+  String get macroOnlyMode => 'Track macros only (no calorie goal)';
 }

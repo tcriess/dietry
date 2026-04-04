@@ -1261,4 +1261,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String reportsExportError(String error) {
     return 'Export fehlgeschlagen: $error';
   }
+
+  @override
+  String get macroOnlyMode => 'Nur Makros tracken (kein Kalorienziel)';
 }

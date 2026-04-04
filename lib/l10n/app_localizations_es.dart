@@ -1269,4 +1269,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String reportsExportError(String error) {
     return 'Error al exportar: $error';
   }
+
+  @override
+  String get macroOnlyMode => 'Solo macros (sin objetivo calórico)';
 }

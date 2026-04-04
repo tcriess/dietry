@@ -2072,15 +2072,16 @@ class OverviewScreen extends StatelessWidget {
       // Mobile: Card-based layout
       return Column(
         children: [
-          _buildNutrientCard(
-            context,
-            l.nutrientCalories,
-            '${goal.calories.toStringAsFixed(0)} kcal',
-            '${totalCalories.toStringAsFixed(0)} kcal',
-            totalCaloriesBurned > 0 ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal' : '-',
-            '${remainingCalories.toStringAsFixed(0)} kcal',
-            Colors.deepPurple,
-          ),
+          if (!goal.macroOnly)
+            _buildNutrientCard(
+              context,
+              l.nutrientCalories,
+              '${goal.calories.toStringAsFixed(0)} kcal',
+              '${totalCalories.toStringAsFixed(0)} kcal',
+              totalCaloriesBurned > 0 ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal' : '-',
+              '${remainingCalories.toStringAsFixed(0)} kcal',
+              Colors.deepPurple,
+            ),
           _buildNutrientCard(
             context,
             l.nutrientProtein,
@@ -2123,23 +2124,24 @@ class OverviewScreen extends StatelessWidget {
           DataColumn(label: Text(l.remaining, overflow: TextOverflow.ellipsis)),
         ],
         rows: [
-          DataRow(cells: [
-            DataCell(Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
-            DataCell(Text(goal.calories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalCalories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
-            DataCell(Text(
-              totalCaloriesBurned.toStringAsFixed(0),
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.green.shade700),
-            )),
-            DataCell(Text(
-              remainingCalories.toStringAsFixed(0),
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: remainingCalories >= 0 ? Colors.green : Colors.red,
-              ),
-            )),
-          ]),
+          if (!goal.macroOnly)
+            DataRow(cells: [
+              DataCell(Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
+              DataCell(Text(goal.calories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+              DataCell(Text(totalCalories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+              DataCell(Text(
+                totalCaloriesBurned.toStringAsFixed(0),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.green.shade700),
+              )),
+              DataCell(Text(
+                remainingCalories.toStringAsFixed(0),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: remainingCalories >= 0 ? Colors.green : Colors.red,
+                ),
+              )),
+            ]),
           DataRow(cells: [
             DataCell(Text(l.nutrientProtein, overflow: TextOverflow.ellipsis)),
             DataCell(Text(goal.protein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
@@ -2385,36 +2387,38 @@ class OverviewScreen extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 16),
-          // Kalorien-Fortschritt (mit verbrannten Kalorien)
-          Text(l.nutrientCalories),
-          LinearProgressIndicator(
-            value: goal.calories > 0 ? (totalCalories / goal.calories).clamp(0, 1) : 0,
-            minHeight: 12,
-            backgroundColor: Colors.grey[300],
-            color: Colors.deepPurple,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal'),
-              if (totalCaloriesBurned > 0)
-                Text(
-                  '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
-                  style: TextStyle(color: Colors.green.shade700),
-                ),
-              Text('${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal'),
-            ],
-          ),
-          Text(
-            '${l.remaining}: ${((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0)} kcal',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
-                  ? Colors.green
-                  : Colors.red,
+          if (!goal.macroOnly) ...[
+            const SizedBox(height: 16),
+            // Kalorien-Fortschritt (mit verbrannten Kalorien)
+            Text(l.nutrientCalories),
+            LinearProgressIndicator(
+              value: goal.calories > 0 ? (totalCalories / goal.calories).clamp(0, 1) : 0,
+              minHeight: 12,
+              backgroundColor: Colors.grey[300],
+              color: Colors.deepPurple,
             ),
-          ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal'),
+                if (totalCaloriesBurned > 0)
+                  Text(
+                    '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
+                    style: TextStyle(color: Colors.green.shade700),
+                  ),
+                Text('${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal'),
+              ],
+            ),
+            Text(
+              '${l.remaining}: ${((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0)} kcal',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
+                    ? Colors.green
+                    : Colors.red,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           // Makronährstoff-Kreisdiagramm
           SizedBox(

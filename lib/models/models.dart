@@ -34,6 +34,7 @@ class NutritionGoal {
   final DateTime? validFrom;
   final TrackingMethod? trackingMethod;
   final int? waterGoalMl;
+  final bool macroOnly;
 
   const NutritionGoal({
     this.id,
@@ -45,6 +46,7 @@ class NutritionGoal {
     this.validFrom,
     this.trackingMethod,
     this.waterGoalMl,
+    this.macroOnly = false,
   });
 
   factory NutritionGoal.fromJson(Map<String, dynamic> json) {
@@ -66,6 +68,7 @@ class NutritionGoal {
           )
         : null,
       waterGoalMl: json['water_goal_ml'] as int?,
+      macroOnly: json['macro_only'] as bool? ?? false,
     );
   }
 
@@ -79,5 +82,6 @@ class NutritionGoal {
     if (validFrom != null) 'valid_from': validFrom!.toIso8601String().split('T')[0],
     if (trackingMethod != null) 'tracking_method': trackingMethod!.name,
     if (waterGoalMl != null) 'water_goal_ml': waterGoalMl,
+    'macro_only': macroOnly,
   };
 }

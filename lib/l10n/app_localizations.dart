@@ -2391,6 +2391,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Export fehlgeschlagen: {error}'**
   String reportsExportError(String error);
+
+  /// No description provided for @macroOnlyMode.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur Makros tracken (kein Kalorienziel)'**
+  String get macroOnlyMode;
 }
 
 class _AppLocalizationsDelegate
