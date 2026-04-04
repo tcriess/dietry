@@ -160,6 +160,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       sodium: sc.sodium,
       isLiquid: sc.isLiquid,
       amountMl: sc.amountMl,
+      isMeal: sc.isMeal,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -185,6 +186,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     FoodEntry? recentEntry,
     bool isLiquid = false,
     double? amountMl,
+    bool isMeal = false,
   }) {
     return showDialog<FoodEntry>(
       context: context,
@@ -206,6 +208,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         recentEntry: recentEntry,
         isLiquid: isLiquid,
         amountMl: amountMl,
+        isMeal: isMeal,
         userId: widget.dbService.userId!,
         date: widget.date,
         onMealTypeChanged: (mt) => setState(() => _mealType = mt),
@@ -229,6 +232,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     double? sodium,
     bool isLiquid = false,
     double? amountMl,
+    bool isMeal = false,
   }) async {
     final sc = FoodShortcut(
       id: const Uuid().v4(),
@@ -246,6 +250,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       sodium: sodium,
       isLiquid: isLiquid,
       amountMl: amountMl,
+      isMeal: isMeal,
     );
     await FoodShortcutsService.addShortcut(sc);
     await _loadShortcuts();
@@ -352,6 +357,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                           foodId: entry.foodId,
                           isLiquid: entry.isLiquid,
                           amountMl: entry.amountMl,
+                          isMeal: entry.isMeal,
                           recentEntry: entry,
                         );
                         if (confirmed != null) await _addEntry(confirmed);
@@ -384,6 +390,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                           scaleByAmount: true,
                           isLiquid: food.isLiquid,
                           amountMl: amountMlValue,
+                          isMeal: false,  // Foods are never meals in quick add
                           food: food,
                         );
                         if (confirmed != null) await _addEntry(confirmed);
@@ -647,6 +654,9 @@ class _ConfirmDialog extends StatefulWidget {
   /// For liquid foods: the ml amount
   final double? amountMl;
 
+  /// Whether this is a meal entry (totals) or food entry (per-100g scaled)
+  final bool isMeal;
+
   final String userId;
   final DateTime date;
   final void Function(MealType) onMealTypeChanged;
@@ -665,6 +675,7 @@ class _ConfirmDialog extends StatefulWidget {
     double? sodium,
     bool isLiquid,
     double? amountMl,
+    bool isMeal,
   }) onSaveAsShortcut;
 
   const _ConfirmDialog({
@@ -685,6 +696,7 @@ class _ConfirmDialog extends StatefulWidget {
     this.recentEntry,
     required this.isLiquid,
     this.amountMl,
+    required this.isMeal,
     required this.userId,
     required this.date,
     required this.onMealTypeChanged,
@@ -776,6 +788,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       sodium: sodium,
       isLiquid: widget.isLiquid,
       amountMl: scaledAmountMl,
+      isMeal: widget.isMeal,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -860,6 +873,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                     sodium: entry.sodium,
                     isLiquid: entry.isLiquid,
                     amountMl: entry.amountMl,
+                    isMeal: entry.isMeal,
                   );
                   setState(() => _savingShortcut = false);
                 },

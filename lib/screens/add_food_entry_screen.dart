@@ -264,6 +264,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         }
       }
 
+      // For manual entry: fields are per-100g, scale to total
+      // For food-from-DB: _calculateNutrition() already filled controllers with totals
+      final _scale = _selectedFood == null ? rawAmount / 100.0 : 1.0;
+
       final entry = FoodEntry(
         id: '',  // Wird von DB generiert
         userId: userId,
@@ -273,12 +277,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         name: _nameController.text,
         amount: rawAmount,
         unit: _selectedPortion?.name ?? _customUnit,
-        calories: double.parse(_caloriesController.text),
-        protein: double.parse(_proteinController.text),
-        fat: double.parse(_fatController.text),
-        carbs: double.parse(_carbsController.text),
+        calories: double.parse(_caloriesController.text) * _scale,
+        protein: double.parse(_proteinController.text)  * _scale,
+        fat:     double.parse(_fatController.text)       * _scale,
+        carbs:   double.parse(_carbsController.text)     * _scale,
         isLiquid: _isLiquid,
         amountMl: amountMl,
+        isMeal: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

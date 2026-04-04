@@ -46,9 +46,9 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     _nameController = TextEditingController(text: widget.entry.name);
     _amountController = TextEditingController(text: widget.entry.amount.toStringAsFixed(0));
 
-    // For meal entries (unit="Portion"), show totals directly
-    // For food entries, convert totals to per-100g
-    final isMealEntry = widget.entry.unit == 'Portion';
+    // For meal entries (isMeal=true), show totals directly
+    // For food entries (isMeal=false), convert totals to per-100g
+    final isMealEntry = widget.entry.isMeal;
 
     if (isMealEntry) {
       // Meal entries: show total nutrition values for the current portion count
@@ -177,6 +177,34 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     // Amount changes don't affect the displayed per-100g nutrition.
   }
 
+  /// Compute total nutrition for the current amount and per-100g values.
+  /// Used to display a preview for food entries (not meals).
+  Map<String, double> _computeTotals() {
+    if (widget.entry.isMeal) return {};  // Not used for meals
+
+    final amount = double.tryParse(_amountController.text) ?? 0;
+    if (amount <= 0) {
+      return {
+        'calories': 0,
+        'protein': 0,
+        'fat': 0,
+        'carbs': 0,
+      };
+    }
+
+    final grams = _selectedPortion != null
+        ? amount * _selectedPortion!.amountG
+        : amount;  // g or ml
+    final factor = grams / 100.0;
+
+    return {
+      'calories': (double.tryParse(_caloriesController.text) ?? 0) * factor,
+      'protein':  (double.tryParse(_proteinController.text)  ?? 0) * factor,
+      'fat':      (double.tryParse(_fatController.text)      ?? 0) * factor,
+      'carbs':    (double.tryParse(_carbsController.text)    ?? 0) * factor,
+    };
+  }
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -185,7 +213,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     try {
       final rawAmount = double.parse(_amountController.text);
       final displayUnit = _selectedPortion?.name ?? _customUnit;
-      final isMealEntry = widget.entry.unit == 'Portion';
+      final isMealEntry = widget.entry.isMeal;
 
       double totalCalories;
       double totalProtein;
@@ -247,6 +275,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         carbs: totalCarbs,
         isLiquid: _isLiquid,
         amountMl: amountMl,
+        isMeal: widget.entry.isMeal,
         updatedAt: DateTime.now(),
       );
 
@@ -330,6 +359,45 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     );
   }
 
+  /// Build a card showing total nutrition for the current amount.
+  /// Only shown for food entries (not meals).
+  Widget _buildTotalsPreview() {
+    final totals = _computeTotals();
+    if (totals.isEmpty) return const SizedBox.shrink();
+
+    final amount = double.tryParse(_amountController.text) ?? 0;
+    final displayUnit = _selectedPortion?.name ?? _customUnit;
+    final amountStr = amount == amount.truncateToDouble()
+        ? amount.toInt().toString()
+        : amount.toStringAsFixed(1);
+
+    return Card(
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gesamt für $amountStr$displayUnit:',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _PreviewMacro('kcal', '${totals['calories']!.toStringAsFixed(0)}'),
+                _PreviewMacro('P', '${totals['protein']!.toStringAsFixed(1)}g'),
+                _PreviewMacro('F', '${totals['fat']!.toStringAsFixed(1)}g'),
+                _PreviewMacro('KH', '${totals['carbs']!.toStringAsFixed(1)}g'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -375,7 +443,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                     ],
-                    onChanged: (_) => _recalculate(),
+                    onChanged: (_) {
+                      _recalculate();
+                      setState(() {});  // Update preview
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) return l.requiredField;
                       final amount = double.tryParse(value);
@@ -385,7 +456,19 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildUnitSelector()),
+                // For meal entries, show read-only unit label; for foods, show selector
+                Expanded(
+                  child: widget.entry.isMeal
+                      ? Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('Portion', style: TextStyle(fontSize: 16)),
+                        )
+                      : _buildUnitSelector(),
+                ),
               ],
             ),
 
@@ -419,7 +502,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
             // Nährwerte
             Text(
-              widget.entry.unit == 'Portion'
+              widget.entry.isMeal
                   ? 'Nährwerte (Gesamt für ${widget.entry.amount.toStringAsFixed(1)} Portionen)'
                   : l.nutritionPer100,
               style: Theme.of(context).textTheme.titleMedium,
@@ -437,6 +520,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),  // Update preview
                     validator: (value) =>
                         (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
@@ -451,6 +535,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),  // Update preview
                     validator: (value) =>
                         (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
@@ -471,6 +556,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),  // Update preview
                     validator: (value) =>
                         (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
@@ -485,12 +571,19 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),  // Update preview
                     validator: (value) =>
                         (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
                 ),
               ],
             ),
+
+            // Preview of total amounts for food entries
+            if (!widget.entry.isMeal) ...[
+              const SizedBox(height: 24),
+              _buildTotalsPreview(),
+            ],
 
             const SizedBox(height: 24),
 
@@ -516,6 +609,29 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Simple widget for displaying a macro in the totals preview
+class _PreviewMacro extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PreviewMacro(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
     );
   }
 }

@@ -224,6 +224,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             // But amountMl is set if there are liquid ingredients
             isLiquid: false,
             amountMl: data.liquidMlContribution,
+            isMeal: true,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
