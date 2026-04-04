@@ -60,7 +60,11 @@ void main() async {
   }
 
   // Load any user-configured server URLs before services start.
-  await ServerConfigService.loadIntoCache();
+  try {
+    await ServerConfigService.loadIntoCache();
+  } catch (e) {
+    debugPrint('⚠️ ServerConfigService init failed: $e');
+  }
 
   // Web: Auth-Base-URL in localStorage schreiben, damit auth_callback.html
   // dieselbe URL verwendet wie die Flutter-App (verhindert Cookie-Domain-Mismatch).
@@ -69,7 +73,11 @@ void main() async {
       'dietry_auth_base_url', ServerConfigService.effectiveAuthBaseUrl);
   }
 
-  await WaterReminderService.initialize();
+  try {
+    await WaterReminderService.initialize();
+  } catch (e) {
+    debugPrint('⚠️ WaterReminderService init failed: $e');
+  }
 
   runApp(const AuthApp());
 }
@@ -326,10 +334,12 @@ class LoginScreen extends StatelessWidget {
 
                   // Öffne OAuth-URL (plattformabhängig)
                   if (platform.isAndroid()) {
-                    // Android: Browser öffnen, Callback via App Link
+                    // Android: Chrome Custom Tab (CCT) öffnen, Callback via App Link
+                    // CCT schließt sich automatisch wenn das App Link Intent feuert
+                    // und die Activity resumes — kein Browser-Tab bleibt offen
                     // (Challenge-Cookie wird von NeonAuthService verwaltet)
-                    
-                    if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.externalApplication)) {
+
+                    if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.inAppBrowserView)) {
                       throw Exception('Konnte Browser nicht öffnen');
                     }
                     
@@ -1011,8 +1021,16 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     // ✅ WICHTIG: Warte bis AuthService fertig geladen hat
     // NeonAuthService lädt Token asynchron im Konstruktor
-    while (_authService.isLoading) {
+    // Mit Timeout um Deadlock bei korruptem Keystore zu vermeiden
+    int waitMs = 0;
+    const int maxWaitMs = 15000;
+    while (_authService.isLoading && waitMs < maxWaitMs) {
       await Future.delayed(const Duration(milliseconds: 100));
+      waitMs += 100;
+    }
+
+    if (_authService.isLoading) {
+      debugPrint('⚠️ Auth service still loading after timeout — proceeding without JWT');
     }
 
     // Jetzt JWT setzen wenn vorhanden
@@ -1038,9 +1056,40 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
-    if (state == AppLifecycleState.resumed && platform.isAndroid()) {
-      _checkOAuthCallback();
+
+    if (state == AppLifecycleState.resumed) {
+      // Android: Prüfe auf OAuth Callback
+      if (platform.isAndroid()) {
+        _checkOAuthCallback();
+      }
+
+      // Aggressives Token-Refresh bei App-Resume
+      // Wenn Token in weniger als 1 Stunde abläuft, refreshe es sofort
+      _refreshTokenIfNeeded();
+    }
+  }
+
+  /// Refresht Token wenn es in weniger als 1 Stunde abläuft
+  /// Dies verbessert die Session-Persistenz nach längeren Pausen
+  Future<void> _refreshTokenIfNeeded() async {
+    if (!_authService.isLoggedIn || _authService.jwt == null) {
+      return;
+    }
+
+    final timeLeft = _authService.timeUntilTokenExpiry;
+    if (timeLeft == null) {
+      return;
+    }
+
+    // Wenn Token in weniger als 1 Stunde abläuft, refresh es jetzt
+    if (timeLeft.inMinutes < 60) {
+      debugPrint('⏰ Token expiring soon (${timeLeft.inMinutes} min) - refreshing on resume...');
+      final success = await _authService.refreshTokenWithRetry(maxAttempts: 2);
+      if (success) {
+        debugPrint('✅ Token refreshed on resume');
+      } else {
+        debugPrint('⚠️ Token refresh on resume failed - will require re-login if session expired');
+      }
     }
   }
   
@@ -1105,30 +1154,40 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           final isExpired = isValid ? JwtHelper.isTokenExpired(_authService.jwt!) : true;
           
           if (!isValid || isExpired) {
-            print('❌ JWT in SecureStorage ist ungültig - cleane alles');
-            
+            print('❌ JWT in SecureStorage ist ungültig - cleane nur Auth-Keys');
+
             final storage = const FlutterSecureStorage();
-            await storage.deleteAll();
+            // ✅ WICHTIG: Nur Auth-Keys löschen, nicht deleteAll() verwenden!
+            // deleteAll() würde auch Nutzer-Einstellungen wie water_reminder_enabled löschen
+            await storage.delete(key: 'neon_jwt');
+            await storage.delete(key: 'neon_session');
+            await storage.delete(key: 'neon_cookie');
+            await storage.delete(key: 'neon_challenge_cookie');
+
             await _authService.signOut();
-            
-            print('✅ SecureStorage geleert - bereit für Neu-Login');
+
+            print('✅ Auth-Keys gelöscht - Einstellungen bleiben erhalten');
           }
         }
       }
     } catch (e) {
       print('❌ Fehler beim Initialisieren des Web-Login: $e');
-      
-      // Bei Fehler: ALLE Storages manuell cleanen
+
+      // Bei Fehler: Nur Auth-Daten cleanen (NICHT alle Einstellungen!)
       html.removeFromLocalStorage('neon_jwt');
       html.removeFromLocalStorage('neon_user_email');
       html.removeFromLocalStorage('neon_session_id');
-      
+
       final storage = const FlutterSecureStorage();
-      await storage.deleteAll();
-      
+      // ✅ Nur Auth-Keys löschen, nicht deleteAll()!
+      await storage.delete(key: 'neon_jwt');
+      await storage.delete(key: 'neon_session');
+      await storage.delete(key: 'neon_cookie');
+      await storage.delete(key: 'neon_challenge_cookie');
+
       await _authService.signOut();
-      
-      print('✅ Alle Storages nach Fehler geleert');
+
+      print('✅ Auth-Daten nach Fehler gelöscht - Einstellungen bleiben erhalten');
     }
   }
   
