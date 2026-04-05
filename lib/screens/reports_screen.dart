@@ -1073,16 +1073,43 @@ class _WeightTrendChart extends StatelessWidget {
     final allWeights = wPts.map((p) => p.value);
     final minW = allWeights.reduce((a, b) => a < b ? a : b) - 1;
     final maxW = allWeights.reduce((a, b) => a > b ? a : b) + 1;
+    final wRange = maxW - minW;
 
-    // Body fat uses right axis (0–50 %)
+    // Normalize both datasets to 0–100 scale for plotting
+    final normalizedWPts = wPts
+        .map((p) => (date: p.date, value: (p.value - minW) / wRange * 100))
+        .toList();
+
+    // Body fat normalized to its actual range
+    double minBf = 0;
+    double maxBf = 50;
+    final normalizedBfPts = bfPts.isNotEmpty
+        ? () {
+            final allBf = bfPts.map((p) => p.value);
+            minBf = allBf.reduce((a, b) => a < b ? a : b);
+            maxBf = allBf.reduce((a, b) => a > b ? a : b);
+            final bfRange = maxBf - minBf;
+            return bfPts
+                .map((p) => (
+                      date: p.date,
+                      value: bfRange > 0
+                          ? (p.value - minBf) / bfRange * 100
+                          : 50.0,
+                    ))
+                .toList();
+          }()
+        : <({DateTime date, double value})>[];
+
     final every = _labelEvery(wPts.length);
 
     return SizedBox(
       height: 180,
       child: LineChart(
         LineChartData(
-          minY: minW,
-          maxY: maxW,
+          minY: 0,
+          maxY: 100,
+          minX: 0,
+          maxX: (wPts.length - 1).toDouble(),
           gridData: FlGridData(
             drawHorizontalLine: true,
             drawVerticalLine: false,
@@ -1096,7 +1123,7 @@ class _WeightTrendChart extends StatelessWidget {
                 showTitles: true,
                 reservedSize: 36,
                 getTitlesWidget: (v, _) => Text(
-                  '${v.round()} kg',
+                  '${(minW + v / 100 * wRange).round()} kg',
                   style: const TextStyle(fontSize: 9),
                 ),
               ),
@@ -1105,7 +1132,18 @@ class _WeightTrendChart extends StatelessWidget {
                 ? AxisTitles(
                     axisNameWidget: Text(l.reportsBodyFat,
                         style: const TextStyle(fontSize: 9)),
-                    sideTitles: const SideTitles(showTitles: false),
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 36,
+                      getTitlesWidget: (v, _) {
+                        final bfRange = maxBf - minBf;
+                        final actualBf = minBf + v / 100 * bfRange;
+                        return Text(
+                          '${actualBf.round()}%',
+                          style: const TextStyle(fontSize: 9),
+                        );
+                      },
+                    ),
                   )
                 : const AxisTitles(
                     sideTitles: SideTitles(showTitles: false)),
@@ -1129,7 +1167,7 @@ class _WeightTrendChart extends StatelessWidget {
           ),
           lineBarsData: [
             LineChartBarData(
-              spots: wPts
+              spots: normalizedWPts
                   .asMap()
                   .entries
                   .map((e) => FlSpot(e.key.toDouble(), e.value.value))
@@ -1143,9 +1181,9 @@ class _WeightTrendChart extends StatelessWidget {
                   getDotPainter: (_, __, ___, ____) =>
                       FlDotCirclePainter(radius: 3, color: Colors.deepOrange)),
             ),
-            if (bfPts.isNotEmpty)
+            if (normalizedBfPts.isNotEmpty)
               LineChartBarData(
-                spots: bfPts
+                spots: normalizedBfPts
                     .asMap()
                     .entries
                     .map((e) => FlSpot(e.key.toDouble(), e.value.value))
