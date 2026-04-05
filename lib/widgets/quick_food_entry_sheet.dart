@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
+import '../models/food_portion.dart';
 import '../models/food_shortcut.dart';
 import '../services/food_database_service.dart';
 import '../services/food_shortcuts_service.dart';
@@ -47,6 +48,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   List<FoodEntry> _recentEntries = [];
   List<FoodItem> _favouriteFoods = [];
   List<FoodShortcut> _shortcuts = [];
+  Map<String, FoodItem> _recentFoods = {};
   bool _loading = true;
   String? _addingId;
 
@@ -104,7 +106,29 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           deduped.add(e);
         }
       }
-      if (mounted) setState(() => _recentEntries = deduped);
+
+      // Load food items for entries with foodId
+      final foodService = FoodDatabaseService(widget.dbService);
+      final uniqueFoodIds =
+          deduped.where((e) => e.foodId != null).map((e) => e.foodId!).toSet();
+      final foodFutures = uniqueFoodIds
+          .map((id) => foodService.getFoodById(id))
+          .toList();
+      final loadedFoods = await Future.wait(foodFutures);
+      final recentFoods = <String, FoodItem>{};
+      for (int i = 0; i < uniqueFoodIds.length; i++) {
+        final food = loadedFoods[i];
+        if (food != null) {
+          recentFoods[uniqueFoodIds.elementAt(i)] = food;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _recentEntries = deduped;
+          _recentFoods = recentFoods;
+        });
+      }
     } catch (_) {}
   }
 
@@ -343,6 +367,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                       entries: _recentEntries,
                       addingId: _addingId,
                       onTap: (entry) async {
+                        final food =
+                            entry.foodId != null ? _recentFoods[entry.foodId] : null;
                         final confirmed = await _confirm(
                           name: entry.name,
                           amount: entry.amount,
@@ -355,6 +381,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                           sugar: entry.sugar,
                           sodium: entry.sodium,
                           foodId: entry.foodId,
+                          scaleByAmount: food != null,
+                          food: food,
                           isLiquid: entry.isLiquid,
                           amountMl: entry.amountMl,
                           isMeal: entry.isMeal,
@@ -710,6 +738,8 @@ class _ConfirmDialog extends StatefulWidget {
 class _ConfirmDialogState extends State<_ConfirmDialog> {
   late TextEditingController _amountCtrl;
   late MealType _mealType;
+  late String _selectedUnit;
+  FoodPortion? _selectedPortion;
   bool _savingShortcut = false;
 
   double get _currentAmount =>
@@ -721,6 +751,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     _amountCtrl = TextEditingController(
         text: widget.initialAmount.toStringAsFixed(0));
     _mealType = widget.mealType;
+    _selectedUnit = widget.unit;
+    // Check if the unit matches a named portion
+    if (widget.food != null) {
+      _selectedPortion = widget.food!.portions.cast<FoodPortion?>().firstWhere(
+            (p) => p!.name == widget.unit,
+            orElse: () => null,
+          );
+    }
   }
 
   @override
@@ -729,17 +767,54 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     super.dispose();
   }
 
+  List<String> _availableUnits() {
+    final food = widget.food;
+    if (food == null) return [widget.unit]; // No switching without food
+    final units = <String>[];
+    for (final p in food.portions) {
+      units.add(p.name);
+    }
+    units.add('g');
+    if (food.isLiquid || widget.unit == 'ml') {
+      units.add('ml');
+    }
+    return units;
+  }
+
+  void _onUnitChanged(String unit) {
+    final food = widget.food;
+    setState(() {
+      _selectedUnit = unit;
+      _selectedPortion = food?.portions.cast<FoodPortion?>().firstWhere(
+            (p) => p!.name == unit,
+            orElse: () => null,
+          );
+      // Reset amount: 1 for named portions, servingSize or 100 for g/ml
+      if (_selectedPortion != null) {
+        _amountCtrl.text = '1';
+      } else if (unit == 'g' || unit == 'ml') {
+        final servingSize = food?.servingSize ?? 100.0;
+        _amountCtrl.text = servingSize.toStringAsFixed(0);
+      }
+    });
+  }
+
   FoodEntry _buildEntry() {
     final amount = _currentAmount;
     final scale = amount / widget.initialAmount;
-    final f = widget.scaleByAmount ? amount / 100.0 : scale;
     final food = widget.food;
     final re = widget.recentEntry;
 
     double calories, protein, fat, carbs;
     double? fiber, sugar, sodium, scaledAmountMl;
+    String unitToStore = _selectedUnit;
 
     if (food != null) {
+      // Calculate grams from selected unit
+      final grams = _selectedPortion != null
+          ? amount * _selectedPortion!.amountG // named portion → grams
+          : amount; // g or ml directly
+      final f = grams / 100.0;
       calories = food.calories * f;
       protein = food.protein * f;
       fat = food.fat * f;
@@ -747,7 +822,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       fiber = food.fiber != null ? food.fiber! * f : null;
       sugar = food.sugar != null ? food.sugar! * f : null;
       sodium = food.sodium != null ? food.sodium! * f : null;
+      if (food.isLiquid) {
+        scaledAmountMl = grams; // grams ≈ ml for liquids
+      }
     } else if (re != null) {
+      // No food item: scale stored totals by ratio (unit can't change)
       calories = re.calories * scale;
       protein = re.protein * scale;
       fat = re.fat * scale;
@@ -755,19 +834,21 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       fiber = re.fiber != null ? re.fiber! * scale : null;
       sugar = re.sugar != null ? re.sugar! * scale : null;
       sodium = re.sodium != null ? re.sodium! * scale : null;
+      if (widget.isLiquid && widget.amountMl != null) {
+        scaledAmountMl = widget.amountMl! * scale;
+      }
     } else {
-      calories = widget.calories * scale;
-      protein = widget.protein * scale;
-      fat = widget.fat * scale;
-      carbs = widget.carbs * scale;
-      fiber = widget.fiber != null ? widget.fiber! * scale : null;
-      sugar = widget.sugar != null ? widget.sugar! * scale : null;
-      sodium = widget.sodium != null ? widget.sodium! * scale : null;
-    }
-
-    // Scale amountMl if present
-    if (widget.isLiquid && widget.amountMl != null) {
-      scaledAmountMl = widget.amountMl! * scale;
+      final f = widget.scaleByAmount ? amount / 100.0 : scale;
+      calories = widget.calories * f;
+      protein = widget.protein * f;
+      fat = widget.fat * f;
+      carbs = widget.carbs * f;
+      fiber = widget.fiber != null ? widget.fiber! * f : null;
+      sugar = widget.sugar != null ? widget.sugar! * f : null;
+      sodium = widget.sodium != null ? widget.sodium! * f : null;
+      if (widget.isLiquid && widget.amountMl != null) {
+        scaledAmountMl = widget.amountMl! * scale;
+      }
     }
 
     return FoodEntry(
@@ -778,7 +859,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       mealType: _mealType,
       name: widget.name,
       amount: amount,
-      unit: widget.unit,
+      unit: unitToStore,
       calories: calories,
       protein: protein,
       fat: fat,
@@ -804,21 +885,46 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Amount
-          TextFormField(
-            controller: _amountCtrl,
-            decoration: InputDecoration(
-              labelText: 'Menge',
-              suffixText: widget.unit,
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
+          // Amount + Unit
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _amountCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Menge',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
+                  ],
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Unit dropdown
+              if (_availableUnits().length > 1)
+                DropdownButton<String>(
+                  value: _selectedUnit,
+                  items: _availableUnits()
+                      .map((unit) => DropdownMenuItem(
+                            value: unit,
+                            child: Text(unit, style: const TextStyle(fontSize: 13)),
+                          ))
+                      .toList(),
+                  onChanged: (newUnit) {
+                    if (newUnit != null) _onUnitChanged(newUnit);
+                  },
+                )
+              else
+                Text(
+                  _selectedUnit,
+                  style: const TextStyle(fontSize: 13),
+                ),
             ],
-            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           // Nutrition preview
