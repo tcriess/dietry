@@ -51,6 +51,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ── Permissions ──────────────────────────────────────────────────────────────
+permissions:
+  contents: write
+
 # ══════════════════════════════════════════════════════════════════════════════
 jobs:
 
