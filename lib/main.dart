@@ -1930,6 +1930,15 @@ class OverviewScreen extends StatelessWidget {
   // ✅ Berechne verbrannte Kalorien aus activities
   double get totalCaloriesBurned => activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
 
+  String _formatRemainingCalories(double remaining, AppLocalizations l) {
+    final absValue = remaining.abs().toStringAsFixed(0);
+    if (remaining >= 0) {
+      return '$absValue kcal';
+    } else {
+      return l.caloriesTooMuch(absValue);
+    }
+  }
+
   Widget _buildNutrientCard(
     BuildContext context,
     String label,
@@ -2046,9 +2055,9 @@ class OverviewScreen extends StatelessWidget {
                     remainingValue,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: (int.tryParse(remainingValue.split(' ').first) ?? 0) >= 0
-                          ? Colors.green
-                          : Colors.red,
+                      color: remainingValue.contains('too much') || remainingValue.contains('zu viel') || remainingValue.contains('demasiado')
+                          ? Colors.red
+                          : Colors.green,
                     ),
                   ),
                 ],
@@ -2061,7 +2070,7 @@ class OverviewScreen extends StatelessWidget {
   }
 
   Widget _buildNutritionOverview(BuildContext context, AppLocalizations l) {
-    final remainingCalories = (goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2);
+    final remainingCalories = goal.calories - totalCalories + totalCaloriesBurned;
     final remainingProtein = (goal.protein - totalProtein).clamp(0, goal.protein);
     final remainingFat = (goal.fat - totalFat).clamp(0, goal.fat);
     final remainingCarbs = (goal.carbs - totalCarbs).clamp(0, goal.carbs);
@@ -2079,7 +2088,7 @@ class OverviewScreen extends StatelessWidget {
               '${goal.calories.toStringAsFixed(0)} kcal',
               '${totalCalories.toStringAsFixed(0)} kcal',
               totalCaloriesBurned > 0 ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal' : '-',
-              '${remainingCalories.toStringAsFixed(0)} kcal',
+              _formatRemainingCalories(remainingCalories, l),
               Colors.deepPurple,
             ),
           _buildNutrientCard(
@@ -2135,7 +2144,7 @@ class OverviewScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.green.shade700),
               )),
               DataCell(Text(
-                remainingCalories.toStringAsFixed(0),
+                _formatRemainingCalories(remainingCalories, l),
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: remainingCalories >= 0 ? Colors.green : Colors.red,
@@ -2410,7 +2419,7 @@ class OverviewScreen extends StatelessWidget {
               ],
             ),
             Text(
-              '${l.remaining}: ${((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0)} kcal',
+              '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0

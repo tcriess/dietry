@@ -590,5 +590,13 @@
       "error": {"type": "String"}
     }
   },
-  "macroOnlyMode": "Solo macros (sin objetivo calórico)"
+  "macroOnlyMode": "Solo macros (sin objetivo calórico)",
+  "caloriesTooMuch": "{amount} demasiado",
+  "@caloriesTooMuch": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }

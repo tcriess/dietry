@@ -1273,4 +1273,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get macroOnlyMode => 'Nur Makros tracken (kein Kalorienziel)';
+
+  @override
+  String caloriesTooMuch(String amount) {
+    return '$amount zu viel';
+  }
 }

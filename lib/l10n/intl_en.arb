@@ -590,5 +590,13 @@
       "error": {"type": "String"}
     }
   },
-  "macroOnlyMode": "Track macros only (no calorie goal)"
+  "macroOnlyMode": "Track macros only (no calorie goal)",
+  "caloriesTooMuch": "{amount} too much",
+  "@caloriesTooMuch": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }
