@@ -1035,18 +1035,19 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
               const SizedBox(height: 24),
 
-              // Optional: Fiber, Sugar, Sodium, Saturated Fat
+              // Optional: Saturated Fat, Sugar, Fiber, Salt
               Text('Optional', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _fiberController,
-                      decoration: const InputDecoration(
-                        labelText: 'Ballaststoffe',
+                      controller: _saturatedFatController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientSaturatedFat,
+                        helperText: l.ofWhichFat,
                         suffixText: 'g',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1056,11 +1057,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
-                      controller: _saturatedFatController,
-                      decoration: const InputDecoration(
-                        labelText: 'Gesättigte Fette',
+                      controller: _sugarController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientSugar,
+                        helperText: l.ofWhichCarbs,
                         suffixText: 'g',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1074,11 +1076,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _sugarController,
-                      decoration: const InputDecoration(
-                        labelText: 'Zucker',
+                      controller: _fiberController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientFiber,
                         suffixText: 'g',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1089,10 +1091,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _sodiumController,
-                      decoration: const InputDecoration(
-                        labelText: 'Salz',
+                      decoration: InputDecoration(
+                        labelText: l.nutrientSalt,
                         suffixText: 'g',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                         isDense: true,
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),

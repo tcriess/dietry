@@ -642,9 +642,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _fiberController,
+                      controller: _saturatedFatController,
                       decoration: InputDecoration(
-                        labelText: l.nutrientFiber,
+                        labelText: l.nutrientSaturatedFat,
+                        helperText: l.ofWhichFat,
                         suffixText: 'g',
                         border: const OutlineInputBorder(),
                         isDense: true,
@@ -656,9 +657,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
-                      controller: _saturatedFatController,
+                      controller: _sugarController,
                       decoration: InputDecoration(
-                        labelText: l.nutrientSaturatedFat,
+                        labelText: l.nutrientSugar,
+                        helperText: l.ofWhichCarbs,
                         suffixText: 'g',
                         border: const OutlineInputBorder(),
                         isDense: true,
@@ -674,9 +676,9 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _sugarController,
+                      controller: _fiberController,
                       decoration: InputDecoration(
-                        labelText: l.nutrientSugar,
+                        labelText: l.nutrientFiber,
                         suffixText: 'g',
                         border: const OutlineInputBorder(),
                         isDense: true,

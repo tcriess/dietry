@@ -42,10 +42,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nutrientSaturatedFat => 'Grasas saturadas';
 
   @override
-  String get ofWhichCarbs => 'de los cuales carbohidratos';
+  String get ofWhichCarbs => 'de los cuales azúcares';
 
   @override
-  String get ofWhichFat => 'de los cuales grasas';
+  String get ofWhichFat => 'de los cuales saturadas';
 
   @override
   String get goal => 'Meta';

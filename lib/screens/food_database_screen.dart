@@ -592,16 +592,9 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                 ),
                 const SizedBox(height: 10),
 
-                // Optional: Fiber & Saturated Fat
+                // Optional: Saturated Fat & Sugar
                 Row(
                   children: [
-                    Expanded(
-                        child: _numField(
-                            controller: _fiberController,
-                            label: l.nutrientFiber,
-                            suffix: 'g',
-                            requiredMsg: l.requiredField)),
-                    const SizedBox(width: 8),
                     Expanded(
                         child: TextFormField(
                           controller: _saturatedFatController,
@@ -615,13 +608,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                         )),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Optional: Sugar & Salt
-                Row(
-                  children: [
+                    const SizedBox(width: 8),
                     Expanded(
                         child: TextFormField(
                           controller: _sugarController,
@@ -629,6 +616,25 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             labelText: l.nutrientSugar,
                             suffixText: 'g',
                             helperText: l.ofWhichCarbs,
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Optional: Fiber & Salt
+                Row(
+                  children: [
+                    Expanded(
+                        child: TextFormField(
+                          controller: _fiberController,
+                          decoration: InputDecoration(
+                            labelText: l.nutrientFiber,
+                            suffixText: 'g',
                             border: const OutlineInputBorder(),
                             isDense: true,
                           ),
