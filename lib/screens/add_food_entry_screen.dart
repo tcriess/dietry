@@ -53,7 +53,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   final _proteinController = TextEditingController();
   final _fatController = TextEditingController();
   final _carbsController = TextEditingController();
-  
+  final _fiberController = TextEditingController();
+  final _sugarController = TextEditingController();
+  final _sodiumController = TextEditingController();
+  final _saturatedFatController = TextEditingController();
+
   // State
   FoodItem? _selectedFood;
   Map<String, double> _selectedMicros = const {};
@@ -84,6 +88,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     _proteinController.dispose();
     _fatController.dispose();
     _carbsController.dispose();
+    _fiberController.dispose();
+    _sugarController.dispose();
+    _sodiumController.dispose();
+    _saturatedFatController.dispose();
     super.dispose();
   }
   
@@ -165,7 +173,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   void _calculateNutrition() {
     if (_selectedFood == null) return;
     if (_amountController.text.isEmpty) return;
-    
+
     final rawAmount = double.tryParse(_amountController.text);
     if (rawAmount == null || rawAmount <= 0) return;
 
@@ -174,12 +182,24 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         : rawAmount;
 
     final nutrition = _selectedFood!.calculateNutrition(grams);
-    
+
     setState(() {
       _caloriesController.text = nutrition['calories']!.toStringAsFixed(0);
       _proteinController.text = nutrition['protein']!.toStringAsFixed(1);
       _fatController.text = nutrition['fat']!.toStringAsFixed(1);
       _carbsController.text = nutrition['carbs']!.toStringAsFixed(1);
+      if (nutrition['fiber'] != null) {
+        _fiberController.text = nutrition['fiber']!.toStringAsFixed(1);
+      }
+      if (nutrition['sugar'] != null) {
+        _sugarController.text = nutrition['sugar']!.toStringAsFixed(1);
+      }
+      if (nutrition['sodium'] != null) {
+        _sodiumController.text = nutrition['sodium']!.toStringAsFixed(1);
+      }
+      if (nutrition['saturated_fat'] != null) {
+        _saturatedFatController.text = nutrition['saturated_fat']!.toStringAsFixed(1);
+      }
     });
   }
   
@@ -281,6 +301,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         protein: double.parse(_proteinController.text)  * _scale,
         fat:     double.parse(_fatController.text)       * _scale,
         carbs:   double.parse(_carbsController.text)     * _scale,
+        fiber:   double.tryParse(_fiberController.text) != null ? double.parse(_fiberController.text) * _scale : null,
+        sugar:   double.tryParse(_sugarController.text) != null ? double.parse(_sugarController.text) * _scale : null,
+        sodium:  double.tryParse(_sodiumController.text) != null ? double.parse(_sodiumController.text) * _scale : null,
+        saturatedFat: double.tryParse(_saturatedFatController.text) != null ? double.parse(_saturatedFatController.text) * _scale : null,
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: false,
@@ -1008,9 +1032,78 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
+              // Optional: Fiber, Sugar, Sodium, Saturated Fat
+              Text('Optional', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _fiberController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ballaststoffe',
+                        suffixText: 'g',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      readOnly: _selectedFood != null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _saturatedFatController,
+                      decoration: const InputDecoration(
+                        labelText: 'Gesättigte Fette',
+                        suffixText: 'g',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      readOnly: _selectedFood != null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _sugarController,
+                      decoration: const InputDecoration(
+                        labelText: 'Zucker',
+                        suffixText: 'g',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      readOnly: _selectedFood != null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _sodiumController,
+                      decoration: const InputDecoration(
+                        labelText: 'Salz',
+                        suffixText: 'g',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      readOnly: _selectedFood != null,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
               // Zur Datenbank hinzufügen (manuell oder externes Ergebnis)
               if (_showManualEntry || (_selectedFood != null && _selectedFood!.id.isEmpty)) ...[
                 ValueListenableBuilder(
@@ -1133,6 +1226,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   late final TextEditingController _proteinController;
   late final TextEditingController _fatController;
   late final TextEditingController _carbsController;
+  late final TextEditingController _fiberController;
+  late final TextEditingController _sugarController;
+  late final TextEditingController _sodiumController;
+  late final TextEditingController _saturatedFatController;
   late final TextEditingController _categoryController;
   late final TextEditingController _brandController;
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
@@ -1147,6 +1244,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     _proteinController = TextEditingController(text: widget.initialProtein.toStringAsFixed(1));
     _fatController = TextEditingController(text: widget.initialFat.toStringAsFixed(1));
     _carbsController = TextEditingController(text: widget.initialCarbs.toStringAsFixed(1));
+    _fiberController = TextEditingController();
+    _sugarController = TextEditingController();
+    _sodiumController = TextEditingController();
+    _saturatedFatController = TextEditingController();
     _categoryController = TextEditingController(text: widget.initialCategory ?? '');
     _brandController = TextEditingController(text: widget.initialBrand ?? '');
     // Portionszeilen aus initialPortions übernehmen
@@ -1166,6 +1267,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     _proteinController.dispose();
     _fatController.dispose();
     _carbsController.dispose();
+    _fiberController.dispose();
+    _sugarController.dispose();
+    _sodiumController.dispose();
+    _saturatedFatController.dispose();
     _categoryController.dispose();
     _brandController.dispose();
     for (final row in _portionRows) {
@@ -1197,9 +1302,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       protein: double.parse(_proteinController.text),
       fat: double.parse(_fatController.text),
       carbs: double.parse(_carbsController.text),
-      fiber: null,
-      sugar: null,
-      sodium: null,
+      fiber: double.tryParse(_fiberController.text),
+      sugar: double.tryParse(_sugarController.text),
+      sodium: double.tryParse(_sodiumController.text),
+      saturatedFat: double.tryParse(_saturatedFatController.text),
       servingSize: null,
       servingUnit: null,
       portions: portions,

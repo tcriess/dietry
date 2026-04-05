@@ -182,6 +182,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       fiber: sc.fiber,
       sugar: sc.sugar,
       sodium: sc.sodium,
+      saturatedFat: sc.saturatedFat,
       isLiquid: sc.isLiquid,
       amountMl: sc.amountMl,
       isMeal: sc.isMeal,
@@ -204,6 +205,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     double? fiber,
     double? sugar,
     double? sodium,
+    double? saturatedFat,
     String? foodId,
     bool scaleByAmount = false, // true for food_database items (per-100g values)
     FoodItem? food,
@@ -226,6 +228,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         fiber: fiber,
         sugar: sugar,
         sodium: sodium,
+        saturatedFat: saturatedFat,
         foodId: foodId,
         scaleByAmount: scaleByAmount,
         food: food,
@@ -254,6 +257,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     double? fiber,
     double? sugar,
     double? sodium,
+    double? saturatedFat,
     bool isLiquid = false,
     double? amountMl,
     bool isMeal = false,
@@ -272,6 +276,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       fiber: fiber,
       sugar: sugar,
       sodium: sodium,
+      saturatedFat: saturatedFat,
       isLiquid: isLiquid,
       amountMl: amountMl,
       isMeal: isMeal,
@@ -380,6 +385,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                           fiber: entry.fiber,
                           sugar: entry.sugar,
                           sodium: entry.sodium,
+                          saturatedFat: entry.saturatedFat,
                           foodId: entry.foodId,
                           scaleByAmount: food != null,
                           food: food,
@@ -413,6 +419,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                               : null,
                           sodium: food.sodium != null
                               ? food.sodium! * defaultAmount / 100
+                              : null,
+                          saturatedFat: food.saturatedFat != null
+                              ? food.saturatedFat! * defaultAmount / 100
                               : null,
                           foodId: food.id,
                           scaleByAmount: true,
@@ -665,6 +674,7 @@ class _ConfirmDialog extends StatefulWidget {
   final double? fiber;
   final double? sugar;
   final double? sodium;
+  final double? saturatedFat;
   final String? foodId;
 
   /// If true, all nutrition values are scaled proportionally when amount changes.
@@ -701,6 +711,7 @@ class _ConfirmDialog extends StatefulWidget {
     double? fiber,
     double? sugar,
     double? sodium,
+    double? saturatedFat,
     bool isLiquid,
     double? amountMl,
     bool isMeal,
@@ -718,6 +729,7 @@ class _ConfirmDialog extends StatefulWidget {
     this.fiber,
     this.sugar,
     this.sodium,
+    this.saturatedFat,
     this.foodId,
     required this.scaleByAmount,
     this.food,
@@ -806,7 +818,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     final re = widget.recentEntry;
 
     double calories, protein, fat, carbs;
-    double? fiber, sugar, sodium, scaledAmountMl;
+    double? fiber, sugar, sodium, saturatedFat, scaledAmountMl;
     String unitToStore = _selectedUnit;
 
     if (food != null) {
@@ -822,6 +834,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       fiber = food.fiber != null ? food.fiber! * f : null;
       sugar = food.sugar != null ? food.sugar! * f : null;
       sodium = food.sodium != null ? food.sodium! * f : null;
+      saturatedFat = food.saturatedFat != null ? food.saturatedFat! * f : null;
       if (food.isLiquid) {
         scaledAmountMl = grams; // grams ≈ ml for liquids
       }
@@ -834,6 +847,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       fiber = re.fiber != null ? re.fiber! * scale : null;
       sugar = re.sugar != null ? re.sugar! * scale : null;
       sodium = re.sodium != null ? re.sodium! * scale : null;
+      saturatedFat = re.saturatedFat != null ? re.saturatedFat! * scale : null;
       if (widget.isLiquid && widget.amountMl != null) {
         scaledAmountMl = widget.amountMl! * scale;
       }
@@ -846,6 +860,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       fiber = widget.fiber != null ? widget.fiber! * f : null;
       sugar = widget.sugar != null ? widget.sugar! * f : null;
       sodium = widget.sodium != null ? widget.sodium! * f : null;
+      saturatedFat = widget.saturatedFat != null ? widget.saturatedFat! * f : null;
       if (widget.isLiquid && widget.amountMl != null) {
         scaledAmountMl = widget.amountMl! * scale;
       }
@@ -867,6 +882,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       fiber: fiber,
       sugar: sugar,
       sodium: sodium,
+      saturatedFat: saturatedFat,
       isLiquid: widget.isLiquid,
       amountMl: scaledAmountMl,
       isMeal: widget.isMeal,

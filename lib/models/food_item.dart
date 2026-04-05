@@ -19,6 +19,7 @@ class FoodItem {
   final double? fiber;
   final double? sugar;
   final double? sodium;
+  final double? saturatedFat;
   
   // Portionsgröße (Vorschlag)
   final double? servingSize;
@@ -58,6 +59,7 @@ class FoodItem {
     this.fiber,
     this.sugar,
     this.sodium,
+    this.saturatedFat,
     this.servingSize,
     this.servingUnit,
     this.portions = const [],
@@ -86,6 +88,7 @@ class FoodItem {
       fiber: json['fiber'] != null ? (json['fiber'] as num).toDouble() : null,
       sugar: json['sugar'] != null ? (json['sugar'] as num).toDouble() : null,
       sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
+      saturatedFat: json['saturated_fat'] != null ? (json['saturated_fat'] as num).toDouble() : null,
       servingSize: json['serving_size'] != null ? (json['serving_size'] as num).toDouble() : null,
       servingUnit: json['serving_unit'] as String?,
       portions: _parsePortions(json),
@@ -133,6 +136,7 @@ class FoodItem {
       if (fiber != null) 'fiber': fiber,
       if (sugar != null) 'sugar': sugar,
       if (sodium != null) 'sodium': sodium,
+      if (saturatedFat != null) 'saturated_fat': saturatedFat,
       if (servingSize != null) 'serving_size': servingSize,
       if (servingUnit != null) 'serving_unit': servingUnit,
       if (portions.isNotEmpty) 'portions': portions.map((p) => p.toJson()).toList(),
@@ -164,6 +168,7 @@ class FoodItem {
       if (fiber != null) 'fiber': fiber! * factor,
       if (sugar != null) 'sugar': sugar! * factor,
       if (sodium != null) 'sodium': sodium! * factor,
+      if (saturatedFat != null) 'saturated_fat': saturatedFat! * factor,
     };
   }
   
@@ -179,6 +184,7 @@ class FoodItem {
     double? fiber,
     double? sugar,
     double? sodium,
+    double? saturatedFat,
     double? servingSize,
     String? servingUnit,
     List<FoodPortion>? portions,
@@ -204,6 +210,7 @@ class FoodItem {
       fiber: fiber ?? this.fiber,
       sugar: sugar ?? this.sugar,
       sodium: sodium ?? this.sodium,
+      saturatedFat: saturatedFat ?? this.saturatedFat,
       servingSize: servingSize ?? this.servingSize,
       servingUnit: servingUnit ?? this.servingUnit,
       portions: portions ?? this.portions,

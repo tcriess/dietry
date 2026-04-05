@@ -160,6 +160,24 @@ abstract class AppLocalizations {
   /// **'Salz'**
   String get nutrientSalt;
 
+  /// No description provided for @nutrientSaturatedFat.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesättigte Fettsäuren'**
+  String get nutrientSaturatedFat;
+
+  /// No description provided for @ofWhichCarbs.
+  ///
+  /// In de, this message translates to:
+  /// **'davon Kohlenhydrate'**
+  String get ofWhichCarbs;
+
+  /// No description provided for @ofWhichFat.
+  ///
+  /// In de, this message translates to:
+  /// **'davon Fett'**
+  String get ofWhichFat;
+
   /// No description provided for @goal.
   ///
   /// In de, this message translates to:

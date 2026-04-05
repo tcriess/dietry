@@ -25,7 +25,8 @@ class FoodEntry {
   final double? fiber;
   final double? sugar;
   final double? sodium;
-  
+  final double? saturatedFat;
+
   // Notizen
   final String? notes;
 
@@ -58,6 +59,7 @@ class FoodEntry {
     this.fiber,
     this.sugar,
     this.sodium,
+    this.saturatedFat,
     this.notes,
     this.isLiquid = false,
     this.amountMl,
@@ -84,6 +86,7 @@ class FoodEntry {
       fiber: json['fiber'] != null ? (json['fiber'] as num).toDouble() : null,
       sugar: json['sugar'] != null ? (json['sugar'] as num).toDouble() : null,
       sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
+      saturatedFat: json['saturated_fat'] != null ? (json['saturated_fat'] as num).toDouble() : null,
       notes: json['notes'] as String?,
       isLiquid: json['is_liquid'] as bool? ?? false,
       amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
@@ -111,6 +114,7 @@ class FoodEntry {
       if (fiber != null) 'fiber': fiber,
       if (sugar != null) 'sugar': sugar,
       if (sodium != null) 'sodium': sodium,
+      if (saturatedFat != null) 'saturated_fat': saturatedFat,
       if (notes != null) 'notes': notes,
       'is_liquid': isLiquid,
       if (amountMl != null) 'amount_ml': amountMl,
@@ -137,6 +141,7 @@ class FoodEntry {
     double? fiber,
     double? sugar,
     double? sodium,
+    double? saturatedFat,
     String? notes,
     bool? isLiquid,
     double? amountMl,
@@ -160,6 +165,7 @@ class FoodEntry {
       fiber: fiber ?? this.fiber,
       sugar: sugar ?? this.sugar,
       sodium: sodium ?? this.sodium,
+      saturatedFat: saturatedFat ?? this.saturatedFat,
       notes: notes ?? this.notes,
       isLiquid: isLiquid ?? this.isLiquid,
       amountMl: amountMl ?? this.amountMl,

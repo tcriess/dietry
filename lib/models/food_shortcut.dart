@@ -18,6 +18,7 @@ class FoodShortcut {
   final double? fiber;
   final double? sugar;
   final double? sodium;
+  final double? saturatedFat;
   final bool isLiquid;
   final double? amountMl;
   final bool isMeal;
@@ -36,6 +37,7 @@ class FoodShortcut {
     this.fiber,
     this.sugar,
     this.sodium,
+    this.saturatedFat,
     this.isLiquid = false,
     this.amountMl,
     this.isMeal = false,
@@ -55,6 +57,7 @@ class FoodShortcut {
         fiber: json['fiber'] != null ? (json['fiber'] as num).toDouble() : null,
         sugar: json['sugar'] != null ? (json['sugar'] as num).toDouble() : null,
         sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
+        saturatedFat: json['saturated_fat'] != null ? (json['saturated_fat'] as num).toDouble() : null,
         isLiquid: json['is_liquid'] as bool? ?? false,
         amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
         isMeal: json['is_meal'] as bool? ?? false,
@@ -74,6 +77,7 @@ class FoodShortcut {
         if (fiber != null) 'fiber': fiber,
         if (sugar != null) 'sugar': sugar,
         if (sodium != null) 'sodium': sodium,
+        if (saturatedFat != null) 'saturated_fat': saturatedFat,
         'is_liquid': isLiquid,
         if (amountMl != null) 'amount_ml': amountMl,
         'is_meal': isMeal,

@@ -39,6 +39,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutrientSalt => 'Salt';
 
   @override
+  String get nutrientSaturatedFat => 'Saturated Fat';
+
+  @override
+  String get ofWhichCarbs => 'of which carbohydrates';
+
+  @override
+  String get ofWhichFat => 'of which fat';
+
+  @override
   String get goal => 'Goal';
 
   @override
