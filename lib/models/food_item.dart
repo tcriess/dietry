@@ -77,10 +77,21 @@ class FoodItem {
   
   /// Erstelle FoodItem aus JSON (Datenbank-Response)
   factory FoodItem.fromJson(Map<String, dynamic> json) {
+    // Safely parse required fields with null checks
+    final id = json['id'] as String?;
+    final name = json['name'] as String?;
+    final createdAtRaw = json['created_at'] as String?;
+    final updatedAtRaw = json['updated_at'] as String?;
+
+    if (id == null || name == null || createdAtRaw == null || updatedAtRaw == null) {
+      throw FormatException('Missing required fields in FoodItem.fromJson: '
+          'id=$id, name=$name, created_at=$createdAtRaw, updated_at=$updatedAtRaw');
+    }
+
     return FoodItem(
-      id: json['id'] as String,
+      id: id,
       userId: json['user_id'] as String?,
-      name: json['name'] as String,
+      name: name,
       calories: (json['calories'] as num).toDouble(),
       protein: (json['protein'] as num).toDouble(),
       fat: (json['fat'] as num).toDouble(),
@@ -90,19 +101,26 @@ class FoodItem {
       sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
       saturatedFat: json['saturated_fat'] != null ? (json['saturated_fat'] as num).toDouble() : null,
       servingSize: json['serving_size'] != null ? (json['serving_size'] as num).toDouble() : null,
-      servingUnit: json['serving_unit'] as String?,
+      servingUnit: _safeString(json['serving_unit']),
       portions: _parsePortions(json),
-      category: json['category'] as String?,
-      brand: json['brand'] as String?,
-      barcode: json['barcode'] as String?,
-      isPublic: json['is_public'] as bool,
+      category: _safeString(json['category']),
+      brand: _safeString(json['brand']),
+      barcode: _safeString(json['barcode']),
+      isPublic: json['is_public'] as bool? ?? false,
       isApproved: json['is_approved'] as bool? ?? false,
       isFavourite: json['is_favourite'] as bool? ?? false,
       isLiquid: json['is_liquid'] as bool? ?? false,
-      source: json['source'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      source: _safeString(json['source']),
+      createdAt: DateTime.parse(createdAtRaw),
+      updatedAt: DateTime.parse(updatedAtRaw),
     );
+  }
+
+  /// Safely cast dynamic value to String or null
+  static String? _safeString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value.isEmpty ? null : value;
+    return value.toString();
   }
   
   static List<FoodPortion> _parsePortions(Map<String, dynamic> json) {
