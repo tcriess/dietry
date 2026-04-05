@@ -39,6 +39,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get nutrientSalt => 'Sal';
 
   @override
+  String get nutrientSaturatedFat => 'Grasas saturadas';
+
+  @override
+  String get ofWhichCarbs => 'de los cuales azúcares';
+
+  @override
+  String get ofWhichFat => 'de los cuales saturadas';
+
+  @override
   String get goal => 'Meta';
 
   @override
@@ -93,6 +102,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get navActivities => 'Actividades';
+
+  @override
+  String get navReports => 'Informes';
 
   @override
   String get mealBreakfast => 'Desayuno';
@@ -354,6 +366,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get foodPublicOff => 'Solo tú ves esta entrada';
+
+  @override
+  String get foodIsLiquid => 'Alimento líquido';
+
+  @override
+  String get foodIsLiquidHint =>
+      'La cantidad cuenta para la ingesta diaria de agua';
 
   @override
   String get newFood => 'Nuevo Alimento';
@@ -689,6 +708,75 @@ class AppLocalizationsEs extends AppLocalizations {
   String get trackingUseMethod => 'Usar Este Método';
 
   @override
+  String get trackingMethodBmrOnlyName => 'BMR + Seguimiento';
+
+  @override
+  String get trackingMethodBmrOnlyShort =>
+      'Haz seguimiento de todas las actividades';
+
+  @override
+  String get trackingMethodBmrOnlyDetail =>
+      'Tu objetivo de calorías se basa únicamente en tu Tasa Metabólica Basal (BMR). Debes hacer seguimiento de TODAS las actividades físicas (caminar, ejercicio, tareas del hogar). Este método es el más preciso pero requiere seguimiento consistente.';
+
+  @override
+  String get trackingMethodBmrOnlyRecommended =>
+      'Recomendado para:\n• Máxima precisión\n• Te gusta hacer seguimiento de todo\n• Niveles de actividad muy variables';
+
+  @override
+  String get trackingMethodBmrOnlyActivityHint =>
+      'El Nivel de Actividad se ignora (siempre = 1.0)';
+
+  @override
+  String get trackingMethodBmrOnlyTrackingGuideline =>
+      '✅ Hacer seguimiento: TODAS las actividades\n• Caminar (>10 min)\n• Ejercicio (gym, correr, etc.)\n• Tareas del hogar (limpiar, jardinería)\n• Subir escaleras (>5 pisos)';
+
+  @override
+  String get trackingMethodTdeeCompleteName => 'TDEE Completo';
+
+  @override
+  String get trackingMethodTdeeCompleteShort =>
+      'Se necesita seguimiento mínimo';
+
+  @override
+  String get trackingMethodTdeeCompleteDetail =>
+      'Tu objetivo de calorías se basa en tu Gasto Energético Total Diario (TDEE) incluyendo tu nivel de actividad. Tus actividades diarias ya están contabilizadas. Solo necesitas hacer seguimiento de actividades excepcionales (p.ej., caminata de 2 horas, maratón). Ideal para rutinas consistentes.';
+
+  @override
+  String get trackingMethodTdeeCompleteRecommended =>
+      'Recomendado para:\n• Esfuerzo de seguimiento mínimo\n• Rutina diaria consistente\n• Ejercicio regular (misma cantidad)';
+
+  @override
+  String get trackingMethodTdeeCompleteActivityHint =>
+      'Elige tu Nivel de Actividad basado en la actividad diaria TOTAL (incluyendo ejercicio)';
+
+  @override
+  String get trackingMethodTdeeCompleteTrackingGuideline =>
+      '✅ Hacer seguimiento: Solo actividades excepcionales\n• Maratón / Media maratón\n• Caminata de todo el día\n• Sesiones de entrenamiento extra largas (>2h)\n\n❌ NO hacer seguimiento: Actividades diarias normales\n• Entrenamiento regular\n• Movimiento diario';
+
+  @override
+  String get trackingMethodTdeeHybridName => 'TDEE + Seguimiento de Deportes';
+
+  @override
+  String get trackingMethodTdeeHybridShort =>
+      'Solo haz seguimiento de deportes';
+
+  @override
+  String get trackingMethodTdeeHybridDetail =>
+      'Tu objetivo de calorías se basa en tu Gasto Energético Total Diario (TDEE) solo para la vida diaria. Elige tu Nivel de Actividad basado en tu trabajo diario (p.ej., trabajo de escritorio = sedentario). Haz seguimiento de todas las actividades de ejercicio (gym, correr, etc.) por separado. Ideal para rutinas de ejercicio variables.';
+
+  @override
+  String get trackingMethodTdeeHybridRecommended =>
+      'Recomendado para:\n• Balance entre precisión y esfuerzo\n• Rutina de ejercicio variable\n• Separación clara entre diario y ejercicio';
+
+  @override
+  String get trackingMethodTdeeHybridActivityHint =>
+      'Elige tu Nivel de Actividad SOLO basado en tu trabajo diario (sin ejercicio)';
+
+  @override
+  String get trackingMethodTdeeHybridTrackingGuideline =>
+      '✅ Hacer seguimiento: Todas las actividades de ejercicio\n• Gym / Entrenamiento de fuerza\n• Correr / Trotar\n• Ciclismo\n• Natación\n• Clases de deportes\n\n❌ NO hacer seguimiento: Movimiento diario\n• Viaje al trabajo\n• Compras\n• Tareas del hogar normales';
+
+  @override
   String get appSubtitle => 'Tu diario de nutrición personal';
 
   @override
@@ -920,6 +1008,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get deleteAccountConfirmButton => 'Eliminar permanentemente';
 
   @override
+  String get deleteAccountCredentialsHint =>
+      'Nota: Debido a las limitaciones actuales del proveedor de autenticación (Neon Auth), tus credenciales de inicio de sesión no pueden eliminarse automáticamente junto con tus datos. Contacta con el soporte si también necesitas que se eliminen.';
+
+  @override
   String get deleteAccountSuccess => 'Todos los datos han sido eliminados.';
 
   @override
@@ -972,10 +1064,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get waterAdd => 'Agregar +250 ml';
+  String get waterAdd => 'Agregar agua';
 
   @override
-  String get waterRemove => 'Quitar -250 ml';
+  String get waterRemove => 'Quitar agua';
 
   @override
   String get devBannerText =>
@@ -993,6 +1085,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get waterReminderSubtitle => 'Recordar beber agua cada 4 horas';
+
+  @override
+  String get waterFromFood => 'de alimentos';
+
+  @override
+  String get waterManual => 'manual';
 
   @override
   String get cheatDayTitle => 'Día Trampa';
@@ -1058,4 +1156,129 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get serverConfigReset => 'Restablecer valores predeterminados';
+
+  @override
+  String get feedbackTitle => 'Enviar comentarios';
+
+  @override
+  String get feedbackTooltip => 'Enviar comentarios';
+
+  @override
+  String get feedbackEarlyAccessNote =>
+      'Estás usando una versión de acceso anticipado. ¡Tu opinión nos ayuda a mejorar!';
+
+  @override
+  String get feedbackTypeLabel => 'Tipo';
+
+  @override
+  String get feedbackTypeBug => 'Error';
+
+  @override
+  String get feedbackTypeFeature => 'Sugerencia';
+
+  @override
+  String get feedbackTypeGeneral => 'General';
+
+  @override
+  String get feedbackRatingLabel => 'Valoración (opcional)';
+
+  @override
+  String get feedbackMessageLabel => 'Mensaje';
+
+  @override
+  String get feedbackMessageHint =>
+      'Describe el error, tu idea o tu experiencia…';
+
+  @override
+  String get feedbackMessageTooShort =>
+      'Por favor, escribe al menos 10 caracteres.';
+
+  @override
+  String get feedbackSubmit => 'Enviar';
+
+  @override
+  String get feedbackThankYou => '¡Gracias por tus comentarios!';
+
+  @override
+  String get reportsTitle => 'Informes';
+
+  @override
+  String get reportsRangeWeek => 'Semana';
+
+  @override
+  String get reportsRangeMonth => 'Mes';
+
+  @override
+  String get reportsRangeYear => 'Año';
+
+  @override
+  String get reportsRangeAllTime => 'Todo';
+
+  @override
+  String get reportsSummary => 'Resumen';
+
+  @override
+  String get reportsCalorieTrend => 'Tendencia calórica';
+
+  @override
+  String get reportsMacroAverage => 'Macros promedio';
+
+  @override
+  String get reportsWaterIntake => 'Consumo de agua';
+
+  @override
+  String get reportsBodyWeight => 'Peso corporal';
+
+  @override
+  String get reportsNoData => 'Sin datos para este período.';
+
+  @override
+  String get reportsAvgCalories => 'Kcal diarias promedio';
+
+  @override
+  String get reportsDaysTracked => 'Días registrados';
+
+  @override
+  String get reportsDaysOnTarget => 'Días en objetivo';
+
+  @override
+  String get reportsAvgWater => 'Agua diaria promedio';
+
+  @override
+  String get reportsGoalLine => 'Objetivo';
+
+  @override
+  String get reportsBodyFat => 'Grasa corporal %';
+
+  @override
+  String get reportsCaloriesBurned => 'Quemadas';
+
+  @override
+  String get reportsConsumed => 'Consumidas';
+
+  @override
+  String get reportsBalance => 'Balance';
+
+  @override
+  String get reportsUpsellBasic => 'Disponible en Cloud Edition (Basic+)';
+
+  @override
+  String get reportsUpsellPro => 'Disponible para usuarios Pro';
+
+  @override
+  String get reportsLoading => 'Cargando informes…';
+
+  @override
+  String get reportsExportTooltip => 'Exportar como CSV';
+
+  @override
+  String get reportsExportSuccess => 'Exportación correcta';
+
+  @override
+  String reportsExportError(String error) {
+    return 'Error al exportar: $error';
+  }
+
+  @override
+  String get macroOnlyMode => 'Solo macros (sin objetivo calórico)';
 }

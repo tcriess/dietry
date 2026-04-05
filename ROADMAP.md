@@ -1,0 +1,4 @@
+- Finer granularity of macros (saturated fat, sugars, etc.)
+- Salt (+fibre/fiber?) as additional food ingredient
+- tags for foods: vegan, vegetarian, keto, etc.
+- fotos of foods (all editions) and meals (cloud)

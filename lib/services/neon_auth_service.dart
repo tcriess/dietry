@@ -80,8 +80,16 @@ class NeonAuthService extends ChangeNotifier {
   bool get isTokenExpiringSoon {
     final timeLeft = timeUntilTokenExpiry;
     if (timeLeft == null) return false;
-    
+
     return timeLeft.inMinutes < 5;
+  }
+
+  /// Prüft ob Token in weniger als 1 Stunde abläuft (für aggressives Refresh)
+  bool get isTokenExpiringWithinHour {
+    final timeLeft = timeUntilTokenExpiry;
+    if (timeLeft == null) return false;
+
+    return timeLeft.inMinutes < 60;
   }
   
   NeonAuthService() {
@@ -131,10 +139,15 @@ class NeonAuthService extends ChangeNotifier {
       
       // Prüfe Expiration
       final isExpired = JwtHelper.isExpired(_jwt!);
-      
+
       if (isExpired) {
-        debugPrint('⚠️ JWT ist abgelaufen - hole neues Token...');
-        await refreshToken();
+        debugPrint('⚠️ JWT ist abgelaufen - versuche mit Retry zu refreshen...');
+        // Retry bei Startup: Netzwerk kann kurzzeitig unavailable sein
+        final success = await refreshTokenWithRetry(maxAttempts: 3);
+        if (!success) {
+          debugPrint('❌ Token-Refresh nach Startup fehlgeschlagen - Logout erforderlich');
+          await signOut();
+        }
       } else {
         // Prüfe wann Token abläuft
         if (payload['exp'] != null) {
@@ -176,6 +189,36 @@ class NeonAuthService extends ChangeNotifier {
     });
   }
   
+  /// Refresht das JWT-Token mit Retry-Logik (für Startup und Resume)
+  ///
+  /// Bei Fehler wird bis zu maxAttempts mal wiederholt mit exponentieller Backoff.
+  /// Dies verbessert die Session-Persistenz nach App-Restart oder bei Netzwerkfehlern.
+  Future<bool> refreshTokenWithRetry({int maxAttempts = 3}) async {
+    int attempt = 0;
+
+    while (attempt < maxAttempts) {
+      attempt++;
+      debugPrint('🔄 Token refresh attempt $attempt/$maxAttempts...');
+
+      final success = await refreshToken();
+      if (success) {
+        return true;
+      }
+
+      // Retry nur wenn noch Versuche übrig
+      if (attempt < maxAttempts) {
+        // Exponential backoff: 2s, 4s, 8s
+        final delaySeconds = 1 << attempt;
+        final delay = Duration(seconds: delaySeconds);
+        debugPrint('⏱️ Waiting ${delay.inSeconds}s before retry...');
+        await Future.delayed(delay);
+      }
+    }
+
+    debugPrint('❌ Token refresh failed after $maxAttempts attempts');
+    return false;
+  }
+
   /// Refresht das JWT-Token
   Future<bool> refreshToken() async {
     try {
@@ -323,15 +366,22 @@ class NeonAuthService extends ChangeNotifier {
       final sessionJson = await _storage.read(key: _sessionKey);
       final jwt = await _storage.read(key: _jwtKey);
       _cookie = await _storage.read(key: _cookieKey);
-      
+
       if (sessionJson != null) {
         _session = jsonDecode(sessionJson);
       }
       _jwt = jwt;
-      
+
       debugPrint('📦 Loaded from storage: JWT=${_jwt != null}, Session=${_session != null}');
     } catch (e) {
-      debugPrint('⚠️ Error loading from storage: $e');
+      debugPrint('⚠️ Error loading from storage — clearing to prevent repeat failures: $e');
+      // Bei Fehler (z.B. korruptem Keystore): Alles löschen damit nächster Start sauber ist
+      try {
+        await _storage.deleteAll();
+        debugPrint('✅ Storage cleared after error');
+      } catch (_) {
+        // Fehler beim Löschen ignorieren — nächster Start ist eh kaputt
+      }
     }
   }
   
@@ -833,7 +883,12 @@ class NeonAuthService extends ChangeNotifier {
       _session = null;
       _jwt = null;
       _cookie = null;
-      await _storage.deleteAll();
+      // ✅ Nur Auth-Keys löschen (NICHT deleteAll()!)
+      // deleteAll() würde auch user settings wie water_reminder_enabled löschen
+      await _storage.delete(key: _sessionKey);
+      await _storage.delete(key: _jwtKey);
+      await _storage.delete(key: _cookieKey);
+      await _storage.delete(key: _challengeCookieKey);
       notifyListeners();
     }
   }
@@ -860,10 +915,16 @@ class NeonAuthService extends ChangeNotifier {
       _session = null;
       _jwt = null;
       _cookie = null;
-      
-      await _storage.deleteAll();
+
+      // ✅ Nur Auth-Keys löschen (NICHT deleteAll()!)
+      // deleteAll() würde auch user settings wie water_reminder_enabled löschen
+      await _storage.delete(key: _sessionKey);
+      await _storage.delete(key: _jwtKey);
+      await _storage.delete(key: _cookieKey);
+      await _storage.delete(key: _challengeCookieKey);
+
       notifyListeners();
-      
+
       debugPrint('✅ Signed out locally');
     }
   }

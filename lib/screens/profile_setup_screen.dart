@@ -102,8 +102,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final service = UserProfileService(widget.dbService);
       await service.updateProfile(profile);
 
-      // Auto-adjust nutrition goal silently (fire-and-forget)
-      NutritionGoalService.autoAdjustGoal(widget.dbService);
+      // Auto-adjust nutrition goal and wait for completion so profile reloads with updated goal
+      await NutritionGoalService.autoAdjustGoal(widget.dbService);
 
       if (mounted) {
         final lCtx = AppLocalizations.of(context)!;

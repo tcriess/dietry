@@ -362,7 +362,8 @@ class FoodDatabaseService {
         .not('category', 'is', null);
       
       final categories = (response as List)
-        .map((row) => row['category'] as String)
+        .map((row) => row['category'] as String?)
+        .whereType<String>()  // Filter out nulls
         .toSet()  // Deduplizieren
         .toList()
         ..sort();

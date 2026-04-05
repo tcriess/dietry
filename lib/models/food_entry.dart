@@ -25,10 +25,20 @@ class FoodEntry {
   final double? fiber;
   final double? sugar;
   final double? sodium;
-  
+  final double? saturatedFat;
+
   // Notizen
   final String? notes;
-  
+
+  // Flüssigkeitsmarkierung - wenn true, zählt zur Wasseraufnahme
+  final bool isLiquid;
+  // For liquid foods: the ml amount (null for non-liquid entries)
+  final double? amountMl;
+
+  // Meal vs food: if true, nutrition values are totals for the whole entry (meal)
+  // if false, nutrition values are totals for the specified amount (food)
+  final bool isMeal;
+
   // Metadaten
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -49,7 +59,11 @@ class FoodEntry {
     this.fiber,
     this.sugar,
     this.sodium,
+    this.saturatedFat,
     this.notes,
+    this.isLiquid = false,
+    this.amountMl,
+    this.isMeal = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -72,7 +86,11 @@ class FoodEntry {
       fiber: json['fiber'] != null ? (json['fiber'] as num).toDouble() : null,
       sugar: json['sugar'] != null ? (json['sugar'] as num).toDouble() : null,
       sodium: json['sodium'] != null ? (json['sodium'] as num).toDouble() : null,
+      saturatedFat: json['saturated_fat'] != null ? (json['saturated_fat'] as num).toDouble() : null,
       notes: json['notes'] as String?,
+      isLiquid: json['is_liquid'] as bool? ?? false,
+      amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
+      isMeal: json['is_meal'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -96,7 +114,11 @@ class FoodEntry {
       if (fiber != null) 'fiber': fiber,
       if (sugar != null) 'sugar': sugar,
       if (sodium != null) 'sodium': sodium,
+      if (saturatedFat != null) 'saturated_fat': saturatedFat,
       if (notes != null) 'notes': notes,
+      'is_liquid': isLiquid,
+      if (amountMl != null) 'amount_ml': amountMl,
+      'is_meal': isMeal,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -119,7 +141,11 @@ class FoodEntry {
     double? fiber,
     double? sugar,
     double? sodium,
+    double? saturatedFat,
     String? notes,
+    bool? isLiquid,
+    double? amountMl,
+    bool? isMeal,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -139,7 +165,11 @@ class FoodEntry {
       fiber: fiber ?? this.fiber,
       sugar: sugar ?? this.sugar,
       sodium: sodium ?? this.sodium,
+      saturatedFat: saturatedFat ?? this.saturatedFat,
       notes: notes ?? this.notes,
+      isLiquid: isLiquid ?? this.isLiquid,
+      amountMl: amountMl ?? this.amountMl,
+      isMeal: isMeal ?? this.isMeal,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

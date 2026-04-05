@@ -7,8 +7,6 @@
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Linux-lightgrey)](https://flutter.dev/multi-platform)
 
-> **🚧 Work in progress — the source code will be published here soon.**
-
 Dietry is a full-featured Flutter nutrition tracker backed by a PostgreSQL database (Neon) accessed via PostgREST. Authentication uses Google OAuth2 with JWT tokens. It runs on Android, iOS, Web (PWA), and Linux desktop from a single codebase.
 
 ---
@@ -62,10 +60,11 @@ dietry/
 │   └── l10n/                      # Localization strings (de, en, es)
 ├── packages/
 │   └── dietry_cloud/              # Community stub (no-op cloud features)
-├── sql/                           # PostgreSQL schema & migrations (00–22)
+├── sql/                           # PostgreSQL schema & migrations
 ├── config/
 │   ├── ce-dev.json                # Community Edition dev config
-│   └── prod.json.example          # Production config template
+│   ├── ce-prod.json.example       # Community Edition production template
+│   └── app-dev.json               # Cloud Edition dev config
 ├── web/
 │   ├── index.html                 # Flutter web entry point
 │   ├── landing.html               # Marketing landing page
@@ -93,13 +92,8 @@ flutter pub get
 
 ### 2. Configure
 
-Copy the example config and fill in your values:
+Edit `config/ce-dev.json` (or use your own) with your backend details:
 
-```bash
-cp config/prod.json.example config/ce-dev.json
-```
-
-`config/ce-dev.json`:
 ```json
 {
   "DATA_API_URL": "https://<your-neon-project>.neon.tech",
@@ -108,16 +102,20 @@ cp config/prod.json.example config/ce-dev.json
 }
 ```
 
+For production, use `config/ce-prod.json.example` as a template.
+
+> **Cloud Edition**: If developing with the Cloud Edition, use `config/app-dev.json` instead (requires the private `dietry_cloud` package).
+
 ### 3. Set up the database
 
-Run the SQL migration files in `sql/` in order against your Neon project:
+Run the SQL migration files in `sql/` in order against your Neon project. Migrations are numbered sequentially:
 
 ```bash
-# In the Neon SQL editor or via psql:
-\i sql/00_shared_functions.sql
-\i sql/01_create_users_table.sql
-\i sql/02_create_nutrition_goals_table.sql
-# … continue through the numbered files in order
+# In the Neon SQL editor or via psql, run each in order:
+\i sql/00_initial_schema.sql
+\i sql/01_feedback.sql
+\i sql/02_liquid_foods.sql
+# … continue through all numbered files in order
 ```
 
 Each file is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE`, etc.).
@@ -125,9 +123,13 @@ Each file is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE OR REPLACE`, etc.
 ### 4. Run
 
 ```bash
+# Community Edition
 flutter run -d chrome   --dart-define-from-file=config/ce-dev.json   # Web
 flutter run -d linux    --dart-define-from-file=config/ce-dev.json   # Linux desktop
 flutter run -d <device> --dart-define-from-file=config/ce-dev.json   # Android / iOS
+
+# Cloud Edition (requires dietry_cloud package)
+flutter run -d chrome   --dart-define-from-file=config/app-dev.json  # Web
 ```
 
 ---

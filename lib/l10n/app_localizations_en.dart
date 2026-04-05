@@ -39,6 +39,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutrientSalt => 'Salt';
 
   @override
+  String get nutrientSaturatedFat => 'Saturated Fat';
+
+  @override
+  String get ofWhichCarbs => 'of which sugar';
+
+  @override
+  String get ofWhichFat => 'of which saturated';
+
+  @override
   String get goal => 'Goal';
 
   @override
@@ -93,6 +102,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navActivities => 'Activities';
+
+  @override
+  String get navReports => 'Reports';
 
   @override
   String get mealBreakfast => 'Breakfast';
@@ -353,6 +365,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get foodPublicOff => 'Only you see this entry';
+
+  @override
+  String get foodIsLiquid => 'Liquid food';
+
+  @override
+  String get foodIsLiquidHint => 'Amount counted toward daily water intake';
 
   @override
   String get newFood => 'New Food';
@@ -686,6 +704,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trackingUseMethod => 'Use This Method';
 
   @override
+  String get trackingMethodBmrOnlyName => 'BMR + Tracking';
+
+  @override
+  String get trackingMethodBmrOnlyShort => 'Track all activities';
+
+  @override
+  String get trackingMethodBmrOnlyDetail =>
+      'Your calorie goal is based solely on your Basal Metabolic Rate (BMR). You must track ALL physical activities (walking, exercise, housework). This method is the most accurate but requires consistent tracking.';
+
+  @override
+  String get trackingMethodBmrOnlyRecommended =>
+      'Recommended for:\n• Maximum precision\n• You enjoy tracking everything\n• Highly variable activity levels';
+
+  @override
+  String get trackingMethodBmrOnlyActivityHint =>
+      'Activity Level is ignored (always = 1.0)';
+
+  @override
+  String get trackingMethodBmrOnlyTrackingGuideline =>
+      '✅ Track: ALL activities\n• Walking (>10 min)\n• Exercise (gym, running, etc.)\n• Housework (cleaning, gardening)\n• Climbing stairs (>5 flights)';
+
+  @override
+  String get trackingMethodTdeeCompleteName => 'TDEE Complete';
+
+  @override
+  String get trackingMethodTdeeCompleteShort => 'Minimal tracking needed';
+
+  @override
+  String get trackingMethodTdeeCompleteDetail =>
+      'Your calorie goal is based on your Total Daily Energy Expenditure (TDEE) including your activity level. Your daily activities are already accounted for. You only need to track exceptional activities (e.g., 2-hour hike, marathon). Ideal for consistent routines.';
+
+  @override
+  String get trackingMethodTdeeCompleteRecommended =>
+      'Recommended for:\n• Minimal tracking effort\n• Consistent daily routine\n• Regular exercise (same amount)';
+
+  @override
+  String get trackingMethodTdeeCompleteActivityHint =>
+      'Choose your Activity Level based on TOTAL daily activity (including exercise)';
+
+  @override
+  String get trackingMethodTdeeCompleteTrackingGuideline =>
+      '✅ Track: Only exceptional activities\n• Marathon / Half-marathon\n• All-day hiking trip\n• Extra long training sessions (>2h)\n\n❌ DO NOT track: Normal daily activities\n• Regular training\n• Daily movement';
+
+  @override
+  String get trackingMethodTdeeHybridName => 'TDEE + Sport Tracking';
+
+  @override
+  String get trackingMethodTdeeHybridShort => 'Track sports only';
+
+  @override
+  String get trackingMethodTdeeHybridDetail =>
+      'Your calorie goal is based on your Total Daily Energy Expenditure (TDEE) for daily life only. Choose your Activity Level based on your daily work (e.g., desk job = sedentary). Track all exercise activities (gym, running, etc.) separately. Ideal for variable exercise routines.';
+
+  @override
+  String get trackingMethodTdeeHybridRecommended =>
+      'Recommended for:\n• Balance between accuracy and effort\n• Variable exercise routine\n• Clear separation of daily vs. exercise';
+
+  @override
+  String get trackingMethodTdeeHybridActivityHint =>
+      'Choose your Activity Level ONLY based on your daily work (without exercise)';
+
+  @override
+  String get trackingMethodTdeeHybridTrackingGuideline =>
+      '✅ Track: All exercise activities\n• Gym / Strength training\n• Running / Jogging\n• Cycling\n• Swimming\n• Sports classes\n\n❌ DO NOT track: Daily movement\n• Commute\n• Shopping\n• Normal housework';
+
+  @override
   String get appSubtitle => 'Your personal nutrition diary';
 
   @override
@@ -912,6 +996,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccountConfirmButton => 'Delete permanently';
 
   @override
+  String get deleteAccountCredentialsHint =>
+      'Note: Due to current limitations of the authentication provider (Neon Auth), your login credentials cannot be removed automatically along with your data. Please contact support if you also need those removed.';
+
+  @override
   String get deleteAccountSuccess => 'All data has been deleted.';
 
   @override
@@ -964,10 +1052,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get waterAdd => 'Add +250 ml';
+  String get waterAdd => 'Add water';
 
   @override
-  String get waterRemove => 'Remove -250 ml';
+  String get waterRemove => 'Remove water';
 
   @override
   String get devBannerText =>
@@ -985,6 +1073,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get waterReminderSubtitle => 'Remind to drink water every 4 hours';
+
+  @override
+  String get waterFromFood => 'from food';
+
+  @override
+  String get waterManual => 'manual';
 
   @override
   String get cheatDayTitle => 'Cheat Day';
@@ -1050,4 +1144,128 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serverConfigReset => 'Reset to defaults';
+
+  @override
+  String get feedbackTitle => 'Send Feedback';
+
+  @override
+  String get feedbackTooltip => 'Send feedback';
+
+  @override
+  String get feedbackEarlyAccessNote =>
+      'You\'re using an early access version. Your feedback helps us improve!';
+
+  @override
+  String get feedbackTypeLabel => 'Type';
+
+  @override
+  String get feedbackTypeBug => 'Bug';
+
+  @override
+  String get feedbackTypeFeature => 'Feature request';
+
+  @override
+  String get feedbackTypeGeneral => 'General';
+
+  @override
+  String get feedbackRatingLabel => 'Rating (optional)';
+
+  @override
+  String get feedbackMessageLabel => 'Message';
+
+  @override
+  String get feedbackMessageHint =>
+      'Describe the bug, your idea, or your experience…';
+
+  @override
+  String get feedbackMessageTooShort => 'Please enter at least 10 characters.';
+
+  @override
+  String get feedbackSubmit => 'Submit';
+
+  @override
+  String get feedbackThankYou => 'Thank you for your feedback!';
+
+  @override
+  String get reportsTitle => 'Reports';
+
+  @override
+  String get reportsRangeWeek => 'Week';
+
+  @override
+  String get reportsRangeMonth => 'Month';
+
+  @override
+  String get reportsRangeYear => 'Year';
+
+  @override
+  String get reportsRangeAllTime => 'All time';
+
+  @override
+  String get reportsSummary => 'Summary';
+
+  @override
+  String get reportsCalorieTrend => 'Calorie Trend';
+
+  @override
+  String get reportsMacroAverage => 'Average Macros';
+
+  @override
+  String get reportsWaterIntake => 'Water Intake';
+
+  @override
+  String get reportsBodyWeight => 'Body Weight';
+
+  @override
+  String get reportsNoData => 'No data for this period.';
+
+  @override
+  String get reportsAvgCalories => 'Avg. daily calories';
+
+  @override
+  String get reportsDaysTracked => 'Days tracked';
+
+  @override
+  String get reportsDaysOnTarget => 'Days on target';
+
+  @override
+  String get reportsAvgWater => 'Avg. daily water';
+
+  @override
+  String get reportsGoalLine => 'Goal';
+
+  @override
+  String get reportsBodyFat => 'Body fat %';
+
+  @override
+  String get reportsCaloriesBurned => 'Burned';
+
+  @override
+  String get reportsConsumed => 'Consumed';
+
+  @override
+  String get reportsBalance => 'Balance';
+
+  @override
+  String get reportsUpsellBasic => 'Available in Cloud Edition (Basic+)';
+
+  @override
+  String get reportsUpsellPro => 'Available for Pro users';
+
+  @override
+  String get reportsLoading => 'Loading reports…';
+
+  @override
+  String get reportsExportTooltip => 'Export as CSV';
+
+  @override
+  String get reportsExportSuccess => 'Export successful';
+
+  @override
+  String reportsExportError(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get macroOnlyMode => 'Track macros only (no calorie goal)';
 }

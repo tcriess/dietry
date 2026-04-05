@@ -462,22 +462,40 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
             child: const Icon(Icons.storage_outlined),
           ),
           const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'fab_add_activity',
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AddActivityScreen(
-                    dbService: widget.dbService,
-                    selectedDate: widget.selectedDay,
+          if (MediaQuery.of(context).size.width >= 550)
+            FloatingActionButton.extended(
+              heroTag: 'fab_add_activity',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddActivityScreen(
+                      dbService: widget.dbService,
+                      selectedDate: widget.selectedDay,
+                    ),
                   ),
-                ),
-              );
-              // DataStore is updated directly by AddActivityScreen.
-            },
-            icon: const Icon(Icons.add),
-            label: Text(l.addActivity),
-          ),
+                );
+                // DataStore is updated directly by AddActivityScreen.
+              },
+              icon: const Icon(Icons.add),
+              label: Text(l.addActivity),
+            )
+          else
+            FloatingActionButton(
+              heroTag: 'fab_add_activity',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddActivityScreen(
+                      dbService: widget.dbService,
+                      selectedDate: widget.selectedDay,
+                    ),
+                  ),
+                );
+                // DataStore is updated directly by AddActivityScreen.
+              },
+              tooltip: l.addActivity,
+              child: const Icon(Icons.add),
+            ),
         ],
       ),
     );

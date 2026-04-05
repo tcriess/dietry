@@ -31,6 +31,8 @@ import 'services/water_reminder_service.dart';
 import 'services/cheat_day_service.dart';
 import 'app_config.dart';
 import 'services/server_config_service.dart';
+import 'services/feedback_service.dart';
+import 'widgets/feedback_dialog.dart';
 
 // Models
 import 'models/models.dart';
@@ -41,9 +43,13 @@ import 'screens/food_entries_list_screen.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/info_screen.dart';
+import 'screens/reports_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize AppFeatures from environment (for PREMIUM_ROLE override in dev/test)
+  AppFeatures.initializeFromEnvironment();
 
   // sqflite needs FFI on Linux/Windows/macOS desktop (not web, not Android/iOS)
   if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.linux ||
@@ -54,7 +60,11 @@ void main() async {
   }
 
   // Load any user-configured server URLs before services start.
-  await ServerConfigService.loadIntoCache();
+  try {
+    await ServerConfigService.loadIntoCache();
+  } catch (e) {
+    debugPrint('⚠️ ServerConfigService init failed: $e');
+  }
 
   // Web: Auth-Base-URL in localStorage schreiben, damit auth_callback.html
   // dieselbe URL verwendet wie die Flutter-App (verhindert Cookie-Domain-Mismatch).
@@ -63,7 +73,11 @@ void main() async {
       'dietry_auth_base_url', ServerConfigService.effectiveAuthBaseUrl);
   }
 
-  await WaterReminderService.initialize();
+  try {
+    await WaterReminderService.initialize();
+  } catch (e) {
+    debugPrint('⚠️ WaterReminderService init failed: $e');
+  }
 
   runApp(const AuthApp());
 }
@@ -175,7 +189,7 @@ class LoginScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            if (AppConfig.isDevelopment)
+            if (AppConfig.showDeveloperBanner)
               Container(
                 width: double.infinity,
                 color: Colors.orange.shade700,
@@ -320,10 +334,12 @@ class LoginScreen extends StatelessWidget {
 
                   // Öffne OAuth-URL (plattformabhängig)
                   if (platform.isAndroid()) {
-                    // Android: Browser öffnen, Callback via App Link
+                    // Android: Chrome Custom Tab (CCT) öffnen, Callback via App Link
+                    // CCT schließt sich automatisch wenn das App Link Intent feuert
+                    // und die Activity resumes — kein Browser-Tab bleibt offen
                     // (Challenge-Cookie wird von NeonAuthService verwaltet)
-                    
-                    if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.externalApplication)) {
+
+                    if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.inAppBrowserView)) {
                       throw Exception('Konnte Browser nicht öffnen');
                     }
                     
@@ -1005,8 +1021,16 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     // ✅ WICHTIG: Warte bis AuthService fertig geladen hat
     // NeonAuthService lädt Token asynchron im Konstruktor
-    while (_authService.isLoading) {
+    // Mit Timeout um Deadlock bei korruptem Keystore zu vermeiden
+    int waitMs = 0;
+    const int maxWaitMs = 15000;
+    while (_authService.isLoading && waitMs < maxWaitMs) {
       await Future.delayed(const Duration(milliseconds: 100));
+      waitMs += 100;
+    }
+
+    if (_authService.isLoading) {
+      debugPrint('⚠️ Auth service still loading after timeout — proceeding without JWT');
     }
 
     // Jetzt JWT setzen wenn vorhanden
@@ -1032,9 +1056,40 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
-    if (state == AppLifecycleState.resumed && platform.isAndroid()) {
-      _checkOAuthCallback();
+
+    if (state == AppLifecycleState.resumed) {
+      // Android: Prüfe auf OAuth Callback
+      if (platform.isAndroid()) {
+        _checkOAuthCallback();
+      }
+
+      // Aggressives Token-Refresh bei App-Resume
+      // Wenn Token in weniger als 1 Stunde abläuft, refreshe es sofort
+      _refreshTokenIfNeeded();
+    }
+  }
+
+  /// Refresht Token wenn es in weniger als 1 Stunde abläuft
+  /// Dies verbessert die Session-Persistenz nach längeren Pausen
+  Future<void> _refreshTokenIfNeeded() async {
+    if (!_authService.isLoggedIn || _authService.jwt == null) {
+      return;
+    }
+
+    final timeLeft = _authService.timeUntilTokenExpiry;
+    if (timeLeft == null) {
+      return;
+    }
+
+    // Wenn Token in weniger als 1 Stunde abläuft, refresh es jetzt
+    if (timeLeft.inMinutes < 60) {
+      debugPrint('⏰ Token expiring soon (${timeLeft.inMinutes} min) - refreshing on resume...');
+      final success = await _authService.refreshTokenWithRetry(maxAttempts: 2);
+      if (success) {
+        debugPrint('✅ Token refreshed on resume');
+      } else {
+        debugPrint('⚠️ Token refresh on resume failed - will require re-login if session expired');
+      }
     }
   }
   
@@ -1099,30 +1154,40 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           final isExpired = isValid ? JwtHelper.isTokenExpired(_authService.jwt!) : true;
           
           if (!isValid || isExpired) {
-            print('❌ JWT in SecureStorage ist ungültig - cleane alles');
-            
+            print('❌ JWT in SecureStorage ist ungültig - cleane nur Auth-Keys');
+
             final storage = const FlutterSecureStorage();
-            await storage.deleteAll();
+            // ✅ WICHTIG: Nur Auth-Keys löschen, nicht deleteAll() verwenden!
+            // deleteAll() würde auch Nutzer-Einstellungen wie water_reminder_enabled löschen
+            await storage.delete(key: 'neon_jwt');
+            await storage.delete(key: 'neon_session');
+            await storage.delete(key: 'neon_cookie');
+            await storage.delete(key: 'neon_challenge_cookie');
+
             await _authService.signOut();
-            
-            print('✅ SecureStorage geleert - bereit für Neu-Login');
+
+            print('✅ Auth-Keys gelöscht - Einstellungen bleiben erhalten');
           }
         }
       }
     } catch (e) {
       print('❌ Fehler beim Initialisieren des Web-Login: $e');
-      
-      // Bei Fehler: ALLE Storages manuell cleanen
+
+      // Bei Fehler: Nur Auth-Daten cleanen (NICHT alle Einstellungen!)
       html.removeFromLocalStorage('neon_jwt');
       html.removeFromLocalStorage('neon_user_email');
       html.removeFromLocalStorage('neon_session_id');
-      
+
       final storage = const FlutterSecureStorage();
-      await storage.deleteAll();
-      
+      // ✅ Nur Auth-Keys löschen, nicht deleteAll()!
+      await storage.delete(key: 'neon_jwt');
+      await storage.delete(key: 'neon_session');
+      await storage.delete(key: 'neon_cookie');
+      await storage.delete(key: 'neon_challenge_cookie');
+
       await _authService.signOut();
-      
-      print('✅ Alle Storages nach Fehler geleert');
+
+      print('✅ Auth-Daten nach Fehler gelöscht - Einstellungen bleiben erhalten');
     }
   }
   
@@ -1249,6 +1314,13 @@ class DietryHomeWithLogout extends StatefulWidget {
 
 class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
   final _dietryHomeKey = GlobalKey<_DietryHomeState>();
+  late final FeedbackService _feedbackService;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedbackService = FeedbackService(widget.dbService);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1261,7 +1333,7 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
       ),
       appBar: AppBar(
         title: Text(l.appBarTitle),
-        bottom: AppConfig.isDevelopment
+        bottom: AppConfig.showDeveloperBanner
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(24),
                 child: Container(
@@ -1281,6 +1353,12 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               )
             : null,
         actions: [
+          // Feedback
+          IconButton(
+            icon: const Icon(Icons.feedback_outlined),
+            tooltip: l.feedbackTooltip,
+            onPressed: () => FeedbackDialog.show(context, _feedbackService),
+          ),
           // Sprache wechseln
           PopupMenuButton<Locale?>(
             icon: const Icon(Icons.language),
@@ -1371,7 +1449,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _silentRefresh());
     WaterReminderService.onInAppReminder = _showWaterReminder;
     WaterReminderService.getWaterStatus = () =>
-        (_store.waterIntakeMl, _store.goal?.waterGoalMl ?? 2000);
+        (_store.waterIntakeMl + _store.liquidFoodIntakeMl, _store.goal?.waterGoalMl ?? 2000);
   }
 
   @override
@@ -1410,9 +1488,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ],
         ),
         duration: const Duration(seconds: 6),
-        action: SnackBarAction(label: '+250 ml', onPressed: () {
+        action: SnackBarAction(label: '+200 ml', onPressed: () {
           // Immer zum heutigen Tag hinzufügen, unabhängig vom angezeigten Tag.
-          _addWaterToday(250);
+          _addWaterToday(200);
         }),
       ),
     );
@@ -1687,6 +1765,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 entries: _store.foodEntries,
                 activities: _store.activities,
                 waterIntakeMl: _store.waterIntakeMl,
+                liquidFoodIntakeMl: _store.liquidFoodIntakeMl,
                 selectedDay: _selectedDay,
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
@@ -1708,6 +1787,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 selectedDay: _selectedDay,
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
+              ),
+              ReportsScreen(
+                dbService: widget.dbService,
+                goal: _store.goal,
               ),
             ],
           ),
@@ -1792,6 +1875,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
             icon: const Icon(Icons.directions_run),
             label: l.navActivities,
           ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.bar_chart),
+            label: l.navReports,
+          ),
         ],
       ),
     );
@@ -1805,6 +1892,7 @@ class OverviewScreen extends StatelessWidget {
   final List<FoodEntry> entries;
   final List<PhysicalActivity> activities;
   final int waterIntakeMl;
+  final int liquidFoodIntakeMl;
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
@@ -1821,6 +1909,7 @@ class OverviewScreen extends StatelessWidget {
     required this.entries,
     required this.activities,
     required this.waterIntakeMl,
+    required this.liquidFoodIntakeMl,
     required this.selectedDay,
     required this.onChangeDay,
     required this.onJumpToToday,
@@ -1841,10 +1930,258 @@ class OverviewScreen extends StatelessWidget {
   // ✅ Berechne verbrannte Kalorien aus activities
   double get totalCaloriesBurned => activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
 
+  Widget _buildNutrientCard(
+    BuildContext context,
+    String label,
+    String goalValue,
+    String consumedValue,
+    String burnedValue,
+    String remainingValue,
+    Color? color,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (color != null)
+                  Container(
+                    width: 8,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.goal,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      goalValue,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.consumed,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      consumedValue,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                if (burnedValue != '-')
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.caloriesBurned,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        burnedValue,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.remaining,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    remainingValue,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: (int.tryParse(remainingValue.split(' ').first) ?? 0) >= 0
+                          ? Colors.green
+                          : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutritionOverview(BuildContext context, AppLocalizations l) {
+    final remainingCalories = (goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2);
+    final remainingProtein = (goal.protein - totalProtein).clamp(0, goal.protein);
+    final remainingFat = (goal.fat - totalFat).clamp(0, goal.fat);
+    final remainingCarbs = (goal.carbs - totalCarbs).clamp(0, goal.carbs);
+
+    final isMobile = MediaQuery.of(context).size.width < 550;
+
+    if (isMobile) {
+      // Mobile: Card-based layout
+      return Column(
+        children: [
+          if (!goal.macroOnly)
+            _buildNutrientCard(
+              context,
+              l.nutrientCalories,
+              '${goal.calories.toStringAsFixed(0)} kcal',
+              '${totalCalories.toStringAsFixed(0)} kcal',
+              totalCaloriesBurned > 0 ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal' : '-',
+              '${remainingCalories.toStringAsFixed(0)} kcal',
+              Colors.deepPurple,
+            ),
+          _buildNutrientCard(
+            context,
+            l.nutrientProtein,
+            '${goal.protein.toStringAsFixed(1)} g',
+            '${totalProtein.toStringAsFixed(1)} g',
+            '-',
+            '${remainingProtein.toStringAsFixed(1)} g',
+            Colors.red,
+          ),
+          _buildNutrientCard(
+            context,
+            l.nutrientFat,
+            '${goal.fat.toStringAsFixed(1)} g',
+            '${totalFat.toStringAsFixed(1)} g',
+            '-',
+            '${remainingFat.toStringAsFixed(1)} g',
+            Colors.orange,
+          ),
+          _buildNutrientCard(
+            context,
+            l.nutrientCarbs,
+            '${goal.carbs.toStringAsFixed(1)} g',
+            '${totalCarbs.toStringAsFixed(1)} g',
+            '-',
+            '${remainingCarbs.toStringAsFixed(1)} g',
+            Colors.amber,
+          ),
+        ],
+      );
+    } else {
+      // Desktop/Medium: Table layout (with horizontal scroll on medium screens)
+      final table = DataTable(
+        horizontalMargin: 12,
+        columnSpacing: 12,
+        columns: [
+          const DataColumn(label: Text('')),
+          DataColumn(label: Text(l.goal, overflow: TextOverflow.ellipsis)),
+          DataColumn(label: Text(l.consumed, overflow: TextOverflow.ellipsis)),
+          DataColumn(label: Text(l.caloriesBurned, overflow: TextOverflow.ellipsis)),
+          DataColumn(label: Text(l.remaining, overflow: TextOverflow.ellipsis)),
+        ],
+        rows: [
+          if (!goal.macroOnly)
+            DataRow(cells: [
+              DataCell(Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
+              DataCell(Text(goal.calories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+              DataCell(Text(totalCalories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+              DataCell(Text(
+                totalCaloriesBurned.toStringAsFixed(0),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.green.shade700),
+              )),
+              DataCell(Text(
+                remainingCalories.toStringAsFixed(0),
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: remainingCalories >= 0 ? Colors.green : Colors.red,
+                ),
+              )),
+            ]),
+          DataRow(cells: [
+            DataCell(Text(l.nutrientProtein, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.protein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalProtein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingProtein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+          ]),
+          DataRow(cells: [
+            DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.fat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalFat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingFat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+          ]),
+          DataRow(cells: [
+            DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.carbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalCarbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingCarbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+          ]),
+        ],
+      );
+
+      // Wrap in horizontal scroll if screen is narrower than 700px
+      if (MediaQuery.of(context).size.width < 700) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: table,
+        );
+      }
+      return table;
+    }
+  }
+
   Widget _buildWaterCard(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final waterGoal = goal.waterGoalMl ?? 2000;
-    final progress = (waterIntakeMl / waterGoal).clamp(0.0, 1.0);
+    final totalLiquidMl = waterIntakeMl + liquidFoodIntakeMl;
+    final progress = (totalLiquidMl / waterGoal).clamp(0.0, 1.0);
 
     return Card(
       child: Padding(
@@ -1870,33 +2207,38 @@ class OverviewScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('$waterIntakeMl ml', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('$totalLiquidMl ml', style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text(l.waterGoalLabel(waterGoal)),
               ],
             ),
+            // Show breakdown if there's liquid food contribution
+            if (liquidFoodIntakeMl > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text(
+                      '💧 $waterIntakeMl ml ${l.waterManual}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '•',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '🥤 $liquidFoodIntakeMl ml ${l.waterFromFood}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton.filled(
-                  icon: const Icon(Icons.remove),
-                  style: IconButton.styleFrom(backgroundColor: Colors.blue.shade100, foregroundColor: Colors.blue),
-                  onPressed: waterIntakeMl >= 250 ? () => onWaterChanged(-250) : null,
-                  tooltip: l.waterRemove,
-                ),
-                const SizedBox(width: 24),
-                Text(
-                  '+250 ml',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
-                const SizedBox(width: 24),
-                IconButton.filled(
-                  icon: const Icon(Icons.add),
-                  style: IconButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                  onPressed: () => onWaterChanged(250),
-                  tooltip: l.waterAdd,
-                ),
-              ],
+            _WaterAmountControls(
+              waterIntakeMl: waterIntakeMl,
+              onWaterChanged: onWaterChanged,
             ),
           ],
         ),
@@ -2045,36 +2387,38 @@ class OverviewScreen extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 16),
-          // Kalorien-Fortschritt (mit verbrannten Kalorien)
-          Text(l.nutrientCalories),
-          LinearProgressIndicator(
-            value: goal.calories > 0 ? (totalCalories / goal.calories).clamp(0, 1) : 0,
-            minHeight: 12,
-            backgroundColor: Colors.grey[300],
-            color: Colors.deepPurple,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal'),
-              if (totalCaloriesBurned > 0)
-                Text(
-                  '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
-                  style: TextStyle(color: Colors.green.shade700),
-                ),
-              Text('${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal'),
-            ],
-          ),
-          Text(
-            '${l.remaining}: ${((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0)} kcal',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
-                  ? Colors.green
-                  : Colors.red,
+          if (!goal.macroOnly) ...[
+            const SizedBox(height: 16),
+            // Kalorien-Fortschritt (mit verbrannten Kalorien)
+            Text(l.nutrientCalories),
+            LinearProgressIndicator(
+              value: goal.calories > 0 ? (totalCalories / goal.calories).clamp(0, 1) : 0,
+              minHeight: 12,
+              backgroundColor: Colors.grey[300],
+              color: Colors.deepPurple,
             ),
-          ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal'),
+                if (totalCaloriesBurned > 0)
+                  Text(
+                    '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
+                    style: TextStyle(color: Colors.green.shade700),
+                  ),
+                Text('${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal'),
+              ],
+            ),
+            Text(
+              '${l.remaining}: ${((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0)} kcal',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
+                    ? Colors.green
+                    : Colors.red,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           // Makronährstoff-Kreisdiagramm
           SizedBox(
@@ -2107,59 +2451,11 @@ class OverviewScreen extends StatelessWidget {
           // Wasser-Tracking
           _buildWaterCard(context),
           const SizedBox(height: 24),
-          // Nährwert-Tabelle mit verbrannten Kalorien
-          DataTable(
-            columns: [
-              const DataColumn(label: Text('')),
-              DataColumn(label: Text(l.goal)),
-              DataColumn(label: Text(l.consumed)),
-              DataColumn(label: Text(l.caloriesBurned)),  // ✅ Neue Spalte
-              DataColumn(label: Text(l.remaining)),
-            ],
-            rows: [
-              DataRow(cells: [
-                DataCell(Text(l.nutrientCalories)),
-                DataCell(Text(goal.calories.toStringAsFixed(0))),
-                DataCell(Text(totalCalories.toStringAsFixed(0))),
-                DataCell(Text(
-                  totalCaloriesBurned.toStringAsFixed(0),
-                  style: TextStyle(color: Colors.green.shade700),
-                )),
-                DataCell(Text(
-                  ((goal.calories - totalCalories + totalCaloriesBurned).clamp(0, goal.calories * 2)).toStringAsFixed(0),
-                  style: TextStyle(
-                    color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
-                        ? Colors.green
-                        : Colors.red,
-                  ),
-                )),
-              ]),
-              DataRow(cells: [
-                DataCell(Text(l.nutrientProtein)),
-                DataCell(Text(goal.protein.toStringAsFixed(1))),
-                DataCell(Text(totalProtein.toStringAsFixed(1))),
-                const DataCell(Text('-')),  // Keine verbrannten Makros
-                DataCell(Text((goal.protein - totalProtein).clamp(0, goal.protein).toStringAsFixed(1))),
-              ]),
-              DataRow(cells: [
-                DataCell(Text(l.nutrientFat)),
-                DataCell(Text(goal.fat.toStringAsFixed(1))),
-                DataCell(Text(totalFat.toStringAsFixed(1))),
-                const DataCell(Text('-')),  // Keine verbrannten Makros
-                DataCell(Text((goal.fat - totalFat).clamp(0, goal.fat).toStringAsFixed(1))),
-              ]),
-              DataRow(cells: [
-                DataCell(Text(l.nutrientCarbs)),
-                DataCell(Text(goal.carbs.toStringAsFixed(1))),
-                DataCell(Text(totalCarbs.toStringAsFixed(1))),
-                const DataCell(Text('-')),  // Keine verbrannten Makros
-                DataCell(Text((goal.carbs - totalCarbs).clamp(0, goal.carbs).toStringAsFixed(1))),
-              ]),
-            ],
-          ),
+          // Responsive nutrition overview (cards on mobile, table on desktop)
+          _buildNutritionOverview(context, l),
           // Mikronährstoff-Karte (Premium, konfigurierbar)
           if (AppFeatures.microNutrients) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Builder(builder: (context) {
               final jwt = dbService.jwt;
               final userId = dbService.userId;
@@ -2174,6 +2470,115 @@ class OverviewScreen extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// Water intake +/− controls with selectable step (100 / 200 / 300 ml)
+class _WaterAmountControls extends StatefulWidget {
+  final int waterIntakeMl;
+  final void Function(int deltaMl) onWaterChanged;
+
+  const _WaterAmountControls({
+    required this.waterIntakeMl,
+    required this.onWaterChanged,
+  });
+
+  @override
+  State<_WaterAmountControls> createState() => _WaterAmountControlsState();
+}
+
+class _WaterAmountControlsState extends State<_WaterAmountControls> {
+  int _selectedMl = 200;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final isMobile = MediaQuery.of(context).size.width < 550;
+
+    if (isMobile) {
+      // Mobile: Simplified view with +/- buttons only (200 ml fixed)
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton.filled(
+            icon: const Icon(Icons.remove),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.blue.shade100,
+              foregroundColor: Colors.blue,
+            ),
+            tooltip: l.waterRemove,
+            onPressed: widget.waterIntakeMl >= 200
+                ? () => widget.onWaterChanged(-200)
+                : null,
+          ),
+          const SizedBox(width: 16),
+          Text(
+            '200 ml',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 16),
+          IconButton.filled(
+            icon: const Icon(Icons.add),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            tooltip: l.waterAdd,
+            onPressed: () => widget.onWaterChanged(200),
+          ),
+        ],
+      );
+    }
+
+    // Desktop: Full controls with selector
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton.filled(
+          icon: const Icon(Icons.remove),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.blue.shade100,
+            foregroundColor: Colors.blue,
+          ),
+          tooltip: l.waterRemove,
+          onPressed: widget.waterIntakeMl >= _selectedMl
+              ? () => widget.onWaterChanged(-_selectedMl)
+              : null,
+        ),
+        const SizedBox(width: 8),
+        SegmentedButton<int>(
+          segments: const [
+            ButtonSegment(value: 100, label: Text('100')),
+            ButtonSegment(value: 200, label: Text('200')),
+            ButtonSegment(value: 300, label: Text('300')),
+          ],
+          selected: {_selectedMl},
+          onSelectionChanged: (s) => setState(() => _selectedMl = s.first),
+          style: SegmentedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'ml',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filled(
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+          tooltip: l.waterAdd,
+          onPressed: () => widget.onWaterChanged(_selectedMl),
+        ),
+      ],
     );
   }
 }
@@ -2257,6 +2662,9 @@ class AddFoodScreen extends StatelessWidget {
                                 '${entry.unit == 'g' || entry.unit == 'ml' ? '${entry.amount.toStringAsFixed(0)}${entry.unit}' : '${entry.amount == entry.amount.truncateToDouble() ? entry.amount.toInt() : entry.amount.toStringAsFixed(1)} × ${entry.unit}'} | '
                                 'Kcal: ${entry.calories.toStringAsFixed(0)}',
                               ),
+                              trailing: entry.isLiquid && entry.unit == 'ml'
+                                  ? const Icon(Icons.water_drop, color: Colors.lightBlue, size: 20)
+                                  : null,
                             ),
                           )),
                     ],

@@ -32,8 +32,12 @@ on:
 
 # ── Global env ────────────────────────────────────────────────────────────────
 env:
-  FLUTTER_VERSION: '3.41.5'   # pin for reproducible builds; bump deliberately
-  JAVA_VERSION: '17'
+  FLUTTER_VERSION: '3.41.6'   # pin for reproducible builds; bump deliberately
+  JAVA_VERSION: '21'
+  ANDROID_KEYSTORE_BASE64: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEYSTORE_BASE64 || secrets.ANDROID_DEV_KEYSTORE_BASE64 }}
+  ANDROID_KEYSTORE_PASSWORD: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEYSTORE_PASSWORD || secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
+  ANDROID_KEY_PASSWORD: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEY_PASSWORD || secrets.ANDROID_DEV_KEY_PASSWORD }}
+  ANDROID_KEY_ALIAS: ${{ github.ref_name == 'main' && vars.ANDROID_PROD_KEY_ALIAS || vars.ANDROID_DEV_KEY_ALIAS }}
   CE_CONFIG_JSON: ${{ github.ref_name == 'main' && secrets.CE_PROD_CONFIG_JSON || secrets.CE_DEV_CONFIG_JSON }}  # Must contain the full JSON config for CE builds
   DEPLOY_SSH_KEY: ${{ github.ref_name == 'main' && secrets.DEPLOY_PROD_SSH_KEY || secrets.DEPLOY_DEV_SSH_KEY}}  # Optional: required for server deploy step
   DEPLOY_HOST: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_HOST || vars.DEPLOY_DEV_HOST }}
@@ -90,7 +94,7 @@ jobs:
           cache: true
 
       - name: Write production config
-        # CE_PROD_CONFIG_JSON secret must contain the full JSON, e.g.:
+        # CE_PROD_JSON secret must contain the full JSON, e.g.:
         # { "DATA_API_URL": "...", "AUTH_BASE_URL": "...", "ENVIRONMENT": "production", "EDITION": "community" }
         run: echo '${{ env.CE_CONFIG_JSON }}' > config/ce.json
 
@@ -100,7 +104,9 @@ jobs:
       - name: Build web (WebAssembly)
         run: |
           flutter build web --release --wasm \
-            --dart-define-from-file=config/ce.json
+            --dart-define-from-file=config/ce.json \
+            --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - name: Package
         run: tar -C build/web -czf dietry-ce-web.tar.gz .
@@ -123,6 +129,7 @@ jobs:
       #                   DEPLOY_PORT (default 22), DEPLOY_PATH
       - name: Deploy to server
         if: |
+          github.ref_name == 'develop' ||
           github.event_name == 'release' ||
           (github.event_name == 'workflow_dispatch' && inputs.deploy_web == true)
         run: |
@@ -153,7 +160,8 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev
+            libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libwebkit2gtk-4.1-dev libsecret-1-dev
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -171,7 +179,9 @@ jobs:
       - name: Build Linux
         run: |
           flutter build linux --release \
-            --dart-define-from-file=config/ce.json
+            --dart-define-from-file=config/ce.json \
+            --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - name: Package
         run: |
@@ -197,6 +207,8 @@ jobs:
     name: Android (Community Edition)
     runs-on: ubuntu-latest
     needs: lint-test
+    if: |
+      github.ref_name == 'main' || github.ref_name == 'develop'
     steps:
       - uses: actions/checkout@v4
 
@@ -220,15 +232,15 @@ jobs:
         # ANDROID_KEYSTORE_BASE64: base64-encoded .jks file
         # Generate with: base64 -w 0 release.jks
         run: |
-          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' \
+          echo '${{ env.ANDROID_KEYSTORE_BASE64 }}' \
             | base64 --decode > android/app/release.jks
 
       - name: Write key.properties
         run: |
           cat > android/key.properties <<EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storePassword=${{ env.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ env.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ env.ANDROID_KEY_ALIAS }}
           storeFile=release.jks
           EOF
 
@@ -239,13 +251,17 @@ jobs:
         run: |
           flutter build apk --release \
             --dart-define-from-file=config/ce.json \
+            --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \
             --build-number="${{ github.run_number }}"
 
       - name: Build App Bundle (Play Store)
         run: |
           flutter build appbundle --release \
-            --dart-define-from-file=config/ce-prod.json \
+            --dart-define-from-file=config/ce.json \
+            --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \
             --build-number="${{ github.run_number }}"
 
@@ -300,7 +316,9 @@ jobs:
       - name: Build macOS
         run: |
           flutter build macos --release \
-            --dart-define-from-file=config/ce.json
+            --dart-define-from-file=config/ce.json \
+            --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - name: Package
         run: |
@@ -339,8 +357,12 @@ jobs:
 
       - name: Build Windows
         run: |
+          $git_hash = git rev-parse --short HEAD
+          $build_date = (Get-Date -AsUTC -Format 'yyyy-MM-dd')
           flutter build windows --release `
-            --dart-define-from-file=config/ce.json
+            --dart-define-from-file=config/ce.json `
+            --dart-define="GIT_HASH=$git_hash" `
+            --dart-define="BUILD_DATE=$build_date"
         shell: pwsh
 
       - name: Package
@@ -412,6 +434,8 @@ jobs:
         run: |
           flutter build ipa --release \
             --dart-define-from-file=config/ce.json \
+            --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \
             --build-number="${{ github.run_number }}" \
             --export-options-plist=ios/ExportOptions.plist

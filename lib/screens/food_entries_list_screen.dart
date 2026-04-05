@@ -182,6 +182,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
               portions: r.food.portions
                   .map((p) => (name: p.name, weightG: p.amountG))
                   .toList(),
+              isLiquid: r.food.isLiquid,
             )).toList();
           } else {
             final items = await FoodDatabaseService(widget.dbService)
@@ -199,6 +200,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
               portions: f.portions
                   .map((p) => (name: p.name, weightG: p.amountG))
                   .toList(),
+              isLiquid: f.isLiquid,
             )).toList();
           }
         },
@@ -218,6 +220,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             fiber: data.fiber,
             sugar: data.sugar,
             sodium: data.sodium,
+            // Meals are never marked as isLiquid (they can be mixed)
+            // But amountMl is set if there are liquid ingredients
+            isLiquid: false,
+            amountMl: data.liquidMlContribution,
+            isMeal: true,
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
           );
@@ -387,13 +394,14 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                         ),
                                       ),
                                       const Spacer(),
-                                      // Summe für diese Mahlzeit
-                                      Text(
-                                        '${mealEntries.fold(0.0, (sum, e) => sum + e.calories).toStringAsFixed(0)} kcal',
-                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                          color: Colors.grey.shade600,
+                                      // Summe für diese Mahlzeit (only show if not macro-only mode)
+                                      if (_store.goal?.macroOnly != true)
+                                        Text(
+                                          '${mealEntries.fold(0.0, (sum, e) => sum + e.calories).toStringAsFixed(0)} kcal',
+                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                            color: Colors.grey.shade600,
+                                          ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -446,8 +454,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                       ),
                                       title: Text(entry.name),
                                       subtitle: Text(
-                                        '${_formatEntryAmount(entry)} • '
-                                        '${entry.calories.toStringAsFixed(0)} kcal',
+                                        _store.goal?.macroOnly == true
+                                            ? _formatEntryAmount(entry)
+                                            : '${_formatEntryAmount(entry)} • ${entry.calories.toStringAsFixed(0)} kcal',
                                       ),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -556,22 +565,40 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             child: const Icon(Icons.storage_outlined),
           ),
           const SizedBox(width: 12),
-          FloatingActionButton.extended(
-            heroTag: 'fab_add',
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AddFoodEntryScreen(
-                    dbService: widget.dbService,
-                    selectedDate: widget.selectedDay,
+          if (MediaQuery.of(context).size.width >= 550)
+            FloatingActionButton.extended(
+              heroTag: 'fab_add',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddFoodEntryScreen(
+                      dbService: widget.dbService,
+                      selectedDate: widget.selectedDay,
+                    ),
                   ),
-                ),
-              );
-              // DataStore is updated directly by AddFoodEntryScreen.
-            },
-            icon: const Icon(Icons.add),
-            label: Text(l.addEntry),
-          ),
+                );
+                // DataStore is updated directly by AddFoodEntryScreen.
+              },
+              icon: const Icon(Icons.add),
+              label: Text(l.addEntry),
+            )
+          else
+            FloatingActionButton(
+              heroTag: 'fab_add',
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => AddFoodEntryScreen(
+                      dbService: widget.dbService,
+                      selectedDate: widget.selectedDay,
+                    ),
+                  ),
+                );
+                // DataStore is updated directly by AddFoodEntryScreen.
+              },
+              tooltip: l.addEntry,
+              child: const Icon(Icons.add),
+            ),
         ],
       ),
     );

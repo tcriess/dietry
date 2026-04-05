@@ -228,8 +228,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         saved++;
       }
 
-      // Auto-adjust nutrition goal silently (fire-and-forget)
-      NutritionGoalService.autoAdjustGoal(widget.dbService);
+      // Auto-adjust nutrition goal and wait for completion so profile reloads with updated goal
+      await NutritionGoalService.autoAdjustGoal(widget.dbService);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -369,12 +369,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           )
                         else ...[
-                          _buildDataRow(
-                            icon: Icons.local_fire_department,
-                            label: l.nutrientCalories,
-                            value: '${_goal!.calories.toInt()} kcal',
-                            color: Colors.orange,
-                          ),
+                          if (!_goal!.macroOnly)
+                            _buildDataRow(
+                              icon: Icons.local_fire_department,
+                              label: l.nutrientCalories,
+                              value: '${_goal!.calories.toInt()} kcal',
+                              color: Colors.orange,
+                            ),
                           _buildDataRow(
                             icon: Icons.egg_alt,
                             label: l.nutrientProtein,
@@ -809,11 +810,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Switch(
             value: _waterReminderEnabled,
             activeColor: Colors.lightBlue,
-            onChanged: (value) async {
-              final actual = await WaterReminderService.setEnabled(value);
-              if (mounted) {
-                setState(() => _waterReminderEnabled = actual);
-              }
+            onChanged: (value) {
+              // Optimistic update: show the new state immediately
+              setState(() => _waterReminderEnabled = value);
+
+              // Then persist it asynchronously
+              WaterReminderService.setEnabled(value).then((actual) {
+                // If the actual state differs from what we showed, revert
+                if (mounted && actual != value) {
+                  setState(() => _waterReminderEnabled = actual);
+                }
+              }).catchError((e) {
+                // On error, revert to previous state
+                if (mounted) {
+                  setState(() => _waterReminderEnabled = !value);
+                }
+              });
             },
           ),
         ],
@@ -890,6 +902,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String value,
     required Color color,
   }) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+
+    if (isMobile) {
+      // Mobile: Vertical layout to avoid text wrapping
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Desktop: Horizontal layout
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -1123,6 +1171,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     final service = UserBodyMeasurementsService(widget.dbService);
                     await service.deleteMeasurement(measurement.id!);
 
+                    // Auto-adjust nutrition goal based on new current measurement
+                    await NutritionGoalService.autoAdjustGoal(widget.dbService);
+
                     if (mounted) {
                       final lCtx = AppLocalizations.of(context)!;
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1196,7 +1247,22 @@ class _AccountSectionState extends State<_AccountSection> {
         final ld = AppLocalizations.of(ctx)!;
         return AlertDialog(
           title: Text(ld.deleteAccountConfirmTitle),
-          content: Text(ld.deleteAccountConfirmText),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(ld.deleteAccountConfirmText),
+              const SizedBox(height: 12),
+              Text(
+                ld.deleteAccountCredentialsHint,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),

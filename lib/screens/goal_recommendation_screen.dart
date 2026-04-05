@@ -40,6 +40,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   bool _isCalculating = false;
   bool _isSaving = false;
   bool _isLoadingProfile = true;
+  bool _macroOnly = false;
   UserBodyData? _currentBodyData;
 
   @override
@@ -130,17 +131,25 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         _isCalculating = false;
       });
 
-      // 🆕 Öffne Tracking-Method-Screen für detaillierte Auswahl
-      final recommendation = await Navigator.of(context).push<MacroRecommendation>(
-        MaterialPageRoute(
-          builder: (_) => TrackingMethodScreen(
-            userData: bodyData,
-            onRecommendationSelected: (rec) {
-              Navigator.of(context).pop(rec);
-            },
+      MacroRecommendation? recommendation;
+
+      if (_macroOnly) {
+        // Macro-only mode: use tdeeComplete directly without method selection
+        print('📊 Macro-only mode: Verwende tdeeComplete automatisch');
+        recommendation = NutritionCalculator.calculateMacros(bodyData, method: TrackingMethod.tdeeComplete);
+      } else {
+        // Normal mode: open tracking method screen for user to choose
+        recommendation = await Navigator.of(context).push<MacroRecommendation>(
+          MaterialPageRoute(
+            builder: (_) => TrackingMethodScreen(
+              userData: bodyData,
+              onRecommendationSelected: (rec) {
+                Navigator.of(context).pop(rec);
+              },
+            ),
           ),
-        ),
-      );
+        );
+      }
 
       if (recommendation != null) {
         final autoWater = NutritionCalculator.calculateWaterGoal(bodyData.weight);
@@ -158,7 +167,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
       setState(() {
         _isCalculating = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Fehler bei Berechnung: $e'),
@@ -207,6 +216,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         carbs: baseGoal.carbs,
         trackingMethod: baseGoal.trackingMethod,
         waterGoalMl: _waterGoalMl,
+        macroOnly: _macroOnly,
       );
       print('   ✅ Goal erstellt:');
       print('      - Kalorien: ${goal.calories.toInt()} kcal');
@@ -279,10 +289,11 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 children: [
                   Text(ld.goalSavedDialogContent),
                   const SizedBox(height: 16),
-                  Text(
-                    ld.goalTargetLine(goal.calories.toInt()),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  if (!_macroOnly)
+                    Text(
+                      ld.goalTargetLine(goal.calories.toInt()),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   Text('${ld.nutrientProtein}: ${goal.protein.toInt()}g'),
                   Text('${ld.nutrientFat}: ${goal.fat.toInt()}g'),
                   Text('${ld.nutrientCarbs}: ${goal.carbs.toInt()}g'),
@@ -558,6 +569,21 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 },
               ),
 
+              const SizedBox(height: 24),
+
+              // Macro-only mode toggle
+              SwitchListTile(
+                title: Text(l.macroOnlyMode),
+                subtitle: const Text('Track macros without calorie goals'),
+                value: _macroOnly,
+                onChanged: (value) {
+                  setState(() {
+                    _macroOnly = value;
+                  });
+                },
+                contentPadding: EdgeInsets.zero,
+              ),
+
               const SizedBox(height: 32),
 
               // Berechnen Button
@@ -611,109 +637,113 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             ),
             const Divider(height: 24),
 
-            // Tracking-Methode Anzeige
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.purple.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.purple.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.track_changes, color: Colors.purple.shade700),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l.trackingMethodLabel(rec.method.displayName),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.purple.shade900,
+            // Tracking-Methode Anzeige (hidden for macro-only mode)
+            if (!_macroOnly)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.purple.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.track_changes, color: Colors.purple.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l.trackingMethodLabel(rec.method.localizedName(l)),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade900,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    rec.method.shortDescription,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.purple.shade800,
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Grundumsatz & Gesamtumsatz
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(l.bmrLabel),
-                      Text(
-                        '${rec.bmr.toInt()} kcal',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    const SizedBox(height: 8),
+                    Text(
+                      rec.method.localizedShortDescription(l),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.purple.shade800,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(l.tdeeLabel),
-                      Text(
-                        '${rec.tdee.toInt()} kcal',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Zielkalorien
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green, width: 2),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l.targetCalories,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '${rec.calories.toInt()} kcal',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+
+            if (!_macroOnly) ...[
+              const SizedBox(height: 16),
+
+              // Grundumsatz & Gesamtumsatz
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(l.bmrLabel),
+                        Text(
+                          '${rec.bmr.toInt()} kcal',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(l.tdeeLabel),
+                        Text(
+                          '${rec.tdee.toInt()} kcal',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+            ],
+
+            // Zielkalorien (only show if not macro-only mode)
+            if (!_macroOnly)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green, width: 2),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      l.targetCalories,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${rec.calories.toInt()} kcal',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             const SizedBox(height: 16),
 
@@ -810,7 +840,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    rec.method.trackingGuideline,
+                    rec.method.localizedTrackingGuideline(l),
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.blue.shade800,

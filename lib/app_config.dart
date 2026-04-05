@@ -65,6 +65,16 @@ class AppConfig {
   static bool get isProduction => environment == 'production';
   static bool get isDevelopment => environment == 'development';
 
+  /// Show the orange developer banner at top of app.
+  /// Only relevant in development builds. Default: true (show banner).
+  static const String _showDeveloperBannerConfigured =
+      String.fromEnvironment('SHOW_DEVELOPER_BANNER', defaultValue: 'true');
+
+  static bool get showDeveloperBanner {
+    if (!isDevelopment) return false;
+    return _showDeveloperBannerConfigured.toLowerCase() != 'false';
+  }
+
   // ── Edition ───────────────────────────────────────────────────────────────
 
   /// Build-Zeit-Edition: `community` (default) oder `cloud`.
@@ -76,4 +86,17 @@ class AppConfig {
 
   /// True wenn dieser Build die Cloud-Edition ist (Premium-Features möglich).
   static bool get isCloudEdition => edition == 'cloud';
+
+  // ── Build-Metadaten ───────────────────────────────────────────────────────
+
+  /// Short git commit hash injected by CI via --dart-define=GIT_HASH=...
+  /// Falls back to 'dev' for local builds.
+  static const String gitHash = String.fromEnvironment(
+    'GIT_HASH',
+    defaultValue: 'dev',
+  );
+
+  /// ISO date of the build injected by CI via --dart-define=BUILD_DATE=...
+  /// Empty for local builds.
+  static const String buildDate = String.fromEnvironment('BUILD_DATE');
 }

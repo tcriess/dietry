@@ -142,58 +142,29 @@ class NutritionGoalService {
       json['user_id'] = userId;
       json['valid_from'] = validFromDate;
       
-      // Versuche UPSERT (mit .select() um Ergebnis direkt zu bekommen)
-      try {
-        print('   Versuche UPSERT mit onConflict...');
-        final result = await _db.client
-          .from('nutrition_goals')
-          .upsert(
-            json,
-            onConflict: 'user_id,valid_from',
-          )
-          .select()
-          .single();
-        
-        print('✅ UPSERT erfolgreich via PostgrestClient');
-        print('   Goal-ID: ${result['id']}');
-        return NutritionGoal.fromJson(result);
-      } catch (upsertError) {
-        print('⚠️ UPSERT mit .select() fehlgeschlagen: $upsertError');
-        print('   Fallback: Manuelles UPDATE/INSERT...');
-        
-        // Fallback: Manuell UPDATE oder INSERT
-        if (existing != null) {
-          // UPDATE
-          print('   Führe UPDATE aus...');
-          await _db.client
-            .from('nutrition_goals')
-            .update(json)
-            .eq('id', existing['id'])
-            .eq('user_id', userId);  // Extra Sicherheit
-          
-          print('✅ UPDATE erfolgreich (ID: ${existing['id']})');
-        } else {
-          // INSERT
-          print('   Führe INSERT aus...');
-          await _db.client
-            .from('nutrition_goals')
-            .insert(json);
-          
-          print('✅ INSERT erfolgreich');
-        }
-        
-        // Hole das Goal aus DB
-        print('   Hole gespeichertes Goal aus DB...');
-        final createdGoal = await _db.client
-          .from('nutrition_goals')
-          .select()
-          .eq('user_id', userId)
-          .eq('valid_from', validFromDate)
-          .single();
-        
-        print('✅ Goal erfolgreich aus DB geladen (ID: ${createdGoal['id']})');
-        return NutritionGoal.fromJson(createdGoal);
-      }
+      // UPSERT ohne .select() (workaround für PostgREST Prefer-Header-Bug)
+      // Hole das Ergebnis immer manuell nach dem UPSERT
+      print('   Führe UPSERT aus...');
+      await _db.client
+        .from('nutrition_goals')
+        .upsert(
+          json,
+          onConflict: 'user_id,valid_from',
+        );
+
+      print('✅ UPSERT erfolgreich');
+
+      // Hole das Goal aus DB
+      print('   Hole gespeichertes Goal aus DB...');
+      final createdGoal = await _db.client
+        .from('nutrition_goals')
+        .select()
+        .eq('user_id', userId)
+        .eq('valid_from', validFromDate)
+        .single();
+
+      print('✅ Goal erfolgreich aus DB geladen (ID: ${createdGoal['id']})');
+      return NutritionGoal.fromJson(createdGoal);
     } catch (e, stackTrace) {
       print('❌ Fehler beim UPSERT des Goals: $e');
       print('   Stack trace: $stackTrace');
@@ -211,6 +182,7 @@ class NutritionGoalService {
       // Use the tracking method from the most recent stored goal (fallback: tdeeHybrid).
       final currentGoal = await service.getCurrentGoal();
       final method = currentGoal?.trackingMethod ?? TrackingMethod.tdeeHybrid;
+      final preserveMacroOnly = currentGoal?.macroOnly ?? false;
 
       final profile = await UserProfileService(db).getCurrentProfile();
       final measurement = await UserBodyMeasurementsService(db).getCurrentMeasurement();
@@ -239,6 +211,7 @@ class NutritionGoalService {
         carbs: baseGoal.carbs,
         trackingMethod: baseGoal.trackingMethod,
         waterGoalMl: waterGoalMl,
+        macroOnly: preserveMacroOnly,
       );
       return await service.createOrUpdateGoal(goal);
     } catch (_) {

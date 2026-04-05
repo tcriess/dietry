@@ -38,6 +38,17 @@ extension TrackingMethodExtension on TrackingMethod {
     }
   }
 
+  String localizedName(dynamic l) {
+    switch (this) {
+      case TrackingMethod.bmrOnly:
+        return l.trackingMethodBmrOnlyName as String;
+      case TrackingMethod.tdeeComplete:
+        return l.trackingMethodTdeeCompleteName as String;
+      case TrackingMethod.tdeeHybrid:
+        return l.trackingMethodTdeeHybridName as String;
+    }
+  }
+
   String get shortDescription {
     switch (this) {
       case TrackingMethod.bmrOnly:
@@ -46,6 +57,17 @@ extension TrackingMethodExtension on TrackingMethod {
         return 'Kaum Tracking nötig';
       case TrackingMethod.tdeeHybrid:
         return 'Nur Sport tracken';
+    }
+  }
+
+  String localizedShortDescription(dynamic l) {
+    switch (this) {
+      case TrackingMethod.bmrOnly:
+        return l.trackingMethodBmrOnlyShort as String;
+      case TrackingMethod.tdeeComplete:
+        return l.trackingMethodTdeeCompleteShort as String;
+      case TrackingMethod.tdeeHybrid:
+        return l.trackingMethodTdeeHybridShort as String;
     }
   }
 
@@ -65,6 +87,17 @@ extension TrackingMethodExtension on TrackingMethod {
             'Wähle dein Activity Level basierend auf deiner täglichen Arbeit (z.B. Bürojob = sedentary). '
             'Alle sportlichen Aktivitäten (Gym, Laufen, etc.) trackst du separat. '
             'Ideal bei variabler Sport-Routine.';
+    }
+  }
+
+  String localizedDetailedDescription(dynamic l) {
+    switch (this) {
+      case TrackingMethod.bmrOnly:
+        return l.trackingMethodBmrOnlyDetail as String;
+      case TrackingMethod.tdeeComplete:
+        return l.trackingMethodTdeeCompleteDetail as String;
+      case TrackingMethod.tdeeHybrid:
+        return l.trackingMethodTdeeHybridDetail as String;
     }
   }
 
@@ -88,6 +121,17 @@ extension TrackingMethodExtension on TrackingMethod {
     }
   }
 
+  String localizedRecommendedFor(dynamic l) {
+    switch (this) {
+      case TrackingMethod.bmrOnly:
+        return l.trackingMethodBmrOnlyRecommended as String;
+      case TrackingMethod.tdeeComplete:
+        return l.trackingMethodTdeeCompleteRecommended as String;
+      case TrackingMethod.tdeeHybrid:
+        return l.trackingMethodTdeeHybridRecommended as String;
+    }
+  }
+
   String get activityLevelHint {
     switch (this) {
       case TrackingMethod.bmrOnly:
@@ -96,6 +140,17 @@ extension TrackingMethodExtension on TrackingMethod {
         return 'Wähle dein Activity Level basierend auf GESAMTER täglicher Aktivität (inkl. Sport)';
       case TrackingMethod.tdeeHybrid:
         return 'Wähle dein Activity Level NUR basierend auf deiner täglichen Arbeit (ohne Sport)';
+    }
+  }
+
+  String localizedActivityLevelHint(dynamic l) {
+    switch (this) {
+      case TrackingMethod.bmrOnly:
+        return l.trackingMethodBmrOnlyActivityHint as String;
+      case TrackingMethod.tdeeComplete:
+        return l.trackingMethodTdeeCompleteActivityHint as String;
+      case TrackingMethod.tdeeHybrid:
+        return l.trackingMethodTdeeHybridActivityHint as String;
     }
   }
 
@@ -129,6 +184,17 @@ extension TrackingMethodExtension on TrackingMethod {
             '• Arbeitsweg\n'
             '• Einkaufen\n'
             '• Normale Hausarbeit';
+    }
+  }
+
+  String localizedTrackingGuideline(dynamic l) {
+    switch (this) {
+      case TrackingMethod.bmrOnly:
+        return l.trackingMethodBmrOnlyTrackingGuideline as String;
+      case TrackingMethod.tdeeComplete:
+        return l.trackingMethodTdeeCompleteTrackingGuideline as String;
+      case TrackingMethod.tdeeHybrid:
+        return l.trackingMethodTdeeHybridTrackingGuideline as String;
     }
   }
 
