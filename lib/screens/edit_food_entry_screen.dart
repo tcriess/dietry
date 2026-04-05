@@ -178,10 +178,9 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   }
 
   /// Compute total nutrition for the current amount and per-100g values.
-  /// Used to display a preview for food entries (not meals).
+  /// For food entries: scales per-100g values by grams.
+  /// For meal entries: scales stored totals by portion ratio.
   Map<String, double> _computeTotals() {
-    if (widget.entry.isMeal) return {};  // Not used for meals
-
     final amount = double.tryParse(_amountController.text) ?? 0;
     if (amount <= 0) {
       return {
@@ -192,6 +191,19 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       };
     }
 
+    if (widget.entry.isMeal) {
+      // Meal entries: scale stored totals by portion ratio
+      if (widget.entry.amount <= 0) return {};
+      final scale = amount / widget.entry.amount;
+      return {
+        'calories': widget.entry.calories * scale,
+        'protein':  widget.entry.protein  * scale,
+        'fat':      widget.entry.fat      * scale,
+        'carbs':    widget.entry.carbs    * scale,
+      };
+    }
+
+    // Food entries: scale per-100g values by grams
     final grams = _selectedPortion != null
         ? amount * _selectedPortion!.amountG
         : amount;  // g or ml
@@ -222,13 +234,13 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       double? amountMl;
 
       if (isMealEntry) {
-        // For meal entries: the shown values are totals for the current portion count
-        // Scale them by the ratio of new amount / old amount
+        // For meal entries: scale the original stored totals by the new portion count
+        // The fields are read-only, so we read directly from entry, not controllers
         final scaleFactor = rawAmount / widget.entry.amount;
-        totalCalories = double.parse(_caloriesController.text) * scaleFactor;
-        totalProtein = double.parse(_proteinController.text) * scaleFactor;
-        totalFat = double.parse(_fatController.text) * scaleFactor;
-        totalCarbs = double.parse(_carbsController.text) * scaleFactor;
+        totalCalories = widget.entry.calories * scaleFactor;
+        totalProtein = widget.entry.protein * scaleFactor;
+        totalFat = widget.entry.fat * scaleFactor;
+        totalCarbs = widget.entry.carbs * scaleFactor;
 
         // Scale liquid ml contribution proportionally
         if (widget.entry.amountMl != null) {
@@ -360,16 +372,20 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   }
 
   /// Build a card showing total nutrition for the current amount.
-  /// Only shown for food entries (not meals).
+  /// Shown for both food entries and meal entries (as read-only preview for meals).
   Widget _buildTotalsPreview() {
     final totals = _computeTotals();
     if (totals.isEmpty) return const SizedBox.shrink();
 
     final amount = double.tryParse(_amountController.text) ?? 0;
-    final displayUnit = _selectedPortion?.name ?? _customUnit;
     final amountStr = amount == amount.truncateToDouble()
         ? amount.toInt().toString()
         : amount.toStringAsFixed(1);
+
+    // Label differs for meals vs foods
+    final label = widget.entry.isMeal
+        ? 'Nährwerte für $amountStr Portion${amount != 1.0 ? 'en' : ''}:'
+        : 'Gesamt für $amountStr${_selectedPortion?.name ?? _customUnit}:';
 
     return Card(
       color: Colors.blue.shade50,
@@ -379,7 +395,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Gesamt für $amountStr$displayUnit:',
+              label,
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
@@ -500,87 +516,84 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
             const SizedBox(height: 24),
 
-            // Nährwerte
-            Text(
-              widget.entry.isMeal
-                  ? 'Nährwerte (Gesamt für ${widget.entry.amount.toStringAsFixed(1)} Portionen)'
-                  : l.nutritionPer100,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _caloriesController,
-                    decoration: InputDecoration(
-                      labelText: l.caloriesLabel,
-                      suffixText: 'kcal',
-                      border: const OutlineInputBorder(),
+            // Nährwerte section
+            if (widget.entry.isMeal) ...[
+              // Meal entries: show read-only preview only
+              _buildTotalsPreview(),
+            ] else ...[
+              // Food entries: show editable per-100g fields + preview
+              Text(
+                l.nutritionPer100,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _caloriesController,
+                      decoration: InputDecoration(
+                        labelText: l.caloriesLabel,
+                        suffixText: 'kcal',
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),  // Update preview
+                      validator: (value) =>
+                          (value == null || value.isEmpty) ? l.requiredField : null,
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (_) => setState(() {}),  // Update preview
-                    validator: (value) =>
-                        (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _proteinController,
-                    decoration: InputDecoration(
-                      labelText: l.proteinLabel,
-                      suffixText: 'g',
-                      border: const OutlineInputBorder(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _proteinController,
+                      decoration: InputDecoration(
+                        labelText: l.proteinLabel,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),  // Update preview
+                      validator: (value) =>
+                          (value == null || value.isEmpty) ? l.requiredField : null,
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (_) => setState(() {}),  // Update preview
-                    validator: (value) =>
-                        (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _fatController,
-                    decoration: InputDecoration(
-                      labelText: l.fatLabel,
-                      suffixText: 'g',
-                      border: const OutlineInputBorder(),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _fatController,
+                      decoration: InputDecoration(
+                        labelText: l.fatLabel,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),  // Update preview
+                      validator: (value) =>
+                          (value == null || value.isEmpty) ? l.requiredField : null,
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (_) => setState(() {}),  // Update preview
-                    validator: (value) =>
-                        (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    controller: _carbsController,
-                    decoration: InputDecoration(
-                      labelText: l.carbsLabel,
-                      suffixText: 'g',
-                      border: const OutlineInputBorder(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _carbsController,
+                      decoration: InputDecoration(
+                        labelText: l.carbsLabel,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),  // Update preview
+                      validator: (value) =>
+                          (value == null || value.isEmpty) ? l.requiredField : null,
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (_) => setState(() {}),  // Update preview
-                    validator: (value) =>
-                        (value == null || value.isEmpty) ? l.requiredField : null,
                   ),
-                ),
-              ],
-            ),
-
-            // Preview of total amounts for food entries
-            if (!widget.entry.isMeal) ...[
+                ],
+              ),
               const SizedBox(height: 24),
               _buildTotalsPreview(),
             ],
