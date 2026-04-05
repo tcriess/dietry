@@ -1127,12 +1127,12 @@ class _WeightTrendChart extends StatelessWidget {
                   if (isWeightLine) {
                     // Convert from normalized back to actual weight
                     final actualWeight = minW + barSpot.y / 100 * wRange;
-                    value = '${actualWeight.round()} kg';
+                    value = '${actualWeight.toStringAsFixed(1)} kg';
                   } else if (barSpot.barIndex == 1 && normalizedBfPts.isNotEmpty) {
                     // Convert from normalized back to actual body fat percentage
                     final bfRange = maxBf - minBf;
                     final actualBf = minBf + barSpot.y / 100 * bfRange;
-                    value = '${actualBf.round()}%';
+                    value = '${actualBf.toStringAsFixed(1)}%';
                   } else {
                     value = barSpot.y.toStringAsFixed(1);
                   }
