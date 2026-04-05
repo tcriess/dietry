@@ -32,6 +32,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   late TextEditingController _proteinController;
   late TextEditingController _fatController;
   late TextEditingController _carbsController;
+  late TextEditingController _fiberController;
+  late TextEditingController _sugarController;
+  late TextEditingController _sodiumController;
+  late TextEditingController _saturatedFatController;
 
   late MealType _selectedMealType;
   FoodPortion? _selectedPortion;
@@ -75,6 +79,12 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
     _selectedMealType = widget.entry.mealType;
     _isLiquid = widget.entry.isLiquid;
+
+    // Optional nutrition fields
+    _fiberController = TextEditingController(text: widget.entry.fiber?.toStringAsFixed(1) ?? '');
+    _sugarController = TextEditingController(text: widget.entry.sugar?.toStringAsFixed(1) ?? '');
+    _sodiumController = TextEditingController(text: widget.entry.sodium?.toStringAsFixed(1) ?? '');
+    _saturatedFatController = TextEditingController(text: widget.entry.saturatedFat?.toStringAsFixed(1) ?? '');
 
     _customUnit = widget.entry.unit;
 
@@ -167,6 +177,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     _proteinController.dispose();
     _fatController.dispose();
     _carbsController.dispose();
+    _fiberController.dispose();
+    _sugarController.dispose();
+    _sodiumController.dispose();
+    _saturatedFatController.dispose();
     super.dispose();
   }
 
@@ -231,6 +245,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       double totalProtein;
       double totalFat;
       double totalCarbs;
+      double? totalFiber;
+      double? totalSugar;
+      double? totalSodium;
+      double? totalSaturatedFat;
       double? amountMl;
 
       if (isMealEntry) {
@@ -241,6 +259,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         totalProtein = widget.entry.protein * scaleFactor;
         totalFat = widget.entry.fat * scaleFactor;
         totalCarbs = widget.entry.carbs * scaleFactor;
+        totalFiber = widget.entry.fiber != null ? widget.entry.fiber! * scaleFactor : null;
+        totalSugar = widget.entry.sugar != null ? widget.entry.sugar! * scaleFactor : null;
+        totalSodium = widget.entry.sodium != null ? widget.entry.sodium! * scaleFactor : null;
+        totalSaturatedFat = widget.entry.saturatedFat != null ? widget.entry.saturatedFat! * scaleFactor : null;
 
         // Scale liquid ml contribution proportionally
         if (widget.entry.amountMl != null) {
@@ -264,6 +286,20 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         totalFat = per100gFat * grams / 100.0;
         totalCarbs = per100gCarbs * grams / 100.0;
 
+        // Optional fields: convert per-100g to totals
+        totalFiber = double.tryParse(_fiberController.text) != null
+            ? double.parse(_fiberController.text) * grams / 100.0
+            : null;
+        totalSugar = double.tryParse(_sugarController.text) != null
+            ? double.parse(_sugarController.text) * grams / 100.0
+            : null;
+        totalSodium = double.tryParse(_sodiumController.text) != null
+            ? double.parse(_sodiumController.text) * grams / 100.0
+            : null;
+        totalSaturatedFat = double.tryParse(_saturatedFatController.text) != null
+            ? double.parse(_saturatedFatController.text) * grams / 100.0
+            : null;
+
         // Calculate amountMl for liquid foods
         if (_isLiquid) {
           if (_selectedPortion != null) {
@@ -285,6 +321,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         protein: totalProtein,
         fat: totalFat,
         carbs: totalCarbs,
+        fiber: totalFiber,
+        sugar: totalSugar,
+        sodium: totalSodium,
+        saturatedFat: totalSaturatedFat,
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: widget.entry.isMeal,
@@ -594,6 +634,74 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                   ),
                 ],
               ),
+
+              const SizedBox(height: 24),
+              Text('Optional', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _fiberController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientFiber,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _saturatedFatController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientSaturatedFat,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _sugarController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientSugar,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _sodiumController,
+                      decoration: InputDecoration(
+                        labelText: l.nutrientSalt,
+                        suffixText: 'g',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 24),
               _buildTotalsPreview(),
             ],

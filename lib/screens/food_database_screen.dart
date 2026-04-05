@@ -359,6 +359,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   late final TextEditingController _carbsController;
   late final TextEditingController _categoryController;
   late final TextEditingController _brandController;
+  late final TextEditingController _fiberController;
+  late final TextEditingController _sugarController;
+  late final TextEditingController _sodiumController;
+  late final TextEditingController _saturatedFatController;
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
   late bool _isPublic;
   late bool _isLiquid;
@@ -380,6 +384,14 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         text: f != null ? f.carbs.toStringAsFixed(1) : '');
     _categoryController = TextEditingController(text: f?.category ?? '');
     _brandController = TextEditingController(text: f?.brand ?? '');
+    _fiberController = TextEditingController(
+        text: f?.fiber != null ? f!.fiber!.toStringAsFixed(1) : '');
+    _sugarController = TextEditingController(
+        text: f?.sugar != null ? f!.sugar!.toStringAsFixed(1) : '');
+    _sodiumController = TextEditingController(
+        text: f?.sodium != null ? f!.sodium!.toStringAsFixed(1) : '');
+    _saturatedFatController = TextEditingController(
+        text: f?.saturatedFat != null ? f!.saturatedFat!.toStringAsFixed(1) : '');
     for (final p in (widget.food?.portions ?? [])) {
       _portionRows.add((
         name: TextEditingController(text: p.name),
@@ -400,6 +412,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     _carbsController.dispose();
     _categoryController.dispose();
     _brandController.dispose();
+    _fiberController.dispose();
+    _sugarController.dispose();
+    _sodiumController.dispose();
+    _saturatedFatController.dispose();
     for (final row in _portionRows) {
       row.name.dispose();
       row.amount.dispose();
@@ -419,9 +435,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       protein: double.parse(_proteinController.text),
       fat: double.parse(_fatController.text),
       carbs: double.parse(_carbsController.text),
-      fiber: widget.food?.fiber,
-      sugar: widget.food?.sugar,
-      sodium: widget.food?.sodium,
+      fiber: double.tryParse(_fiberController.text),
+      sugar: double.tryParse(_sugarController.text),
+      sodium: double.tryParse(_sodiumController.text),
+      saturatedFat: double.tryParse(_saturatedFatController.text),
       servingSize: null,
       servingUnit: null,
       portions: _portionRows
@@ -571,6 +588,66 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             label: l.foodCarbsPer100,
                             suffix: 'g',
                             requiredMsg: l.requiredField)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Optional: Fiber & Saturated Fat
+                Row(
+                  children: [
+                    Expanded(
+                        child: _numField(
+                            controller: _fiberController,
+                            label: l.nutrientFiber,
+                            suffix: 'g',
+                            requiredMsg: l.requiredField)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: TextFormField(
+                          controller: _saturatedFatController,
+                          decoration: InputDecoration(
+                            labelText: l.nutrientSaturatedFat,
+                            suffixText: 'g',
+                            helperText: l.ofWhichFat,
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Optional: Sugar & Salt
+                Row(
+                  children: [
+                    Expanded(
+                        child: TextFormField(
+                          controller: _sugarController,
+                          decoration: InputDecoration(
+                            labelText: l.nutrientSugar,
+                            suffixText: 'g',
+                            helperText: l.ofWhichCarbs,
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                        )),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: TextFormField(
+                          controller: _sodiumController,
+                          decoration: InputDecoration(
+                            labelText: l.nutrientSalt,
+                            suffixText: 'g',
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                        )),
                   ],
                 ),
                 const SizedBox(height: 10),
