@@ -123,7 +123,7 @@ class OpenFoodFactsService {
       final carbs = _num(n, 'carbohydrates_100g') ?? 0.0;
 
       final barcode = (p['code'] as String?)?.trim();
-      final brand = (p['brands'] as String?)?.split(',').first.trim();
+      final brand = _parseBrand(p['brands']);
       final category = _mapCategory(p['categories_tags']);
 
       final now = DateTime.now();
@@ -253,6 +253,15 @@ class OpenFoodFactsService {
     return null;
   }
 
+  String? _parseBrand(dynamic raw) {
+    if (raw is! String) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    // Split by comma and take first brand
+    final brand = trimmed.split(',').first.trim();
+    return brand.isEmpty ? null : brand;
+  }
+
   String? _mapCategory(dynamic tags) {
     if (tags is! List) return null;
     // Einfache Übersetzung der häufigsten Open Food Facts Kategorien
@@ -271,7 +280,9 @@ class OpenFoodFactsService {
       'en:frozen-foods': 'Tiefkühlprodukte',
     };
     for (final tag in tags) {
-      final category = mapping[tag as String?];
+      // Ensure tag is a string before using as map key
+      if (tag is! String) continue;
+      final category = mapping[tag];
       if (category != null) return category;
     }
     return null;
