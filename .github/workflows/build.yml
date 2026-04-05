@@ -129,6 +129,7 @@ jobs:
       #                   DEPLOY_PORT (default 22), DEPLOY_PATH
       - name: Deploy to server
         if: |
+          github.ref_name == 'develop' ||
           github.event_name == 'release' ||
           (github.event_name == 'workflow_dispatch' && inputs.deploy_web == true)
         run: |
