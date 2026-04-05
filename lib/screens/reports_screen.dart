@@ -1117,6 +1117,30 @@ class _WeightTrendChart extends StatelessWidget {
                 FlLine(color: Colors.grey.shade200, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
+          lineTouchData: LineTouchData(
+            handleBuiltInTouches: true,
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                return touchedBarSpots.map((barSpot) {
+                  final isWeightLine = barSpot.barIndex == 0;
+                  late String value;
+                  if (isWeightLine) {
+                    // Convert from normalized back to actual weight
+                    final actualWeight = minW + barSpot.y / 100 * wRange;
+                    value = '${actualWeight.round()} kg';
+                  } else if (barSpot.barIndex == 1 && normalizedBfPts.isNotEmpty) {
+                    // Convert from normalized back to actual body fat percentage
+                    final bfRange = maxBf - minBf;
+                    final actualBf = minBf + barSpot.y / 100 * bfRange;
+                    value = '${actualBf.round()}%';
+                  } else {
+                    value = barSpot.y.toStringAsFixed(1);
+                  }
+                  return LineTooltipItem(value, const TextStyle(color: Colors.white));
+                }).toList();
+              },
+            ),
+          ),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
