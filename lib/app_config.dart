@@ -65,6 +65,16 @@ class AppConfig {
   static bool get isProduction => environment == 'production';
   static bool get isDevelopment => environment == 'development';
 
+  /// Show the orange developer banner at top of app.
+  /// Only relevant in development builds. Default: true (show banner).
+  static const String _showDeveloperBannerConfigured =
+      String.fromEnvironment('SHOW_DEVELOPER_BANNER', defaultValue: 'true');
+
+  static bool get showDeveloperBanner {
+    if (!isDevelopment) return false;
+    return _showDeveloperBannerConfigured.toLowerCase() != 'false';
+  }
+
   // ── Edition ───────────────────────────────────────────────────────────────
 
   /// Build-Zeit-Edition: `community` (default) oder `cloud`.

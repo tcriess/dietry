@@ -189,7 +189,7 @@ class LoginScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            if (AppConfig.isDevelopment)
+            if (AppConfig.showDeveloperBanner)
               Container(
                 width: double.infinity,
                 color: Colors.orange.shade700,
@@ -1333,7 +1333,7 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
       ),
       appBar: AppBar(
         title: Text(l.appBarTitle),
-        bottom: AppConfig.isDevelopment
+        bottom: AppConfig.showDeveloperBanner
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(24),
                 child: Container(
