@@ -169,13 +169,13 @@ abstract class AppLocalizations {
   /// No description provided for @ofWhichCarbs.
   ///
   /// In de, this message translates to:
-  /// **'davon Kohlenhydrate'**
+  /// **'davon Zucker'**
   String get ofWhichCarbs;
 
   /// No description provided for @ofWhichFat.
   ///
   /// In de, this message translates to:
-  /// **'davon Fett'**
+  /// **'davon gesättigt'**
   String get ofWhichFat;
 
   /// No description provided for @goal.
