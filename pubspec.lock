@@ -252,7 +252,7 @@ packages:
   dietry_cloud:
     dependency: "direct main"
     description:
-      path: "../dietry-cloud"
+      path: "packages/dietry_cloud"
       relative: true
     source: path
     version: "1.0.0"
