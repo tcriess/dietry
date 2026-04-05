@@ -126,17 +126,28 @@ class FoodItem {
   static List<FoodPortion> _parsePortions(Map<String, dynamic> json) {
     final raw = json['portions'];
     if (raw is List && raw.isNotEmpty) {
-      return raw
-          .whereType<Map<String, dynamic>>()
-          .map(FoodPortion.fromJson)
-          .toList();
+      final portions = <FoodPortion>[];
+      for (final item in raw) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          portions.add(FoodPortion.fromJson(item));
+        } catch (e) {
+          // Skip invalid portions instead of crashing
+          continue;
+        }
+      }
+      return portions;
     }
     // Fallback: convert single serving_size/serving_unit to a portion
     final size = json['serving_size'];
-    final unit = json['serving_unit'] as String?;
+    final unit = _safeString(json['serving_unit']);
     if (size != null && unit != null && unit != 'g' && unit != 'ml') {
       // Only create a named portion if unit is not g/ml (those are covered by defaults)
-      return [FoodPortion(name: '1 Portion', amountG: (size as num).toDouble())];
+      try {
+        return [FoodPortion(name: '1 Portion', amountG: (size as num).toDouble())];
+      } catch (e) {
+        return [];
+      }
     }
     return [];
   }

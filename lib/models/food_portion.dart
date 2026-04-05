@@ -6,10 +6,21 @@ class FoodPortion {
 
   const FoodPortion({required this.name, required this.amountG});
 
-  factory FoodPortion.fromJson(Map<String, dynamic> json) => FoodPortion(
-        name: json['name'] as String,
-        amountG: (json['amount_g'] as num).toDouble(),
+  factory FoodPortion.fromJson(Map<String, dynamic> json) {
+    final name = json['name'] as String?;
+    final amountGRaw = json['amount_g'];
+
+    if (name == null || name.isEmpty || amountGRaw == null) {
+      throw FormatException(
+        'Invalid FoodPortion: name=$name, amount_g=$amountGRaw',
       );
+    }
+
+    return FoodPortion(
+      name: name,
+      amountG: (amountGRaw as num).toDouble(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {'name': name, 'amount_g': amountG};
 
