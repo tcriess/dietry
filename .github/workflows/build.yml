@@ -249,10 +249,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Extract edition from config
+        id: config
+        run: |
+          EDITION=$(jq -r '.EDITION' config/ce.json)
+          echo "edition=$EDITION" >> $GITHUB_OUTPUT
+
       - name: Build APK (direct install)
         run: |
           flutter build apk --release \
             --dart-define-from-file=config/ce.json \
+            --dart-define=flutter.edition=${{ steps.config.outputs.edition }} \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
             --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \
@@ -262,6 +269,7 @@ jobs:
         run: |
           flutter build appbundle --release \
             --dart-define-from-file=config/ce.json \
+            --dart-define=flutter.edition=${{ steps.config.outputs.edition }} \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
             --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \

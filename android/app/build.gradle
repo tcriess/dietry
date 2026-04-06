@@ -28,6 +28,10 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+def edition = project.hasProperty('flutter.edition')
+    ? project.property('flutter.edition')
+    : 'community'
+def appId = edition == 'cloud' ? 'de.dietry.app' : 'de.dietry.community'
 
 android {
     namespace "com.sws.dietry"
@@ -49,18 +53,18 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.sws.dietry"
+        // Application ID is set based on EDITION (community or cloud)
+        applicationId appId
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdkVersion 26  // Health Connect benötigt Android 8.0+
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
-        
+
         // Manifest placeholders
         manifestPlaceholders = [
-            'appAuthRedirectScheme': 'com.sws.dietry',
+            'appAuthRedirectScheme': appId,
             'applicationName': 'android.app.Application'
         ]
     }
