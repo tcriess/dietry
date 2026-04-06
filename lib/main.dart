@@ -319,8 +319,8 @@ class LoginScreen extends StatelessWidget {
                       onTimeout: () => '',
                     ).whenComplete(() => server.close());
                   } else {
-                    // iOS/macOS: Custom Scheme für WebView
-                    callbackUrl = 'com.sws.dietry://auth.callback';
+                    // iOS/macOS: Use HTTPS callback like Android (WebView will intercept)
+                    callbackUrl = AppConfig.androidCallbackUrl;
                   }
                   
                   // ✅ Starte OAuth-Flow via NeonAuthService
