@@ -44,9 +44,11 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
       endTime: end,
     );
 
-    final workouts = data.where((d) => d.type == HealthDataType.WORKOUT);
+    final result = <PhysicalActivity>[];
 
-    return workouts.map((d) {
+    // Structured workouts (WORKOUT type)
+    final workouts = data.where((d) => d.type == HealthDataType.WORKOUT);
+    result.addAll(workouts.map((d) {
       final value = d.value as WorkoutHealthValue;
       return PhysicalActivity(
         activityType: ActivityType.other,
@@ -61,7 +63,26 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
         source: DataSource.healthConnect,
         healthConnectRecordId: d.sourceId,
       );
-    }).toList();
+    }));
+
+    // Simple active calorie burns (log entries without duration info)
+    final activeCalories = data.where((d) => d.type == HealthDataType.ACTIVE_ENERGY_BURNED);
+    result.addAll(activeCalories.map((d) {
+      final value = (d.value as NumericHealthValue).numericValue;
+      return PhysicalActivity(
+        activityType: ActivityType.other,
+        activityName: 'Active Calories',
+        startTime: d.dateFrom,
+        endTime: d.dateFrom,  // No duration data for simple burns
+        durationMinutes: 0,
+        caloriesBurned: value.toDouble(),
+        distanceKm: null,
+        source: DataSource.healthConnect,
+        healthConnectRecordId: d.sourceId,
+      );
+    }));
+
+    return result;
   } catch (e) {
     print('❌ Health Connect Aktivitäten-Import fehlgeschlagen: $e');
     return [];
