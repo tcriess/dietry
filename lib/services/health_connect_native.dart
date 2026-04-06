@@ -20,13 +20,33 @@ const _bodyTypes = [
 Future<bool> requestHealthPermissions() async {
   try {
     await _health.configure();
-    return await _health.requestAuthorization(
+    final granted = await _health.requestAuthorization(
       [..._activityTypes, ..._bodyTypes],
       permissions: [
         ..._activityTypes.map((_) => HealthDataAccess.READ),
         ..._bodyTypes.map((_) => HealthDataAccess.READ),
       ],
     );
+
+    if (granted) {
+      print('✅ Health Connect Berechtigungen gewährt');
+      // Verify permissions actually work by checking one data type
+      try {
+        final now = DateTime.now();
+        final test = await _health.getHealthDataFromTypes(
+          types: [HealthDataType.STEPS],
+          startTime: now.subtract(const Duration(hours: 1)),
+          endTime: now,
+        );
+        print('✅ Berechtigungen funktionieren: ${test.length} Datenpunkte abgerufen');
+      } catch (e) {
+        print('⚠️ Berechtigungen gewährt aber Abfrage fehlgeschlagen: $e');
+        print('💡 Bitte öffne Health Connect > Einstellungen > Berechtigungen und aktiviere Dietry manuell');
+        return false;
+      }
+    }
+
+    return granted;
   } catch (e) {
     print('❌ Health Connect Berechtigungen fehlgeschlagen: $e');
     return false;
@@ -37,18 +57,19 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
   required DateTime start,
   required DateTime end,
 }) async {
+  final result = <PhysicalActivity>[];
+
+  // Query each type separately so one permission error doesn't block all data
+
+  // Structured workouts (WORKOUT type)
   try {
     final data = await _health.getHealthDataFromTypes(
-      types: _activityTypes,
+      types: [HealthDataType.WORKOUT],
       startTime: start,
       endTime: end,
     );
 
-    final result = <PhysicalActivity>[];
-
-    // Structured workouts (WORKOUT type)
-    final workouts = data.where((d) => d.type == HealthDataType.WORKOUT);
-    result.addAll(workouts.map((d) {
+    result.addAll(data.map((d) {
       final value = d.value as WorkoutHealthValue;
       return PhysicalActivity(
         activityType: ActivityType.other,
@@ -64,10 +85,19 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
         healthConnectRecordId: d.sourceId,
       );
     }));
+  } catch (e) {
+    print('⚠️ WORKOUT data unavailable (permission may not be granted): $e');
+  }
 
-    // Simple active calorie burns (log entries without duration info)
-    final activeCalories = data.where((d) => d.type == HealthDataType.ACTIVE_ENERGY_BURNED);
-    result.addAll(activeCalories.map((d) {
+  // Simple active calorie burns (log entries without duration info)
+  try {
+    final data = await _health.getHealthDataFromTypes(
+      types: [HealthDataType.ACTIVE_ENERGY_BURNED],
+      startTime: start,
+      endTime: end,
+    );
+
+    result.addAll(data.map((d) {
       final value = (d.value as NumericHealthValue).numericValue;
       return PhysicalActivity(
         activityType: ActivityType.other,
@@ -81,12 +111,59 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
         healthConnectRecordId: d.sourceId,
       );
     }));
-
-    return result;
   } catch (e) {
-    print('❌ Health Connect Aktivitäten-Import fehlgeschlagen: $e');
-    return [];
+    print('⚠️ ACTIVE_ENERGY_BURNED data unavailable (permission may not be granted): $e');
   }
+
+  // Steps (convert to walking activity since we have permission for this)
+  try {
+    final data = await _health.getHealthDataFromTypes(
+      types: [HealthDataType.STEPS],
+      startTime: start,
+      endTime: end,
+    );
+
+    result.addAll(data
+        .map((d) {
+          final steps = (d.value as NumericHealthValue).numericValue.toInt();
+          final durationMinutes = d.dateTo.difference(d.dateFrom).inMinutes;
+
+          // Skip entries with zero duration (database constraint requires > 0)
+          if (durationMinutes <= 0) {
+            return null;
+          }
+
+          // Generate unique ID from timestamp + steps if sourceId is empty
+          // Format: steps_YYYY-MM-DDTHH:MM:SS.mmm_<steps>
+          String recordId = d.sourceId;
+          if (recordId.isEmpty) {
+            recordId = 'steps_${d.dateFrom.toIso8601String()}_${steps}';
+          }
+
+          // Rough estimate: ~100 calories per 10,000 steps (varies by weight/intensity)
+          final estimatedCalories = (steps / 10000.0) * 100.0;
+
+          return PhysicalActivity(
+            activityType: ActivityType.other,
+            activityName: 'Walking ($steps steps)',
+            startTime: d.dateFrom,
+            endTime: d.dateTo,
+            durationMinutes: durationMinutes,
+            caloriesBurned: estimatedCalories > 0 ? estimatedCalories : null,
+            distanceKm: null,
+            source: DataSource.healthConnect,
+            healthConnectRecordId: recordId,
+          );
+        })
+        .whereType<PhysicalActivity>()
+        .toList());
+
+    print('✅ Found ${data.length} STEPS data points - imported ${result.length} activities');
+  } catch (e) {
+    print('⚠️ STEPS data unavailable (permission may not be granted): $e');
+  }
+
+  return result;
 }
 
 Future<List<UserBodyMeasurement>> fetchHealthBodyMeasurements({
