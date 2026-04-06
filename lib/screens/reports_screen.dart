@@ -32,7 +32,7 @@ extension _RangeExt on ReportRange {
   String bucketKey(DateTime d) => switch (this) {
         ReportRange.week || ReportRange.month => d.toIso8601String().split('T')[0],
         ReportRange.year =>
-          '${d.year}-${(d.difference(DateTime(d.year)).inDays ~/ 7)}',
+          '${d.year}-${(d.difference(DateTime(d.year)).inDays ~/ 7).toString().padLeft(2, '0')}',
         ReportRange.allTime => '${d.year}-${d.month.toString().padLeft(2, '0')}',
       };
 }
