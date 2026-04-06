@@ -1083,22 +1083,24 @@ class _WeightTrendChart extends StatelessWidget {
     // Body fat normalized to its actual range
     double minBf = 0;
     double maxBf = 50;
-    final normalizedBfPts = bfPts.isNotEmpty
-        ? () {
-            final allBf = bfPts.map((p) => p.value);
-            minBf = allBf.reduce((a, b) => a < b ? a : b);
-            maxBf = allBf.reduce((a, b) => a > b ? a : b);
-            final bfRange = maxBf - minBf;
-            return bfPts
-                .map((p) => (
-                      date: p.date,
-                      value: bfRange > 0
-                          ? (p.value - minBf) / bfRange * 100
-                          : 50.0,
-                    ))
-                .toList();
-          }()
-        : <({DateTime date, double value})>[];
+    late List<({DateTime date, double value, int wPtsIndex})> normalizedBfPts;
+    if (bfPts.isNotEmpty) {
+      final allBf = bfPts.map((p) => p.value);
+      minBf = allBf.reduce((a, b) => a < b ? a : b);
+      maxBf = allBf.reduce((a, b) => a > b ? a : b);
+      final bfRange = maxBf - minBf;
+      normalizedBfPts = bfPts
+          .map((p) => (
+                date: p.date,
+                value: bfRange > 0
+                    ? (p.value - minBf) / bfRange * 100
+                    : 50.0,
+                wPtsIndex: wPts.indexWhere((w) => w.date == p.date),
+              ))
+          .toList();
+    } else {
+      normalizedBfPts = [];
+    }
 
     final every = _labelEvery(wPts.length);
 
@@ -1208,9 +1210,7 @@ class _WeightTrendChart extends StatelessWidget {
             if (normalizedBfPts.isNotEmpty)
               LineChartBarData(
                 spots: normalizedBfPts
-                    .asMap()
-                    .entries
-                    .map((e) => FlSpot(e.key.toDouble(), e.value.value))
+                    .map((p) => FlSpot(p.wPtsIndex.toDouble(), p.value))
                     .toList(),
                 isCurved: true,
                 curveSmoothness: 0.2,
