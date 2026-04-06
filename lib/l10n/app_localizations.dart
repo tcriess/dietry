@@ -2415,6 +2415,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Nur Makros tracken (kein Kalorienziel)'**
   String get macroOnlyMode;
+
+  /// No description provided for @caloriesTooMuch.
+  ///
+  /// In de, this message translates to:
+  /// **'{amount} zu viel'**
+  String caloriesTooMuch(String amount);
 }
 
 class _AppLocalizationsDelegate

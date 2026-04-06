@@ -1281,4 +1281,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get macroOnlyMode => 'Solo macros (sin objetivo calórico)';
+
+  @override
+  String caloriesTooMuch(String amount) {
+    return '$amount demasiado';
+  }
 }

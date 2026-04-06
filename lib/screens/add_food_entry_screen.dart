@@ -682,7 +682,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             subtitle: Text(
                               '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
                               '${food.brand != null ? ' • ${food.brand}' : ''}'
-                              '${food.category != null ? ' • ${food.category}' : ''}',
+                              '${food.category != null ? ' • ${food.category}' : ''}'
+                              '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
                             ),
                             trailing: (isOFF || food.isPublic)
                                 ? const Icon(Icons.chevron_right)

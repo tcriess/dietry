@@ -590,5 +590,13 @@
       "error": {"type": "String"}
     }
   },
-  "macroOnlyMode": "Nur Makros tracken (kein Kalorienziel)"
+  "macroOnlyMode": "Nur Makros tracken (kein Kalorienziel)",
+  "caloriesTooMuch": "{amount} zu viel",
+  "@caloriesTooMuch": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }
