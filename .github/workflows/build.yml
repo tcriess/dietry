@@ -34,17 +34,17 @@ on:
 env:
   FLUTTER_VERSION: '3.41.6'   # pin for reproducible builds; bump deliberately
   JAVA_VERSION: '21'
-  ANDROID_KEYSTORE_BASE64: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEYSTORE_BASE64 || secrets.ANDROID_DEV_KEYSTORE_BASE64 }}
-  ANDROID_KEYSTORE_PASSWORD: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEYSTORE_PASSWORD || secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
-  ANDROID_KEY_PASSWORD: ${{ github.ref_name == 'main' && secrets.ANDROID_PROD_KEY_PASSWORD || secrets.ANDROID_DEV_KEY_PASSWORD }}
-  ANDROID_KEY_ALIAS: ${{ github.ref_name == 'main' && vars.ANDROID_PROD_KEY_ALIAS || vars.ANDROID_DEV_KEY_ALIAS }}
-  CE_CONFIG_JSON: ${{ github.ref_name == 'main' && secrets.CE_PROD_CONFIG_JSON || secrets.CE_DEV_CONFIG_JSON }}  # Must contain the full JSON config for CE builds
-  DEPLOY_SSH_KEY: ${{ github.ref_name == 'main' && secrets.DEPLOY_PROD_SSH_KEY || secrets.DEPLOY_DEV_SSH_KEY}}  # Optional: required for server deploy step
-  DEPLOY_HOST: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_HOST || vars.DEPLOY_DEV_HOST }}
-  DEPLOY_USER: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_USER || vars.DEPLOY_DEV_USER }}
-  DEPLOY_PORT: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_PORT || vars.DEPLOY_DEV_PORT || '22' }}
-  DEPLOY_PATH: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_PATH || vars.DEPLOY_DEV_PATH }}
-  DEPLOY_TMP_PATH: ${{ github.ref_name == 'main' && vars.DEPLOY_PROD_TMP_PATH || vars.DEPLOY_DEV_TMP_PATH || '/tmp' }}
+  ANDROID_KEYSTORE_BASE64: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.ANDROID_PROD_KEYSTORE_BASE64 || secrets.ANDROID_DEV_KEYSTORE_BASE64 }}
+  ANDROID_KEYSTORE_PASSWORD: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.ANDROID_PROD_KEYSTORE_PASSWORD || secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
+  ANDROID_KEY_PASSWORD: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.ANDROID_PROD_KEY_PASSWORD || secrets.ANDROID_DEV_KEY_PASSWORD }}
+  ANDROID_KEY_ALIAS: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.ANDROID_PROD_KEY_ALIAS || vars.ANDROID_DEV_KEY_ALIAS }}
+  CE_CONFIG_JSON: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.CE_PROD_CONFIG_JSON || secrets.CE_DEV_CONFIG_JSON }}  # Must contain the full JSON config for CE builds
+  DEPLOY_SSH_KEY: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.DEPLOY_PROD_SSH_KEY || secrets.DEPLOY_DEV_SSH_KEY}}  # Optional: required for server deploy step
+  DEPLOY_HOST: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_HOST || vars.DEPLOY_DEV_HOST }}
+  DEPLOY_USER: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_USER || vars.DEPLOY_DEV_USER }}
+  DEPLOY_PORT: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_PORT || vars.DEPLOY_DEV_PORT || '22' }}
+  DEPLOY_PATH: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_PATH || vars.DEPLOY_DEV_PATH }}
+  DEPLOY_TMP_PATH: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_TMP_PATH || vars.DEPLOY_DEV_TMP_PATH || '/tmp' }}
 
 # Cancel in-progress runs on the same branch/PR (saves CI minutes)
 concurrency:
