@@ -28,9 +28,26 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
-def edition = project.hasProperty('flutter.edition')
-    ? project.property('flutter.edition')
-    : 'community'
+// Read EDITION from config file (ce.json or cloud.json)
+def edition = 'community'  // default
+try {
+    // Try to read from ce.json first (for CE builds)
+    def ceConfigFile = rootProject.file('../config/ce.json')
+    if (ceConfigFile.exists()) {
+        def ceConfig = new groovy.json.JsonSlurper().parse(ceConfigFile)
+        edition = ceConfig.EDITION ?: 'community'
+    } else {
+        // Otherwise try cloud.json (for Cloud builds)
+        def cloudConfigFile = rootProject.file('../config/cloud.json')
+        if (cloudConfigFile.exists()) {
+            def cloudConfig = new groovy.json.JsonSlurper().parse(cloudConfigFile)
+            edition = cloudConfig.EDITION ?: 'community'
+        }
+    }
+} catch (Exception e) {
+    println "⚠️ Could not read EDITION from config file, defaulting to 'community': $e"
+}
+
 def appId = edition == 'cloud' ? 'de.dietry.app' : 'de.dietry.community'
 
 android {
