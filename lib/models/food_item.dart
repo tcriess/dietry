@@ -43,6 +43,9 @@ class FoodItem {
   // Flüssigkeitsmarkierung - wenn true, Einheit standardmäßig ml, Menge zählt zur Wasseraufnahme
   final bool isLiquid;
 
+  // Image support - true if an image exists in food_images table
+  final bool hasImage;
+
   // Metadaten
   final String? source;
   final DateTime createdAt;
@@ -70,6 +73,7 @@ class FoodItem {
     required this.isApproved,
     this.isFavourite = false,
     this.isLiquid = false,
+    this.hasImage = false,
     this.source,
     required this.createdAt,
     required this.updatedAt,
@@ -110,6 +114,7 @@ class FoodItem {
       isApproved: json['is_approved'] as bool? ?? false,
       isFavourite: json['is_favourite'] as bool? ?? false,
       isLiquid: json['is_liquid'] as bool? ?? false,
+      hasImage: json['has_image'] as bool? ?? false,
       source: _safeString(json['source']),
       createdAt: DateTime.parse(createdAtRaw),
       updatedAt: DateTime.parse(updatedAtRaw),
@@ -176,6 +181,7 @@ class FoodItem {
       'is_approved': isApproved,
       'is_favourite': isFavourite,
       'is_liquid': isLiquid,
+      'has_image': hasImage,
       if (source != null) 'source': source,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -224,6 +230,7 @@ class FoodItem {
     bool? isApproved,
     bool? isFavourite,
     bool? isLiquid,
+    bool? hasImage,
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -250,6 +257,7 @@ class FoodItem {
       isApproved: isApproved ?? this.isApproved,
       isFavourite: isFavourite ?? this.isFavourite,
       isLiquid: isLiquid ?? this.isLiquid,
+      hasImage: hasImage ?? this.hasImage,
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

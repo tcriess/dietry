@@ -1,10 +1,15 @@
+import 'dart:convert' show base64Decode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart' if (dart.library.html) 'image_picker_web.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
 import '../services/food_database_service.dart';
+import '../services/food_image_service.dart';
 import '../services/neon_database_service.dart';
+import '../services/app_logger.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 
@@ -25,20 +30,31 @@ class FoodDatabaseScreen extends StatefulWidget {
 class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   List<FoodItem> _foods = [];
   bool _isLoading = true;
+  final Map<String, String?> _imageCache = {}; // Cache fetched images
+  late FoodImageService _imageService;
 
   @override
   void initState() {
     super.initState();
+    _imageService = FoodImageService(widget.dbService);
     _loadFoods();
   }
 
   Future<void> _loadFoods() async {
+    appLogger.d('_loadFoods: Starting to load foods from database');
     setState(() => _isLoading = true);
     try {
       final service = FoodDatabaseService(widget.dbService);
       final foods = await service.getMyFoods();
+      appLogger.d('_loadFoods: Loaded ${foods.length} foods');
+      for (final f in foods) {
+        if (f.hasImage) {
+          appLogger.d('_loadFoods: Food ${f.name} has hasImage=true');
+        }
+      }
       if (mounted) setState(() => _foods = foods);
     } catch (e) {
+      appLogger.e('_loadFoods: Error loading foods: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fehler beim Laden: $e'), backgroundColor: Colors.red),
@@ -50,15 +66,22 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   }
 
   Future<void> _editFood(FoodItem food) async {
+    appLogger.d('_editFood: Opening dialog for ${food.name}, hasImage=${food.hasImage}');
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => FoodEditDialog(food: food),
+      builder: (context) => FoodEditDialog(food: food, dbService: widget.dbService),
     );
-    if (result == null) return;
+    if (result == null) {
+      appLogger.d('_editFood: Dialog cancelled');
+      return;
+    }
+
+    appLogger.d('_editFood: Dialog returned food ${result.name}, hasImage=${result.hasImage}');
 
     try {
       final service = FoodDatabaseService(widget.dbService);
       await service.updateFood(result);
+      appLogger.d('_editFood: Food updated, hasImage=${result.hasImage}');
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -68,8 +91,10 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
           ),
         );
       }
+      appLogger.d('_editFood: Reloading foods from database');
       _loadFoods();
     } catch (e) {
+      appLogger.e('_editFood: Error updating food: $e');
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,7 +176,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   Future<void> _addFood() async {
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => const FoodEditDialog(food: null),
+      builder: (context) => FoodEditDialog(food: null, dbService: widget.dbService),
     );
     if (result == null) return;
 
@@ -217,120 +242,280 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                     ],
                   ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 88),
+              : ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 88, top: 8, left: 4, right: 4),
                   itemCount: _foods.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final food = _foods[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: Text(
-                          food.name[0].toUpperCase(),
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
+                    final isSmallScreen = MediaQuery.of(context).size.width < 500;
+
+                    return GestureDetector(
+                      onTap: () => Navigator.of(context).pop(food),
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Thumbnail
+                              _FoodThumbnail(
+                                food: food,
+                                imageService: _imageService,
+                                imageCache: _imageCache,
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Content
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Name + Status badge
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            food.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (food.isPublic && !isSmallScreen)
+                                          Container(
+                                            margin: const EdgeInsets.only(left: 8),
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: food.isApproved
+                                                  ? Colors.green.shade100
+                                                  : Colors.orange.shade100,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  food.isApproved ? Icons.public : Icons.pending_outlined,
+                                                  size: 12,
+                                                  color: food.isApproved
+                                                      ? Colors.green.shade700
+                                                      : Colors.orange.shade700,
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  food.isApproved ? l.statusPublic : l.statusPending,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: food.isApproved
+                                                        ? Colors.green.shade700
+                                                        : Colors.orange.shade700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+
+                                    // Nutrition info
+                                    Text(
+                                      '${food.calories.toInt()} kcal • '
+                                      'P ${food.protein.toStringAsFixed(0)}g • '
+                                      'F ${food.fat.toStringAsFixed(0)}g • '
+                                      'C ${food.carbs.toStringAsFixed(0)}g'
+                                      '${food.category != null ? ' • ${food.category}' : ''}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+
+                                    // Public status badge on small screens
+                                    if (food.isPublic && isSmallScreen) ...[
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: food.isApproved
+                                              ? Colors.green.shade100
+                                              : Colors.orange.shade100,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              food.isApproved ? Icons.public : Icons.pending_outlined,
+                                              size: 10,
+                                              color: food.isApproved
+                                                  ? Colors.green.shade700
+                                                  : Colors.orange.shade700,
+                                            ),
+                                            const SizedBox(width: 2),
+                                            Text(
+                                              food.isApproved ? l.statusPublic : l.statusPending,
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: food.isApproved
+                                                    ? Colors.green.shade700
+                                                    : Colors.orange.shade700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Actions
+                              if (!isSmallScreen)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        food.isFavourite ? Icons.star : Icons.star_border,
+                                        size: 20,
+                                        color: food.isFavourite
+                                            ? Colors.amber.shade600
+                                            : Colors.grey.shade400,
+                                      ),
+                                      tooltip: food.isFavourite
+                                          ? 'Aus Favoriten entfernen'
+                                          : 'Als Favorit markieren',
+                                      onPressed: () => _toggleFavourite(food),
+                                      padding: EdgeInsets.zero,
+                                      constraints:
+                                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    ),
+                                    if (AppFeatures.microNutrients)
+                                      IconButton(
+                                        icon: const Icon(Icons.science_outlined, size: 20),
+                                        tooltip: 'Mikronährstoffe',
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                        onPressed: () {
+                                          final jwt = widget.dbService.jwt;
+                                          final userId = widget.dbService.userId;
+                                          if (jwt == null || userId == null) return;
+                                          premiumFeatures.showFoodDatabaseMicrosSheet(
+                                            context: context,
+                                            foodId: food.id,
+                                            foodName: food.name,
+                                            userId: userId,
+                                            authToken: jwt,
+                                            apiUrl: NeonDatabaseService.dataApiUrl,
+                                          );
+                                        },
+                                      ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined, size: 20),
+                                      tooltip: l.edit,
+                                      onPressed: () => _editFood(food),
+                                      padding: EdgeInsets.zero,
+                                      constraints:
+                                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                      tooltip: l.delete,
+                                      onPressed: () => _deleteFood(food),
+                                      padding: EdgeInsets.zero,
+                                      constraints:
+                                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    ),
+                                  ],
+                                )
+                              else
+                                PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    switch (value) {
+                                      case 'favourite':
+                                        _toggleFavourite(food);
+                                      case 'micros':
+                                        final jwt = widget.dbService.jwt;
+                                        final userId = widget.dbService.userId;
+                                        if (jwt == null || userId == null) return;
+                                        premiumFeatures.showFoodDatabaseMicrosSheet(
+                                          context: context,
+                                          foodId: food.id,
+                                          foodName: food.name,
+                                          userId: userId,
+                                          authToken: jwt,
+                                          apiUrl: NeonDatabaseService.dataApiUrl,
+                                        );
+                                      case 'edit':
+                                        _editFood(food);
+                                      case 'delete':
+                                        _deleteFood(food);
+                                    }
+                                  },
+                                  itemBuilder: (BuildContext context) => [
+                                    PopupMenuItem(
+                                      value: 'favourite',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            food.isFavourite ? Icons.star : Icons.star_border,
+                                            color: food.isFavourite
+                                                ? Colors.amber.shade600
+                                                : Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(food.isFavourite
+                                              ? 'Aus Favoriten entfernen'
+                                              : 'Als Favorit markieren'),
+                                        ],
+                                      ),
+                                    ),
+                                    if (AppFeatures.microNutrients)
+                                      PopupMenuItem(
+                                        value: 'micros',
+                                        child: Row(
+                                          children: const [
+                                            Icon(Icons.science_outlined),
+                                            SizedBox(width: 8),
+                                            Text('Mikronährstoffe'),
+                                          ],
+                                        ),
+                                      ),
+                                    PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: const [
+                                          Icon(Icons.edit_outlined),
+                                          SizedBox(width: 8),
+                                          Text('Bearbeiten'),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: const [
+                                          Icon(Icons.delete_outline, color: Colors.red),
+                                          SizedBox(width: 8),
+                                          Text('Löschen', style: TextStyle(color: Colors.red)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
                           ),
                         ),
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(child: Text(food.name)),
-                          if (food.isPublic)
-                            Container(
-                              margin: const EdgeInsets.only(left: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: food.isApproved
-                                    ? Colors.green.shade100
-                                    : Colors.orange.shade100,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    food.isApproved ? Icons.public : Icons.pending_outlined,
-                                    size: 12,
-                                    color: food.isApproved
-                                        ? Colors.green.shade700
-                                        : Colors.orange.shade700,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    food.isApproved ? l.statusPublic : l.statusPending,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: food.isApproved
-                                          ? Colors.green.shade700
-                                          : Colors.orange.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        '${food.calories.toInt()} kcal · '
-                        'P ${food.protein.toStringAsFixed(0)}g · '
-                        'F ${food.fat.toStringAsFixed(0)}g · '
-                        'KH ${food.carbs.toStringAsFixed(0)}g'
-                        '${food.category != null ? ' · ${food.category}' : ''}',
-                      ),
-                      onTap: () => Navigator.of(context).pop(food),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              food.isFavourite ? Icons.star : Icons.star_border,
-                              size: 20,
-                              color: food.isFavourite
-                                  ? Colors.amber.shade600
-                                  : Colors.grey.shade400,
-                            ),
-                            tooltip: food.isFavourite
-                                ? 'Aus Favoriten entfernen'
-                                : 'Als Favorit markieren',
-                            onPressed: () => _toggleFavourite(food),
-                            padding: EdgeInsets.zero,
-                            constraints:
-                                const BoxConstraints(minWidth: 32, minHeight: 32),
-                          ),
-                          if (AppFeatures.microNutrients)
-                            IconButton(
-                              icon: const Icon(Icons.science_outlined, size: 20),
-                              tooltip: 'Mikronährstoffe',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                              onPressed: () {
-                                final jwt = widget.dbService.jwt;
-                                final userId = widget.dbService.userId;
-                                if (jwt == null || userId == null) return;
-                                premiumFeatures.showFoodDatabaseMicrosSheet(
-                                  context: context,
-                                  foodId: food.id,
-                                  foodName: food.name,
-                                  userId: userId,
-                                  authToken: jwt,
-                                  apiUrl: NeonDatabaseService.dataApiUrl,
-                                );
-                              },
-                            ),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            tooltip: l.edit,
-                            onPressed: () => _editFood(food),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                            tooltip: l.delete,
-                            onPressed: () => _deleteFood(food),
-                          ),
-                        ],
                       ),
                     );
                   },
@@ -339,12 +524,120 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   }
 }
 
+/// Widget to display a food thumbnail in the list.
+/// Shows image if available, otherwise shows letter avatar.
+class _FoodThumbnail extends StatefulWidget {
+  final FoodItem food;
+  final FoodImageService imageService;
+  final Map<String, String?> imageCache;
+
+  const _FoodThumbnail({
+    required this.food,
+    required this.imageService,
+    required this.imageCache,
+  });
+
+  @override
+  State<_FoodThumbnail> createState() => _FoodThumbnailState();
+}
+
+class _FoodThumbnailState extends State<_FoodThumbnail> {
+  late Future<String?> _imageFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // Use cached image if available, otherwise fetch it
+    if (widget.imageCache.containsKey(widget.food.id)) {
+      _imageFuture = Future.value(widget.imageCache[widget.food.id]);
+    } else {
+      _imageFuture = widget.imageService.fetchImage(widget.food.id).then((image) {
+        widget.imageCache[widget.food.id] = image;
+        return image;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.food.hasImage) {
+      // No image, show letter avatar
+      return CircleAvatar(
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: Text(
+          widget.food.name[0].toUpperCase(),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    // Image available, load and display it
+    return FutureBuilder<String?>(
+      future: _imageFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Loading state
+          return CircleAvatar(
+            backgroundColor: Colors.grey.shade300,
+            child: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+          // Error or no image, fall back to letter avatar
+          appLogger.d('_FoodThumbnail: Failed to load image for ${widget.food.name}');
+          return CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Text(
+              widget.food.name[0].toUpperCase(),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        }
+
+        // Display image thumbnail
+        try {
+          final imageBytes = base64Decode(snapshot.data!);
+          return CircleAvatar(
+            backgroundImage: MemoryImage(imageBytes),
+            backgroundColor: Colors.grey.shade300,
+          );
+        } catch (e) {
+          appLogger.e('_FoodThumbnail: Error decoding image for ${widget.food.name}: $e');
+          // Fallback to letter avatar if decoding fails
+          return CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Text(
+              widget.food.name[0].toUpperCase(),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+}
+
 /// Dialog zum Erstellen oder Bearbeiten eines Lebensmittels.
 /// [food] == null → neues Lebensmittel anlegen.
 class FoodEditDialog extends StatefulWidget {
   final FoodItem? food;
+  final NeonDatabaseService dbService;
 
-  const FoodEditDialog({super.key, required this.food});
+  const FoodEditDialog({super.key, required this.food, required this.dbService});
 
   @override
   State<FoodEditDialog> createState() => FoodEditDialogState();
@@ -367,12 +660,21 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   late bool _isPublic;
   late bool _isLiquid;
 
+  // Image handling
+  Uint8List? _selectedImageBytes;
+  String? _existingImageBase64;
+  bool _isLoadingImage = false;
+  bool _isUploadingImage = false;
+  bool _imageUploadSuccess = false;
+  late FoodImageService _imageService;
+
   bool get _isEdit => widget.food != null;
 
   @override
   void initState() {
     super.initState();
     final f = widget.food;
+    appLogger.d('FoodEditDialogState.initState: food=${f?.name}, hasImage=${f?.hasImage}');
     _nameController = TextEditingController(text: f?.name ?? '');
     _caloriesController = TextEditingController(
         text: f != null ? f.calories.toStringAsFixed(0) : '');
@@ -401,6 +703,169 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     }
     _isPublic = f?.isPublic ?? false;
     _isLiquid = f?.isLiquid ?? false;
+
+    // Initialize image service and load existing image if editing
+    _imageService = FoodImageService(widget.dbService);
+    if (_isEdit && f!.hasImage) {
+      appLogger.d('FoodEditDialogState.initState: Starting image load, hasImage=true');
+      _loadExistingImage();
+    } else {
+      appLogger.d('FoodEditDialogState.initState: Skipping image load (isEdit=$_isEdit, hasImage=${f?.hasImage})');
+    }
+  }
+
+  Future<void> _loadExistingImage() async {
+    if (!mounted) return;
+    appLogger.d('_loadExistingImage: Loading existing image for food ${widget.food!.id}');
+    setState(() => _isLoadingImage = true);
+    try {
+      final image = await _imageService.fetchImage(widget.food!.id);
+      if (image != null) {
+        appLogger.d('_loadExistingImage: Image loaded successfully, size: ${image.length} bytes');
+      } else {
+        appLogger.d('_loadExistingImage: No image found');
+      }
+      if (mounted) {
+        setState(() => _existingImageBase64 = image);
+      }
+    } catch (e, stackTrace) {
+      appLogger.w('_loadExistingImage: Failed to load image: $e', error: e, stackTrace: stackTrace);
+      // Silently fail — image load is not critical
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingImage = false);
+      }
+    }
+  }
+
+  Future<void> _pickImage() async {
+    appLogger.d('_pickImage: Starting image picker, kIsWeb: $kIsWeb');
+    final picker = ImagePicker();
+    try {
+      appLogger.d('_pickImage: Calling picker.pickImage with gallery source');
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile != null) {
+        appLogger.d('_pickImage: File selected: ${pickedFile.path}, mimeType: ${pickedFile.mimeType}');
+        try {
+          final bytes = await pickedFile.readAsBytes();
+          appLogger.d('_pickImage: Successfully read ${bytes.length} bytes');
+          setState(() {
+            _selectedImageBytes = bytes;
+            _existingImageBase64 = null; // Clear existing if picking new
+          });
+          appLogger.d('_pickImage: Image state updated successfully');
+        } catch (readError) {
+          appLogger.e('_pickImage: Error reading file bytes: $readError', error: readError);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Fehler beim Lesen der Datei: $readError'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        appLogger.d('_pickImage: No file selected (user cancelled)');
+      }
+    } on PlatformException catch (e, stackTrace) {
+      appLogger.e('_pickImage: Platform error during image selection: ${e.code} - ${e.message}', error: e, stackTrace: stackTrace);
+
+      // Check if this is the Linux file chooser issue
+      final isLinuxFileChooserError = e.code == 'channel-error' &&
+          e.message?.contains('FileSelectorApi.showFileChooser') == true;
+
+      if (mounted) {
+        String errorMsg = 'Fehler beim Laden des Bildes';
+        if (isLinuxFileChooserError) {
+          errorMsg = 'Bilderauswahl auf Linux nicht verfügbar. '
+              'Bitte stellen Sie sicher, dass ein Standard-Dateimanager installiert ist.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      appLogger.e('_pickImage: Error during image selection: $e', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Laden des Bildes: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteImage() async {
+    if (!_isEdit || widget.food == null) {
+      appLogger.w('_deleteImage: Invalid state - not editing or food is null');
+      return;
+    }
+    appLogger.d('_deleteImage: Deleting image for food ${widget.food!.id}');
+    try {
+      await _imageService.deleteImage(widget.food!.id);
+      appLogger.i('_deleteImage: Image deleted successfully');
+      if (mounted) {
+        setState(() {
+          _existingImageBase64 = null;
+          _selectedImageBytes = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bild gelöscht'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e, stackTrace) {
+      appLogger.e('_deleteImage: Failed to delete image: $e', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler beim Löschen: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImageIfSelected(String foodId) async {
+    if (_selectedImageBytes == null) {
+      appLogger.d('_uploadImageIfSelected: No image selected, skipping upload');
+      return;
+    }
+    if (!mounted) {
+      appLogger.d('_uploadImageIfSelected: Widget not mounted, skipping upload');
+      return;
+    }
+
+    appLogger.d('_uploadImageIfSelected: Starting upload for food $foodId, image size: ${_selectedImageBytes!.length} bytes');
+    setState(() => _isUploadingImage = true);
+    try {
+      await _imageService.saveImage(foodId, _selectedImageBytes!);
+      _imageUploadSuccess = true;
+      appLogger.i('_uploadImageIfSelected: Image uploaded successfully');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bild hochgeladen'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e, stackTrace) {
+      _imageUploadSuccess = false;
+      appLogger.e('_uploadImageIfSelected: Upload failed: $e', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler beim Hochladen: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
   }
 
   @override
@@ -423,12 +888,36 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     super.dispose();
   }
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
+  void _save() async {
+    appLogger.d('_save: Starting save process, isEdit: $_isEdit');
+    if (!_formKey.currentState!.validate()) {
+      appLogger.d('_save: Form validation failed');
+      return;
+    }
 
     final now = DateTime.now();
+    final foodId = widget.food?.id ?? '';
+
+    // Track if image was uploaded or already exists
+    bool hasImage = widget.food?.hasImage ?? false;
+
+    // If editing and image is selected, upload it before closing
+    if (_isEdit && _selectedImageBytes != null) {
+      appLogger.d('_save: Image selected for upload, uploading before closing');
+      _imageUploadSuccess = false;
+      await _uploadImageIfSelected(foodId);
+      if (_imageUploadSuccess) {
+        hasImage = true;
+      }
+    }
+
+    // If deleting an image, hasImage should be false
+    if (_existingImageBase64 == null && widget.food?.hasImage == true && _selectedImageBytes == null) {
+      hasImage = false;
+    }
+
     final food = FoodItem(
-      id: widget.food?.id ?? '',
+      id: foodId,
       userId: widget.food?.userId,
       name: _nameController.text.trim(),
       calories: double.parse(_caloriesController.text),
@@ -455,13 +944,18 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       barcode: widget.food?.barcode,
       isPublic: _isPublic,
       isApproved: false,  // Immer zurücksetzen – Admin muss erneut freigeben
+      isFavourite: widget.food?.isFavourite ?? false,
       isLiquid: _isLiquid,
+      hasImage: hasImage,
       source: widget.food?.source ?? 'Custom',
       createdAt: widget.food?.createdAt ?? now,
       updatedAt: now,
     );
 
-    Navigator.of(context).pop(food);
+    if (mounted) {
+      appLogger.d('_save: Closing dialog with food: ${food.name}, hasImage: ${food.hasImage}');
+      Navigator.of(context).pop(food);
+    }
   }
 
   Widget _numField({
@@ -483,6 +977,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       validator: (v) =>
           (v == null || v.isEmpty) ? requiredMsg : null,
     );
+  }
+
+  Uint8List _decodeBase64(String base64String) {
+    return base64Decode(base64String);
   }
 
   @override
@@ -550,7 +1048,67 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? l.requiredField : null,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
+
+                // Image picker section
+                if (_isLoadingImage)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  Column(
+                    children: [
+                      // Image preview or placeholder
+                      Container(
+                        width: double.infinity,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey.shade100,
+                        ),
+                        child: _selectedImageBytes != null
+                            ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                            : _existingImageBase64 != null
+                                ? Image.memory(
+                                    _decodeBase64(_existingImageBase64!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.image_not_supported,
+                                          size: 48, color: Colors.grey.shade400),
+                                      const SizedBox(height: 8),
+                                      Text('Kein Bild',
+                                          style: TextStyle(color: Colors.grey.shade600)),
+                                    ],
+                                  ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Image action buttons
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _isUploadingImage ? null : _pickImage,
+                            icon: const Icon(Icons.photo_camera),
+                            label: const Text('Bild wählen'),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_existingImageBase64 != null || _selectedImageBytes != null)
+                            ElevatedButton.icon(
+                              onPressed: _isUploadingImage ? null : _deleteImage,
+                              icon: const Icon(Icons.delete),
+                              label: const Text('Löschen'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade100,
+                                foregroundColor: Colors.red.shade900,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
 
                 // Kalorien & Protein
                 Row(
