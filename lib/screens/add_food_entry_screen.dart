@@ -448,7 +448,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   Future<void> _editFoodInSearch(FoodItem food) async {
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => FoodEditDialog(food: food),
+      builder: (context) => FoodEditDialog(food: food, dbService: widget.dbService),
     );
     if (result == null) return;
 
