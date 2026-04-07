@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:io' as io show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'app_config.dart';
 import 'services/jwt_helper.dart';
 
@@ -57,7 +58,8 @@ class AppFeatures {
   /// True if platform supports native file sharing (mobile only).
   static bool get _platformSupportsSocialSharing {
     // File sharing to social media apps only works on Android and iOS
-    return Platform.isAndroid || Platform.isIOS;
+    if (kIsWeb) return false;
+    return io.Platform.isAndroid || io.Platform.isIOS;
   }
 
   // ── Rollen-Checks ─────────────────────────────────────────────────────────
