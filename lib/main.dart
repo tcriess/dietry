@@ -1640,6 +1640,39 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
+  /// Opens the share progress sheet (cloud-only feature).
+  void _showShareSheet(BuildContext context, AppLocalizations l, int streak, int bestStreak) {
+    if (!AppFeatures.shareProgress) return;
+
+    final store = DataStore.instance;
+
+    // Calculate today's nutrition totals
+    final todayCalories = store.foodEntries.fold<double>(0, (sum, e) => sum + e.calories);
+    final todayProtein = store.foodEntries.fold<double>(0, (sum, e) => sum + e.protein);
+    final todayFat = store.foodEntries.fold<double>(0, (sum, e) => sum + e.fat);
+    final todayCarbs = store.foodEntries.fold<double>(0, (sum, e) => sum + e.carbs);
+
+    final goal = store.goal;
+    final todayDate = _selectedDay;
+
+    premiumFeatures.showShareProgressSheet(
+      context: context,
+      streak: streak,
+      bestStreak: bestStreak,
+      date: todayDate,
+      todayCalories: todayCalories,
+      todayProtein: todayProtein,
+      todayFat: todayFat,
+      todayCarbs: todayCarbs,
+      goalCalories: goal?.calories,
+      goalProtein: goal?.protein,
+      goalFat: goal?.fat,
+      goalCarbs: goal?.carbs,
+      shareButtonLabel: l.shareButton,
+      sharingLabel: l.sharing,
+    );
+  }
+
   /// Wechselt den ausgewählten Tag und lädt das entsprechende Goal
   void _changeDay(int offset) async {
     final newDay = _selectedDay.add(Duration(days: offset));
@@ -1781,6 +1814,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 streak: _store.streak,
                 bestStreak: _store.bestStreak,
                 onToggleCheatDay: _toggleCheatDay,
+                onShareProgress: AppFeatures.shareProgress
+                    ? () => _showShareSheet(context, AppLocalizations.of(context)!, _store.streak, _store.bestStreak)
+                    : null,
               ),
               FoodEntriesListScreen(
                 dbService: widget.dbService,
@@ -1908,6 +1944,7 @@ class OverviewScreen extends StatelessWidget {
   final int streak;
   final int bestStreak;
   final Future<void> Function() onToggleCheatDay;
+  final VoidCallback? onShareProgress;
 
   const OverviewScreen({
     super.key,
@@ -1925,6 +1962,7 @@ class OverviewScreen extends StatelessWidget {
     required this.streak,
     required this.bestStreak,
     required this.onToggleCheatDay,
+    this.onShareProgress,
   });
 
   // Berechne Gesamt-Nährwerte aus entries
@@ -2320,31 +2358,34 @@ class OverviewScreen extends StatelessWidget {
             children: [
               // Streak chip — cloud only
               if (AppFeatures.streaks) ...[
-                Tooltip(
-                  message: bestStreak > 0 ? l.streakBestLabel(bestStreak) : '',
-                  child: Chip(
-                    avatar: Text(
-                      streak >= 7 ? '🔥' : (streak > 0 ? '✨' : '💤'),
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    label: Text(
-                      streak > 0 ? l.streakDays(streak) : l.streakStart,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    backgroundColor: streak >= 7
-                        ? Colors.orange.shade50
-                        : streak > 0
-                            ? Colors.amber.shade50
-                            : Colors.grey.shade100,
-                    side: BorderSide(
-                      color: streak >= 7
-                          ? Colors.orange.shade300
+                GestureDetector(
+                  onTap: onShareProgress,
+                  child: Tooltip(
+                    message: bestStreak > 0 ? l.streakBestLabel(bestStreak) : '',
+                    child: Chip(
+                      avatar: Text(
+                        streak >= 7 ? '🔥' : (streak > 0 ? '✨' : '💤'),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      label: Text(
+                        streak > 0 ? l.streakDays(streak) : l.streakStart,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      backgroundColor: streak >= 7
+                          ? Colors.orange.shade50
                           : streak > 0
-                              ? Colors.amber.shade300
-                              : Colors.grey.shade300,
+                              ? Colors.amber.shade50
+                              : Colors.grey.shade100,
+                      side: BorderSide(
+                        color: streak >= 7
+                            ? Colors.orange.shade300
+                            : streak > 0
+                                ? Colors.amber.shade300
+                                : Colors.grey.shade300,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    visualDensity: VisualDensity.compact,
                   ),
                 ),
                 const SizedBox(width: 10),

@@ -1278,4 +1278,43 @@ class AppLocalizationsDe extends AppLocalizations {
   String caloriesTooMuch(String amount) {
     return '$amount zu viel';
   }
+
+  @override
+  String get shareProgressTitle => 'Teile deine Fortschritte';
+
+  @override
+  String get shareTabStreak => '🔥 Streak';
+
+  @override
+  String get shareTabDaily => '📊 Tägliche Ziele';
+
+  @override
+  String get shareButton => 'In sozialen Medien teilen';
+
+  @override
+  String get sharing => 'Wird geteilt...';
+
+  @override
+  String get shareHashtags => '#Dietry #ErnährungTracking #GesundesLeben';
+
+  @override
+  String shareStreakCaption(int days) {
+    return '🔥 Ich bin bei $days Tagen Streak mit Dietry!';
+  }
+
+  @override
+  String get streakDayText => 'Tag';
+
+  @override
+  String get shareStreakCaptionEnd => ' Tage Streak!';
+
+  @override
+  String get shareDailyCaption => '✅ Heute meine Ernährungsziele erreicht!';
+
+  @override
+  String get shareSuccessful => '✅ Erfolgreich geteilt!';
+
+  @override
+  String get shareFailed =>
+      '❌ Teilen fehlgeschlagen. Bitte versuche es erneut.';
 }

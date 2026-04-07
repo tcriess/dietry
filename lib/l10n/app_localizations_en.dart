@@ -1273,4 +1273,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String caloriesTooMuch(String amount) {
     return '$amount too much';
   }
+
+  @override
+  String get shareProgressTitle => 'Share Your Progress';
+
+  @override
+  String get shareTabStreak => '🔥 Streak';
+
+  @override
+  String get shareTabDaily => '📊 Daily Goals';
+
+  @override
+  String get shareButton => 'Share to Social Media';
+
+  @override
+  String get sharing => 'Sharing...';
+
+  @override
+  String get shareHashtags => '#Dietry #NutritionTracking #HealthyLifestyle';
+
+  @override
+  String shareStreakCaption(int days) {
+    return '🔥 I\'m on a $days-day streak tracking my nutrition!';
+  }
+
+  @override
+  String get streakDayText => 'day';
+
+  @override
+  String get shareStreakCaptionEnd => ' tracking my nutrition!';
+
+  @override
+  String get shareDailyCaption => '✅ Met my nutrition goals today!';
+
+  @override
+  String get shareSuccessful => '✅ Shared successfully!';
+
+  @override
+  String get shareFailed => '❌ Sharing failed. Please try again.';
 }
