@@ -2421,6 +2421,78 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'{amount} zu viel'**
   String caloriesTooMuch(String amount);
+
+  /// No description provided for @shareProgressTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Teile deine Fortschritte'**
+  String get shareProgressTitle;
+
+  /// No description provided for @shareTabStreak.
+  ///
+  /// In de, this message translates to:
+  /// **'🔥 Streak'**
+  String get shareTabStreak;
+
+  /// No description provided for @shareTabDaily.
+  ///
+  /// In de, this message translates to:
+  /// **'📊 Tägliche Ziele'**
+  String get shareTabDaily;
+
+  /// No description provided for @shareButton.
+  ///
+  /// In de, this message translates to:
+  /// **'In sozialen Medien teilen'**
+  String get shareButton;
+
+  /// No description provided for @sharing.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird geteilt...'**
+  String get sharing;
+
+  /// No description provided for @shareHashtags.
+  ///
+  /// In de, this message translates to:
+  /// **'#Dietry #ErnährungTracking #GesundesLeben'**
+  String get shareHashtags;
+
+  /// No description provided for @shareStreakCaption.
+  ///
+  /// In de, this message translates to:
+  /// **'🔥 Ich bin bei {days} Tagen Streak mit Dietry!'**
+  String shareStreakCaption(int days);
+
+  /// No description provided for @streakDayText.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag'**
+  String get streakDayText;
+
+  /// No description provided for @shareStreakCaptionEnd.
+  ///
+  /// In de, this message translates to:
+  /// **' Tage Streak!'**
+  String get shareStreakCaptionEnd;
+
+  /// No description provided for @shareDailyCaption.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ Heute meine Ernährungsziele erreicht!'**
+  String get shareDailyCaption;
+
+  /// No description provided for @shareSuccessful.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ Erfolgreich geteilt!'**
+  String get shareSuccessful;
+
+  /// No description provided for @shareFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'❌ Teilen fehlgeschlagen. Bitte versuche es erneut.'**
+  String get shareFailed;
 }
 
 class _AppLocalizationsDelegate

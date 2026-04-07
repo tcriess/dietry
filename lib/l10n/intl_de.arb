@@ -598,5 +598,24 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shareProgressTitle": "Teile deine Fortschritte",
+  "shareTabStreak": "🔥 Streak",
+  "shareTabDaily": "📊 Tägliche Ziele",
+  "shareButton": "In sozialen Medien teilen",
+  "sharing": "Wird geteilt...",
+  "shareHashtags": "#Dietry #ErnährungTracking #GesundesLeben",
+  "shareStreakCaption": "🔥 Ich bin bei {days} Tagen Streak mit Dietry!",
+  "@shareStreakCaption": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakDayText": "Tag",
+  "shareStreakCaptionEnd": " Tage Streak!",
+  "shareDailyCaption": "✅ Heute meine Ernährungsziele erreicht!",
+  "shareSuccessful": "✅ Erfolgreich geteilt!",
+  "shareFailed": "❌ Teilen fehlgeschlagen. Bitte versuche es erneut."
 }

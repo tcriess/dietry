@@ -598,5 +598,24 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shareProgressTitle": "Share Your Progress",
+  "shareTabStreak": "🔥 Streak",
+  "shareTabDaily": "📊 Daily Goals",
+  "shareButton": "Share to Social Media",
+  "sharing": "Sharing...",
+  "shareHashtags": "#Dietry #NutritionTracking #HealthyLifestyle",
+  "shareStreakCaption": "🔥 I'm on a {days}-day streak tracking my nutrition!",
+  "@shareStreakCaption": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakDayText": "day",
+  "shareStreakCaptionEnd": " tracking my nutrition!",
+  "shareDailyCaption": "✅ Met my nutrition goals today!",
+  "shareSuccessful": "✅ Shared successfully!",
+  "shareFailed": "❌ Sharing failed. Please try again."
 }

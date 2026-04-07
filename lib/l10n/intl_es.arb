@@ -598,5 +598,24 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shareProgressTitle": "Comparte tu progreso",
+  "shareTabStreak": "🔥 Racha",
+  "shareTabDaily": "📊 Objetivos diarios",
+  "shareButton": "Compartir en redes sociales",
+  "sharing": "Compartiendo...",
+  "shareHashtags": "#Dietry #SeguimientoNutricional #VidaSaludable",
+  "shareStreakCaption": "🔥 ¡Estoy en una racha de {days} días con Dietry!",
+  "@shareStreakCaption": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakDayText": "día",
+  "shareStreakCaptionEnd": " días",
+  "shareDailyCaption": "✅ ¡Alcancé mis objetivos nutricionales hoy!",
+  "shareSuccessful": "✅ ¡Compartido exitosamente!",
+  "shareFailed": "❌ Error al compartir. Por favor intenta de nuevo."
 }
