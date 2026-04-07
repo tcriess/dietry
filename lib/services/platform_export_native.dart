@@ -20,7 +20,7 @@ Future<void> exportCsvFiles({
     // Let user pick the destination directory; fall back to Downloads on error/cancel.
     String? selectedDir;
     try {
-      selectedDir = await FilePicker.platform.getDirectoryPath(
+      selectedDir = await FilePicker.getDirectoryPath(
         dialogTitle: 'Exportverzeichnis wählen',
         lockParentWindow: true,
       );
@@ -51,6 +51,8 @@ Future<void> exportCsvFiles({
       await f.writeAsString(entry.value);
       xfiles.add(XFile(f.path, mimeType: 'text/csv'));
     }
-    await Share.shareXFiles(xfiles, subject: 'Dietry Datenexport $timestamp');
+    await SharePlus.instance.share(
+      ShareParams(files: xfiles, subject: 'Dietry Datenexport $timestamp'),
+    );
   }
 }
