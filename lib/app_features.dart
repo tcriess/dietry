@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'app_config.dart';
 import 'services/jwt_helper.dart';
 
@@ -53,6 +54,12 @@ class AppFeatures {
 
   static bool get _isCloud => AppConfig.isCloudEdition;
 
+  /// True if platform supports native file sharing (mobile only).
+  static bool get _platformSupportsSocialSharing {
+    // File sharing to social media apps only works on Android and iOS
+    return Platform.isAndroid || Platform.isIOS;
+  }
+
   // ── Rollen-Checks ─────────────────────────────────────────────────────────
 
   /// True für Basic- und Pro-Nutzer (Cloud).
@@ -84,7 +91,8 @@ class AppFeatures {
 
   /// Share progress cards on social media (Streak, Daily Goals).
   /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).
-  static bool get shareProgress => _isCloud;
+  /// Only available on Android and iOS (mobile platforms with native sharing).
+  static bool get shareProgress => _isCloud && _platformSupportsSocialSharing;
 
   /// Erweiterte Analysen: Wochen-/Monatsberichte, Trend-Charts.
   static bool get advancedAnalytics => isPro;
