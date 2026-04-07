@@ -277,7 +277,9 @@ jobs:
 
       - name: Rename release artifacts
         run: |
-          TAG="${{ github.ref_name }}"
+          VERSION=$(grep "^version:" pubspec.yaml | cut -d' ' -f2)
+          BRANCH=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          TAG="${VERSION}-${BRANCH}"
           cp build/app/outputs/flutter-apk/app-release.apk \
              "dietry-ce-${TAG}.apk"
           cp build/app/outputs/bundle/release/app-release.aab \

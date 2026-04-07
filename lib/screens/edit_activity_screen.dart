@@ -6,6 +6,7 @@ import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 
 /// Screen zum Bearbeiten einer Aktivität
@@ -83,10 +84,10 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
           _selectedActivity = _availableActivities.isNotEmpty ? _availableActivities.first : null;
         }
       });
-      
-      print('✅ ${_availableActivities.length} Activities für Edit geladen');
+
+      appLogger.i('✅ ${_availableActivities.length} Activities für Edit geladen');
     } catch (e) {
-      print('❌ Fehler beim Laden der Activities: $e');
+      appLogger.e('❌ Fehler beim Laden der Activities: $e');
       if (mounted) {
         setState(() {
           _isLoadingActivities = false;
@@ -177,7 +178,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print('❌ Fehler beim Speichern: $e');
+      appLogger.e('❌ Fehler beim Speichern: $e');
 
       if (mounted) {
         final l = AppLocalizations.of(context)!;

@@ -9,6 +9,7 @@ import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_database_service.dart';
 import '../services/food_search_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/quick_food_entry_sheet.dart';
 import 'add_food_entry_screen.dart';
@@ -142,13 +143,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   Future<void> _showMealTemplatesSheet() async {
-    // ignore: avoid_print
-    print('🍽️ _showMealTemplatesSheet called');
+    appLogger.d('🍽️ _showMealTemplatesSheet called');
     final db = widget.dbService;
     final jwt = db.jwt;
     final userId = db.userId;
-    // ignore: avoid_print
-    print('🍽️ jwt=${jwt != null}, userId=$userId, premium=${premiumFeatures.runtimeType}');
+    appLogger.d('🍽️ jwt=${jwt != null}, userId=$userId, premium=${premiumFeatures.runtimeType}');
     if (jwt == null || userId == null) return;
 
     await showModalBottomSheet(

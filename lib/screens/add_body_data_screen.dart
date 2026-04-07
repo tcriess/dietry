@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/user_body_data.dart';
 import '../services/user_body_data_service.dart';
 import '../services/neon_database_service.dart';
+import '../services/app_logger.dart';
 
 /// Screen zum Eingeben/Bearbeiten von Körperdaten
 class AddBodyDataScreen extends StatefulWidget {
@@ -104,8 +105,8 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      print('❌ Fehler beim Speichern: $e');
-      
+      appLogger.e('❌ Fehler beim Speichern: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

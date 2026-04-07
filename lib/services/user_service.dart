@@ -1,3 +1,4 @@
+import 'package:dietry/services/app_logger.dart';
 import 'neon_database_service.dart';
 
 /// Service für User-Management in der Datenbank
@@ -25,7 +26,7 @@ class UserService {
       // rpc() returns a list for RETURNS SETOF
       final rows = result as List;
       if (rows.isNotEmpty) {
-        print('✅ User upserted: $email');
+        appLogger.i('✅ User upserted: $email');
         return rows.first as Map<String, dynamic>;
       }
 
@@ -37,11 +38,11 @@ class UserService {
           .single();
       return fetched;
     } catch (e) {
-      print('❌ Fehler beim User-Management: $e');
+      appLogger.e('❌ Fehler beim User-Management: $e');
       rethrow;
     }
   }
-  
+
   /// Holt User-Daten aus der Datenbank
   Future<Map<String, dynamic>?> getUser(String userId) async {
     try {
@@ -50,18 +51,18 @@ class UserService {
           .select()
           .eq('id', userId)
           .limit(1);
-      
+
       if (users.isEmpty) {
         return null;
       }
-      
+
       return users.first;
     } catch (e) {
-      print('❌ Fehler beim Laden des Users: $e');
+      appLogger.e('❌ Fehler beim Laden des Users: $e');
       return null;
     }
   }
-  
+
   /// Aktualisiert User-Daten
   Future<Map<String, dynamic>> updateUser({
     required String userId,
@@ -72,24 +73,24 @@ class UserService {
       final updates = <String, dynamic>{};
       if (name != null) updates['name'] = name;
       if (email != null) updates['email'] = email;
-      
+
       updates['updated_at'] = DateTime.now().toIso8601String();
-      
+
       // Nutze updateUserData Helper-Methode (vermeidet Prefer-Header-Problem)
       await _dbService.updateUserData(userId: userId, updates: updates);
-      
+
       // Lade den aktualisierten User
       final updated = await _dbService.client
           .from('users')
           .select()
           .eq('id', userId)
           .single();
-      
-      print('✅ User aktualisiert: $email');
+
+      appLogger.i('✅ User aktualisiert: $email');
       return updated;
-      
+
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren des Users: $e');
+      appLogger.e('❌ Fehler beim Aktualisieren des Users: $e');
       rethrow;
     }
   }

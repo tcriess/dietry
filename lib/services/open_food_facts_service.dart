@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:dietry/services/app_logger.dart';
 import '../models/food_item.dart';
 import '../models/food_search_result.dart';
 
@@ -32,14 +33,14 @@ class OpenFoodFactsService {
         },
       );
 
-      print('🌐 OFF Request: GET $uri');
-      print('   Headers: {User-Agent: $_userAgent}');
+      appLogger.d('🌐 OFF Request: GET $uri');
+      appLogger.d('   Headers: {User-Agent: $_userAgent}');
 
       final response = await http.get(uri, headers: {'User-Agent': _userAgent});
 
-      print('📥 OFF Response: HTTP ${response.statusCode}');
-      print('   Response-Headers: ${response.headers}');
-      print('   Body: ${response.body}');
+      appLogger.d('📥 OFF Response: HTTP ${response.statusCode}');
+      appLogger.d('   Response-Headers: ${response.headers}');
+      appLogger.d('   Body: ${response.body}');
 
       if (response.statusCode != 200) {
         return [];
@@ -53,10 +54,10 @@ class OpenFoodFactsService {
           .whereType<FoodSearchResult>()
           .toList();
 
-      print('🔍 OFF "$query": ${products.length} Produkte, ${parsed.length} mit Nährwerten');
+      appLogger.d('🔍 OFF "$query": ${products.length} Produkte, ${parsed.length} mit Nährwerten');
       return parsed;
     } catch (e) {
-      print('❌ Open Food Facts Suche fehlgeschlagen: $e');
+      appLogger.e('❌ Open Food Facts Suche fehlgeschlagen: $e');
       return [];
     }
   }
@@ -83,7 +84,7 @@ class OpenFoodFactsService {
 
       return _parseProduct(product, locale: locale);
     } catch (e) {
-      print('❌ Open Food Facts Barcode-Suche fehlgeschlagen: $e');
+      appLogger.e('❌ Open Food Facts Barcode-Suche fehlgeschlagen: $e');
       return null;
     }
   }

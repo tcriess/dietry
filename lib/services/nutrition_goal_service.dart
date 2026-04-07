@@ -1,4 +1,5 @@
 // Nutrition Goal Service für CRUD-Operationen
+import 'package:dietry/services/app_logger.dart';
 import '../models/models.dart';
 import 'neon_database_service.dart';
 import 'user_profile_service.dart';
@@ -19,13 +20,13 @@ class NutritionGoalService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Goal nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Goal nicht laden');
         return null;
       }
       
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar - kann Goal nicht laden');
+        appLogger.w('⚠️ Keine User-ID verfügbar - kann Goal nicht laden');
         return null;
       }
       
@@ -44,7 +45,7 @@ class NutritionGoalService {
       
       return NutritionGoal.fromJson(response);
     } catch (e) {
-      print('❌ Fehler beim Abrufen des aktuellen Goals: $e');
+      appLogger.e('❌ Fehler beim Abrufen des aktuellen Goals: $e');
       return null;
     }
   }
@@ -57,13 +58,13 @@ class NutritionGoalService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Goal nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Goal nicht laden');
         return null;
       }
       
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar - kann Goal nicht laden');
+        appLogger.w('⚠️ Keine User-ID verfügbar - kann Goal nicht laden');
         return null;
       }
       
@@ -83,7 +84,7 @@ class NutritionGoalService {
       
       return NutritionGoal.fromJson(response);
     } catch (e) {
-      print('❌ Fehler beim Abrufen des Goals für ${date.toIso8601String().split('T')[0]}: $e');
+      appLogger.e('❌ Fehler beim Abrufen des Goals für ${date.toIso8601String().split('T')[0]}: $e');
       return null;
     }
   }
@@ -99,52 +100,52 @@ class NutritionGoalService {
   /// Erstelle oder aktualisiere ein Nutrition Goal
   Future<NutritionGoal> createOrUpdateGoal(NutritionGoal goal, {DateTime? validFrom}) async {
     try {
-      print('🔍 createOrUpdateGoal() aufgerufen...');
-      
+      appLogger.d('🔍 createOrUpdateGoal() aufgerufen...');
+
       // ✅ Stelle sicher dass Token gültig ist BEVOR wir irgendetwas tun
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig - kann Goal nicht erstellen');
       }
-      
+
       final userId = _userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar - kann Goal nicht erstellen');
       }
-      
+
       final validFromDate = (validFrom ?? DateTime.now()).toIso8601String().split('T')[0];
-      
-      print('   User-ID: $userId');
-      print('   Datum (valid_from): $validFromDate');
-      print('   Goal: ${goal.calories.toInt()} kcal, P${goal.protein.toInt()}g, F${goal.fat.toInt()}g, C${goal.carbs.toInt()}g');
-      
+
+      appLogger.d('   User-ID: $userId');
+      appLogger.d('   Datum (valid_from): $validFromDate');
+      appLogger.d('   Goal: ${goal.calories.toInt()} kcal, P${goal.protein.toInt()}g, F${goal.fat.toInt()}g, C${goal.carbs.toInt()}g');
+
       // Prüfe ob bereits ein Goal für diesen Tag existiert
-      print('   Prüfe ob Goal für $validFromDate bereits existiert...');
+      appLogger.d('   Prüfe ob Goal für $validFromDate bereits existiert...');
       final existing = await _db.client
         .from('nutrition_goals')
         .select('id, calories')
         .eq('user_id', userId)
         .eq('valid_from', validFromDate)
         .maybeSingle();
-      
+
       if (existing != null) {
-        print('   ✅ Existierendes Goal gefunden:');
-        print('      - ID: ${existing['id']}');
-        print('      - Alte Kalorien: ${existing['calories']}');
-        print('      - Neue Kalorien: ${goal.calories.toInt()}');
-        print('      → Mache UPDATE (überschreibe existierendes Goal)');
+        appLogger.i('   ✅ Existierendes Goal gefunden:');
+        appLogger.d('      - ID: ${existing['id']}');
+        appLogger.d('      - Alte Kalorien: ${existing['calories']}');
+        appLogger.d('      - Neue Kalorien: ${goal.calories.toInt()}');
+        appLogger.d('      → Mache UPDATE (überschreibe existierendes Goal)');
       } else {
-        print('   ℹ️ Kein existierendes Goal gefunden');
-        print('      → Mache INSERT (neues Goal)');
+        appLogger.i('   ℹ️ Kein existierendes Goal gefunden');
+        appLogger.d('      → Mache INSERT (neues Goal)');
       }
-      
+
       final json = goal.toJson();
       json['user_id'] = userId;
       json['valid_from'] = validFromDate;
-      
+
       // UPSERT ohne .select() (workaround für PostgREST Prefer-Header-Bug)
       // Hole das Ergebnis immer manuell nach dem UPSERT
-      print('   Führe UPSERT aus...');
+      appLogger.d('   Führe UPSERT aus...');
       await _db.client
         .from('nutrition_goals')
         .upsert(
@@ -152,10 +153,10 @@ class NutritionGoalService {
           onConflict: 'user_id,valid_from',
         );
 
-      print('✅ UPSERT erfolgreich');
+      appLogger.i('✅ UPSERT erfolgreich');
 
       // Hole das Goal aus DB
-      print('   Hole gespeichertes Goal aus DB...');
+      appLogger.d('   Hole gespeichertes Goal aus DB...');
       final createdGoal = await _db.client
         .from('nutrition_goals')
         .select()
@@ -163,11 +164,11 @@ class NutritionGoalService {
         .eq('valid_from', validFromDate)
         .single();
 
-      print('✅ Goal erfolgreich aus DB geladen (ID: ${createdGoal['id']})');
+      appLogger.i('✅ Goal erfolgreich aus DB geladen (ID: ${createdGoal['id']})');
       return NutritionGoal.fromJson(createdGoal);
     } catch (e, stackTrace) {
-      print('❌ Fehler beim UPSERT des Goals: $e');
-      print('   Stack trace: $stackTrace');
+      appLogger.e('❌ Fehler beim UPSERT des Goals: $e');
+      appLogger.e('   Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -249,27 +250,27 @@ class NutritionGoalService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Goals nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Goals nicht laden');
         return [];
       }
-      
+
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar - kann Goals nicht laden');
+        appLogger.w('⚠️ Keine User-ID verfügbar - kann Goals nicht laden');
         return [];
       }
-      
+
       final response = await _db.client
         .from('nutrition_goals')
         .select()
         .eq('user_id', userId)
         .order('valid_from', ascending: false);
-      
+
       return (response as List)
         .map((json) => NutritionGoal.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Abrufen aller Goals: $e');
+      appLogger.e('❌ Fehler beim Abrufen aller Goals: $e');
       return [];
     }
   }
@@ -294,7 +295,7 @@ class NutritionGoalService {
         .eq('id', id)
         .eq('user_id', userId);  // Sicherheit: Nur eigene Goals
     } catch (e) {
-      print('❌ Fehler beim Löschen des Goals: $e');
+      appLogger.e('❌ Fehler beim Löschen des Goals: $e');
       rethrow;
     }
   }

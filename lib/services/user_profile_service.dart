@@ -1,6 +1,7 @@
 import '../models/user_body_data.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
+import 'app_logger.dart';
 
 /// Service für statische Profildaten (in users Tabelle)
 class UserProfileService {
@@ -15,7 +16,7 @@ class UserProfileService {
     try {
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig');
+        appLogger.w('⚠️ Token ungültig');
         return null;
       }
       
@@ -32,7 +33,7 @@ class UserProfileService {
       
       return UserProfile.fromJson(response);
     } catch (e) {
-      print('❌ Fehler beim Laden des Profils: $e');
+      appLogger.e('❌ Fehler beim Laden des Profils: $e');
       return null;
     }
   }
@@ -40,7 +41,7 @@ class UserProfileService {
   /// Aktualisiere Profil
   Future<void> updateProfile(UserProfile profile) async {
     try {
-      print('💾 Aktualisiere Profil...');
+      appLogger.i('💾 Aktualisiere Profil...');
       
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
@@ -54,8 +55,8 @@ class UserProfileService {
       
       final json = profile.toJson();
       json['updated_at'] = DateTime.now().toIso8601String();
-      
-      print('   Führe UPDATE via Dio aus...');
+
+      appLogger.d('   Führe UPDATE via Dio aus...');
       
       // UPDATE via Dio
       final response = await _db.dioClient.patch(
@@ -71,10 +72,10 @@ class UserProfileService {
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('UPDATE fehlgeschlagen: ${response.statusCode}');
       }
-      
-      print('✅ Profil erfolgreich aktualisiert');
+
+      appLogger.i('✅ Profil erfolgreich aktualisiert');
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren des Profils: $e');
+      appLogger.e('❌ Fehler beim Aktualisieren des Profils: $e');
       rethrow;
     }
   }

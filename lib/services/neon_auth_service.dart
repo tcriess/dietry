@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:math' show min;
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint, ChangeNotifier;
+import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dietry/services/app_logger.dart';
 import 'jwt_helper.dart';
 import '../app_config.dart';
 import 'http_client_factory.dart';
@@ -116,12 +117,12 @@ class NeonAuthService extends ChangeNotifier {
       // Prüfe ob Token dekodierbar ist
       final payload = JwtHelper.decodeToken(_jwt!);
       if (payload == null) {
-        debugPrint('❌ JWT kann nicht dekodiert werden - invalider Token');
+        appLogger.d('❌ JWT kann nicht dekodiert werden - invalider Token');
         _refreshAttempts++;
         
         // ✅ Endlosschleifen-Protection
         if (_refreshAttempts >= _maxRefreshAttempts) {
-          debugPrint('❌ Maximale Refresh-Versuche erreicht ($_maxRefreshAttempts) - Logout erforderlich');
+          appLogger.d('❌ Maximale Refresh-Versuche erreicht ($_maxRefreshAttempts) - Logout erforderlich');
           await signOut();
           return;
         }
@@ -129,7 +130,7 @@ class NeonAuthService extends ChangeNotifier {
         // Warte kurz vor erneutem Versuch (Exponential Backoff)
         await Future.delayed(Duration(seconds: _refreshAttempts * 2));
         
-        debugPrint('⚠️ JWT invalide - versuche Refresh (Versuch $_refreshAttempts/$_maxRefreshAttempts)...');
+        appLogger.d('⚠️ JWT invalide - versuche Refresh (Versuch $_refreshAttempts/$_maxRefreshAttempts)...');
         await refreshToken();
         return;
       }
@@ -141,11 +142,11 @@ class NeonAuthService extends ChangeNotifier {
       final isExpired = JwtHelper.isExpired(_jwt!);
 
       if (isExpired) {
-        debugPrint('⚠️ JWT ist abgelaufen - versuche mit Retry zu refreshen...');
+        appLogger.d('⚠️ JWT ist abgelaufen - versuche mit Retry zu refreshen...');
         // Retry bei Startup: Netzwerk kann kurzzeitig unavailable sein
         final success = await refreshTokenWithRetry(maxAttempts: 3);
         if (!success) {
-          debugPrint('❌ Token-Refresh nach Startup fehlgeschlagen - Logout erforderlich');
+          appLogger.d('❌ Token-Refresh nach Startup fehlgeschlagen - Logout erforderlich');
           await signOut();
         }
       } else {
@@ -155,19 +156,19 @@ class NeonAuthService extends ChangeNotifier {
           final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
           final timeUntilExpiry = expirationDate.difference(DateTime.now());
           
-          debugPrint('⏰ JWT läuft ab in: ${timeUntilExpiry.inMinutes} Minuten');
+          appLogger.d('⏰ JWT läuft ab in: ${timeUntilExpiry.inMinutes} Minuten');
           
           // Starte Timer für automatisches Refresh (5 Minuten vor Ablauf)
           _scheduleTokenRefresh(timeUntilExpiry);
         }
       }
     } catch (e) {
-      debugPrint('❌ Fehler beim Token-Check: $e');
+      appLogger.d('❌ Fehler beim Token-Check: $e');
       _refreshAttempts++;
       
       // ✅ Endlosschleifen-Protection
       if (_refreshAttempts >= _maxRefreshAttempts) {
-        debugPrint('❌ Maximale Fehler erreicht - Logout erforderlich');
+        appLogger.d('❌ Maximale Fehler erreicht - Logout erforderlich');
         await signOut();
       }
     }
@@ -181,10 +182,10 @@ class NeonAuthService extends ChangeNotifier {
     final refreshIn = timeUntilExpiry - const Duration(minutes: 5);
     final delay = refreshIn.isNegative ? Duration.zero : refreshIn;
     
-    debugPrint('🔄 Token-Refresh geplant in: ${delay.inMinutes} Minuten');
+    appLogger.d('🔄 Token-Refresh geplant in: ${delay.inMinutes} Minuten');
     
     _refreshTimer = Timer(delay, () async {
-      debugPrint('🔄 Automatisches Token-Refresh...');
+      appLogger.d('🔄 Automatisches Token-Refresh...');
       await refreshToken();
     });
   }
@@ -198,7 +199,7 @@ class NeonAuthService extends ChangeNotifier {
 
     while (attempt < maxAttempts) {
       attempt++;
-      debugPrint('🔄 Token refresh attempt $attempt/$maxAttempts...');
+      appLogger.d('🔄 Token refresh attempt $attempt/$maxAttempts...');
 
       final success = await refreshToken();
       if (success) {
@@ -210,19 +211,19 @@ class NeonAuthService extends ChangeNotifier {
         // Exponential backoff: 2s, 4s, 8s
         final delaySeconds = 1 << attempt;
         final delay = Duration(seconds: delaySeconds);
-        debugPrint('⏱️ Waiting ${delay.inSeconds}s before retry...');
+        appLogger.d('⏱️ Waiting ${delay.inSeconds}s before retry...');
         await Future.delayed(delay);
       }
     }
 
-    debugPrint('❌ Token refresh failed after $maxAttempts attempts');
+    appLogger.d('❌ Token refresh failed after $maxAttempts attempts');
     return false;
   }
 
   /// Refresht das JWT-Token
   Future<bool> refreshToken() async {
     try {
-      debugPrint('🔄 Refreshe JWT-Token...');
+      appLogger.d('🔄 Refreshe JWT-Token...');
       
       // Hole neue Session vom Server.
       // Native: Cookie manuell mitschicken.
@@ -238,7 +239,7 @@ class NeonAuthService extends ChangeNotifier {
         },
       );
 
-      debugPrint('📥 Refresh response: ${response.statusCode} body: ${response.body.length > 80 ? response.body.substring(0, 80) : response.body}');
+      appLogger.d('📥 Refresh response: ${response.statusCode} body: ${response.body.length > 80 ? response.body.substring(0, 80) : response.body}');
 
       if (response.statusCode == 200) {
         final dynamic decoded = response.body.trim().isEmpty
@@ -255,7 +256,7 @@ class NeonAuthService extends ChangeNotifier {
             if (newCookie != null) {
               _cookie = newCookie;
               await _storage.write(key: _cookieKey, value: _cookie);
-              debugPrint('🍪 Cookie aktualisiert (Native)');
+              appLogger.d('🍪 Cookie aktualisiert (Native)');
             }
           }
           
@@ -263,14 +264,14 @@ class NeonAuthService extends ChangeNotifier {
           _jwt = response.headers['set-auth-jwt'];
           
           if (_jwt == null || _jwt!.isEmpty) {
-            debugPrint('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
+            appLogger.d('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
             // Fallback: session.token
             final sessionData = data['session'] as Map<String, dynamic>?;
             _jwt = sessionData?['token'] as String?;
           }
           
           if (_jwt == null || _jwt!.isEmpty) {
-            debugPrint('⚠️ Kein JWT gefunden - versuche /token endpoint');
+            appLogger.d('⚠️ Kein JWT gefunden - versuche /token endpoint');
             await _fetchJWT();
           } else {
             await _storage.write(key: _jwtKey, value: _jwt);
@@ -285,51 +286,51 @@ class NeonAuthService extends ChangeNotifier {
               _refreshAttempts = 0; // Reset bei Erfolg
               await _checkAndRefreshToken();
             } else {
-              debugPrint('⚠️ JWT konnte nicht dekodiert werden - kein Refresh geplant');
+              appLogger.d('⚠️ JWT konnte nicht dekodiert werden - kein Refresh geplant');
             }
           }
           
           notifyListeners();
           
-          debugPrint('✅ Token erfolgreich refreshed');
+          appLogger.d('✅ Token erfolgreich refreshed');
           return true;
         }
       } else if (response.statusCode == 401) {
         // Session abgelaufen - User muss neu einloggen
-        debugPrint('❌ Session abgelaufen - Logout erforderlich');
+        appLogger.d('❌ Session abgelaufen - Logout erforderlich');
         await signOut();
         return false;
       }
 
       // 200 mit null-Body oder anderer Status: Session nicht verfügbar
-      debugPrint('⚠️ Token-Refresh: keine Session (Status ${response.statusCode}, Body leer/null)');
+      appLogger.d('⚠️ Token-Refresh: keine Session (Status ${response.statusCode}, Body leer/null)');
       return false;
       
     } catch (e) {
-      debugPrint('❌ Fehler beim Token-Refresh: $e');
+      appLogger.d('❌ Fehler beim Token-Refresh: $e');
       return false;
     }
   }
   
   /// Setzt JWT manuell (z.B. nach Web-Login via auth_callback.html)
-  /// 
+  ///
   /// Wird verwendet wenn JWT bereits aus localStorage geladen wurde
   Future<void> setJWT(String jwt) async {
     try {
-      print('🔑 Setze JWT im AuthService...');
-      
+      appLogger.i('🔑 Setze JWT im AuthService...');
+
       // Validiere JWT
       final payload = JwtHelper.decodeToken(jwt);
       if (payload == null) {
         throw Exception('JWT kann nicht dekodiert werden');
       }
-      
+
       if (JwtHelper.isTokenExpired(jwt)) {
         throw Exception('JWT ist bereits abgelaufen');
       }
-      
+
       _jwt = jwt;
-      
+
       // Erstelle minimale Session
       _session = {
         'token': jwt,
@@ -339,17 +340,17 @@ class NeonAuthService extends ChangeNotifier {
           'name': payload['name'],
         },
       };
-      
+
       await _saveToStorage();
-      
+
       // Plane Token-Refresh
       await _checkAndRefreshToken();
-      
+
       notifyListeners();
-      
-      print('✅ JWT im AuthService gesetzt');
+
+      appLogger.i('✅ JWT im AuthService gesetzt');
     } catch (e) {
-      print('❌ Fehler beim Setzen des JWT: $e');
+      appLogger.e('❌ Fehler beim Setzen des JWT: $e');
       rethrow;
     }
   }
@@ -372,13 +373,13 @@ class NeonAuthService extends ChangeNotifier {
       }
       _jwt = jwt;
 
-      debugPrint('📦 Loaded from storage: JWT=${_jwt != null}, Session=${_session != null}');
+      appLogger.d('📦 Loaded from storage: JWT=${_jwt != null}, Session=${_session != null}');
     } catch (e) {
-      debugPrint('⚠️ Error loading from storage — clearing to prevent repeat failures: $e');
+      appLogger.d('⚠️ Error loading from storage — clearing to prevent repeat failures: $e');
       // Bei Fehler (z.B. korruptem Keystore): Alles löschen damit nächster Start sauber ist
       try {
         await _storage.deleteAll();
-        debugPrint('✅ Storage cleared after error');
+        appLogger.d('✅ Storage cleared after error');
       } catch (_) {
         // Fehler beim Löschen ignorieren — nächster Start ist eh kaputt
       }
@@ -404,9 +405,9 @@ class NeonAuthService extends ChangeNotifier {
         await _storage.write(key: _cookieKey, value: _cookie);
       }
       
-      debugPrint('💾 Saved to storage: JWT=${_jwt != null}, Session=${_session != null}');
+      appLogger.d('💾 Saved to storage: JWT=${_jwt != null}, Session=${_session != null}');
     } catch (e) {
-      debugPrint('⚠️ Error saving to storage: $e');
+      appLogger.d('⚠️ Error saving to storage: $e');
     }
   }
   
@@ -421,7 +422,7 @@ class NeonAuthService extends ChangeNotifier {
     required String callbackUrl,
   }) async {
     try {
-      debugPrint('🚀 Starting OAuth flow: provider=$provider, callback=$callbackUrl');
+      appLogger.d('🚀 Starting OAuth flow: provider=$provider, callback=$callbackUrl');
       
       // Derive Origin header from the callbackUrl — no hardcoded domains.
       String? origin;
@@ -447,9 +448,9 @@ class NeonAuthService extends ChangeNotifier {
         }),
       );
       
-      debugPrint('📥 OAuth response: ${response.statusCode}');
-      debugPrint('   Response headers: ${response.headers}');
-      debugPrint('   Origin used: $origin');
+      appLogger.d('📥 OAuth response: ${response.statusCode}');
+      appLogger.d('   Response headers: ${response.headers}');
+      appLogger.d('   Origin used: $origin');
       
       // Challenge-Cookie separat speichern (wird NICHT vom Token-Refresh überschrieben!)
       // WICHTIG: Der Server sendet das neon_auth_session_challange Cookie (Server-Tippfehler!)
@@ -459,12 +460,12 @@ class NeonAuthService extends ChangeNotifier {
         if (cookies.isNotEmpty) {
           // Separater Key: Token-Refresh schreibt nur in _cookieKey, nicht hier!
           await _storage.write(key: _challengeCookieKey, value: cookies);
-          debugPrint('🍪 Challenge-Cookie gespeichert: ${cookies.substring(0, min(100, cookies.length))}...');
+          appLogger.d('🍪 Challenge-Cookie gespeichert: ${cookies.substring(0, min(100, cookies.length))}...');
         } else {
-          debugPrint('⚠️ No challenge cookie found in response!');
+          appLogger.d('⚠️ No challenge cookie found in response!');
         }
       } else {
-        debugPrint('⚠️ No Set-Cookie header in OAuth response!');
+        appLogger.d('⚠️ No Set-Cookie header in OAuth response!');
       }
       
       if (response.statusCode != 200) {
@@ -478,11 +479,11 @@ class NeonAuthService extends ChangeNotifier {
         throw Exception('No OAuth URL in response: $data');
       }
       
-      debugPrint('✅ OAuth URL: $url');
+      appLogger.d('✅ OAuth URL: $url');
       return url;
       
     } catch (e) {
-      debugPrint('❌ Error starting OAuth: $e');
+      appLogger.d('❌ Error starting OAuth: $e');
       rethrow;
     }
   }
@@ -498,7 +499,7 @@ class NeonAuthService extends ChangeNotifier {
   Future<bool> getSessionWithVerifier(String verifier) async {
     try {
       final verifierPreview = verifier.length > 20 ? verifier.substring(0, 20) : verifier;
-      debugPrint('🔑 Getting session with verifier: $verifierPreview...');
+      appLogger.d('🔑 Getting session with verifier: $verifierPreview...');
       
       // Native: Challenge-Cookie aus separatem Key laden (nie vom Token-Refresh überschrieben)
       // Web: Browser sendet Cookies automatisch
@@ -510,10 +511,10 @@ class NeonAuthService extends ChangeNotifier {
         final preview = cookieToSend != null
             ? cookieToSend.substring(0, min(100, cookieToSend.length))
             : 'NONE';
-        debugPrint('📱 Native-Plattform: Challenge-Cookie = $preview...');
+        appLogger.d('📱 Native-Plattform: Challenge-Cookie = $preview...');
 
         if (cookieToSend == null) {
-          debugPrint('❌ ERROR: No challenge cookie found! OAuth flow incomplete.');
+          appLogger.d('❌ ERROR: No challenge cookie found! OAuth flow incomplete.');
           return false;
         }
       }
@@ -532,9 +533,9 @@ class NeonAuthService extends ChangeNotifier {
         await _storage.delete(key: _challengeCookieKey);
       }
 
-      debugPrint('📥 Session response: ${response.statusCode}');
-      debugPrint('   Headers: ${response.headers}');
-      debugPrint('   Body: ${response.body}');
+      appLogger.d('📥 Session response: ${response.statusCode}');
+      appLogger.d('   Headers: ${response.headers}');
+      appLogger.d('   Body: ${response.body}');
 
       if (response.statusCode != 200) {
         throw Exception('Get session failed: ${response.statusCode} - ${response.body}');
@@ -543,7 +544,7 @@ class NeonAuthService extends ChangeNotifier {
       final data = jsonDecode(response.body);
 
       if (data == null) {
-        debugPrint('⚠️ Session response is null - not authenticated');
+        appLogger.d('⚠️ Session response is null - not authenticated');
         return false;
       }
 
@@ -553,7 +554,7 @@ class NeonAuthService extends ChangeNotifier {
         if (newCookie != null) {
           _cookie = newCookie;
           await _storage.write(key: _cookieKey, value: _cookie);
-          debugPrint('🍪 Session-Cookie aktualisiert (Native)');
+          appLogger.d('🍪 Session-Cookie aktualisiert (Native)');
         }
       }
       
@@ -565,14 +566,14 @@ class NeonAuthService extends ChangeNotifier {
       _jwt = response.headers['set-auth-jwt'];
       
       if (_jwt == null || _jwt!.isEmpty) {
-        debugPrint('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
+        appLogger.d('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
         // Fallback: Versuche session.token (für alte API-Versionen)
         final sessionData = data['session'] as Map<String, dynamic>?;
         _jwt = sessionData?['token'] as String?;
       }
       
       if (_jwt == null || _jwt!.isEmpty) {
-        debugPrint('⚠️ Kein JWT gefunden - trying /token endpoint');
+        appLogger.d('⚠️ Kein JWT gefunden - trying /token endpoint');
         await _fetchJWT();
       }
       
@@ -583,14 +584,14 @@ class NeonAuthService extends ChangeNotifier {
       if (_jwt != null && !JwtHelper.isExpired(_jwt!)) {
         await _checkAndRefreshToken();
       } else if (_jwt != null) {
-        debugPrint('⚠️ JWT ist bereits abgelaufen - kein Timer gestartet');
+        appLogger.d('⚠️ JWT ist bereits abgelaufen - kein Timer gestartet');
       }
       
-      debugPrint('✅ Session established: user=${data['user']?['email']}');
+      appLogger.d('✅ Session established: user=${data['user']?['email']}');
       return true;
       
     } catch (e) {
-      debugPrint('❌ Error getting session with verifier: $e');
+      appLogger.d('❌ Error getting session with verifier: $e');
       return false;
     }
   }
@@ -603,7 +604,7 @@ class NeonAuthService extends ChangeNotifier {
         return _session;
       }
       
-      debugPrint('🔄 Fetching fresh session...');
+      appLogger.d('🔄 Fetching fresh session...');
       
       final response = await _client.get(
         Uri.parse('$neonAuthBaseUrl/get-session'),
@@ -614,7 +615,7 @@ class NeonAuthService extends ChangeNotifier {
         },
       );
       
-      debugPrint('📥 Session response: ${response.statusCode}');
+      appLogger.d('📥 Session response: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -626,13 +627,13 @@ class NeonAuthService extends ChangeNotifier {
           _jwt = response.headers['set-auth-jwt'];
           
           if (_jwt == null || _jwt!.isEmpty) {
-            debugPrint('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
+            appLogger.d('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
             final sessionData = data['session'] as Map<String, dynamic>?;
             _jwt = sessionData?['token'] as String?;
           }
           
           if (_jwt == null || _jwt!.isEmpty) {
-            debugPrint('⚠️ Kein JWT gefunden - versuche /token endpoint');
+            appLogger.d('⚠️ Kein JWT gefunden - versuche /token endpoint');
             await _fetchJWT();
           } else {
             await _storage.write(key: _jwtKey, value: _jwt);
@@ -648,7 +649,7 @@ class NeonAuthService extends ChangeNotifier {
       return null;
       
     } catch (e) {
-      debugPrint('❌ Error getting session: $e');
+      appLogger.d('❌ Error getting session: $e');
       return null;
     }
   }
@@ -656,7 +657,7 @@ class NeonAuthService extends ChangeNotifier {
   /// Holt JWT vom /token Endpunkt
   Future<void> _fetchJWT() async {
     try {
-      debugPrint('🔑 Fetching JWT from /token endpoint...');
+      appLogger.d('🔑 Fetching JWT from /token endpoint...');
       
       final response = await _client.get(
         Uri.parse('$neonAuthBaseUrl/token'),
@@ -673,12 +674,12 @@ class NeonAuthService extends ChangeNotifier {
         
         if (_jwt != null) {
           await _storage.write(key: _jwtKey, value: _jwt);
-          debugPrint('✅ JWT fetched successfully');
+          appLogger.d('✅ JWT fetched successfully');
         }
       }
       
     } catch (e) {
-      debugPrint('⚠️ Error fetching JWT: $e');
+      appLogger.d('⚠️ Error fetching JWT: $e');
     }
   }
   
@@ -734,7 +735,7 @@ class NeonAuthService extends ChangeNotifier {
       },
       body: jsonEncode({'email': email, 'password': password}),
     );
-    debugPrint('📥 Email sign-in: ${response.statusCode}');
+    appLogger.d('📥 Email sign-in: ${response.statusCode}');
     if (response.statusCode != 200) {
       final body = _tryDecodeBody(response.body);
       throw Exception(body?['message'] ?? 'Login fehlgeschlagen (${response.statusCode})');
@@ -764,7 +765,7 @@ class NeonAuthService extends ChangeNotifier {
         if (kIsWeb && origin != null) 'callbackURL': '$origin/',
       }),
     );
-    debugPrint('📥 Email sign-up: ${response.statusCode}');
+    appLogger.d('📥 Email sign-up: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = _tryDecodeBody(response.body);
       throw Exception(body?['message'] ?? 'Registrierung fehlgeschlagen (${response.statusCode})');
@@ -802,7 +803,7 @@ class NeonAuthService extends ChangeNotifier {
         'redirectTo': redirectTo,
       }),
     );
-    debugPrint('📥 Password reset request: ${response.statusCode}');
+    appLogger.d('📥 Password reset request: ${response.statusCode}');
     if (response.statusCode != 200 && response.statusCode != 204) {
       final body = _tryDecodeBody(response.body);
       throw Exception(body?['message'] ?? 'Fehler beim Zurücksetzen (${response.statusCode})');
@@ -856,7 +857,7 @@ class NeonAuthService extends ChangeNotifier {
   /// gelöscht und der lokale State wird in jedem Fall gecleart.
   Future<void> deleteAuthUser() async {
     try {
-      debugPrint('🗑️ Deleting Neon Auth user...');
+      appLogger.d('🗑️ Deleting Neon Auth user...');
       final origin = _emailAuthOrigin;
       final response = await _client.post(
         Uri.parse('$neonAuthBaseUrl/delete-user'),
@@ -871,13 +872,13 @@ class NeonAuthService extends ChangeNotifier {
         body: '{}',
       );
       if (response.statusCode == 200 || response.statusCode == 204) {
-        debugPrint('✅ Neon Auth user deleted');
+        appLogger.d('✅ Neon Auth user deleted');
       } else {
         // Log but do not throw — DB data is already gone, local cleanup proceeds.
-        debugPrint('⚠️ delete-user ${response.statusCode} (best-effort, continuing): ${response.body}');
+        appLogger.d('⚠️ delete-user ${response.statusCode} (best-effort, continuing): ${response.body}');
       }
     } catch (e) {
-      debugPrint('⚠️ delete-user network error (best-effort, continuing): $e');
+      appLogger.d('⚠️ delete-user network error (best-effort, continuing): $e');
     } finally {
       _refreshTimer?.cancel();
       _session = null;
@@ -896,7 +897,7 @@ class NeonAuthService extends ChangeNotifier {
   /// Logout
   Future<void> signOut() async {
     try {
-      debugPrint('🚪 Signing out...');
+      appLogger.d('🚪 Signing out...');
       
       // Call server sign-out endpoint
       await _client.post(
@@ -909,7 +910,7 @@ class NeonAuthService extends ChangeNotifier {
       );
       
     } catch (e) {
-      debugPrint('⚠️ Error during sign-out: $e');
+      appLogger.d('⚠️ Error during sign-out: $e');
     } finally {
       // Clear local state regardless of server response
       _session = null;
@@ -925,7 +926,7 @@ class NeonAuthService extends ChangeNotifier {
 
       notifyListeners();
 
-      debugPrint('✅ Signed out locally');
+      appLogger.d('✅ Signed out locally');
     }
   }
 }

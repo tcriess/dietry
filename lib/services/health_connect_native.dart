@@ -1,5 +1,6 @@
 // Implementierung für Android (Health Connect) und iOS (HealthKit)
 import 'package:health/health.dart';
+import 'package:dietry/services/app_logger.dart';
 import '../models/physical_activity.dart';
 import '../models/user_body_data.dart';
 
@@ -29,7 +30,7 @@ Future<bool> requestHealthPermissions() async {
     );
 
     if (granted) {
-      print('✅ Health Connect Berechtigungen gewährt');
+      appLogger.i('✅ Health Connect Berechtigungen gewährt');
       // Verify permissions actually work by checking one data type
       try {
         final now = DateTime.now();
@@ -38,17 +39,17 @@ Future<bool> requestHealthPermissions() async {
           startTime: now.subtract(const Duration(hours: 1)),
           endTime: now,
         );
-        print('✅ Berechtigungen funktionieren: ${test.length} Datenpunkte abgerufen');
+        appLogger.i('✅ Berechtigungen funktionieren: ${test.length} Datenpunkte abgerufen');
       } catch (e) {
-        print('⚠️ Berechtigungen gewährt aber Abfrage fehlgeschlagen: $e');
-        print('💡 Bitte öffne Health Connect > Einstellungen > Berechtigungen und aktiviere Dietry manuell');
+        appLogger.w('⚠️ Berechtigungen gewährt aber Abfrage fehlgeschlagen: $e');
+        appLogger.i('💡 Bitte öffne Health Connect > Einstellungen > Berechtigungen und aktiviere Dietry manuell');
         return false;
       }
     }
 
     return granted;
   } catch (e) {
-    print('❌ Health Connect Berechtigungen fehlgeschlagen: $e');
+    appLogger.e('❌ Health Connect Berechtigungen fehlgeschlagen: $e');
     return false;
   }
 }
@@ -86,7 +87,7 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
       );
     }));
   } catch (e) {
-    print('⚠️ WORKOUT data unavailable (permission may not be granted): $e');
+    appLogger.w('⚠️ WORKOUT data unavailable (permission may not be granted): $e');
   }
 
   // Simple active calorie burns (log entries without duration info)
@@ -112,7 +113,7 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
       );
     }));
   } catch (e) {
-    print('⚠️ ACTIVE_ENERGY_BURNED data unavailable (permission may not be granted): $e');
+    appLogger.w('⚠️ ACTIVE_ENERGY_BURNED data unavailable (permission may not be granted): $e');
   }
 
   // Steps (convert to walking activity since we have permission for this)
@@ -162,9 +163,9 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
     final combined = _combineConsecutiveSteps(stepActivities);
     result.addAll(combined);
 
-    print('✅ Found ${data.length} STEPS data points - combined into ${combined.length} activities');
+    appLogger.i('✅ Found ${data.length} STEPS data points - combined into ${combined.length} activities');
   } catch (e) {
-    print('⚠️ STEPS data unavailable (permission may not be granted): $e');
+    appLogger.w('⚠️ STEPS data unavailable (permission may not be granted): $e');
   }
 
   return result;
@@ -202,7 +203,7 @@ Future<List<UserBodyMeasurement>> fetchHealthBodyMeasurements({
         })
         .toList();
   } catch (e) {
-    print('❌ Health Connect Körperdaten-Import fehlgeschlagen: $e');
+    appLogger.e('❌ Health Connect Körperdaten-Import fehlgeschlagen: $e');
     return [];
   }
 }

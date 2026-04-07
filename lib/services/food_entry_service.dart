@@ -1,4 +1,5 @@
 // Food Entry Service für CRUD-Operationen
+import 'package:dietry/services/app_logger.dart';
 import '../models/models.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
@@ -14,19 +15,19 @@ class FoodEntryService {
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig');
+        appLogger.w('⚠️ Token ungültig');
         return [];
       }
-      
+
       final userId = _db.userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar');
+        appLogger.w('⚠️ Keine User-ID verfügbar');
         return [];
       }
-      
+
       final dateStr = date.toIso8601String().split('T')[0];
-      
-      print('   Query: user_id=$userId, entry_date=$dateStr');
+
+      appLogger.d('   Query: user_id=$userId, entry_date=$dateStr');
       
       final response = await _db.client
         .from('food_entries')
@@ -39,11 +40,11 @@ class FoodEntryService {
         .map((json) => FoodEntry.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Abrufen der Food Entries: $e');
+      appLogger.e('❌ Fehler beim Abrufen der Food Entries: $e');
       rethrow;
     }
   }
-  
+
   /// Holt leichte Stubs (id + updated_at) für Delta-Sync-Vergleich.
   /// Deutlich weniger Daten als ein voller Fetch.
   Future<List<({String id, DateTime updatedAt})>> getFoodEntryStubs(
@@ -69,7 +70,7 @@ class FoodEntryService {
         );
       }).toList();
     } catch (e) {
-      print('❌ FoodEntryService.getFoodEntryStubs: $e');
+      appLogger.e('❌ FoodEntryService.getFoodEntryStubs: $e');
       return [];
     }
   }
@@ -90,7 +91,7 @@ class FoodEntryService {
           .map((json) => FoodEntry.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ FoodEntryService.getFoodEntriesByIds: $e');
+      appLogger.e('❌ FoodEntryService.getFoodEntriesByIds: $e');
       return [];
     }
   }
@@ -98,26 +99,26 @@ class FoodEntryService {
   /// Erstelle einen neuen Food Entry
   Future<FoodEntry> createFoodEntry(FoodEntry entry) async {
     try {
-      print('💾 Erstelle Food-Entry: ${entry.name}');
-      
+      appLogger.i('💾 Erstelle Food-Entry: ${entry.name}');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
       }
-      
+
       final userId = _db.userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar');
       }
-      
+
       final json = entry.toJson();
       json['user_id'] = userId;
       // Entferne id für INSERT (wird von DB generiert)
       json.remove('id');
-      
-      print('   Führe INSERT via Dio aus (umgeht postgrest Prefer-Header-Bug)...');
-      
+
+      appLogger.d('   Führe INSERT via Dio aus (umgeht postgrest Prefer-Header-Bug)...');
+
       // ✅ Verwende Dio direkt (wie insertUser) um postgrest Bug zu umgehen
       final response = await _db.dioClient.post(
         '/food_entries',
@@ -128,44 +129,44 @@ class FoodEntryService {
           },
         ),
       );
-      
+
       if (response.statusCode != 201) {
         throw Exception('INSERT fehlgeschlagen: ${response.statusCode}');
       }
-      
+
       // Response ist Array mit einem Element (bei return=representation)
       final createdJson = (response.data as List).first as Map<String, dynamic>;
       final created = FoodEntry.fromJson(createdJson);
-      
-      print('✅ Food-Entry erfolgreich erstellt: ${created.id}');
+
+      appLogger.i('✅ Food-Entry erfolgreich erstellt: ${created.id}');
       return created;
     } catch (e) {
-      print('❌ Fehler beim Erstellen des Food Entry: $e');
+      appLogger.e('❌ Fehler beim Erstellen des Food Entry: $e');
       rethrow;
     }
   }
-  
+
   /// Aktualisiere einen Food Entry
   Future<FoodEntry> updateFoodEntry(FoodEntry entry) async {
     try {
-      print('💾 Aktualisiere Food-Entry: ${entry.id}');
-      
+      appLogger.i('💾 Aktualisiere Food-Entry: ${entry.id}');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
       }
-      
+
       final userId = _db.userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar');
       }
-      
+
       final json = entry.toJson();
       json['updated_at'] = DateTime.now().toIso8601String();
-      
-      print('   Führe UPDATE via Dio aus...');
-      
+
+      appLogger.d('   Führe UPDATE via Dio aus...');
+
       // ✅ UPDATE via Dio (umgeht postgrest Prefer-Header-Bug)
       final response = await _db.dioClient.patch(
         '/food_entries?id=eq.${entry.id}&user_id=eq.$userId',
@@ -176,41 +177,41 @@ class FoodEntryService {
           },
         ),
       );
-      
+
       if (response.statusCode != 200) {
         throw Exception('UPDATE fehlgeschlagen: ${response.statusCode}');
       }
-      
+
       // Response ist Array mit einem Element
       final updatedJson = (response.data as List).first as Map<String, dynamic>;
       final updated = FoodEntry.fromJson(updatedJson);
-      
-      print('✅ Food-Entry erfolgreich aktualisiert');
+
+      appLogger.i('✅ Food-Entry erfolgreich aktualisiert');
       return updated;
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren des Food Entry: $e');
+      appLogger.e('❌ Fehler beim Aktualisieren des Food Entry: $e');
       rethrow;
     }
   }
-  
+
   /// Lösche einen Food Entry
   Future<void> deleteFoodEntry(String id) async {
     try {
-      print('🗑️  Lösche Food-Entry: $id');
-      
+      appLogger.i('🗑️  Lösche Food-Entry: $id');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
       }
-      
+
       final userId = _db.userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar');
       }
-      
-      print('   Führe DELETE via Dio aus...');
-      
+
+      appLogger.d('   Führe DELETE via Dio aus...');
+
       // ✅ DELETE via Dio (umgeht postgrest Prefer-Header-Bug)
       final response = await _db.dioClient.delete(
         '/food_entries?id=eq.$id&user_id=eq.$userId',
@@ -220,24 +221,24 @@ class FoodEntryService {
           },
         ),
       );
-      
+
       if (response.statusCode != 204 && response.statusCode != 200) {
         throw Exception('DELETE fehlgeschlagen: ${response.statusCode}');
       }
-      
-      print('✅ Food-Entry erfolgreich gelöscht');
+
+      appLogger.i('✅ Food-Entry erfolgreich gelöscht');
     } catch (e) {
-      print('❌ Fehler beim Löschen des Food Entry: $e');
+      appLogger.e('❌ Fehler beim Löschen des Food Entry: $e');
       rethrow;
     }
   }
-  
+
   /// Hole alle Food Entries für einen Datumsbereich
   Future<List<FoodEntry>> getFoodEntriesForRange(DateTime start, DateTime end) async {
     try {
       final startStr = start.toIso8601String().split('T')[0];
       final endStr = end.toIso8601String().split('T')[0];
-      
+
       final response = await _db.client
         .from('food_entries')
         .select()
@@ -245,12 +246,12 @@ class FoodEntryService {
         .lte('date', endStr)
         .order('date', ascending: false)
         .order('created_at', ascending: false);
-      
+
       return (response as List)
         .map((json) => FoodEntry.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Abrufen der Food Entries (Range): $e');
+      appLogger.e('❌ Fehler beim Abrufen der Food Entries (Range): $e');
       rethrow;
     }
   }

@@ -6,6 +6,7 @@ import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/user_body_measurements_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'tracking_method_screen.dart';
 
@@ -135,7 +136,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
 
       if (_macroOnly) {
         // Macro-only mode: use tdeeComplete directly without method selection
-        print('📊 Macro-only mode: Verwende tdeeComplete automatisch');
+        appLogger.d('📊 Macro-only mode: Verwende tdeeComplete automatisch');
         recommendation = NutritionCalculator.calculateMacros(bodyData, method: TrackingMethod.tdeeComplete);
       } else {
         // Normal mode: open tracking method screen for user to choose
@@ -160,8 +161,8 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
           _waterGoalController.text = autoWater.toString();
         });
 
-        print('✅ Empfehlung berechnet: ${recommendation.calories.toInt()} kcal');
-        print('   Methode: ${recommendation.method.displayName}');
+        appLogger.i('✅ Empfehlung berechnet: ${recommendation.calories.toInt()} kcal');
+        appLogger.i('   Methode: ${recommendation.method.displayName}');
       }
     } catch (e) {
       setState(() {
@@ -178,26 +179,26 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   }
 
   Future<void> _saveGoal() async {
-    print('');
-    print('═══════════════════════════════════════');
-    print('🚀 _saveGoal() GESTARTET');
-    print('═══════════════════════════════════════');
-    print('📊 Status:');
-    print('   - _recommendation: ${_recommendation != null ? "✅ vorhanden" : "❌ NULL"}');
-    print('   - _currentBodyData: ${_currentBodyData != null ? "✅ vorhanden" : "❌ NULL"}');
-    print('   - _isSaving: $_isSaving');
-    
+    appLogger.d('');
+    appLogger.d('═══════════════════════════════════════');
+    appLogger.d('🚀 _saveGoal() GESTARTET');
+    appLogger.d('═══════════════════════════════════════');
+    appLogger.d('📊 Status:');
+    appLogger.d('   - _recommendation: ${_recommendation != null ? "✅ vorhanden" : "❌ NULL"}');
+    appLogger.d('   - _currentBodyData: ${_currentBodyData != null ? "✅ vorhanden" : "❌ NULL"}');
+    appLogger.d('   - _isSaving: $_isSaving');
+
     if (_recommendation == null) {
-      print('');
-      print('❌ ABBRUCH: _recommendation ist NULL!');
-      print('═══════════════════════════════════════');
+      appLogger.d('');
+      appLogger.d('❌ ABBRUCH: _recommendation ist NULL!');
+      appLogger.d('═══════════════════════════════════════');
       return;
     }
-    
+
     if (_currentBodyData == null) {
-      print('');
-      print('❌ ABBRUCH: _currentBodyData ist NULL!');
-      print('═══════════════════════════════════════');
+      appLogger.d('');
+      appLogger.d('❌ ABBRUCH: _currentBodyData ist NULL!');
+      appLogger.d('═══════════════════════════════════════');
       return;
     }
 
@@ -206,8 +207,8 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
     });
 
     try {
-      print('');
-      print('🏗️  Erstelle NutritionGoal aus Recommendation...');
+      appLogger.d('');
+      appLogger.d('🏗️  Erstelle NutritionGoal aus Recommendation...');
       final baseGoal = NutritionCalculator.createGoalFromRecommendation(_recommendation!);
       final goal = NutritionGoal(
         calories: baseGoal.calories,
@@ -218,22 +219,22 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         waterGoalMl: _waterGoalMl,
         macroOnly: _macroOnly,
       );
-      print('   ✅ Goal erstellt:');
-      print('      - Kalorien: ${goal.calories.toInt()} kcal');
-      print('      - Protein: ${goal.protein.toInt()}g');
-      print('      - Fett: ${goal.fat.toInt()}g');
-      print('      - Kohlenhydrate: ${goal.carbs.toInt()}g');
-      print('      - Wasserziel: ${goal.waterGoalMl} ml');
+      appLogger.d('   ✅ Goal erstellt:');
+      appLogger.d('      - Kalorien: ${goal.calories.toInt()} kcal');
+      appLogger.d('      - Protein: ${goal.protein.toInt()}g');
+      appLogger.d('      - Fett: ${goal.fat.toInt()}g');
+      appLogger.d('      - Kohlenhydrate: ${goal.carbs.toInt()}g');
+      appLogger.d('      - Wasserziel: ${goal.waterGoalMl} ml');
 
-      print('');
-      print('🔧 Erstelle NutritionGoalService...');
+      appLogger.d('');
+      appLogger.d('🔧 Erstelle NutritionGoalService...');
       final goalService = NutritionGoalService(widget.dbService);
-      print('   ✅ Service bereit');
+      appLogger.d('   ✅ Service bereit');
 
-      print('');
-      print('💾 SPEICHERE Goal in Datenbank...');
+      appLogger.d('');
+      appLogger.d('💾 SPEICHERE Goal in Datenbank...');
       await goalService.createOrUpdateGoal(goal);
-      print('   ✅✅✅ GOAL ERFOLGREICH GESPEICHERT! ✅✅✅');
+      appLogger.d('   ✅✅✅ GOAL ERFOLGREICH GESPEICHERT! ✅✅✅');
 
       // Always save profile + measurement alongside goal
       if (_birthdate != null) {
@@ -257,12 +258,12 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
           // Not critical — goal was saved
         }
       }
-      
-      print('');
-      print('═══════════════════════════════════════');
-      print('✅ SPEICHERUNG ERFOLGREICH ABGESCHLOSSEN');
-      print('═══════════════════════════════════════');
-      print('');
+
+      appLogger.d('');
+      appLogger.d('═══════════════════════════════════════');
+      appLogger.d('✅ SPEICHERUNG ERFOLGREICH ABGESCHLOSSEN');
+      appLogger.d('═══════════════════════════════════════');
+      appLogger.d('');
 
       if (mounted) {
         final lCtx = AppLocalizations.of(context)!;
@@ -313,9 +314,9 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         );
       }
     } catch (e, stackTrace) {
-      print('❌ Fehler beim Speichern des Goals: $e');
-      print('   Stack trace: $stackTrace');
-      
+      appLogger.e('❌ Fehler beim Speichern des Goals: $e');
+      appLogger.e('   Stack trace: $stackTrace');
+
       if (mounted) {
         final lCtx = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(

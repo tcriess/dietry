@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:dietry/services/app_logger.dart';
 import '../app_config.dart';
 import '../models/food_item.dart';
 import '../models/food_search_result.dart';
@@ -34,13 +35,13 @@ class UsdaService {
         ...uri.queryParameters,
         'api_key': '***',
       });
-      print('🌐 USDA Request: GET $logUri');
+      appLogger.d('🌐 USDA Request: GET $logUri');
 
       final response = await http.get(uri);
 
-      print('📥 USDA Response: HTTP ${response.statusCode}');
+      appLogger.d('📥 USDA Response: HTTP ${response.statusCode}');
       if (response.statusCode != 200) {
-        print('❌ USDA Fehler: ${response.body.substring(0, response.body.length.clamp(0, 300))}');
+        appLogger.e('❌ USDA Fehler: ${response.body.substring(0, response.body.length.clamp(0, 300))}');
         return [];
       }
 
@@ -52,10 +53,10 @@ class UsdaService {
           .whereType<FoodSearchResult>()
           .toList();
 
-      print('🔍 USDA "$query": ${foods.length} Treffer, ${results.length} mit Nährwerten');
+      appLogger.d('🔍 USDA "$query": ${foods.length} Treffer, ${results.length} mit Nährwerten');
       return results;
     } catch (e) {
-      print('❌ USDA Suche fehlgeschlagen: $e');
+      appLogger.e('❌ USDA Suche fehlgeschlagen: $e');
       return [];
     }
   }

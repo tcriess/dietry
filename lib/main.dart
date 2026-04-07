@@ -32,6 +32,7 @@ import 'services/cheat_day_service.dart';
 import 'app_config.dart';
 import 'services/server_config_service.dart';
 import 'services/feedback_service.dart';
+import 'services/app_logger.dart';
 import 'widgets/feedback_dialog.dart';
 
 // Models
@@ -48,6 +49,9 @@ import 'screens/reports_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize app logger with configured log level
+  initializeAppLogger();
+
   // Initialize AppFeatures from environment (for PREMIUM_ROLE override in dev/test)
   AppFeatures.initializeFromEnvironment();
 
@@ -63,7 +67,7 @@ void main() async {
   try {
     await ServerConfigService.loadIntoCache();
   } catch (e) {
-    debugPrint('⚠️ ServerConfigService init failed: $e');
+    appLogger.d('⚠️ ServerConfigService init failed: $e');
   }
 
   // Web: Auth-Base-URL in localStorage schreiben, damit auth_callback.html
@@ -76,7 +80,7 @@ void main() async {
   try {
     await WaterReminderService.initialize();
   } catch (e) {
-    debugPrint('⚠️ WaterReminderService init failed: $e');
+    appLogger.d('⚠️ WaterReminderService init failed: $e');
   }
 
   runApp(const AuthApp());
@@ -329,7 +333,7 @@ class LoginScreen extends StatelessWidget {
                     callbackUrl: callbackUrl,
                   );
                   
-                  print('🔗 OAuth URL: $redirectUrl');
+                  appLogger.d('🔗 OAuth URL: $redirectUrl');
                   
 
                   // Öffne OAuth-URL (plattformabhängig)
@@ -437,7 +441,7 @@ class LoginScreen extends StatelessWidget {
                     }
                   }
                 } catch (e) {
-                  print('❌ Login fehlgeschlagen: $e');
+                  appLogger.e('❌ Login fehlgeschlagen: $e');
                   if (context.mounted) {
                     final lErr = AppLocalizations.of(context)!;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1005,13 +1009,13 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     // ✅ WICHTIG: Setze Token-Refresh-Callback VOR init()
     db.onTokenExpired = () async {
-      print('🔄 Token-Refresh-Callback aufgerufen...');
+      appLogger.i('🔄 Token-Refresh-Callback aufgerufen...');
       final success = await _authService.refreshToken();
       if (success) {
-        print('✅ Token erfolgreich refreshed via NeonAuthService');
+        appLogger.i('✅ Token erfolgreich refreshed via NeonAuthService');
         return _authService.jwt;
       } else {
-        print('❌ Token-Refresh fehlgeschlagen - Logout erforderlich');
+        appLogger.e('❌ Token-Refresh fehlgeschlagen - Logout erforderlich');
         await _authService.signOut();
         return null;
       }
@@ -1030,19 +1034,19 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
 
     if (_authService.isLoading) {
-      debugPrint('⚠️ Auth service still loading after timeout — proceeding without JWT');
+      appLogger.d('⚠️ Auth service still loading after timeout — proceeding without JWT');
     }
 
     // Jetzt JWT setzen wenn vorhanden
     if (_authService.jwt != null) {
       try {
-        print('🔑 Setze JWT im DB-Service nach Auth-Init: ${_authService.jwt!.substring(0, 20)}...');
+        appLogger.i('🔑 Setze JWT im DB-Service nach Auth-Init: ${_authService.jwt!.substring(0, 20)}...');
         await db.setJWT(_authService.jwt!);
       } catch (e) {
-        print('⚠️ Fehler beim Setzen des JWT: $e');
+        appLogger.w('⚠️ Fehler beim Setzen des JWT: $e');
       }
     } else {
-      print('ℹ️ Kein JWT im AuthService - User ist nicht eingeloggt');
+      appLogger.i('ℹ️ Kein JWT im AuthService - User ist nicht eingeloggt');
     }
   }
   
@@ -1083,12 +1087,12 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     // Wenn Token in weniger als 1 Stunde abläuft, refresh es jetzt
     if (timeLeft.inMinutes < 60) {
-      debugPrint('⏰ Token expiring soon (${timeLeft.inMinutes} min) - refreshing on resume...');
+      appLogger.d('⏰ Token expiring soon (${timeLeft.inMinutes} min) - refreshing on resume...');
       final success = await _authService.refreshTokenWithRetry(maxAttempts: 2);
       if (success) {
-        debugPrint('✅ Token refreshed on resume');
+        appLogger.d('✅ Token refreshed on resume');
       } else {
-        debugPrint('⚠️ Token refresh on resume failed - will require re-login if session expired');
+        appLogger.d('⚠️ Token refresh on resume failed - will require re-login if session expired');
       }
     }
   }
@@ -1101,20 +1105,20 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         await Future.delayed(const Duration(milliseconds: 50));
       }
       
-      print('🔍 AuthService initialisiert, prüfe Web-JWT...');
+      appLogger.d('🔍 AuthService initialisiert, prüfe Web-JWT...');
       
       final jwtFromStorage = html.getFromLocalStorage('neon_jwt');
       
       if (jwtFromStorage != null && jwtFromStorage.isNotEmpty) {
-        print('🔍 JWT in localStorage gefunden, validiere...');
+        appLogger.d('🔍 JWT in localStorage gefunden, validiere...');
         
         // Prüfe ob JWT gültig ist BEVOR wir es verwenden
         final isValid = JwtHelper.decodeToken(jwtFromStorage) != null;
         final isExpired = isValid ? JwtHelper.isTokenExpired(jwtFromStorage) : true;
         
         if (!isValid || isExpired) {
-          print('❌ JWT in localStorage ist ungültig oder abgelaufen');
-          print('   Cleane localStorage UND FlutterSecureStorage...');
+          appLogger.e('❌ JWT in localStorage ist ungültig oder abgelaufen');
+          appLogger.i('   Cleane localStorage UND FlutterSecureStorage...');
           
           // ✅ Cleane localStorage (Web)
           html.removeFromLocalStorage('neon_jwt');
@@ -1130,31 +1134,31 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           // ✅ Logout im AuthService
           await _authService.signOut();
           
-          print('✅ Alle Storages geleert - bereit für Neu-Login');
+          appLogger.i('✅ Alle Storages geleert - bereit für Neu-Login');
           return;
         }
         
-        print('✅ JWT ist gültig, setze in AuthService UND DB-Service...');
+        appLogger.i('✅ JWT ist gültig, setze in AuthService UND DB-Service...');
         
         // ✅ WICHTIG: Setze JWT im AuthService (für isLoggedIn)
         await _authService.setJWT(jwtFromStorage);
         
         // ✅ Setze auch im DB-Service (für Datenbank-Zugriff)
         await _dbService?.setJWT(jwtFromStorage);
-        
-        print('✅ JWT in beiden Services gesetzt - User sollte eingeloggt sein');
+
+        appLogger.i('✅ JWT in beiden Services gesetzt - User sollte eingeloggt sein');
       } else {
-        print('ℹ️ Kein JWT in localStorage - prüfe SecureStorage...');
+        appLogger.i('ℹ️ Kein JWT in localStorage - prüfe SecureStorage...');
         
         // Falls AuthService ein JWT aus SecureStorage geladen hat, validiere es
         if (_authService.jwt != null) {
-          print('🔍 JWT in SecureStorage gefunden, validiere...');
+          appLogger.d('🔍 JWT in SecureStorage gefunden, validiere...');
           
           final isValid = JwtHelper.decodeToken(_authService.jwt!) != null;
           final isExpired = isValid ? JwtHelper.isTokenExpired(_authService.jwt!) : true;
           
           if (!isValid || isExpired) {
-            print('❌ JWT in SecureStorage ist ungültig - cleane nur Auth-Keys');
+            appLogger.e('❌ JWT in SecureStorage ist ungültig - cleane nur Auth-Keys');
 
             final storage = const FlutterSecureStorage();
             // ✅ WICHTIG: Nur Auth-Keys löschen, nicht deleteAll() verwenden!
@@ -1166,12 +1170,12 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
             await _authService.signOut();
 
-            print('✅ Auth-Keys gelöscht - Einstellungen bleiben erhalten');
+            appLogger.i('✅ Auth-Keys gelöscht - Einstellungen bleiben erhalten');
           }
         }
       }
     } catch (e) {
-      print('❌ Fehler beim Initialisieren des Web-Login: $e');
+      appLogger.e('❌ Fehler beim Initialisieren des Web-Login: $e');
 
       // Bei Fehler: Nur Auth-Daten cleanen (NICHT alle Einstellungen!)
       html.removeFromLocalStorage('neon_jwt');
@@ -1187,7 +1191,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
       await _authService.signOut();
 
-      print('✅ Auth-Daten nach Fehler gelöscht - Einstellungen bleiben erhalten');
+      appLogger.i('✅ Auth-Daten nach Fehler gelöscht - Einstellungen bleiben erhalten');
     }
   }
   
@@ -1219,14 +1223,14 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
               // Setze JWT im Database Service
               await _dbService?.setJWT(_authService.jwt!);
               
-              print('✅ Android Login erfolgreich: ${_authService.session?['user']?['email']}');
+              appLogger.i('✅ Android Login erfolgreich: ${_authService.session?['user']?['email']}');
             } else {
-              print('❌ Session-Exchange fehlgeschlagen');
+              appLogger.e('❌ Session-Exchange fehlgeschlagen');
             }
           }
         }
       } catch (e) {
-        print('❌ Fehler beim Android Deep Link Handling: $e');
+        appLogger.e('❌ Fehler beim Android Deep Link Handling: $e');
       }
     }
   }
@@ -1239,14 +1243,14 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     if (jwt != null && _authService.isLoggedIn && db != null) {
       // Sync new JWT to DB service (e.g. after auto-refresh).
       db.setJWT(jwt).catchError((e) {
-        print('⚠️ Fehler beim Sync des JWT nach Auth-Änderung: $e');
+        appLogger.w('⚠️ Fehler beim Sync des JWT nach Auth-Änderung: $e');
       });
       // Aktualisiere Premium-Feature-Gates aus JWT-Claim.
       AppFeatures.setFromJwt(jwt);
     } else if (!_authService.isLoggedIn && db != null) {
       // Clear stale JWT from db service on sign-out.
       db.clearSession().catchError((e) {
-        print('⚠️ Fehler beim Clearen der DB-Session: $e');
+        appLogger.w('⚠️ Fehler beim Clearen der DB-Session: $e');
       });
       AppFeatures.reset();
     }
@@ -1645,7 +1649,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     
     // ✅ Beschränkung 1: Nicht in die Zukunft blättern
     if (newDayNormalized.isAfter(todayNormalized)) {
-      print('⚠️ Kann nicht in die Zukunft blättern (heute ist ${today.toIso8601String().split('T')[0]})');
+      appLogger.w('⚠️ Kann nicht in die Zukunft blättern (heute ist ${today.toIso8601String().split('T')[0]})');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.cannotNavigateToFuture),
@@ -1663,7 +1667,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       if (!mounted) return;  // ✅ Prüfe nach async Operation
       
       if (!hasGoal) {
-        print('⚠️ Kein Goal für ${newDay.toIso8601String().split('T')[0]} gefunden');
+        appLogger.w('⚠️ Kein Goal für ${newDay.toIso8601String().split('T')[0]} gefunden');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

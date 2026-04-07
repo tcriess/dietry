@@ -7,6 +7,7 @@ import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'activity_database_screen.dart';
 
@@ -67,10 +68,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         // Kombiniere: Eigene zuerst, dann public
         _searchResults = [...myActivities, ...publicActivities];
       });
-      
-      print('✅ ${_searchResults.length} Activities aus DB geladen');
+
+      appLogger.i('✅ ${_searchResults.length} Activities aus DB geladen');
     } catch (e) {
-      print('❌ Fehler beim Laden der Activities: $e');
+      appLogger.e('❌ Fehler beim Laden der Activities: $e');
     }
   }
   
@@ -86,14 +87,14 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
       });
       
       if (_userWeight != null) {
-        print('✅ Gewicht geladen: ${_userWeight!.toStringAsFixed(1)}kg');
+        appLogger.i('✅ Gewicht geladen: ${_userWeight!.toStringAsFixed(1)}kg');
         // Trigger initiale Berechnung wenn Dauer schon eingegeben wurde
         _calculateCaloriesIfNeeded();
       } else {
-        print('⚠️ Kein Gewicht in DB - Kalorien müssen manuell eingegeben werden');
+        appLogger.w('⚠️ Kein Gewicht in DB - Kalorien müssen manuell eingegeben werden');
       }
     } catch (e) {
-      print('❌ Konnte Gewicht nicht laden: $e');
+      appLogger.e('❌ Konnte Gewicht nicht laden: $e');
     }
   }
   
@@ -220,7 +221,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print('❌ Fehler beim Speichern: $e');
+      appLogger.e('❌ Fehler beim Speichern: $e');
 
       if (mounted) {
         final l = AppLocalizations.of(context)!;

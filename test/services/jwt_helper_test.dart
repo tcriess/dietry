@@ -1,7 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dietry/services/jwt_helper.dart';
+import 'package:dietry/services/app_logger.dart';
 
 void main() {
+  setUpAll(() {
+    initializeAppLogger();
+  });
+
   group('JwtHelper', () {
     // Beispiel-JWT (generiert mit jwt.io, Secret: "test-secret")
     // Payload: {"sub": "123e4567-e89b-12d3-a456-426614174000", "email": "test@example.com", "name": "Test User", "exp": 9999999999}

@@ -6,6 +6,7 @@ import 'package:web/web.dart' as web;
 
 // Services
 import 'services/neon_auth_service.dart';
+import 'services/app_logger.dart';
 
 void main() {
   runApp(const DietryApp());
@@ -45,17 +46,17 @@ class _DietryAppState extends State<DietryApp> {
     if (verifier != null && verifier.isNotEmpty) {
       _handledVerifier = true;
       
-      debugPrint('🔑 Found verifier in URL, getting session...');
+      appLogger.d('🔑 Found verifier in URL, getting session...');
       
       final success = await _authService.getSessionWithVerifier(verifier);
       
       if (success) {
-        debugPrint('✅ Session established successfully');
+        appLogger.d('✅ Session established successfully');
         
         // URL bereinigen (Verifier entfernen)
         _cleanUrl();
       } else {
-        debugPrint('❌ Failed to establish session');
+        appLogger.d('❌ Failed to establish session');
       }
     }
   }
@@ -74,9 +75,9 @@ class _DietryAppState extends State<DietryApp> {
       // URL ohne Reload aktualisieren
       web.window.history.replaceState(null, '', newUri.toString());
       
-      debugPrint('🧹 Cleaned URL');
+      appLogger.d('🧹 Cleaned URL');
     } catch (e) {
-      debugPrint('⚠️ Error cleaning URL: $e');
+      appLogger.d('⚠️ Error cleaning URL: $e');
     }
   }
 
@@ -148,7 +149,7 @@ class LoginScreen extends StatelessWidget {
           ? Uri.base.origin  // Web: Current origin
           : 'http://localhost:8080/callback';  // Desktop: Local server
       
-      debugPrint('🚀 Starting OAuth with callback: $callbackUrl');
+      appLogger.d('🚀 Starting OAuth with callback: $callbackUrl');
       
       // Starte OAuth Flow
       final oauthUrl = await authService.startOAuthFlow(
@@ -171,7 +172,7 @@ class LoginScreen extends StatelessWidget {
       }
       
     } catch (e) {
-      debugPrint('❌ Login error: $e');
+      appLogger.d('❌ Login error: $e');
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -65,6 +65,18 @@ class AppConfig {
   static bool get isProduction => environment == 'production';
   static bool get isDevelopment => environment == 'development';
 
+  /// Log level for the app logger. Can be set via LOG_LEVEL in config JSON.
+  /// Defaults to "INFO" in development, "FATAL" in production.
+  static const String _logLevelConfigured = String.fromEnvironment(
+    'LOG_LEVEL',
+    defaultValue: '',
+  );
+
+  static String get logLevel {
+    if (_logLevelConfigured.isNotEmpty) return _logLevelConfigured;
+    return isDevelopment ? 'INFO' : 'FATAL';
+  }
+
   /// Show the orange developer banner at top of app.
   /// Only relevant in development builds. Default: true (show banner).
   static const String _showDeveloperBannerConfigured =

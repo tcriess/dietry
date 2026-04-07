@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_features.dart';
+import '../services/app_logger.dart';
 
 /// Utility functions for feature gating and premium tier prompts.
 ///
@@ -89,21 +90,21 @@ class AppFeaturesUtils {
 
   /// Logs current feature availability (debug).
   static void debugLogFeatures() {
-    debugPrint('=== AppFeatures Debug ===');
+    appLogger.d('=== AppFeatures Debug ===');
     final isCloud = AppFeatures.role != 'community';
-    debugPrint('Edition: ${isCloud ? "Cloud" : "Community"}');
-    debugPrint('Role: ${AppFeatures.role}');
-    debugPrint('Is Basic: ${AppFeatures.isBasic}');
-    debugPrint('Is Pro: ${AppFeatures.isPro}');
-    debugPrint('');
-    debugPrint('Features:');
-    debugPrint('  Meal Templates: ${AppFeatures.mealTemplates}');
-    debugPrint('  Micro Nutrients: ${AppFeatures.microNutrients}');
-    debugPrint('  Activity Quick Add: ${AppFeatures.activityQuickAdd}');
-    debugPrint('  Streaks: ${AppFeatures.streaks}');
-    debugPrint('  Reports Export: ${AppFeatures.reportsExport}');
-    debugPrint('  Advanced Analytics: ${AppFeatures.advancedAnalytics}');
-    debugPrint('  Multiple Profiles: ${AppFeatures.multipleProfiles}');
+    appLogger.d('Edition: ${isCloud ? "Cloud" : "Community"}');
+    appLogger.d('Role: ${AppFeatures.role}');
+    appLogger.d('Is Basic: ${AppFeatures.isBasic}');
+    appLogger.d('Is Pro: ${AppFeatures.isPro}');
+    appLogger.d('');
+    appLogger.d('Features:');
+    appLogger.d('  Meal Templates: ${AppFeatures.mealTemplates}');
+    appLogger.d('  Micro Nutrients: ${AppFeatures.microNutrients}');
+    appLogger.d('  Activity Quick Add: ${AppFeatures.activityQuickAdd}');
+    appLogger.d('  Streaks: ${AppFeatures.streaks}');
+    appLogger.d('  Reports Export: ${AppFeatures.reportsExport}');
+    appLogger.d('  Advanced Analytics: ${AppFeatures.advancedAnalytics}');
+    appLogger.d('  Multiple Profiles: ${AppFeatures.multipleProfiles}');
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
