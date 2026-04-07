@@ -285,7 +285,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               )
             else
               DropdownButtonFormField<ActivityItem>(
-                value: _selectedActivity,
+                initialValue: _selectedActivity,
                 decoration: const InputDecoration(
                   labelText: 'Aktivität',
                   border: OutlineInputBorder(),
@@ -336,6 +336,8 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             // Button: Eigene Aktivität zur Datenbank hinzufügen
             OutlinedButton.icon(
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final lCtx = AppLocalizations.of(context)!;
                 final result = await showDialog<ActivityItem>(
                   context: context,
                   builder: (context) => const ActivityEditDialog(
@@ -361,8 +363,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                       _calculateCaloriesIfNeeded();
 
                       if (mounted) {
-                        final lCtx = AppLocalizations.of(context)!;
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text(lCtx.foodAdded(created.name)),
                             backgroundColor: Colors.green,
@@ -372,8 +373,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                     }
                   } catch (e) {
                     if (mounted) {
-                      final lCtx = AppLocalizations.of(context)!;
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(
                           content: Text(lCtx.errorPrefix(e.toString())),
                           backgroundColor: Colors.red,

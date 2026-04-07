@@ -188,10 +188,14 @@ class NutritionGoalService {
       final profile = await UserProfileService(db).getCurrentProfile();
       final measurement = await UserBodyMeasurementsService(db).getCurrentMeasurement();
 
-      if (profile == null || measurement == null) return null;
+      if (profile == null || measurement == null) {
+        return null;
+      }
       final age = profile.age;
       if (age == null || profile.height == null || profile.gender == null ||
-          profile.activityLevel == null || profile.weightGoal == null) return null;
+          profile.activityLevel == null || profile.weightGoal == null) {
+        return null;
+      }
 
       final bodyData = UserBodyData(
         weight: measurement.weight,

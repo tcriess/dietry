@@ -269,6 +269,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final l = AppLocalizations.of(context)!;
           final result = await showDialog<ActivityItem>(
             context: context,
             builder: (context) => const ActivityEditDialog(
@@ -281,10 +283,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
               final service = ActivityDatabaseService(widget.dbService);
               final created = await service.createActivity(result);
               if (mounted) {
-                final lCtx = AppLocalizations.of(context)!;
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
-                    content: Text(lCtx.foodAdded(created.name)),
+                    content: Text(l.foodAdded(created.name)),
                     backgroundColor: Colors.green,
                   ),
                 );
@@ -292,9 +293,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
               }
             } catch (e) {
               if (mounted) {
-                final lCtx = AppLocalizations.of(context)!;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(lCtx.errorPrefix(e.toString())), backgroundColor: Colors.red),
+                messenger.showSnackBar(
+                  SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
                 );
               }
             }
@@ -491,7 +491,7 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
 
               // Intensität
               DropdownButtonFormField<String>(
-                value: _intensity,
+                initialValue: _intensity,
                 decoration: const InputDecoration(
                   labelText: 'Intensität',
                   border: OutlineInputBorder(),

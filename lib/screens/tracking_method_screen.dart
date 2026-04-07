@@ -168,9 +168,12 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
             children: [
               Row(
                 children: [
+                  // ignore: deprecated_member_use
                   Radio<TrackingMethod>(
                     value: method,
+                    // ignore: deprecated_member_use
                     groupValue: _selectedMethod,
+                    // ignore: deprecated_member_use
                     onChanged: (value) {
                       if (value != null) {
                         setState(() {

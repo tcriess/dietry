@@ -231,7 +231,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
             // Geschlecht
             DropdownButtonFormField<Gender>(
-              value: _selectedGender,
+              initialValue: _selectedGender,
               decoration: InputDecoration(
                 labelText: l.genderLabel,
                 border: const OutlineInputBorder(),
@@ -255,7 +255,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
             // Activity Level
             DropdownButtonFormField<ActivityLevel>(
-              value: _selectedActivityLevel,
+              initialValue: _selectedActivityLevel,
               decoration: InputDecoration(
                 labelText: l.activityLevelFieldLabel,
                 border: const OutlineInputBorder(),
@@ -279,7 +279,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
             // Weight Goal
             DropdownButtonFormField<WeightGoal>(
-              value: _selectedWeightGoal,
+              initialValue: _selectedWeightGoal,
               decoration: InputDecoration(
                 labelText: l.weightGoalFieldLabel,
                 border: const OutlineInputBorder(),

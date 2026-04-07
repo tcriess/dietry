@@ -233,7 +233,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
               )
             else
               DropdownButtonFormField<ActivityItem>(
-                value: _selectedActivity,
+                initialValue: _selectedActivity,
                 decoration: const InputDecoration(
                   labelText: 'Aktivität',
                   border: OutlineInputBorder(),

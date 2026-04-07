@@ -282,6 +282,8 @@ class LoginScreen extends StatelessWidget {
                     textStyle: const TextStyle(fontSize: 16),
                   ),
                   onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final lErr = AppLocalizations.of(context)!;
                 try {
                   // WEB: Redirect zu auth_callback.html (übernimmt kompletten OAuth-Flow)
                   if (kIsWeb) {
@@ -301,7 +303,7 @@ class LoginScreen extends StatelessWidget {
                     // mit anderen Diensten möglich.
                     desktopCallbackCompleter = Completer<String>();
 
-                    final handler = (shelf.Request request) async {
+                    FutureOr<shelf.Response> handler(shelf.Request request) async {
                       if (request.url.path == 'callback') {
                         final verifier = request.url.queryParameters['neon_auth_session_verifier'];
                         if (verifier != null && !desktopCallbackCompleter!.isCompleted) {
@@ -313,7 +315,7 @@ class LoginScreen extends StatelessWidget {
                         }
                       }
                       return shelf.Response.notFound('Not found');
-                    };
+                    }
 
                     // Port 0 → OS assigns a free port; read it back via server.port.
                     final server = await shelf_io.serve(handler, 'localhost', 0);
@@ -348,7 +350,7 @@ class LoginScreen extends StatelessWidget {
                     }
                     
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text('Bitte schließen Sie die Authentifizierung im Browser ab...'),
                           duration: Duration(seconds: 5),
@@ -361,9 +363,9 @@ class LoginScreen extends StatelessWidget {
                     if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.externalApplication)) {
                       throw Exception('Konnte Browser nicht öffnen');
                     }
-                    
+
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text('Bitte schließen Sie die Authentifizierung im Browser ab...'),
                           duration: Duration(seconds: 3),
@@ -381,15 +383,15 @@ class LoginScreen extends StatelessWidget {
                       final success = await authService.getSessionWithVerifier(verifier);
                       
                       if (success && authService.jwt != null) {
-                        // Setze JWT im GLOBALEN Database Service
-                        // Zugriff via findAncestorStateOfType
-                        final authAppState = context.findAncestorStateOfType<_AuthAppState>();
-                        if (authAppState != null) {
-                          await authAppState._dbService?.setJWT(authService.jwt!);
-                        }
-
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          // Setze JWT im GLOBALEN Database Service
+                          // Zugriff via findAncestorStateOfType
+                          final authAppState = context.findAncestorStateOfType<_AuthAppState>();
+                          if (authAppState != null) {
+                            await authAppState._dbService?.setJWT(authService.jwt!);
+                          }
+
+                          messenger.showSnackBar(
                             SnackBar(
                               content: Text('Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
                               backgroundColor: Colors.green,
@@ -403,6 +405,7 @@ class LoginScreen extends StatelessWidget {
                   } else {
                     // iOS/macOS: WebView Dialog
                     final session = await showDialog<Map<String, dynamic>>(
+                      // ignore: use_build_context_synchronously
                       context: context,
                       barrierDismissible: false,
                       builder: (ctx) => NeonAuthWebViewDialog(
@@ -418,14 +421,14 @@ class LoginScreen extends StatelessWidget {
                         final success = await authService.getSessionWithVerifier(verifier);
 
                         if (success && authService.jwt != null) {
-                          // Setze JWT im GLOBALEN Database Service
-                          final authAppState = context.findAncestorStateOfType<_AuthAppState>();
-                          if (authAppState != null) {
-                            await authAppState._dbService?.setJWT(authService.jwt!);
-                          }
-                          
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            // Setze JWT im GLOBALEN Database Service
+                            final authAppState = context.findAncestorStateOfType<_AuthAppState>();
+                            if (authAppState != null) {
+                              await authAppState._dbService?.setJWT(authService.jwt!);
+                            }
+
+                            messenger.showSnackBar(
                               SnackBar(
                                 content: Text('Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
                                 backgroundColor: Colors.green,
@@ -443,8 +446,7 @@ class LoginScreen extends StatelessWidget {
                 } catch (e) {
                   appLogger.e('❌ Login fehlgeschlagen: $e');
                   if (context.mounted) {
-                    final lErr = AppLocalizations.of(context)!;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(
                         content: Text(lErr.loginFailed(e.toString())),
                         backgroundColor: Colors.red,
@@ -1208,11 +1210,11 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         final uri = Uri.parse(initialLink);
         
         // Prüfe ob es ein OAuth Callback ist
-        final _androidCbUri = Uri.tryParse(AppConfig.androidCallbackUrl);
-        if (_androidCbUri != null &&
-            uri.scheme == _androidCbUri.scheme &&
-            uri.host == _androidCbUri.host &&
-            uri.path == _androidCbUri.path) {
+        final androidCbUri = Uri.tryParse(AppConfig.androidCallbackUrl);
+        if (androidCbUri != null &&
+            uri.scheme == androidCbUri.scheme &&
+            uri.host == androidCbUri.host &&
+            uri.path == androidCbUri.path) {
           final verifier = uri.queryParameters['neon_auth_session_verifier'];
           
           if (verifier != null && verifier.isNotEmpty) {
@@ -1424,10 +1426,10 @@ class DietryHome extends StatefulWidget {
   final NeonAuthService authService;
   
   const DietryHome({
-    Key? key,
+    super.key,
     required this.dbService,
     required this.authService,
-  }) : super(key: key);
+  });
 
   @override
   State<DietryHome> createState() => _DietryHomeState();

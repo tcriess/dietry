@@ -810,7 +810,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Switch(
             value: _waterReminderEnabled,
-            activeColor: Colors.lightBlue,
+            activeThumbColor: Colors.lightBlue,
             onChanged: (value) {
               // Optimistic update: show the new state immediately
               setState(() => _waterReminderEnabled = value);
@@ -1144,6 +1144,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             IconButton(
               icon: const Icon(Icons.delete, size: 20, color: Colors.red),
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final lCtx = AppLocalizations.of(context)!;
                 final dateStr = '${measurement.measuredAt.day}.${measurement.measuredAt.month}.${measurement.measuredAt.year}';
                 final confirmed = await showDialog<bool>(
                   context: context,
@@ -1176,8 +1178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     await NutritionGoalService.autoAdjustGoal(widget.dbService);
 
                     if (mounted) {
-                      final lCtx = AppLocalizations.of(context)!;
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(
                           content: Text(lCtx.measurementDeleted),
                           backgroundColor: Colors.green,
@@ -1187,8 +1188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   } catch (e) {
                     if (mounted) {
-                      final lCtx = AppLocalizations.of(context)!;
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(
                           content: Text(lCtx.errorPrefix(e.toString())),
                           backgroundColor: Colors.red,

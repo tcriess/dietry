@@ -388,7 +388,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
     final l = AppLocalizations.of(context)!;
     return DropdownButtonFormField<String>(
-      value: currentKey,
+      initialValue: currentKey,
       decoration: InputDecoration(
         labelText: l.unit,
         border: const OutlineInputBorder(),
@@ -442,7 +442,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _PreviewMacro('kcal', '${totals['calories']!.toStringAsFixed(0)}'),
+                _PreviewMacro('kcal', totals['calories']!.toStringAsFixed(0)),
                 _PreviewMacro('P', '${totals['protein']!.toStringAsFixed(1)}g'),
                 _PreviewMacro('F', '${totals['fat']!.toStringAsFixed(1)}g'),
                 _PreviewMacro('KH', '${totals['carbs']!.toStringAsFixed(1)}g'),
@@ -532,7 +532,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
             // Meal Type
             DropdownButtonFormField<MealType>(
-              value: _selectedMealType,
+              initialValue: _selectedMealType,
               decoration: InputDecoration(
                 labelText: l.mealType,
                 border: const OutlineInputBorder(),

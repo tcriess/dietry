@@ -118,6 +118,8 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
       _isCalculating = true;
     });
 
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       final bodyData = UserBodyData(
         weight: double.parse(_weightController.text),
@@ -169,7 +171,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         _isCalculating = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Fehler bei Berechnung: $e'),
           backgroundColor: Colors.red,
@@ -487,7 +489,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
 
               // Geschlecht
               DropdownButtonFormField<Gender>(
-                value: _gender,
+                initialValue: _gender,
                 decoration: InputDecoration(
                   labelText: l.genderRecLabel,
                   border: const OutlineInputBorder(),
@@ -518,7 +520,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<ActivityLevel>(
-                value: _activityLevel,
+                initialValue: _activityLevel,
                 decoration: InputDecoration(
                   labelText: l.activityRecLabel,
                   border: const OutlineInputBorder(),
@@ -549,7 +551,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               const SizedBox(height: 16),
 
               DropdownButtonFormField<WeightGoal>(
-                value: _weightGoal,
+                initialValue: _weightGoal,
                 decoration: InputDecoration(
                   labelText: l.weightGoalRecLabel,
                   border: const OutlineInputBorder(),

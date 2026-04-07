@@ -228,7 +228,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     items.add(const DropdownMenuItem(value: 'ml', child: Text('ml')));
 
     return DropdownButtonFormField<String>(
-      value: currentKey,
+      initialValue: currentKey,
       decoration: const InputDecoration(
         labelText: 'Einheit',
         border: OutlineInputBorder(),
@@ -287,7 +287,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
       // For manual entry: fields are per-100g, scale to total
       // For food-from-DB: _calculateNutrition() already filled controllers with totals
-      final _scale = _selectedFood == null ? rawAmount / 100.0 : 1.0;
+      final scale = _selectedFood == null ? rawAmount / 100.0 : 1.0;
 
       final entry = FoodEntry(
         id: '',  // Wird von DB generiert
@@ -298,14 +298,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         name: _nameController.text,
         amount: rawAmount,
         unit: _selectedPortion?.name ?? _customUnit,
-        calories: double.parse(_caloriesController.text) * _scale,
-        protein: double.parse(_proteinController.text)  * _scale,
-        fat:     double.parse(_fatController.text)       * _scale,
-        carbs:   double.parse(_carbsController.text)     * _scale,
-        fiber:   double.tryParse(_fiberController.text) != null ? double.parse(_fiberController.text) * _scale : null,
-        sugar:   double.tryParse(_sugarController.text) != null ? double.parse(_sugarController.text) * _scale : null,
-        sodium:  double.tryParse(_sodiumController.text) != null ? double.parse(_sodiumController.text) * _scale : null,
-        saturatedFat: double.tryParse(_saturatedFatController.text) != null ? double.parse(_saturatedFatController.text) * _scale : null,
+        calories: double.parse(_caloriesController.text) * scale,
+        protein: double.parse(_proteinController.text)  * scale,
+        fat:     double.parse(_fatController.text)       * scale,
+        carbs:   double.parse(_carbsController.text)     * scale,
+        fiber:   double.tryParse(_fiberController.text) != null ? double.parse(_fiberController.text) * scale : null,
+        sugar:   double.tryParse(_sugarController.text) != null ? double.parse(_sugarController.text) * scale : null,
+        sodium:  double.tryParse(_sodiumController.text) != null ? double.parse(_sodiumController.text) * scale : null,
+        saturatedFat: double.tryParse(_saturatedFatController.text) != null ? double.parse(_saturatedFatController.text) * scale : null,
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: false,
@@ -868,7 +868,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
               
               // Meal Type
               DropdownButtonFormField<MealType>(
-                value: _selectedMealType,
+                initialValue: _selectedMealType,
                 decoration: const InputDecoration(
                   labelText: 'Mahlzeit',
                   border: OutlineInputBorder(),

@@ -242,7 +242,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
             
             // Geschlecht
             DropdownButtonFormField<Gender>(
-              value: _selectedGender,
+              initialValue: _selectedGender,
               decoration: const InputDecoration(
                 labelText: 'Geschlecht',
                 border: OutlineInputBorder(),
@@ -267,7 +267,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
             
             // Activity Level
             DropdownButtonFormField<ActivityLevel>(
-              value: _selectedActivityLevel,
+              initialValue: _selectedActivityLevel,
               decoration: const InputDecoration(
                 labelText: 'Aktivitätslevel',
                 border: OutlineInputBorder(),
@@ -292,7 +292,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
             
             // Weight Goal
             DropdownButtonFormField<WeightGoal>(
-              value: _selectedWeightGoal,
+              initialValue: _selectedWeightGoal,
               decoration: const InputDecoration(
                 labelText: 'Gewichtsziel',
                 border: OutlineInputBorder(),

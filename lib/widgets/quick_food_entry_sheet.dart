@@ -480,15 +480,15 @@ class _RecentTab extends StatelessWidget {
       itemBuilder: (ctx, i) {
         final e = entries[i];
         final isAdding = addingId == e.id;
-        final _eCount = e.amount;
-        final _eCountStr = _eCount == _eCount.truncateToDouble()
-            ? _eCount.toInt().toString()
-            : _eCount.toStringAsFixed(1);
+        final eCount = e.amount;
+        final eCountStr = eCount == eCount.truncateToDouble()
+            ? eCount.toInt().toString()
+            : eCount.toStringAsFixed(1);
         final amountStr = e.unit == 'g' || e.unit == 'ml'
             ? '${e.amount.toStringAsFixed(0)}${e.unit}'
             : e.unit == 'Portion'
-                ? '$_eCountStr Portion${_eCount != 1.0 ? 'en' : ''}'
-                : '$_eCountStr × ${e.unit}';
+                ? '$eCountStr Portion${eCount != 1.0 ? 'en' : ''}'
+                : '$eCountStr × ${e.unit}';
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: Colors.orange.shade50,
