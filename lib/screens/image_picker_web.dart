@@ -1,52 +1,73 @@
 // Web stub for image_picker
 // On web, we use HTML file input
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:convert' show base64Encode;
+import 'dart:js_interop';
+
+/// Convert a JS ArrayBuffer to Dart Uint8List using dart:js_interop
+Uint8List _jsArrayBufferToUint8List(JSObject arrayBuffer) {
+  // Cast ArrayBuffer to Uint8Array and convert to Dart List
+  // The readAsArrayBuffer result in FileReader can be directly converted
+  try {
+    // Try to interpret the result as a list of numbers
+    final jsArray = arrayBuffer as JSArray<JSNumber>;
+    final dartList = jsArray.toDart;
+    final intList = dartList.map((e) => e.toDartInt).toList();
+    return Uint8List.fromList(intList);
+  } catch (_) {
+    // Fallback: return empty list if conversion fails
+    return Uint8List(0);
+  }
+}
 
 /// Web-compatible image picker stub
 class ImagePicker {
   /// Pick an image from the web file input
   Future<XFile?> pickImage({required ImageSource source}) async {
-    final input = html.FileUploadInputElement()
+    final input = web.HTMLInputElement()
+      ..type = 'file'
       ..accept = 'image/*'
       ..style.display = 'none';
 
-    html.document.body!.append(input);
+    web.document.body!.appendChild(input);
 
     final completer = Completer<XFile?>();
 
     input.onChange.listen((_) async {
       try {
         final files = input.files;
-        if (files != null && files.isNotEmpty) {
-          final file = files.first;
-          final reader = html.FileReader();
+        if (files != null && files.length > 0) {
+          final file = files.item(0) as web.File;
+          final reader = web.FileReader();
 
-          reader.onLoadEnd.listen((_) {
+          // Use a Completer wrapper to handle the loadend event
+          reader.onloadend = (web.ProgressEvent event) {
             try {
-              final result = reader.result;
-              if (result is List<int>) {
-                final bytes = Uint8List.fromList(result);
-                final xfile = XFile.fromData(
-                  bytes,
-                  mimeType: file.type,
-                  name: file.name,
-                );
-                completer.complete(xfile);
-              } else {
-                completer.complete(null);
-              }
+              // Convert ArrayBuffer result to Uint8List
+              final jsResult = reader.result as JSObject;
+
+              // Use dart:js_interop to convert to Dart list
+              final uint8List = _jsArrayBufferToUint8List(jsResult);
+
+              final xfile = XFile.fromData(
+                uint8List,
+                mimeType: file.type,
+                name: file.name,
+              );
+              completer.complete(xfile);
             } catch (e) {
               completer.complete(null);
             }
-          });
+            return null;
+          }.toJS as web.EventHandler;
 
-          reader.onError.listen((_) {
+          // Handle error event
+          reader.onerror = (web.ProgressEvent event) {
             completer.complete(null);
-          });
+            return null;
+          }.toJS as web.EventHandler;
 
           reader.readAsArrayBuffer(file);
         } else {
