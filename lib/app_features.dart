@@ -82,6 +82,10 @@ class AppFeatures {
   /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).
   static bool get reportsExport => _isCloud;
 
+  /// Share progress cards on social media (Streak, Daily Goals).
+  /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).
+  static bool get shareProgress => _isCloud;
+
   /// Erweiterte Analysen: Wochen-/Monatsberichte, Trend-Charts.
   static bool get advancedAnalytics => isPro;
 

@@ -243,6 +243,25 @@ abstract class PremiumFeatures {
     required String apiUrl,
   });
 
+  // ── Social Sharing ────────────────────────────────────────────────────────
+
+  bool get hasShareProgress;
+
+  void showShareProgressSheet({
+    required BuildContext context,
+    required int streak,
+    required int bestStreak,
+    required DateTime date,
+    required double todayCalories,
+    required double todayProtein,
+    required double todayFat,
+    required double todayCarbs,
+    double? goalCalories,
+    double? goalProtein,
+    double? goalFat,
+    double? goalCarbs,
+  });
+
   // ── Cloud-Berichte ────────────────────────────────────────────────────────
 
   /// Rendert die Cloud-exklusiven Report-Sektionen (Aktivität, Kalorienbilanz,
@@ -302,6 +321,7 @@ class NullPremiumFeatures implements PremiumFeatures {
   @override bool get isAvailable => false;
   @override bool get hasMealTemplates => false;
   @override bool get hasMicroNutrients => false;
+  @override bool get hasShareProgress => false;
 
   @override
   Widget buildMicroOverviewCard({
@@ -361,6 +381,22 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String apiUrl,
     required DateTime date,
     required Future<void> Function(ActivityQuickAddData) onAdd,
+  }) {}
+
+  @override
+  void showShareProgressSheet({
+    required BuildContext context,
+    required int streak,
+    required int bestStreak,
+    required DateTime date,
+    required double todayCalories,
+    required double todayProtein,
+    required double todayFat,
+    required double todayCarbs,
+    double? goalCalories,
+    double? goalProtein,
+    double? goalFat,
+    double? goalCarbs,
   }) {}
 
   @override
