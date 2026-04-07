@@ -1,3 +1,4 @@
+import 'package:dietry/services/app_logger.dart';
 import '../models/activity_item.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
@@ -21,18 +22,18 @@ class ActivityDatabaseService {
   /// Case-insensitive Suche.
   Future<List<ActivityItem>> searchActivities(String query, {int limit = 50}) async {
     try {
-      print('🔍 Suche nach Aktivitäten: "$query"');
-      
+      appLogger.d('🔍 Suche nach Aktivitäten: "$query"');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig');
+        appLogger.w('⚠️ Token ungültig');
         return [];
       }
-      
+
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar');
+        appLogger.w('⚠️ Keine User-ID verfügbar');
         return [];
       }
       
@@ -50,14 +51,14 @@ class ActivityDatabaseService {
         .map((json) => ActivityItem.fromJson(json as Map<String, dynamic>))
         .toList();
       
-      print('✅ ${activities.length} Aktivitäten gefunden');
+      appLogger.i('✅ ${activities.length} Aktivitäten gefunden');
       return activities;
     } catch (e) {
-      print('❌ Fehler bei Activity-Suche: $e');
+      appLogger.e('❌ Fehler bei Activity-Suche: $e');
       return [];
     }
   }
-  
+
   /// Hole Aktivität per ID
   Future<ActivityItem?> getActivityById(String id) async {
     try {
@@ -75,11 +76,11 @@ class ActivityDatabaseService {
       
       return ActivityItem.fromJson(response);
     } catch (e) {
-      print('❌ Fehler beim Laden der Aktivität: $e');
+      appLogger.e('❌ Fehler beim Laden der Aktivität: $e');
       return null;
     }
   }
-  
+
   /// Hole alle eigenen private Activities
   Future<List<ActivityItem>> getMyActivities() async {
     try {
@@ -101,11 +102,11 @@ class ActivityDatabaseService {
         .map((json) => ActivityItem.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden eigener Activities: $e');
+      appLogger.e('❌ Fehler beim Laden eigener Activities: $e');
       return [];
     }
   }
-  
+
   /// Hole Activities nach Kategorie
   Future<List<ActivityItem>> getActivitiesByCategory(String category) async {
     try {
@@ -127,11 +128,11 @@ class ActivityDatabaseService {
         .map((json) => ActivityItem.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden von Activities nach Kategorie: $e');
+      appLogger.e('❌ Fehler beim Laden von Activities nach Kategorie: $e');
       return [];
     }
   }
-  
+
   /// Hole Activities nach Intensität
   Future<List<ActivityItem>> getActivitiesByIntensity(String intensity) async {
     try {
@@ -153,11 +154,11 @@ class ActivityDatabaseService {
         .map((json) => ActivityItem.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden von Activities nach Intensität: $e');
+      appLogger.e('❌ Fehler beim Laden von Activities nach Intensität: $e');
       return [];
     }
   }
-  
+
   /// Hole alle public Activities (für Übersicht)
   Future<List<ActivityItem>> getPublicActivities() async {
     try {
@@ -176,37 +177,37 @@ class ActivityDatabaseService {
         .map((json) => ActivityItem.fromJson(json as Map<String, dynamic>))
         .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden von public Activities: $e');
+      appLogger.e('❌ Fehler beim Laden von public Activities: $e');
       return [];
     }
   }
-  
+
   /// Erstelle eigene private Activity
   /// 
   /// User kann KEINE public activities erstellen (RLS blockiert das).
   Future<ActivityItem> createActivity(ActivityItem activity) async {
     try {
-      print('💾 Erstelle neue Activity: ${activity.name}');
-      
+      appLogger.i('💾 Erstelle neue Activity: ${activity.name}');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
       }
-      
+
       final userId = _userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar');
       }
-      
+
       // JSON vorbereiten
       final json = activity.toJson();
       json['user_id'] = userId;
       json['is_approved'] = false;  // Immer false bei Insert - nur Admin kann freigeben
       json.remove('id');  // ID wird von DB generiert
-      
-      print('   📤 Sende INSERT via Dio...');
-      
+
+      appLogger.d('   📤 Sende INSERT via Dio...');
+
       // Verwende Dio statt Postgrest Client (Schema-Cache + Prefer-Header Problem)
       final response = await _db.dioClient.post(
         '/activity_database',
@@ -217,16 +218,16 @@ class ActivityDatabaseService {
           },
         ),
       );
-      
+
       if (response.statusCode != 201 || response.data == null || (response.data as List).isEmpty) {
         throw Exception('INSERT fehlgeschlagen: ${response.statusCode}');
       }
-      
+
       final created = ActivityItem.fromJson((response.data as List).first as Map<String, dynamic>);
-      print('✅ Activity erstellt: ${created.id}');
+      appLogger.i('✅ Activity erstellt: ${created.id}');
       return created;
     } catch (e) {
-      print('❌ Fehler beim Erstellen der Activity: $e');
+      appLogger.e('❌ Fehler beim Erstellen der Activity: $e');
       rethrow;
     }
   }
@@ -234,19 +235,19 @@ class ActivityDatabaseService {
   /// Aktualisiere eigene Activity
   Future<ActivityItem> updateActivity(ActivityItem activity) async {
     try {
-      print('📝 Aktualisiere Activity: ${activity.id}');
-      
+      appLogger.i('📝 Aktualisiere Activity: ${activity.id}');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
       }
-      
+
       final userId = _userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar');
       }
-      
+
       // JSON vorbereiten
       final json = activity.toJson();
       json['user_id'] = userId;
@@ -254,7 +255,7 @@ class ActivityDatabaseService {
       json['updated_at'] = DateTime.now().toIso8601String();
       json.remove('id');
 
-      print('   📤 Sende PATCH via Dio...');
+      appLogger.d('   📤 Sende PATCH via Dio...');
 
       // UPDATE via Dio (Schema-Cache + Prefer-Header Problem)
       final response = await _db.dioClient.patch(
@@ -271,10 +272,10 @@ class ActivityDatabaseService {
         throw Exception('PATCH fehlgeschlagen: ${response.statusCode}');
       }
 
-      print('✅ Activity aktualisiert');
+      appLogger.i('✅ Activity aktualisiert');
       return ActivityItem.fromJson((response.data as List).first as Map<String, dynamic>);
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren der Activity: $e');
+      appLogger.e('❌ Fehler beim Aktualisieren der Activity: $e');
       rethrow;
     }
   }
@@ -282,21 +283,21 @@ class ActivityDatabaseService {
   /// Lösche eigene Activity
   Future<void> deleteActivity(String id) async {
     try {
-      print('🗑️  Lösche Activity: $id');
-      
+      appLogger.i('🗑️  Lösche Activity: $id');
+
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
       }
-      
+
       final userId = _userId;
       if (userId == null) {
         throw Exception('Keine User-ID verfügbar');
       }
-      
-      print('   📤 Sende DELETE via Dio...');
-      
+
+      appLogger.d('   📤 Sende DELETE via Dio...');
+
       // Verwende Dio statt Postgrest Client
       final response = await _db.dioClient.delete(
         '/activity_database?id=eq.$id&user_id=eq.$userId',
@@ -306,14 +307,14 @@ class ActivityDatabaseService {
           },
         ),
       );
-      
+
       if (response.statusCode != 204 && response.statusCode != 200) {
         throw Exception('DELETE fehlgeschlagen: ${response.statusCode}');
       }
-      
-      print('✅ Activity gelöscht');
+
+      appLogger.i('✅ Activity gelöscht');
     } catch (e) {
-      print('❌ Fehler beim Löschen der Activity: $e');
+      appLogger.e('❌ Fehler beim Löschen der Activity: $e');
       rethrow;
     }
   }
@@ -335,7 +336,7 @@ class ActivityDatabaseService {
           .map((json) => ActivityItem.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden der Aktivitäts-Favoriten: $e');
+      appLogger.e('❌ Fehler beim Laden der Aktivitäts-Favoriten: $e');
       return [];
     }
   }
@@ -356,7 +357,7 @@ class ActivityDatabaseService {
         options: Options(headers: {'Prefer': 'return=minimal'}),
       );
     } catch (e) {
-      print('❌ Fehler beim Setzen des Aktivitäts-Favoriten: $e');
+      appLogger.e('❌ Fehler beim Setzen des Aktivitäts-Favoriten: $e');
       rethrow;
     }
   }

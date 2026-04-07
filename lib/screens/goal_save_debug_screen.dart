@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
+import '../services/app_logger.dart';
 import '../models/models.dart';
 
 /// Debug-Screen zum Testen der Goal-Speicherung
@@ -29,7 +30,7 @@ class _GoalSaveDebugScreenState extends State<GoalSaveDebugScreen> {
     setState(() {
       _logs.add('${DateTime.now().toIso8601String().split('.')[0]} - $message');
     });
-    print(message);
+    appLogger.d(message);
   }
 
   Future<void> _runTest() async {

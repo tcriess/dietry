@@ -1,3 +1,4 @@
+import 'package:dietry/services/app_logger.dart';
 import 'neon_database_service.dart';
 
 class WaterIntakeService {
@@ -26,7 +27,7 @@ class WaterIntakeService {
       if (response == null) return 0;
       return (response['amount_ml'] as num).toInt();
     } catch (e) {
-      print('❌ WaterIntakeService.getIntakeForDate: $e');
+      appLogger.e('❌ WaterIntakeService.getIntakeForDate: $e');
       return 0;
     }
   }
@@ -52,7 +53,7 @@ class WaterIntakeService {
       );
       return amountMl;
     } catch (e) {
-      print('❌ WaterIntakeService.setIntakeForDate: $e');
+      appLogger.e('❌ WaterIntakeService.setIntakeForDate: $e');
       return null;
     }
   }

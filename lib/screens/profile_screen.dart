@@ -11,6 +11,7 @@ import '../services/neon_auth_service.dart';
 import '../services/health_connect_service.dart';
 import '../services/account_service.dart';
 import '../services/water_reminder_service.dart';
+import '../services/app_logger.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import 'profile_setup_screen.dart';
@@ -85,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      print('❌ Fehler beim Laden: $e');
+      appLogger.e('❌ Fehler beim Laden: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

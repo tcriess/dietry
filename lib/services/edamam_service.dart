@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../app_config.dart';
 import '../models/food_item.dart';
+import 'app_logger.dart';
 
 /// Nährwertsuche via Edamam Food Database API.
 ///
@@ -15,7 +16,7 @@ class EdamamService {
   Future<List<FoodItem>> searchByName(String query, {int limit = 20}) async {
     if (query.trim().isEmpty) return [];
     if (!AppConfig.hasEdamam) {
-      print('⚠️ Edamam: Keine API-Credentials (EDAMAM_APP_ID/EDAMAM_APP_KEY)');
+      appLogger.w('⚠️ Edamam: Keine API-Credentials (EDAMAM_APP_ID/EDAMAM_APP_KEY)');
       return [];
     }
 
@@ -27,7 +28,7 @@ class EdamamService {
         'nutrition-type': 'logging',
       });
 
-      print('🌐 Edamam Request: GET ${uri.replace(queryParameters: {
+      appLogger.d('🌐 Edamam Request: GET ${uri.replace(queryParameters: {
         ...uri.queryParameters,
         'app_id': '***',
         'app_key': '***',
@@ -35,11 +36,11 @@ class EdamamService {
 
       final response = await http.get(uri);
 
-      print('📥 Edamam Response: HTTP ${response.statusCode}');
-      print('   Body: ${response.body}');
+      appLogger.d('📥 Edamam Response: HTTP ${response.statusCode}');
+      appLogger.d('   Body: ${response.body}');
 
       if (response.statusCode != 200) {
-        print('❌ Edamam HTTP ${response.statusCode}');
+        appLogger.e('❌ Edamam HTTP ${response.statusCode}');
         return [];
       }
 
@@ -52,10 +53,10 @@ class EdamamService {
           .whereType<FoodItem>()
           .toList();
 
-      print('🔍 Edamam "$query": ${hints.length} Treffer, ${results.length} mit Nährwerten');
+      appLogger.i('🔍 Edamam "$query": ${hints.length} Treffer, ${results.length} mit Nährwerten');
       return results;
     } catch (e) {
-      print('❌ Edamam Suche fehlgeschlagen: $e');
+      appLogger.e('❌ Edamam Suche fehlgeschlagen: $e');
       return [];
     }
   }

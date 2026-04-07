@@ -10,6 +10,7 @@ import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_search_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'food_database_screen.dart';
 
@@ -123,11 +124,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         _isSearching = false;
       });
     } catch (e) {
-      print('❌ Fehler bei Food-Suche: $e');
+      appLogger.e('❌ Fehler bei Food-Suche: $e');
       setState(() {
         _isSearching = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Fehler bei Suche: $e')),
@@ -360,8 +361,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      print('❌ Fehler beim Speichern: $e');
-      
+      appLogger.e('❌ Fehler beim Speichern: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

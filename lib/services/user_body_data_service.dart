@@ -1,3 +1,4 @@
+import 'package:dietry/services/app_logger.dart';
 import '../models/user_body_data.dart';
 import 'neon_database_service.dart';
 import 'nutrition_calculator.dart';
@@ -17,13 +18,13 @@ class UserBodyDataService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Körperdaten nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Körperdaten nicht laden');
         return null;
       }
 
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar - kann Körperdaten nicht laden');
+        appLogger.w('⚠️ Keine User-ID verfügbar - kann Körperdaten nicht laden');
         return null;
       }
 
@@ -36,13 +37,13 @@ class UserBodyDataService {
           .limit(1);
 
       if (response.isEmpty) {
-        print('ℹ️ Keine Körperdaten gefunden');
+        appLogger.i('ℹ️ Keine Körperdaten gefunden');
         return null;
       }
 
       return UserBodyData.fromJson(response.first);
     } catch (e) {
-      print('❌ Fehler beim Abrufen der Körperdaten: $e');
+      appLogger.e('❌ Fehler beim Abrufen der Körperdaten: $e');
       return null;
     }
   }
@@ -53,13 +54,13 @@ class UserBodyDataService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Körperdaten nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Körperdaten nicht laden');
         return [];
       }
 
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar - kann Körperdaten nicht laden');
+        appLogger.w('⚠️ Keine User-ID verfügbar - kann Körperdaten nicht laden');
         return [];
       }
 
@@ -74,7 +75,7 @@ class UserBodyDataService {
           .map((item) => UserBodyData.fromJson(item))
           .toList();
     } catch (e) {
-      print('❌ Fehler beim Abrufen aller Körperdaten: $e');
+      appLogger.e('❌ Fehler beim Abrufen aller Körperdaten: $e');
       return [];
     }
   }
@@ -111,7 +112,7 @@ class UserBodyDataService {
         json['target_calories'] = recommendation.calories;
       }
 
-      print('🔍 Speichere Körperdaten: ${json['weight']}kg, ${json['height']}cm für $userId am ${json['measured_at']}');
+      appLogger.d('🔍 Speichere Körperdaten: ${json['weight']}kg, ${json['height']}cm für $userId am ${json['measured_at']}');
 
       // ✅ Prüfe ob Entry für dieses Datum existiert
       final existing = await _db.client
@@ -120,10 +121,10 @@ class UserBodyDataService {
           .eq('user_id', userId)
           .eq('measured_at', json['measured_at'])
           .maybeSingle();
-      
+
       if (existing != null) {
         // UPDATE via Dio
-        print('   📝 Entry existiert - UPDATE via Dio...');
+        appLogger.d('   📝 Entry existiert - UPDATE via Dio...');
         final response = await _db.dioClient.patch(
           '/user_body_data?id=eq.${existing['id']}&user_id=eq.$userId',
           data: json,
@@ -133,17 +134,17 @@ class UserBodyDataService {
             },
           ),
         );
-        
+
         if (response.statusCode != 200 && response.statusCode != 204) {
           throw Exception('UPDATE fehlgeschlagen: ${response.statusCode}');
         }
-        
-        print('✅ Körperdaten UPDATE erfolgreich');
+
+        appLogger.i('✅ Körperdaten UPDATE erfolgreich');
       } else {
         // INSERT via Dio
-        print('   ➕ Kein Entry - INSERT via Dio...');
+        appLogger.d('   ➕ Kein Entry - INSERT via Dio...');
         json.remove('id');  // ID wird von DB generiert
-        
+
         final response = await _db.dioClient.post(
           '/user_body_data',
           data: json,
@@ -153,15 +154,15 @@ class UserBodyDataService {
             },
           ),
         );
-        
+
         if (response.statusCode != 201) {
           throw Exception('INSERT fehlgeschlagen: ${response.statusCode}');
         }
-        
-        print('✅ Körperdaten INSERT erfolgreich');
+
+        appLogger.i('✅ Körperdaten INSERT erfolgreich');
       }
     } catch (e) {
-      print('❌ Fehler beim Speichern der Körperdaten: $e');
+      appLogger.e('❌ Fehler beim Speichern der Körperdaten: $e');
       rethrow;
     }
   }
@@ -181,7 +182,7 @@ class UserBodyDataService {
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Profil-Update fehlgeschlagen: ${response.statusCode}');
     }
-    print('✅ Profil gespeichert');
+    appLogger.i('✅ Profil gespeichert');
   }
 
   /// Speichere neue Körpermessung in user_body_measurements (UPSERT by date)
@@ -205,7 +206,7 @@ class UserBodyDataService {
     if (response.statusCode != 201 && response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Messung speichern fehlgeschlagen: ${response.statusCode}');
     }
-    print('✅ Messung gespeichert: ${measurement.weight}kg');
+    appLogger.i('✅ Messung gespeichert: ${measurement.weight}kg');
   }
 
   /// Lösche Körperdaten-Eintrag
@@ -228,9 +229,9 @@ class UserBodyDataService {
           .eq('id', id)
           .eq('user_id', userId); // RLS-safe: nur eigene Daten
 
-      print('✅ Körperdaten gelöscht: $id');
+      appLogger.i('✅ Körperdaten gelöscht: $id');
     } catch (e) {
-      print('❌ Fehler beim Löschen der Körperdaten: $e');
+      appLogger.e('❌ Fehler beim Löschen der Körperdaten: $e');
       rethrow;
     }
   }
@@ -241,13 +242,13 @@ class UserBodyDataService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Körperdaten nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Körperdaten nicht laden');
         return null;
       }
 
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar');
+        appLogger.w('⚠️ Keine User-ID verfügbar');
         return null;
       }
 
@@ -262,7 +263,7 @@ class UserBodyDataService {
 
       return UserBodyData.fromJson(response);
     } catch (e) {
-      print('❌ Fehler beim Abrufen der Körperdaten für $date: $e');
+      appLogger.e('❌ Fehler beim Abrufen der Körperdaten für $date: $e');
       return null;
     }
   }
@@ -273,13 +274,13 @@ class UserBodyDataService {
       // ✅ Stelle sicher dass Token gültig ist
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Gewichtsverlauf nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Gewichtsverlauf nicht laden');
         return [];
       }
 
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar');
+        appLogger.w('⚠️ Keine User-ID verfügbar');
         return [];
       }
 
@@ -297,7 +298,7 @@ class UserBodyDataService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('❌ Fehler beim Abrufen des Gewichtsverlaufs: $e');
+      appLogger.e('❌ Fehler beim Abrufen des Gewichtsverlaufs: $e');
       return [];
     }
   }

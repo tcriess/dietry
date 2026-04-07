@@ -1,3 +1,4 @@
+import 'package:dietry/services/app_logger.dart';
 import '../models/physical_activity.dart';
 import '../models/user_body_data.dart';
 import 'neon_database_service.dart';
@@ -16,13 +17,13 @@ class PhysicalActivityService {
     try {
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig - kann Aktivitäten nicht laden');
+        appLogger.w('⚠️ Token ungültig - kann Aktivitäten nicht laden');
         return [];
       }
 
       final userId = _userId;
       if (userId == null) {
-        print('⚠️ Keine User-ID verfügbar');
+        appLogger.w('⚠️ Keine User-ID verfügbar');
         return [];
       }
 
@@ -41,7 +42,7 @@ class PhysicalActivityService {
           .map((item) => PhysicalActivity.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden der Aktivitäten: $e');
+      appLogger.e('❌ Fehler beim Laden der Aktivitäten: $e');
       return [];
     }
   }
@@ -73,7 +74,7 @@ class PhysicalActivityService {
         );
       }).toList();
     } catch (e) {
-      print('❌ PhysicalActivityService.getActivityStubs: $e');
+      appLogger.e('❌ PhysicalActivityService.getActivityStubs: $e');
       return [];
     }
   }
@@ -94,7 +95,7 @@ class PhysicalActivityService {
           .map((item) => PhysicalActivity.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ PhysicalActivityService.getActivitiesByIds: $e');
+      appLogger.e('❌ PhysicalActivityService.getActivitiesByIds: $e');
       return [];
     }
   }
@@ -107,7 +108,7 @@ class PhysicalActivityService {
     try {
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
-        print('⚠️ Token ungültig');
+        appLogger.w('⚠️ Token ungültig');
         return [];
       }
 
@@ -126,7 +127,7 @@ class PhysicalActivityService {
           .map((item) => PhysicalActivity.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden der Aktivitäten: $e');
+      appLogger.e('❌ Fehler beim Laden der Aktivitäten: $e');
       return [];
     }
   }
@@ -134,8 +135,8 @@ class PhysicalActivityService {
   /// Speichere eine Aktivität (CREATE)
   Future<PhysicalActivity> saveActivity(PhysicalActivity activity) async {
     try {
-      print('💾 Erstelle Aktivität: ${activity.activityType.displayName}');
-      
+      appLogger.i('💾 Erstelle Aktivität: ${activity.activityType.displayName}');
+
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig - kann Aktivität nicht speichern');
@@ -150,7 +151,7 @@ class PhysicalActivityService {
       json['user_id'] = userId;
       json.remove('id');  // ID wird von DB generiert
 
-      print('   Führe INSERT via Dio aus...');
+      appLogger.d('   Führe INSERT via Dio aus...');
 
       // ✅ INSERT via Dio (umgeht postgrest Prefer-Header-Bug)
       final response = await _db.dioClient.post(
@@ -170,10 +171,10 @@ class PhysicalActivityService {
       final createdJson = (response.data as List).first as Map<String, dynamic>;
       final created = PhysicalActivity.fromJson(createdJson);
 
-      print('✅ Aktivität erfolgreich erstellt: ${created.id}');
+      appLogger.i('✅ Aktivität erfolgreich erstellt: ${created.id}');
       return created;
     } catch (e) {
-      print('❌ Fehler beim Speichern der Aktivität: $e');
+      appLogger.e('❌ Fehler beim Speichern der Aktivität: $e');
       rethrow;
     }
   }
@@ -181,8 +182,8 @@ class PhysicalActivityService {
   /// Aktualisiere eine Aktivität
   Future<PhysicalActivity> updateActivity(PhysicalActivity activity) async {
     try {
-      print('💾 Aktualisiere Aktivität: ${activity.id}');
-      
+      appLogger.i('💾 Aktualisiere Aktivität: ${activity.id}');
+
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
@@ -196,7 +197,7 @@ class PhysicalActivityService {
       final json = activity.toJson();
       json['updated_at'] = DateTime.now().toIso8601String();
 
-      print('   Führe UPDATE via Dio aus...');
+      appLogger.d('   Führe UPDATE via Dio aus...');
 
       // ✅ UPDATE via Dio
       final response = await _db.dioClient.patch(
@@ -216,10 +217,10 @@ class PhysicalActivityService {
       final updatedJson = (response.data as List).first as Map<String, dynamic>;
       final updated = PhysicalActivity.fromJson(updatedJson);
 
-      print('✅ Aktivität erfolgreich aktualisiert');
+      appLogger.i('✅ Aktivität erfolgreich aktualisiert');
       return updated;
     } catch (e) {
-      print('❌ Fehler beim Aktualisieren der Aktivität: $e');
+      appLogger.e('❌ Fehler beim Aktualisieren der Aktivität: $e');
       rethrow;
     }
   }
@@ -227,8 +228,8 @@ class PhysicalActivityService {
   /// Lösche eine Aktivität
   Future<void> deleteActivity(String id) async {
     try {
-      print('🗑️  Lösche Aktivität: $id');
-      
+      appLogger.i('🗑️  Lösche Aktivität: $id');
+
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
         throw Exception('Token ungültig');
@@ -239,7 +240,7 @@ class PhysicalActivityService {
         throw Exception('Keine User-ID verfügbar');
       }
 
-      print('   Führe DELETE via Dio aus...');
+      appLogger.d('   Führe DELETE via Dio aus...');
 
       // ✅ DELETE via Dio
       final response = await _db.dioClient.delete(
@@ -255,9 +256,9 @@ class PhysicalActivityService {
         throw Exception('DELETE fehlgeschlagen: ${response.statusCode}');
       }
 
-      print('✅ Aktivität erfolgreich gelöscht');
+      appLogger.i('✅ Aktivität erfolgreich gelöscht');
     } catch (e) {
-      print('❌ Fehler beim Löschen der Aktivität: $e');
+      appLogger.e('❌ Fehler beim Löschen der Aktivität: $e');
       rethrow;
     }
   }
@@ -282,7 +283,7 @@ class PhysicalActivityService {
 
       return response as Map<String, dynamic>?;
     } catch (e) {
-      print('❌ Fehler beim Laden der Tages-Zusammenfassung: $e');
+      appLogger.e('❌ Fehler beim Laden der Tages-Zusammenfassung: $e');
       return null;
     }
   }
@@ -307,7 +308,7 @@ class PhysicalActivityService {
           .map((item) => item as Map<String, dynamic>)
           .toList();
     } catch (e) {
-      print('❌ Fehler beim Laden der Wochen-Zusammenfassung: $e');
+      appLogger.e('❌ Fehler beim Laden der Wochen-Zusammenfassung: $e');
       return [];
     }
   }
@@ -359,7 +360,7 @@ class PhysicalActivityService {
         return ActivityLevel.active;
       }
     } catch (e) {
-      print('❌ Fehler bei Aktivitätslevel-Berechnung: $e');
+      appLogger.e('❌ Fehler bei Aktivitätslevel-Berechnung: $e');
       return null;
     }
   }
@@ -378,9 +379,9 @@ class PhysicalActivityService {
     // 3. Aktivitäten abrufen (Exercise Sessions)
     // 4. In PhysicalActivity konvertieren
     // 5. Mit health_connect_record_id speichern (verhindert Duplikate)
-    
-    print('ℹ️ Health Connect Sync noch nicht implementiert');
-    print('   Vorbereitet für: health_connect_record_id UNIQUE Constraint');
+
+    appLogger.i('ℹ️ Health Connect Sync noch nicht implementiert');
+    appLogger.i('   Vorbereitet für: health_connect_record_id UNIQUE Constraint');
     return 0;
   }
 
@@ -402,7 +403,7 @@ class PhysicalActivityService {
 
       return (response as List).isNotEmpty;
     } catch (e) {
-      print('❌ Fehler beim Prüfen: $e');
+      appLogger.e('❌ Fehler beim Prüfen: $e');
       return false;
     }
   }

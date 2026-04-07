@@ -1,9 +1,10 @@
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:dietry/services/app_logger.dart';
 
 /// Helper-Funktionen für JWT-Token-Handling
 class JwtHelper {
   /// Dekodiert JWT und gibt Payload zurück (ohne Signatur-Prüfung)
-  /// 
+  ///
   /// WICHTIG: Verwendet verify=false da wir den Secret-Key nicht haben
   /// Das ist OK, da der Token von Neon Auth kommt und wir ihm vertrauen
   static Map<String, dynamic>? decodeToken(String token) {
@@ -12,7 +13,7 @@ class JwtHelper {
       final jwt = JWT.decode(token);
       return jwt.payload as Map<String, dynamic>?;
     } catch (e) {
-      print('❌ Fehler beim Dekodieren des JWT: $e');
+      appLogger.e('❌ Fehler beim Dekodieren des JWT: $e');
       return null;
     }
   }
@@ -23,18 +24,18 @@ class JwtHelper {
   static String? extractUserId(String token) {
     final payload = decodeToken(token);
     if (payload == null) return null;
-    
+
     // Versuche verschiedene Standard-Claims
     // 'sub' (Subject) ist der Standard für User-ID
     final userId = payload['sub'] ?? payload['user_id'] ?? payload['id'];
-    
+
     if (userId != null) {
-      print('🔑 User-ID aus JWT: $userId');
+      appLogger.i('🔑 User-ID aus JWT: $userId');
       return userId.toString();
     }
-    
-    print('⚠️ Keine User-ID im JWT gefunden');
-    print('   JWT Payload Keys: ${payload.keys.toList()}');
+
+    appLogger.w('⚠️ Keine User-ID im JWT gefunden');
+    appLogger.d('   JWT Payload Keys: ${payload.keys.toList()}');
     return null;
   }
   
@@ -126,16 +127,16 @@ class JwtHelper {
 
   /// Debug: Zeige alle Claims im JWT
   static void debugToken(String token) {
-    print('🔍 JWT Debug:');
+    appLogger.d('🔍 JWT Debug:');
     final payload = decodeToken(token);
-    
+
     if (payload != null) {
-      print('   Claims:');
+      appLogger.d('   Claims:');
       payload.forEach((key, value) {
-        print('     $key: $value');
+        appLogger.d('     $key: $value');
       });
     } else {
-      print('   ❌ Token konnte nicht dekodiert werden');
+      appLogger.e('   ❌ Token konnte nicht dekodiert werden');
     }
   }
 }

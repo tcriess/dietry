@@ -4,6 +4,7 @@ import 'package:web/web.dart' as web;
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:async';
+import 'services/app_logger.dart';
 
 // Re-exports für Kompatibilität mit dem bestehenden Code
 web.Window get window => web.window;
@@ -130,7 +131,7 @@ Map<String, dynamic>? jsObjectToDartMap(JSAny? jsObject) {
     return map.isNotEmpty ? map : null;
   } catch (e) {
     // Nur kritische Fehler loggen
-    print('⚠️ jsObjectToDartMap Fehler: $e');
+    appLogger.w('⚠️ jsObjectToDartMap Fehler: $e');
     return null;
   }
 }
