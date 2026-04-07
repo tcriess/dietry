@@ -260,6 +260,8 @@ abstract class PremiumFeatures {
     double? goalProtein,
     double? goalFat,
     double? goalCarbs,
+    String? shareButtonLabel,
+    String? sharingLabel,
   });
 
   // ── Cloud-Berichte ────────────────────────────────────────────────────────
@@ -397,6 +399,8 @@ class NullPremiumFeatures implements PremiumFeatures {
     double? goalProtein,
     double? goalFat,
     double? goalCarbs,
+    String? shareButtonLabel,
+    String? sharingLabel,
   }) {}
 
   @override

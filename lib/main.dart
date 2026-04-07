@@ -1668,6 +1668,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       goalProtein: goal?.protein,
       goalFat: goal?.fat,
       goalCarbs: goal?.carbs,
+      shareButtonLabel: l.shareButton,
+      sharingLabel: l.sharing,
     );
   }
 
