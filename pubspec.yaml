@@ -63,7 +63,7 @@ dependencies:
 
   # Health Connect (Android) / HealthKit (iOS)
   # Benötigt Android minSdkVersion 26 (android/app/build.gradle)
-  health: ^12.0.0
+  health: ^13.3.1
 
   # Cloud Edition Features — Community: Stubs (No-Ops)
   # Cloud Edition: via dependency_overrides in pubspec_overrides.yaml ersetzen:
