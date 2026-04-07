@@ -68,7 +68,10 @@ class WaterReminderService {
       tz_data.initializeTimeZones();
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
-      await _plugin.initialize(initSettings);
+      await _plugin.initialize(
+        settings: initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {},
+      );
     }
 
     _initialized = true;
@@ -217,11 +220,11 @@ class WaterReminderService {
       }
 
       await _plugin.zonedSchedule(
-        _ids[i],
-        '💧 Zeit zum Trinken!',
-        'Denk daran, regelmäßig zu trinken.',
-        scheduled,
-        const NotificationDetails(
+        id: _ids[i],
+        title: '💧 Zeit zum Trinken!',
+        body: 'Denk daran, regelmäßig zu trinken.',
+        scheduledDate: scheduled,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
             _channelName,
@@ -233,15 +236,13 @@ class WaterReminderService {
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     }
   }
 
   static Future<void> _cancelSystemNotifications() async {
     for (final id in _ids) {
-      await _plugin.cancel(id);
+      await _plugin.cancel(id: id);
     }
   }
 }
