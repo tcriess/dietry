@@ -2493,6 +2493,24 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'❌ Teilen fehlgeschlagen. Bitte versuche es erneut.'**
   String get shareFailed;
+
+  /// No description provided for @logFood.
+  ///
+  /// In de, this message translates to:
+  /// **'Lebensmittel eintragen'**
+  String get logFood;
+
+  /// No description provided for @nutritionInfo.
+  ///
+  /// In de, this message translates to:
+  /// **'Nährwertinfo'**
+  String get nutritionInfo;
+
+  /// No description provided for @per100g.
+  ///
+  /// In de, this message translates to:
+  /// **'pro 100g'**
+  String get per100g;
 }
 
 class _AppLocalizationsDelegate

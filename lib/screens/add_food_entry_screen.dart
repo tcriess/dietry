@@ -7,15 +7,17 @@ import '../models/food_entry.dart';
 import '../models/food_portion.dart';
 import '../services/food_database_service.dart';
 import '../services/neon_database_service.dart';
+import '../services/food_image_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_search_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/food_thumbnail_widget.dart';
 import 'food_database_screen.dart';
 
 /// Screen zum Hinzufügen eines Food-Entries
-/// 
+///
 /// Workflow:
 /// 1. Suche Food in Datenbank (optional)
 /// 2. Wähle Menge & Einheit
@@ -23,14 +25,16 @@ import 'food_database_screen.dart';
 /// 4. Speichere Entry
 class AddFoodEntryScreen extends StatefulWidget {
   final NeonDatabaseService dbService;
-  final DateTime selectedDate;
+  final DateTime? selectedDate;
   final MealType? initialMealType;
-  
+  final FoodItem? preselectedFood;
+
   const AddFoodEntryScreen({
     super.key,
     required this.dbService,
-    required this.selectedDate,
+    this.selectedDate,
     this.initialMealType,
+    this.preselectedFood,
   });
   
   @override
@@ -71,12 +75,19 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
+  late FoodImageService _imageService;
+  final Map<String, String?> _imageCache = {};
 
   @override
   void initState() {
     super.initState();
+    _imageService = FoodImageService(widget.dbService);
     if (widget.initialMealType != null) {
       _selectedMealType = widget.initialMealType!;
+    }
+    // Pre-select food if provided from FoodDetailScreen
+    if (widget.preselectedFood != null) {
+      _selectFood(widget.preselectedFood!);
     }
   }
   
@@ -293,7 +304,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         id: '',  // Wird von DB generiert
         userId: userId,
         foodId: (_selectedFood?.id.isNotEmpty == true) ? _selectedFood!.id : null,
-        entryDate: widget.selectedDate,
+        entryDate: widget.selectedDate ?? DateTime.now(),
         mealType: _selectedMealType,
         name: _nameController.text,
         amount: rawAmount,
@@ -545,8 +556,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             onPressed: () async {
               final food = await Navigator.of(context).push<FoodItem>(
                 MaterialPageRoute(
-                  builder: (context) =>
-                      FoodDatabaseScreen(dbService: widget.dbService),
+                  builder: (context) => FoodDatabaseScreen(
+                    dbService: widget.dbService,
+                    pickerMode: true,
+                  ),
                 ),
               );
               if (food != null) {
@@ -783,7 +796,17 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 Card(
                   color: Colors.green.shade50,
                   child: ListTile(
-                    leading: const Icon(Icons.check_circle, color: Colors.green),
+                    leading: _selectedFood!.hasImage
+                        ? SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: FoodThumbnailWidget(
+                              food: _selectedFood!,
+                              imageService: _imageService,
+                              imageCache: _imageCache,
+                            ),
+                          )
+                        : const Icon(Icons.check_circle, color: Colors.green),
                     title: Text(_selectedFood!.name),
                     subtitle: Text(
                       '${_selectedFood!.calories.toInt()} kcal / 100${_selectedFood!.servingUnit ?? 'g'}',

@@ -1324,4 +1324,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shareFailed => '❌ Error al compartir. Por favor intenta de nuevo.';
+
+  @override
+  String get logFood => 'Registrar alimento';
+
+  @override
+  String get nutritionInfo => 'Información nutricional';
+
+  @override
+  String get per100g => 'por 100g';
 }

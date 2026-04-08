@@ -1317,4 +1317,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get shareFailed =>
       '❌ Teilen fehlgeschlagen. Bitte versuche es erneut.';
+
+  @override
+  String get logFood => 'Lebensmittel eintragen';
+
+  @override
+  String get nutritionInfo => 'Nährwertinfo';
+
+  @override
+  String get per100g => 'pro 100g';
 }

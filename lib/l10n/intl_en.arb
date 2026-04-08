@@ -617,5 +617,8 @@
   "shareStreakCaptionEnd": " tracking my nutrition!",
   "shareDailyCaption": "✅ Met my nutrition goals today!",
   "shareSuccessful": "✅ Shared successfully!",
-  "shareFailed": "❌ Sharing failed. Please try again."
+  "shareFailed": "❌ Sharing failed. Please try again.",
+  "logFood": "Log Food",
+  "nutritionInfo": "Nutrition Info",
+  "per100g": "per 100g"
 }

@@ -12,16 +12,24 @@ import '../services/neon_database_service.dart';
 import '../services/app_logger.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/food_thumbnail_widget.dart';
+import 'food_detail_screen.dart';
 
 /// Screen zur Verwaltung eigener Lebensmittel in der Datenbank.
 ///
 /// Listet alle privaten (eigenen) Einträge mit Edit/Delete.
-/// Tippen auf einen Eintrag gibt ihn als Pop-Ergebnis zurück
+/// Wenn [pickerMode] = true: Tippen auf einen Eintrag gibt ihn als Pop-Ergebnis zurück
 /// (für Auswahl in AddFoodEntryScreen).
+/// Wenn [pickerMode] = false: Tippen öffnet ein Detail-Page (Browsing-Modus).
 class FoodDatabaseScreen extends StatefulWidget {
   final NeonDatabaseService dbService;
+  final bool pickerMode;
 
-  const FoodDatabaseScreen({super.key, required this.dbService});
+  const FoodDatabaseScreen({
+    super.key,
+    required this.dbService,
+    this.pickerMode = true,
+  });
 
   @override
   State<FoodDatabaseScreen> createState() => _FoodDatabaseScreenState();
@@ -250,7 +258,21 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                     final isSmallScreen = MediaQuery.of(context).size.width < 500;
 
                     return GestureDetector(
-                      onTap: () => Navigator.of(context).pop(food),
+                      onTap: () {
+                        if (widget.pickerMode) {
+                          Navigator.of(context).pop(food);
+                        } else {
+                          // Navigate to food detail screen (not yet created)
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => FoodDetailScreen(
+                                food: food,
+                                dbService: widget.dbService,
+                              ),
+                            ),
+                          );
+                        }
+                      },
                       child: Card(
                         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: Padding(
@@ -259,7 +281,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Thumbnail
-                              _FoodThumbnail(
+                              FoodThumbnailWidget(
                                 food: food,
                                 imageService: _imageService,
                                 imageCache: _imageCache,
@@ -520,113 +542,6 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                     );
                   },
                 ),
-    );
-  }
-}
-
-/// Widget to display a food thumbnail in the list.
-/// Shows image if available, otherwise shows letter avatar.
-class _FoodThumbnail extends StatefulWidget {
-  final FoodItem food;
-  final FoodImageService imageService;
-  final Map<String, String?> imageCache;
-
-  const _FoodThumbnail({
-    required this.food,
-    required this.imageService,
-    required this.imageCache,
-  });
-
-  @override
-  State<_FoodThumbnail> createState() => _FoodThumbnailState();
-}
-
-class _FoodThumbnailState extends State<_FoodThumbnail> {
-  late Future<String?> _imageFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    // Use cached image if available, otherwise fetch it
-    if (widget.imageCache.containsKey(widget.food.id)) {
-      _imageFuture = Future.value(widget.imageCache[widget.food.id]);
-    } else {
-      _imageFuture = widget.imageService.fetchImage(widget.food.id).then((image) {
-        widget.imageCache[widget.food.id] = image;
-        return image;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.food.hasImage) {
-      // No image, show letter avatar
-      return CircleAvatar(
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Text(
-          widget.food.name[0].toUpperCase(),
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      );
-    }
-
-    // Image available, load and display it
-    return FutureBuilder<String?>(
-      future: _imageFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // Loading state
-          return CircleAvatar(
-            backgroundColor: Colors.grey.shade300,
-            child: const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        }
-
-        if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-          // Error or no image, fall back to letter avatar
-          appLogger.d('_FoodThumbnail: Failed to load image for ${widget.food.name}');
-          return CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: Text(
-              widget.food.name[0].toUpperCase(),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          );
-        }
-
-        // Display image thumbnail
-        try {
-          final imageBytes = base64Decode(snapshot.data!);
-          return CircleAvatar(
-            backgroundImage: MemoryImage(imageBytes),
-            backgroundColor: Colors.grey.shade300,
-          );
-        } catch (e) {
-          appLogger.e('_FoodThumbnail: Error decoding image for ${widget.food.name}: $e');
-          // Fallback to letter avatar if decoding fails
-          return CircleAvatar(
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            child: Text(
-              widget.food.name[0].toUpperCase(),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          );
-        }
-      },
     );
   }
 }

@@ -555,8 +555,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) =>
-                      FoodDatabaseScreen(dbService: widget.dbService),
+                  builder: (context) => FoodDatabaseScreen(
+                    dbService: widget.dbService,
+                    pickerMode: false,
+                  ),
                 ),
               );
             },

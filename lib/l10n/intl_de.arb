@@ -617,5 +617,8 @@
   "shareStreakCaptionEnd": " Tage Streak!",
   "shareDailyCaption": "✅ Heute meine Ernährungsziele erreicht!",
   "shareSuccessful": "✅ Erfolgreich geteilt!",
-  "shareFailed": "❌ Teilen fehlgeschlagen. Bitte versuche es erneut."
+  "shareFailed": "❌ Teilen fehlgeschlagen. Bitte versuche es erneut.",
+  "logFood": "Lebensmittel eintragen",
+  "nutritionInfo": "Nährwertinfo",
+  "per100g": "pro 100g"
 }
