@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
+import 'dart:convert' show base64Decode;
 import '../app_features.dart';
 import '../models/food_entry.dart';
 import '../services/neon_database_service.dart';
@@ -9,6 +10,7 @@ import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_database_service.dart';
 import '../services/food_search_service.dart';
+import '../services/food_image_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/quick_food_entry_sheet.dart';
@@ -37,11 +39,15 @@ class FoodEntriesListScreen extends StatefulWidget {
 
 class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   final _store = DataStore.instance;
+  final _imageCache = <String, String?>{};
+  late FoodImageService _imageService;
 
   @override
   void initState() {
     super.initState();
     _store.addListener(_onStoreChanged);
+    _imageService = FoodImageService(widget.dbService);
+    _loadImagesForEntries(_store.foodEntries);
   }
 
   @override
@@ -51,7 +57,82 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   void _onStoreChanged() {
+    _loadImagesForEntries(_store.foodEntries);
     if (mounted) setState(() {});
+  }
+
+  void _loadImagesForEntries(List<FoodEntry> entries) {
+    final jwt = widget.dbService.jwt;
+    final apiUrl = NeonDatabaseService.dataApiUrl;
+
+    for (final entry in entries) {
+      // Priority: meal template image > food image
+      final mealTemplateId = entry.mealTemplateId;
+      final foodId = entry.foodId;
+
+      if (mealTemplateId != null) {
+        final cacheKey = 'meal_$mealTemplateId';
+        if (_imageCache.containsKey(cacheKey)) continue;
+        _imageCache[cacheKey] = null; // mark as in-progress
+        _loadMealImage(mealTemplateId, cacheKey, jwt, apiUrl);
+      } else if (foodId != null) {
+        if (_imageCache.containsKey(foodId)) continue;
+        _imageCache[foodId] = null; // mark as in-progress
+        _imageService.fetchImage(foodId).then((imageData) {
+          if (mounted && imageData != null) {
+            setState(() { _imageCache[foodId] = imageData; });
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMealImage(String mealTemplateId, String cacheKey, String? jwt, String apiUrl) async {
+    if (jwt == null) return;
+    try {
+      // Use cloud edition's MealImageService via PostgREST
+      final response = await widget.dbService.dioClient.get(
+        '/meal_images?template_id=eq.$mealTemplateId',
+      );
+
+      if (response.data is List && (response.data as List).isNotEmpty) {
+        final imageData = response.data[0]['image_data'] as String?;
+        if (mounted && imageData != null) {
+          setState(() { _imageCache[cacheKey] = imageData; });
+        }
+      }
+    } catch (e) {
+      appLogger.d('Failed to load meal image for $mealTemplateId: $e');
+    }
+  }
+
+  Widget _buildEntryLeading(FoodEntry entry, MealType mealType) {
+    // Priority: meal template image > food image > emoji
+    final mealTemplateId = entry.mealTemplateId;
+    if (mealTemplateId != null) {
+      final cacheKey = 'meal_$mealTemplateId';
+      final cached = _imageCache[cacheKey];
+      if (cached != null) {
+        try {
+          return CircleAvatar(backgroundImage: MemoryImage(base64Decode(cached)));
+        } catch (_) {}
+      }
+    }
+
+    final foodId = entry.foodId;
+    if (foodId != null) {
+      final cached = _imageCache[foodId];
+      if (cached != null) {
+        try {
+          return CircleAvatar(backgroundImage: MemoryImage(base64Decode(cached)));
+        } catch (_) {}
+      }
+    }
+
+    return CircleAvatar(
+      backgroundColor: _getMealTypeColor(mealType),
+      child: Text(mealType.icon, style: const TextStyle(fontSize: 20)),
+    );
   }
 
   Future<void> _deleteEntry(FoodEntry entry) async {
@@ -207,6 +288,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
           final entry = FoodEntry(
             id: const Uuid().v4(),
             userId: userId,
+            mealTemplateId: data.id,
             entryDate: widget.selectedDay,
             mealType: MealType.fromJson(data.mealType),
             name: data.name,
@@ -444,13 +526,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                   child: Card(
                                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                     child: ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: _getMealTypeColor(mealType),
-                                        child: Text(
-                                          mealType.icon,
-                                          style: const TextStyle(fontSize: 20),
-                                        ),
-                                      ),
+                                      leading: _buildEntryLeading(entry, mealType),
                                       title: Text(entry.name),
                                       subtitle: Text(
                                         _store.goal?.macroOnly == true

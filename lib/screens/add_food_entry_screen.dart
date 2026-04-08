@@ -548,7 +548,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final l = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lebensmittel hinzufügen'),
+        title: Text(l.addFoodScreenTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.storage_outlined),

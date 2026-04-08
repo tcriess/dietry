@@ -79,6 +79,7 @@ class ActivityQuickAddData {
 }
 
 class MealTemplateLogData {
+  final String id;  // meal_template_id
   final String name;
   final double amount;
   final String unit;
@@ -97,6 +98,7 @@ class MealTemplateLogData {
   final double? liquidMlContribution;
 
   const MealTemplateLogData({
+    required this.id,
     required this.name,
     required this.amount,
     required this.unit,

@@ -244,7 +244,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        l.entriesEmptyHint,
+                        l.foodDatabaseEmpty,
                         style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                       ),
                     ],

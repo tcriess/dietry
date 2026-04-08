@@ -457,7 +457,7 @@ abstract class AppLocalizations {
   /// No description provided for @addEntry.
   ///
   /// In de, this message translates to:
-  /// **'Eintrag hinzufügen'**
+  /// **'Eintragen'**
   String get addEntry;
 
   /// No description provided for @activitiesTitle.
@@ -571,7 +571,7 @@ abstract class AppLocalizations {
   /// No description provided for @addFoodScreenTitle.
   ///
   /// In de, this message translates to:
-  /// **'Lebensmittel hinzufügen'**
+  /// **'Lebensmittel eintragen'**
   String get addFoodScreenTitle;
 
   /// No description provided for @searchHint.
@@ -633,6 +633,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Eintrag gespeichert!'**
   String get entrySaved;
+
+  /// No description provided for @foodDatabaseEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine eigenen Lebensmittel'**
+  String get foodDatabaseEmpty;
 
   /// No description provided for @searchEnterHint.
   ///
