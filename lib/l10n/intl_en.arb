@@ -72,7 +72,7 @@
   },
   "entryDeleted": "Entry deleted",
   "myFoods": "My Foods",
-  "addEntry": "Add Entry",
+  "addEntry": "Log Food",
   "activitiesTitle": "Activities",
   "activitiesEmpty": "No Activities",
   "activitiesEmptyHint": "Add your first activity!",
@@ -126,7 +126,7 @@
     }
   },
   "importRangeAll": "All available data",
-  "addFoodScreenTitle": "Add Food",
+  "addFoodScreenTitle": "Log Food",
   "searchHint": "e.g., Apple, Rice, Chicken...",
   "onlineSearch": "Online Search",
   "myDatabase": "My Database",
@@ -137,6 +137,7 @@
   "useFood": "Use",
   "saveToDatabase": "Add to Database",
   "entrySaved": "Entry saved!",
+  "foodDatabaseEmpty": "No custom foods yet",
   "searchEnterHint": "Press Enter to search",
   "caloriesLabel": "Calories",
   "proteinLabel": "Protein",
@@ -617,5 +618,8 @@
   "shareStreakCaptionEnd": " tracking my nutrition!",
   "shareDailyCaption": "✅ Met my nutrition goals today!",
   "shareSuccessful": "✅ Shared successfully!",
-  "shareFailed": "❌ Sharing failed. Please try again."
+  "shareFailed": "❌ Sharing failed. Please try again.",
+  "logFood": "Log Food",
+  "nutritionInfo": "Nutrition Info",
+  "per100g": "per 100g"
 }

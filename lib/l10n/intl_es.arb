@@ -72,7 +72,7 @@
   },
   "entryDeleted": "Entrada eliminada",
   "myFoods": "Mis Alimentos",
-  "addEntry": "Agregar Entrada",
+  "addEntry": "Registrar Alimento",
   "activitiesTitle": "Actividades",
   "activitiesEmpty": "Sin Actividades",
   "activitiesEmptyHint": "¡Agrega tu primera actividad!",
@@ -126,7 +126,7 @@
     }
   },
   "importRangeAll": "Todos los datos disponibles",
-  "addFoodScreenTitle": "Agregar Alimento",
+  "addFoodScreenTitle": "Registrar Alimento",
   "searchHint": "p.ej., Manzana, Arroz, Pollo...",
   "onlineSearch": "Búsqueda en Línea",
   "myDatabase": "Mi Base de Datos",
@@ -137,6 +137,7 @@
   "useFood": "Usar",
   "saveToDatabase": "Agregar a la Base de Datos",
   "entrySaved": "¡Entrada guardada!",
+  "foodDatabaseEmpty": "Aún no hay alimentos propios",
   "searchEnterHint": "Presiona Enter para buscar",
   "caloriesLabel": "Calorías",
   "proteinLabel": "Proteína",
@@ -617,5 +618,8 @@
   "shareStreakCaptionEnd": " días",
   "shareDailyCaption": "✅ ¡Alcancé mis objetivos nutricionales hoy!",
   "shareSuccessful": "✅ ¡Compartido exitosamente!",
-  "shareFailed": "❌ Error al compartir. Por favor intenta de nuevo."
+  "shareFailed": "❌ Error al compartir. Por favor intenta de nuevo.",
+  "logFood": "Registrar alimento",
+  "nutritionInfo": "Información nutricional",
+  "per100g": "por 100g"
 }

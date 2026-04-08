@@ -191,7 +191,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myFoods => 'My Foods';
 
   @override
-  String get addEntry => 'Add Entry';
+  String get addEntry => 'Log Food';
 
   @override
   String get activitiesTitle => 'Activities';
@@ -259,7 +259,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importRangeAll => 'All available data';
 
   @override
-  String get addFoodScreenTitle => 'Add Food';
+  String get addFoodScreenTitle => 'Log Food';
 
   @override
   String get searchHint => 'e.g., Apple, Rice, Chicken...';
@@ -290,6 +290,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entrySaved => 'Entry saved!';
+
+  @override
+  String get foodDatabaseEmpty => 'No custom foods yet';
 
   @override
   String get searchEnterHint => 'Press Enter to search';
@@ -1311,4 +1314,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shareFailed => '❌ Sharing failed. Please try again.';
+
+  @override
+  String get logFood => 'Log Food';
+
+  @override
+  String get nutritionInfo => 'Nutrition Info';
+
+  @override
+  String get per100g => 'per 100g';
 }

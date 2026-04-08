@@ -191,7 +191,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get myFoods => 'Mis Alimentos';
 
   @override
-  String get addEntry => 'Agregar Entrada';
+  String get addEntry => 'Registrar Alimento';
 
   @override
   String get activitiesTitle => 'Actividades';
@@ -259,7 +259,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importRangeAll => 'Todos los datos disponibles';
 
   @override
-  String get addFoodScreenTitle => 'Agregar Alimento';
+  String get addFoodScreenTitle => 'Registrar Alimento';
 
   @override
   String get searchHint => 'p.ej., Manzana, Arroz, Pollo...';
@@ -290,6 +290,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get entrySaved => '¡Entrada guardada!';
+
+  @override
+  String get foodDatabaseEmpty => 'Aún no hay alimentos propios';
 
   @override
   String get searchEnterHint => 'Presiona Enter para buscar';
@@ -1324,4 +1327,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shareFailed => '❌ Error al compartir. Por favor intenta de nuevo.';
+
+  @override
+  String get logFood => 'Registrar alimento';
+
+  @override
+  String get nutritionInfo => 'Información nutricional';
+
+  @override
+  String get per100g => 'por 100g';
 }

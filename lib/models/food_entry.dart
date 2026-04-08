@@ -5,22 +5,23 @@ class FoodEntry {
   final String id;
   final String userId;
   final String? foodId;  // Referenz zu food_database (optional)
-  
+  final String? mealTemplateId;  // Referenz zu meal_templates (optional, Cloud Edition)
+
   // Datum & Mahlzeit
   final DateTime entryDate;
   final MealType mealType;
-  
+
   // Name & Menge
   final String name;
   final double amount;
   final String unit;
-  
+
   // Nährwerte (berechnet oder manuell)
   final double calories;
   final double protein;
   final double fat;
   final double carbs;
-  
+
   // Optional
   final double? fiber;
   final double? sugar;
@@ -47,6 +48,7 @@ class FoodEntry {
     required this.id,
     required this.userId,
     this.foodId,
+    this.mealTemplateId,
     required this.entryDate,
     required this.mealType,
     required this.name,
@@ -74,6 +76,7 @@ class FoodEntry {
       id: json['id'] as String,
       userId: json['user_id'] as String,
       foodId: json['food_id'] as String?,
+      mealTemplateId: json['meal_template_id'] as String?,
       entryDate: DateTime.parse(json['entry_date'] as String),
       mealType: MealType.fromJson(json['meal_type'] as String),
       name: json['name'] as String,
@@ -102,6 +105,7 @@ class FoodEntry {
       'id': id,
       'user_id': userId,
       if (foodId != null) 'food_id': foodId,
+      if (mealTemplateId != null) 'meal_template_id': mealTemplateId,
       'entry_date': entryDate.toIso8601String().split('T')[0],  // Nur Datum
       'meal_type': mealType.toJson(),
       'name': name,
@@ -129,6 +133,7 @@ class FoodEntry {
     String? id,
     String? userId,
     String? foodId,
+    String? mealTemplateId,
     DateTime? entryDate,
     MealType? mealType,
     String? name,
@@ -153,6 +158,7 @@ class FoodEntry {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       foodId: foodId ?? this.foodId,
+      mealTemplateId: mealTemplateId ?? this.mealTemplateId,
       entryDate: entryDate ?? this.entryDate,
       mealType: mealType ?? this.mealType,
       name: name ?? this.name,
