@@ -16,13 +16,14 @@ class FoodDatabaseService {
   
   String? get _userId => _db.userId;
   
-  /// Suche Lebensmittel nach Name
-  /// 
-  /// Findet alle public + eigenen private foods die [query] im Namen enthalten.
-  /// Case-insensitive Suche.
+  /// Suche Lebensmittel nach Name und Brand
+  ///
+  /// Findet alle public + eigenen private foods die [query] im Namen oder Brand enthalten.
+  /// Case-insensitive Suche mit Trigram-Ähnlichkeits-Ranking.
+  /// Ergebnisse sortiert nach: Eigene zuerst, dann beste Ähnlichkeit, dann zuletzt verwendet, dann alphabetisch.
   Future<List<FoodItem>> searchFoods(String query, {int limit = 50}) async {
     try {
-      appLogger.d('🔍 Suche nach Lebensmitteln: "$query"');
+      appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit)');
 
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
@@ -31,26 +32,19 @@ class FoodDatabaseService {
         return [];
       }
 
-      final userId = _userId;
-      if (userId == null) {
-        appLogger.w('⚠️ Keine User-ID verfügbar');
-        return [];
-      }
-      
-      // Suche mit ILIKE (case-insensitive)
-      final response = await _db.client
-        .from('food_database')
-        .select()
-        .or('is_public.eq.true,user_id.eq.$userId')
-        .ilike('name', '%${query.toLowerCase()}%')
-        .order('is_public', ascending: false)  // Eigene zuerst
-        .order('name')
-        .limit(limit);
-      
+      // Rufe RPC-Funktion auf
+      final response = await _db.client.rpc(
+        'search_food_database',
+        params: {
+          'query': query,
+          'max_results': limit,
+        },
+      );
+
       final foods = (response as List)
         .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
         .toList();
-      
+
       appLogger.i('✅ ${foods.length} Lebensmittel gefunden');
       return foods;
     } catch (e) {

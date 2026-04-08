@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'app_logger.dart';
 import 'neon_database_service.dart';
+import '../platform_utils.dart';
 
 /// Service to manage food images (upload, fetch, delete).
 /// Images are stored as base64 in the food_images table.
@@ -57,24 +59,32 @@ class FoodImageService {
 
   /// Compress, base64-encode, and upsert image.
   /// Target: max 512×512px, quality 80, JPEG.
+  /// On desktop, compression is skipped (flutter_image_compress not supported).
   /// Throws if compression fails.
   Future<void> saveImage(String foodId, Uint8List rawBytes) async {
     try {
-      appLogger.i('FoodImageService: Compressing image for food $foodId');
+      appLogger.i('FoodImageService: Processing image for food $foodId');
 
-      // Compress the image
-      final compressed = await FlutterImageCompress.compressWithList(
-        rawBytes,
-        minHeight: 512,
-        minWidth: 512,
-        quality: 80,
-        format: CompressFormat.jpeg,
-      );
+      late Uint8List imageData;
 
-      appLogger.i('FoodImageService: Compressed (${rawBytes.length} → ${compressed.length} bytes)');
+      // Compression only on mobile/web; desktop skips it
+      if (kIsWeb || !isDesktop()) {
+        appLogger.i('FoodImageService: Compressing image (mobile/web)');
+        imageData = await FlutterImageCompress.compressWithList(
+          rawBytes,
+          minHeight: 512,
+          minWidth: 512,
+          quality: 80,
+          format: CompressFormat.jpeg,
+        );
+        appLogger.i('FoodImageService: Compressed (${rawBytes.length} → ${imageData.length} bytes)');
+      } else {
+        appLogger.i('FoodImageService: Skipping compression on desktop');
+        imageData = rawBytes;
+      }
 
       // Encode to base64
-      final base64Image = base64Encode(compressed);
+      final base64Image = base64Encode(imageData);
       appLogger.d('FoodImageService: Base64 encoded (${base64Image.length} chars)');
 
       // Upsert: check if image exists, then update or insert
