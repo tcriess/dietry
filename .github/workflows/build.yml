@@ -13,8 +13,20 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      build_web:
+        description: 'Build web version (WebAssembly)'
+        type: boolean
+        default: true
       deploy_web:
-        description: 'Deploy web build to production server'
+        description: 'Deploy web build to server'
+        type: boolean
+        default: false
+      build_linux:
+        description: 'Build Linux desktop app'
+        type: boolean
+        default: false
+      build_android:
+        description: 'Build Android APK and App Bundle'
         type: boolean
         default: false
       build_macos:
@@ -87,6 +99,7 @@ jobs:
     name: Web (Community Edition)
     runs-on: ubuntu-latest
     needs: lint-test
+    if: (github.event_name == 'workflow_dispatch' && inputs.build_web == true) || github.event_name == 'release'
     steps:
       - uses: actions/checkout@v4
 
@@ -156,6 +169,7 @@ jobs:
     name: Linux Desktop (Community Edition)
     runs-on: ubuntu-latest
     needs: lint-test
+    if: (github.event_name == 'workflow_dispatch' && inputs.build_linux == true) || github.event_name == 'release'
     steps:
       - uses: actions/checkout@v4
 
@@ -211,6 +225,7 @@ jobs:
     name: Android (Community Edition)
     runs-on: ubuntu-latest
     needs: lint-test
+    if: (github.event_name == 'workflow_dispatch' && inputs.build_android == true) || github.event_name == 'release'
     steps:
       - uses: actions/checkout@v4
 
