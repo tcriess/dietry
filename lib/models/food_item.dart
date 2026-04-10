@@ -1,4 +1,5 @@
 import 'food_portion.dart';
+import 'tag.dart';
 
 /// Model für Lebensmittel aus der food_database
 ///
@@ -46,6 +47,10 @@ class FoodItem {
   // Image support - true if an image exists in food_images table
   final bool hasImage;
 
+  // Tags - public and private
+  final List<Tag> publicTags;  // Tags set by food owner, visible to all
+  final List<Tag> userTags;    // Tags set by current user, visible only to them
+
   // Metadaten
   final String? source;
   final DateTime createdAt;
@@ -74,6 +79,8 @@ class FoodItem {
     this.isFavourite = false,
     this.isLiquid = false,
     this.hasImage = false,
+    this.publicTags = const [],
+    this.userTags = const [],
     this.source,
     required this.createdAt,
     required this.updatedAt,
@@ -115,6 +122,8 @@ class FoodItem {
       isFavourite: json['is_favourite'] as bool? ?? false,
       isLiquid: json['is_liquid'] as bool? ?? false,
       hasImage: json['has_image'] as bool? ?? false,
+      publicTags: _parseTags(json['public_tags']),
+      userTags: _parseTags(json['user_tags']),
       source: _safeString(json['source']),
       createdAt: DateTime.parse(createdAtRaw),
       updatedAt: DateTime.parse(updatedAtRaw),
@@ -153,6 +162,23 @@ class FoodItem {
       } catch (e) {
         return [];
       }
+    }
+    return [];
+  }
+
+  static List<Tag> _parseTags(dynamic raw) {
+    if (raw is List && raw.isNotEmpty) {
+      final tags = <Tag>[];
+      for (final item in raw) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          tags.add(Tag.fromJson(item));
+        } catch (e) {
+          // Skip invalid tags instead of crashing
+          continue;
+        }
+      }
+      return tags;
     }
     return [];
   }
@@ -231,6 +257,8 @@ class FoodItem {
     bool? isFavourite,
     bool? isLiquid,
     bool? hasImage,
+    List<Tag>? publicTags,
+    List<Tag>? userTags,
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -258,6 +286,8 @@ class FoodItem {
       isFavourite: isFavourite ?? this.isFavourite,
       isLiquid: isLiquid ?? this.isLiquid,
       hasImage: hasImage ?? this.hasImage,
+      publicTags: publicTags ?? this.publicTags,
+      userTags: userTags ?? this.userTags,
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

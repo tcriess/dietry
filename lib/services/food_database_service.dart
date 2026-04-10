@@ -20,10 +20,14 @@ class FoodDatabaseService {
   ///
   /// Findet alle public + eigenen private foods die [query] im Namen oder Brand enthalten.
   /// Case-insensitive Suche mit Trigram-Ähnlichkeits-Ranking.
+  /// Optional filter by tags (all requested tags must be present).
   /// Ergebnisse sortiert nach: Eigene zuerst, dann beste Ähnlichkeit, dann zuletzt verwendet, dann alphabetisch.
-  Future<List<FoodItem>> searchFoods(String query, {int limit = 50}) async {
+  Future<List<FoodItem>> searchFoods(String query, {
+    int limit = 50,
+    List<String> filterTags = const [],  // tag slugs to filter by
+  }) async {
     try {
-      appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit)');
+      appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit${filterTags.isNotEmpty ? ', Tags: ${filterTags.join(", ")}' : ''})');
 
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
@@ -37,6 +41,7 @@ class FoodDatabaseService {
         'search_food_database',
         params: {
           'query': query,
+          'filter_tags': filterTags.isEmpty ? null : filterTags,
           'max_results': limit,
         },
       );
