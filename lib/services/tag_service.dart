@@ -1,4 +1,5 @@
 import 'package:dietry/services/app_logger.dart';
+import 'package:dio/dio.dart';
 import '../models/tag.dart';
 import 'neon_database_service.dart';
 
@@ -72,14 +73,26 @@ class TagService {
         return tag;
       }
 
-      // Tag doesn't exist, create it
-      final response = await _db.client.from('tags').insert({
-        'name': name,
-        'slug': slug,
-        'created_by': _userId,
-      }).select().single();
+      // Tag doesn't exist, create it using dioClient (like FoodDatabaseService)
+      final response = await _db.dioClient.post(
+        '/tags',
+        data: {
+          'name': name,
+          'slug': slug,
+          'created_by': _userId,
+        },
+        options: Options(
+          headers: {
+            'Prefer': 'return=representation',
+          },
+        ),
+      );
 
-      final tag = Tag.fromJson(response);
+      if (response.statusCode != 201 || response.data == null || (response.data as List).isEmpty) {
+        throw Exception('INSERT fehlgeschlagen: ${response.statusCode}');
+      }
+
+      final tag = Tag.fromJson((response.data as List).first);
       appLogger.i('✅ Tag erstellt: ${tag.name}');
       return tag;
     } catch (e) {
@@ -101,17 +114,24 @@ class TagService {
         return false;
       }
 
-      // Delete all existing public tags for this food
-      await _db.client.from('food_public_tags').delete().eq('food_id', foodId);
+      // Delete all existing public tags for this food using dioClient
+      await _db.dioClient.delete(
+        '/food_public_tags?food_id=eq.$foodId',
+        options: Options(headers: {'Prefer': 'return=minimal'}),
+      );
 
-      // Insert new tags
+      // Insert new tags using dioClient
       if (tags.isNotEmpty) {
         final insertData = tags.map((tag) => {
           'food_id': foodId,
           'tag_id': tag.id,
         }).toList();
 
-        await _db.client.from('food_public_tags').insert(insertData);
+        await _db.dioClient.post(
+          '/food_public_tags',
+          data: insertData,
+          options: Options(headers: {'Prefer': 'return=minimal'}),
+        );
       }
 
       appLogger.i('✅ Öffentliche Tags aktualisiert');
@@ -136,14 +156,13 @@ class TagService {
         return false;
       }
 
-      // Delete all existing user tags for this food
-      await _db.client
-        .from('user_food_tags')
-        .delete()
-        .eq('food_id', foodId)
-        .eq('user_id', _userId!);
+      // Delete all existing user tags for this food using dioClient
+      await _db.dioClient.delete(
+        '/user_food_tags?food_id=eq.$foodId&user_id=eq.$_userId',
+        options: Options(headers: {'Prefer': 'return=minimal'}),
+      );
 
-      // Insert new tags
+      // Insert new tags using dioClient
       if (tags.isNotEmpty) {
         final insertData = tags.map((tag) => {
           'user_id': _userId,
@@ -151,7 +170,11 @@ class TagService {
           'tag_id': tag.id,
         }).toList();
 
-        await _db.client.from('user_food_tags').insert(insertData);
+        await _db.dioClient.post(
+          '/user_food_tags',
+          data: insertData,
+          options: Options(headers: {'Prefer': 'return=minimal'}),
+        );
       }
 
       appLogger.i('✅ Private Tags aktualisiert');
@@ -186,6 +209,55 @@ class TagService {
       return tags;
     } catch (e) {
       appLogger.e('❌ Fehler beim Abrufen verfügbarer Tags: $e');
+      return [];
+    }
+  }
+
+  /// Hole öffentliche Tags für ein spezifisches Lebensmittel
+  Future<List<Tag>> getFoodPublicTags(String foodId) async {
+    try {
+      appLogger.d('🏷️ Hole öffentliche Tags für Food $foodId');
+
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) {
+        appLogger.w('⚠️ Token ungültig');
+        return [];
+      }
+
+      // Query food_public_tags joined with tags using dioClient
+      final response = await _db.dioClient.get(
+        '/food_public_tags?food_id=eq.$foodId',
+      );
+
+      if (response.statusCode != 200 || response.data == null) {
+        appLogger.d('✅ Keine öffentlichen Tags für Food gefunden');
+        return [];
+      }
+
+      final rows = response.data as List;
+      if (rows.isEmpty) {
+        appLogger.d('✅ Keine öffentlichen Tags für Food gefunden');
+        return [];
+      }
+
+      // Extract tag_ids and fetch the tags from the database
+      final tagIds = rows
+        .map((row) => (row as Map)['tag_id'] as String)
+        .toList();
+
+      // Fetch tag details
+      final tagResponse = await _db.dioClient.get(
+        '/tags?id=in.(${tagIds.join(',')})',
+      );
+
+      final tags = (tagResponse.data as List)
+        .map((json) => Tag.fromJson(json as Map<String, dynamic>))
+        .toList();
+
+      appLogger.d('✅ ${tags.length} öffentliche Tags für Food gefunden');
+      return tags;
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Abrufen öffentlicher Tags: $e');
       return [];
     }
   }

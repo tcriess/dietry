@@ -6,13 +6,16 @@ import 'package:image_picker/image_picker.dart' if (dart.library.html) 'image_pi
 import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
+import '../models/tag.dart';
 import '../services/food_database_service.dart';
 import '../services/food_image_service.dart';
+import '../services/tag_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/app_logger.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
+import '../widgets/tag_editor.dart';
 import 'food_detail_screen.dart';
 
 /// Screen zur Verwaltung eigener Lebensmittel in der Datenbank.
@@ -583,6 +586,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   bool _imageUploadSuccess = false;
   late FoodImageService _imageService;
 
+  // Tags handling
+  late List<Tag> _editingTags;
+  late TagService _tagService;
+
   bool get _isEdit => widget.food != null;
 
   @override
@@ -626,6 +633,27 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       _loadExistingImage();
     } else {
       appLogger.d('FoodEditDialogState.initState: Skipping image load (isEdit=$_isEdit, hasImage=${f?.hasImage})');
+    }
+
+    // Initialize tag service and load existing tags if editing
+    _tagService = TagService(widget.dbService);
+    _editingTags = [];
+    if (_isEdit) {
+      _loadExistingTags();
+    }
+  }
+
+  Future<void> _loadExistingTags() async {
+    if (!_isEdit || widget.food == null) return;
+    appLogger.d('_loadExistingTags: Loading tags for food ${widget.food!.id}');
+    try {
+      final tags = await _tagService.getFoodPublicTags(widget.food!.id);
+      if (mounted) {
+        setState(() => _editingTags = tags);
+      }
+      appLogger.d('_loadExistingTags: ${tags.length} tags loaded');
+    } catch (e, stackTrace) {
+      appLogger.w('_loadExistingTags: Failed to load tags: $e', error: e, stackTrace: stackTrace);
     }
   }
 
@@ -866,6 +894,15 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       createdAt: widget.food?.createdAt ?? now,
       updatedAt: now,
     );
+
+    // Save tags if editing and tags were modified
+    if (_isEdit && _editingTags.isNotEmpty) {
+      appLogger.d('_save: Saving ${_editingTags.length} public tags for food ${food.id}');
+      await _tagService.setFoodPublicTags(food.id, _editingTags);
+    } else if (_isEdit && _editingTags.isEmpty) {
+      appLogger.d('_save: Clearing tags for food ${food.id}');
+      await _tagService.setFoodPublicTags(food.id, []);
+    }
 
     if (mounted) {
       appLogger.d('_save: Closing dialog with food: ${food.name}, hasImage: ${food.hasImage}');
@@ -1259,6 +1296,20 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                     _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
                     color: _isLiquid ? Colors.lightBlue : Colors.grey,
                   ),
+                ),
+                const SizedBox(height: 16),
+
+                // Tags (public tags, only for owner)
+                Text(
+                  'Tags',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                TagEditor(
+                  tags: _editingTags,
+                  onChanged: (tags) => setState(() => _editingTags = tags),
+                  tagService: _tagService,
+                  readOnly: false,
                 ),
               ],
             ),

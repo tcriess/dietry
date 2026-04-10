@@ -50,6 +50,16 @@ class _TagEditorState extends State<TagEditor> {
   }
 
   @override
+  void didUpdateWidget(TagEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update internal tags if parent passed new tags
+    if (oldWidget.tags.length != widget.tags.length ||
+        !oldWidget.tags.every((tag) => widget.tags.any((t) => t.id == tag.id))) {
+      setState(() => _currentTags = List.from(widget.tags));
+    }
+  }
+
+  @override
   void dispose() {
     _inputController.dispose();
     _inputFocus.dispose();
