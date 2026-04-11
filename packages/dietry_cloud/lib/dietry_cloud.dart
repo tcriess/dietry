@@ -317,6 +317,15 @@ abstract class PremiumFeatures {
   });
 }
 
+// ── Stub CloudLocalizations (Community Edition) ───────────────────────────────
+
+/// Stub CloudLocalizations for Community Edition.
+/// Cloud Edition replaces this with real localization support.
+class CloudLocalizations {
+  /// Empty list of localization delegates in Community Edition
+  static const List<dynamic> localizationsDelegates = [];
+}
+
 // ── No-Op Implementierung (Community Edition) ─────────────────────────────────
 
 class NullPremiumFeatures implements PremiumFeatures {

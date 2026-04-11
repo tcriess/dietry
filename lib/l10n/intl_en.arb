@@ -621,5 +621,9 @@
   "shareFailed": "❌ Sharing failed. Please try again.",
   "logFood": "Log Food",
   "nutritionInfo": "Nutrition Info",
-  "per100g": "per 100g"
+  "per100g": "per 100g",
+  "tags": "Tags",
+  "addTag": "Add Tag",
+  "tagHint": "e.g., vegetarian, vegan, raw...",
+  "filterByTag": "Filter by tag"
 }

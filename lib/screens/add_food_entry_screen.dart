@@ -5,7 +5,9 @@ import '../models/food_item.dart';
 import '../models/food_search_result.dart';
 import '../models/food_entry.dart';
 import '../models/food_portion.dart';
+import '../models/tag.dart';
 import '../services/food_database_service.dart';
+import '../services/tag_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/food_image_service.dart';
 import '../services/data_store.dart';
@@ -14,6 +16,7 @@ import '../services/food_search_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
+import '../widgets/tag_editor.dart';
 import 'food_database_screen.dart';
 
 /// Screen zum Hinzufügen eines Food-Entries
@@ -78,16 +81,39 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   late FoodImageService _imageService;
   final Map<String, String?> _imageCache = {};
 
+  // Tag filtering
+  late TagService _tagService;
+  List<Tag> _availableTags = [];
+  final Set<String> _selectedTagSlugs = {};  // tag slugs selected for filtering
+  bool _tagsLoading = true;
+
   @override
   void initState() {
     super.initState();
     _imageService = FoodImageService(widget.dbService);
+    _tagService = TagService(widget.dbService);
     if (widget.initialMealType != null) {
       _selectedMealType = widget.initialMealType!;
     }
     // Pre-select food if provided from FoodDetailScreen
     if (widget.preselectedFood != null) {
       _selectFood(widget.preselectedFood!);
+    }
+    _loadAvailableTags();  // Load tags for filtering
+  }
+
+  Future<void> _loadAvailableTags() async {
+    try {
+      final tags = await _tagService.getAvailableFoodTags();
+      if (mounted) {
+        setState(() {
+          _availableTags = tags;
+          _tagsLoading = false;
+        });
+      }
+    } catch (e) {
+      appLogger.e('Error loading available tags: $e');
+      setState(() => _tagsLoading = false);
     }
   }
   
@@ -116,17 +142,21 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       });
       return;
     }
-    
+
     setState(() {
       _isSearching = true;
     });
-    
+
     try {
       final List<FoodSearchResult> results;
       if (_useOpenFoodFacts) {
         results = await FoodSearchService().search(query);
       } else {
-        final items = await FoodDatabaseService(widget.dbService).searchFoods(query, limit: 20);
+        final items = await FoodDatabaseService(widget.dbService).searchFoods(
+          query,
+          limit: 20,
+          filterTags: _selectedTagSlugs.toList(),
+        );
         results = items.map((f) => FoodSearchResult(food: f)).toList();
       }
 
@@ -423,14 +453,22 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         initialCategory: _selectedFood?.category,
         initialBrand: _selectedFood?.brand,
         initialPortions: _selectedFood?.portions ?? [],
+        dbService: widget.dbService,
       ),
     );
-    
+
     if (result != null) {
       try {
         final service = FoodDatabaseService(widget.dbService);
         final created = await service.createFood(result);
-        
+
+        // Save tags if any were added
+        if (result.tags.isNotEmpty) {
+          appLogger.d('💾 Saving ${result.tags.length} tags for newly created food');
+          final tagService = TagService(widget.dbService);
+          await tagService.setFoodTags(created.id, result.tags);
+        }
+
         if (mounted) {
           // Directly select the newly created food — user always wants to use it.
           _selectFood(created);
@@ -541,6 +579,35 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         );
       }
     }
+  }
+
+  /// Öffne einen Tag-Editor für inline Tag-Verwaltung bei Search-Ergebnissen
+  Future<void> _editFoodTagsInline(FoodItem food) async {
+    final tags = await _tagService.getFoodTags(food.id);
+    if (!mounted) return;
+
+    final l = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${l?.tags ?? "Tags"} für "${food.name}"'),
+        content: TagEditor(
+          tags: tags,
+          onChanged: (updatedTags) async {
+            await _tagService.setFoodTags(food.id, updatedTags);
+            appLogger.i('✅ Tags aktualisiert für: ${food.name}');
+          },
+          tagService: _tagService,
+          readOnly: false,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fertig'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -654,6 +721,37 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
               const SizedBox(height: 16),
 
+              // Tag filter chips
+              if (!_useOpenFoodFacts && !_tagsLoading && _availableTags.isNotEmpty) ...[
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+                    child: Wrap(
+                      spacing: 8,
+                      children: _availableTags.map((tag) {
+                        final isSelected = _selectedTagSlugs.contains(tag.slug);
+                        return FilterChip(
+                          label: Text(tag.name),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedTagSlugs.add(tag.slug);
+                              } else {
+                                _selectedTagSlugs.remove(tag.slug);
+                              }
+                            });
+                            // Re-search with new filters
+                            _searchFoods(_searchController.text);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+
               // Suchergebnisse
               if (_isSearching)
                 const Center(child: CircularProgressIndicator())
@@ -693,15 +791,53 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                               ),
                             ),
                             title: Text(food.name),
-                            subtitle: Text(
-                              '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
-                              '${food.brand != null ? ' • ${food.brand}' : ''}'
-                              '${food.category != null ? ' • ${food.category}' : ''}'
-                              '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
+                                  '${food.brand != null ? ' • ${food.brand}' : ''}'
+                                  '${food.category != null ? ' • ${food.category}' : ''}'
+                                  '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
+                                ),
+                                if (food.tags.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: food.tags.map((tag) {
+                                      return Chip(
+                                        label: Text(
+                                          tag.name,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                        labelStyle: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ]
+                              ],
                             ),
-                            trailing: (isOFF || food.isPublic)
-                                ? const Icon(Icons.chevron_right)
-                                : PopupMenuButton<String>(
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Tag button for adding/editing tags
+                                IconButton(
+                                  icon: const Icon(Icons.label_outline),
+                                  tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
+                                  onPressed: () => _editFoodTagsInline(food),
+                                ),
+                                // Menu or chevron for other actions
+                                if (isOFF || food.isPublic)
+                                  const Icon(Icons.chevron_right)
+                                else
+                                  PopupMenuButton<String>(
                                     icon: const Icon(Icons.more_vert),
                                     tooltip: 'Optionen',
                                     onSelected: (action) async {
@@ -742,6 +878,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                       ),
                                     ],
                                   ),
+                              ],
+                            ),
                             onTap: () => _selectFood(food, micros: result.micros),
                           );
                         },
@@ -1230,6 +1368,7 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
   final String? initialCategory;
   final String? initialBrand;
   final List<FoodPortion> initialPortions;
+  final NeonDatabaseService dbService;
 
   const _AddFoodToDatabaseDialog({
     required this.initialName,
@@ -1240,6 +1379,7 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
     this.initialCategory,
     this.initialBrand,
     this.initialPortions = const [],
+    required this.dbService,
   });
   
   @override
@@ -1262,6 +1402,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
   bool _isPublic = false;
   bool _isLiquid = false;
+
+  // Tags handling
+  late List<Tag> _editingTags;
+  late TagService _tagService;
   
   @override
   void initState() {
@@ -1285,6 +1429,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
             text: p.amountG % 1 == 0 ? p.amountG.toInt().toString() : p.amountG.toString()),
       ));
     }
+
+    // Initialize tag service
+    _tagService = TagService(widget.dbService);
+    _editingTags = [];
   }
   
   @override
@@ -1342,16 +1490,18 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       isPublic: _isPublic,
       isLiquid: _isLiquid,
       isApproved: false,
+      tags: _editingTags,  // Pass tags back via FoodItem
       source: 'Custom',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    
+
     Navigator.of(context).pop(food);
   }
   
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return AlertDialog(
       title: const Text('Zur Datenbank hinzufügen'),
       content: SingleChildScrollView(
@@ -1535,6 +1685,21 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                   _isPublic ? Icons.public : Icons.lock_outline,
                   color: _isPublic ? Colors.green : Colors.grey,
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Tags
+              Text(
+                l.tags,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              TagEditor(
+                tags: _editingTags,
+                onChanged: (tags) => setState(() => _editingTags = tags),
+                tagService: _tagService,
+                readOnly: false,
               ),
             ],
           ),

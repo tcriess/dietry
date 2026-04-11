@@ -14,8 +14,6 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'platform_utils.dart' as platform;
 import 'l10n/app_localizations.dart';
-
-
 import 'package:dietry_cloud/dietry_cloud.dart';
 
 // Services
@@ -1264,7 +1262,10 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     final db = _dbService;
     if (_authService.isLoading || db == null) {
       return MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: [
+          ...AppLocalizations.localizationsDelegates,
+          ...CloudLocalizations.localizationsDelegates,
+        ],
         supportedLocales: AppLocalizations.supportedLocales,
         locale: _locale,
         home: const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -1272,7 +1273,10 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
     if (!_authService.isLoggedIn) {
       return MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: [
+          ...AppLocalizations.localizationsDelegates,
+          ...CloudLocalizations.localizationsDelegates,
+        ],
         supportedLocales: AppLocalizations.supportedLocales,
         locale: _locale,
         home: LoginScreen(
@@ -1295,7 +1299,10 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         dbService: db,
         onLocaleChanged: (locale) => setState(() => _locale = locale),
       ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: [
+        ...AppLocalizations.localizationsDelegates,
+        ...CloudLocalizations.localizationsDelegates,
+      ],
       supportedLocales: AppLocalizations.supportedLocales,
     );
   }

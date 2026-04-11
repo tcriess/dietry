@@ -1,4 +1,5 @@
 import 'food_portion.dart';
+import 'tag.dart';
 
 /// Model für Lebensmittel aus der food_database
 ///
@@ -46,6 +47,9 @@ class FoodItem {
   // Image support - true if an image exists in food_images table
   final bool hasImage;
 
+  // Tags - user-specific; visible to all if set by food owner, else private
+  final List<Tag> tags;
+
   // Metadaten
   final String? source;
   final DateTime createdAt;
@@ -74,6 +78,7 @@ class FoodItem {
     this.isFavourite = false,
     this.isLiquid = false,
     this.hasImage = false,
+    this.tags = const [],
     this.source,
     required this.createdAt,
     required this.updatedAt,
@@ -115,6 +120,7 @@ class FoodItem {
       isFavourite: json['is_favourite'] as bool? ?? false,
       isLiquid: json['is_liquid'] as bool? ?? false,
       hasImage: json['has_image'] as bool? ?? false,
+      tags: _parseTags(json['tags']),
       source: _safeString(json['source']),
       createdAt: DateTime.parse(createdAtRaw),
       updatedAt: DateTime.parse(updatedAtRaw),
@@ -153,6 +159,23 @@ class FoodItem {
       } catch (e) {
         return [];
       }
+    }
+    return [];
+  }
+
+  static List<Tag> _parseTags(dynamic raw) {
+    if (raw is List && raw.isNotEmpty) {
+      final tags = <Tag>[];
+      for (final item in raw) {
+        if (item is! Map<String, dynamic>) continue;
+        try {
+          tags.add(Tag.fromJson(item));
+        } catch (e) {
+          // Skip invalid tags instead of crashing
+          continue;
+        }
+      }
+      return tags;
     }
     return [];
   }
@@ -231,6 +254,7 @@ class FoodItem {
     bool? isFavourite,
     bool? isLiquid,
     bool? hasImage,
+    List<Tag>? tags,
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -258,6 +282,7 @@ class FoodItem {
       isFavourite: isFavourite ?? this.isFavourite,
       isLiquid: isLiquid ?? this.isLiquid,
       hasImage: hasImage ?? this.hasImage,
+      tags: tags ?? this.tags,
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
