@@ -647,7 +647,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     if (!_isEdit || widget.food == null) return;
     appLogger.d('_loadExistingTags: Loading tags for food ${widget.food!.id}');
     try {
-      final tags = await _tagService.getFoodPublicTags(widget.food!.id);
+      // Fetch fresh tags from database (respects RLS visibility)
+      final tags = await _tagService.getFoodTags(widget.food!.id);
       if (mounted) {
         setState(() => _editingTags = tags);
       }
@@ -896,12 +897,9 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     );
 
     // Save tags if editing and tags were modified
-    if (_isEdit && _editingTags.isNotEmpty) {
-      appLogger.d('_save: Saving ${_editingTags.length} public tags for food ${food.id}');
-      await _tagService.setFoodPublicTags(food.id, _editingTags);
-    } else if (_isEdit && _editingTags.isEmpty) {
-      appLogger.d('_save: Clearing tags for food ${food.id}');
-      await _tagService.setFoodPublicTags(food.id, []);
+    if (_isEdit) {
+      appLogger.d('_save: Saving ${_editingTags.length} tags for food ${food.id}');
+      await _tagService.setFoodTags(food.id, _editingTags);
     }
 
     if (mounted) {

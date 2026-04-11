@@ -101,54 +101,14 @@ class TagService {
     }
   }
 
-  /// Setze öffentliche Tags für ein Lebensmittel (nur für Eigentümer)
+  /// Setze Tags für ein Lebensmittel (für den aktuellen User)
   ///
-  /// Löscht alle existierenden öffentlichen Tags und setzt neue.
-  Future<bool> setFoodPublicTags(String foodId, List<Tag> tags) async {
+  /// Löscht alle existierenden Tags des Users für dieses Lebensmittel und setzt neue.
+  /// Wenn der User der Food-Besitzer ist, werden diese Tags für alle sichtbar.
+  /// Andernfalls sichtbar nur für diesen User.
+  Future<bool> setFoodTags(String foodId, List<Tag> tags) async {
     try {
-      appLogger.d('🏷️ Setze öffentliche Tags für Food $foodId (${tags.length} Tags)');
-
-      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
-      if (!tokenValid) {
-        appLogger.w('⚠️ Token ungültig');
-        return false;
-      }
-
-      // Delete all existing public tags for this food using dioClient
-      await _db.dioClient.delete(
-        '/food_public_tags?food_id=eq.$foodId',
-        options: Options(headers: {'Prefer': 'return=minimal'}),
-      );
-
-      // Insert new tags using dioClient
-      if (tags.isNotEmpty) {
-        final insertData = tags.map((tag) => {
-          'food_id': foodId,
-          'tag_id': tag.id,
-        }).toList();
-
-        await _db.dioClient.post(
-          '/food_public_tags',
-          data: insertData,
-          options: Options(headers: {'Prefer': 'return=minimal'}),
-        );
-      }
-
-      appLogger.i('✅ Öffentliche Tags aktualisiert');
-      return true;
-    } catch (e) {
-      appLogger.e('❌ Fehler beim Setzen öffentlicher Tags: $e');
-      return false;
-    }
-  }
-
-  /// Setze private Tags für ein Lebensmittel (für den aktuellen User)
-  ///
-  /// Löscht alle existierenden privaten Tags des Users für dieses Lebensmittel
-  /// und setzt neue.
-  Future<bool> setUserFoodTags(String foodId, List<Tag> tags) async {
-    try {
-      appLogger.d('🏷️ Setze private Tags für Food $foodId (${tags.length} Tags)');
+      appLogger.d('🏷️ Setze Tags für Food $foodId (${tags.length} Tags)');
 
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
@@ -177,10 +137,10 @@ class TagService {
         );
       }
 
-      appLogger.i('✅ Private Tags aktualisiert');
+      appLogger.i('✅ Tags aktualisiert');
       return true;
     } catch (e) {
-      appLogger.e('❌ Fehler beim Setzen privater Tags: $e');
+      appLogger.e('❌ Fehler beim Setzen von Tags: $e');
       return false;
     }
   }
@@ -213,10 +173,13 @@ class TagService {
     }
   }
 
-  /// Hole öffentliche Tags für ein spezifisches Lebensmittel
-  Future<List<Tag>> getFoodPublicTags(String foodId) async {
+  /// Hole Tags für ein spezifisches Lebensmittel (die der aktuelle User sehen kann)
+  ///
+  /// Ruft user_food_tags ab wo food_id = foodId
+  /// Sichtbar: Tags vom Owner (Food-Besitzer) ODER vom aktuellen User
+  Future<List<Tag>> getFoodTags(String foodId) async {
     try {
-      appLogger.d('🏷️ Hole öffentliche Tags für Food $foodId');
+      appLogger.d('🏷️ Hole Tags für Food $foodId');
 
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) {
@@ -224,40 +187,25 @@ class TagService {
         return [];
       }
 
-      // Query food_public_tags joined with tags using dioClient
-      final response = await _db.dioClient.get(
-        '/food_public_tags?food_id=eq.$foodId',
-      );
+      // Query user_food_tags for this food
+      // RLS will automatically filter to visible tags (owner + current user)
+      final response = await _db.client
+          .from('user_food_tags')
+          .select('tag_id, tags(id, name, slug)')
+          .eq('food_id', foodId);
 
-      if (response.statusCode != 200 || response.data == null) {
-        appLogger.d('✅ Keine öffentlichen Tags für Food gefunden');
-        return [];
+      final tags = <Tag>[];
+      for (final row in response as List) {
+        final tagData = row['tags'];
+        if (tagData is Map<String, dynamic>) {
+          tags.add(Tag.fromJson(tagData));
+        }
       }
 
-      final rows = response.data as List;
-      if (rows.isEmpty) {
-        appLogger.d('✅ Keine öffentlichen Tags für Food gefunden');
-        return [];
-      }
-
-      // Extract tag_ids and fetch the tags from the database
-      final tagIds = rows
-        .map((row) => (row as Map)['tag_id'] as String)
-        .toList();
-
-      // Fetch tag details
-      final tagResponse = await _db.dioClient.get(
-        '/tags?id=in.(${tagIds.join(',')})',
-      );
-
-      final tags = (tagResponse.data as List)
-        .map((json) => Tag.fromJson(json as Map<String, dynamic>))
-        .toList();
-
-      appLogger.d('✅ ${tags.length} öffentliche Tags für Food gefunden');
+      appLogger.d('✅ ${tags.length} Tags für Food gefunden');
       return tags;
     } catch (e) {
-      appLogger.e('❌ Fehler beim Abrufen öffentlicher Tags: $e');
+      appLogger.e('❌ Fehler beim Abrufen von Tags für Food: $e');
       return [];
     }
   }

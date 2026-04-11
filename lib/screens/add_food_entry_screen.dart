@@ -436,10 +436,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         final created = await service.createFood(result);
 
         // Save tags if any were added
-        if (result.publicTags.isNotEmpty) {
-          appLogger.d('💾 Saving ${result.publicTags.length} tags for newly created food');
+        if (result.tags.isNotEmpty) {
+          appLogger.d('💾 Saving ${result.tags.length} tags for newly created food');
           final tagService = TagService(widget.dbService);
-          await tagService.setFoodPublicTags(created.id, result.publicTags);
+          await tagService.setFoodTags(created.id, result.tags);
         }
 
         if (mounted) {
@@ -1363,7 +1363,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       isPublic: _isPublic,
       isLiquid: _isLiquid,
       isApproved: false,
-      publicTags: _editingTags,  // Pass tags back via FoodItem
+      tags: _editingTags,  // Pass tags back via FoodItem
       source: 'Custom',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),

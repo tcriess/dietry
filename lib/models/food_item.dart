@@ -47,9 +47,8 @@ class FoodItem {
   // Image support - true if an image exists in food_images table
   final bool hasImage;
 
-  // Tags - public and private
-  final List<Tag> publicTags;  // Tags set by food owner, visible to all
-  final List<Tag> userTags;    // Tags set by current user, visible only to them
+  // Tags - user-specific; visible to all if set by food owner, else private
+  final List<Tag> tags;
 
   // Metadaten
   final String? source;
@@ -79,8 +78,7 @@ class FoodItem {
     this.isFavourite = false,
     this.isLiquid = false,
     this.hasImage = false,
-    this.publicTags = const [],
-    this.userTags = const [],
+    this.tags = const [],
     this.source,
     required this.createdAt,
     required this.updatedAt,
@@ -122,8 +120,7 @@ class FoodItem {
       isFavourite: json['is_favourite'] as bool? ?? false,
       isLiquid: json['is_liquid'] as bool? ?? false,
       hasImage: json['has_image'] as bool? ?? false,
-      publicTags: _parseTags(json['public_tags']),
-      userTags: _parseTags(json['user_tags']),
+      tags: _parseTags(json['tags']),
       source: _safeString(json['source']),
       createdAt: DateTime.parse(createdAtRaw),
       updatedAt: DateTime.parse(updatedAtRaw),
@@ -257,8 +254,7 @@ class FoodItem {
     bool? isFavourite,
     bool? isLiquid,
     bool? hasImage,
-    List<Tag>? publicTags,
-    List<Tag>? userTags,
+    List<Tag>? tags,
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -286,8 +282,7 @@ class FoodItem {
       isFavourite: isFavourite ?? this.isFavourite,
       isLiquid: isLiquid ?? this.isLiquid,
       hasImage: hasImage ?? this.hasImage,
-      publicTags: publicTags ?? this.publicTags,
-      userTags: userTags ?? this.userTags,
+      tags: tags ?? this.tags,
       source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:convert' show base64Decode;
 import '../models/food_item.dart';
+import '../models/tag.dart';
 import '../services/neon_database_service.dart';
 import '../services/food_image_service.dart';
+import '../services/tag_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/tag_editor.dart';
 import 'add_food_entry_screen.dart';
 
 /// Detailed view of a food item from the database.
@@ -25,11 +28,33 @@ class FoodDetailScreen extends StatefulWidget {
 
 class _FoodDetailScreenState extends State<FoodDetailScreen> {
   late FoodImageService _imageService;
+  late TagService _tagService;
+  late List<Tag> _userTags;
+  bool _tagsLoading = true;
 
   @override
   void initState() {
     super.initState();
     _imageService = FoodImageService(widget.dbService);
+    _tagService = TagService(widget.dbService);
+    _userTags = [];
+    _loadUserTags();
+  }
+
+  Future<void> _loadUserTags() async {
+    try {
+      // Load tags for this food from database
+      final tags = await _tagService.getFoodTags(widget.food.id);
+      if (mounted) {
+        setState(() {
+          _userTags = tags;
+          _tagsLoading = false;
+        });
+      }
+    } catch (e) {
+      appLogger.e('Error loading user tags: $e');
+      setState(() => _tagsLoading = false);
+    }
   }
 
   @override
@@ -96,6 +121,33 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                     const SizedBox(height: 20),
                     _buildMetadata(context),
                   ],
+
+                  // Tags section (editable)
+                  const SizedBox(height: 20),
+                  Text(
+                    'Tags',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_tagsLoading)
+                    const SizedBox(
+                      height: 40,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else
+                    TagEditor(
+                      tags: _userTags,
+                      onChanged: (tags) async {
+                        setState(() => _userTags = tags);
+                        // Auto-save to DB
+                        await _tagService.setFoodTags(widget.food.id, tags);
+                        if (mounted) {
+                          appLogger.i('✅ Tags saved for food: ${widget.food.name}');
+                        }
+                      },
+                      tagService: _tagService,
+                      readOnly: false,
+                    ),
 
                   const SizedBox(height: 20),
                 ],

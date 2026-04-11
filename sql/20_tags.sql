@@ -1,3 +1,7 @@
+-- ── Cleanup old tables (if migration is being re-applied) ─────────────────────
+DROP TABLE IF EXISTS food_public_tags CASCADE;
+DROP FUNCTION IF EXISTS search_food_database(TEXT, TEXT[], INT) CASCADE;
+
 -- ── Global tag definitions ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS tags (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -25,36 +29,8 @@ DROP POLICY IF EXISTS tags_delete ON tags;
 CREATE POLICY tags_delete ON tags FOR DELETE
   USING (created_by::text = current_setting('request.jwt.claims',true)::json->>'sub');
 
--- ── Public food tags (assigned by food owner, visible to all) ─────────────────
-CREATE TABLE IF NOT EXISTS food_public_tags (
-  food_id UUID NOT NULL REFERENCES food_database(id) ON DELETE CASCADE,
-  tag_id  UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-  PRIMARY KEY (food_id, tag_id)
-);
-CREATE INDEX IF NOT EXISTS idx_food_public_tags_food ON food_public_tags(food_id);
-CREATE INDEX IF NOT EXISTS idx_food_public_tags_tag  ON food_public_tags(tag_id);
-
-ALTER TABLE food_public_tags ENABLE ROW LEVEL SECURITY;
--- SELECT: everyone sees public tags on visible foods
-DROP POLICY IF EXISTS fpt_select ON food_public_tags;
-CREATE POLICY fpt_select ON food_public_tags FOR SELECT USING (TRUE);
--- INSERT/DELETE: only the food owner
-DROP POLICY IF EXISTS fpt_insert ON food_public_tags;
-CREATE POLICY fpt_insert ON food_public_tags FOR INSERT
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM food_database fd
-    WHERE fd.id = food_id
-      AND fd.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
-  ));
-DROP POLICY IF EXISTS fpt_delete ON food_public_tags;
-CREATE POLICY fpt_delete ON food_public_tags FOR DELETE
-  USING (EXISTS (
-    SELECT 1 FROM food_database fd
-    WHERE fd.id = food_id
-      AND fd.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
-  ));
-
--- ── Private per-user food tags (any user, any visible food) ───────────────────
+-- ── User food tags (any user can tag any visible food; visibility based on ownership) ──
+-- If user_id = food owner, tags visible to all. Otherwise, only visible to that user.
 CREATE TABLE IF NOT EXISTS user_food_tags (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   food_id UUID NOT NULL REFERENCES food_database(id) ON DELETE CASCADE,
@@ -65,14 +41,27 @@ CREATE INDEX IF NOT EXISTS idx_user_food_tags_user_food ON user_food_tags(user_i
 CREATE INDEX IF NOT EXISTS idx_user_food_tags_tag       ON user_food_tags(tag_id);
 
 ALTER TABLE user_food_tags ENABLE ROW LEVEL SECURITY;
--- All operations scoped to the calling user
-DROP POLICY IF EXISTS uft_all ON user_food_tags;
-CREATE POLICY uft_all ON user_food_tags
-  USING (user_id::text = current_setting('request.jwt.claims',true)::json->>'sub')
-  WITH CHECK (user_id::text = current_setting('request.jwt.claims',true)::json->>'sub');
+-- SELECT: see own tags OR owner-added tags (owner's curation)
+DROP POLICY IF EXISTS uft_select ON user_food_tags;
+CREATE POLICY uft_select ON user_food_tags FOR SELECT
+  USING (
+    user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
+    OR EXISTS (
+      SELECT 1 FROM food_database fd
+      WHERE fd.id = food_id
+        AND fd.user_id::text = user_id::text  -- tagger is the food owner
+    )
+  );
+-- INSERT/DELETE: only own tags
+DROP POLICY IF EXISTS uft_modify ON user_food_tags;
+CREATE POLICY uft_modify ON user_food_tags FOR INSERT WITH CHECK
+  (user_id::text = current_setting('request.jwt.claims',true)::json->>'sub');
+CREATE POLICY uft_delete ON user_food_tags FOR DELETE
+  USING (user_id::text = current_setting('request.jwt.claims',true)::json->>'sub');
 
--- ── Replace search_food_database with tag-aware version ───────────────────────
--- Returns food_database columns + public_tags + user_tags as JSONB arrays.
+-- ── Search function with tag-aware filtering ─────────────────────────────────
+-- Returns food_database columns + tags as JSONB array.
+-- Tags shown: owner-added (visible to all) + current user's tags.
 DROP TYPE IF EXISTS food_tag CASCADE;
 CREATE TYPE food_tag AS (id UUID, name TEXT, slug TEXT);
 
@@ -108,8 +97,7 @@ RETURNS TABLE (
   portions       JSONB,
   created_at     TIMESTAMPTZ,
   updated_at     TIMESTAMPTZ,
-  public_tags    JSONB,  -- [{id, name, slug}, ...]
-  user_tags      JSONB   -- [{id, name, slug}, ...]
+  tags           JSONB   -- [{id, name, slug}, ...] from owner or current user
 )
 LANGUAGE sql
 SECURITY INVOKER
@@ -119,17 +107,21 @@ AS $$
     SELECT food_id, MAX(entry_date) AS last_used
     FROM food_entries WHERE food_id IS NOT NULL GROUP BY food_id
   ),
-  pub_tags AS (
-    SELECT fpt.food_id,
-      jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name, 'slug', t.slug)) AS tags
-    FROM food_public_tags fpt JOIN tags t ON t.id = fpt.tag_id
-    GROUP BY fpt.food_id
-  ),
-  usr_tags AS (
+  visible_tags AS (
+    -- Tags added by food owner (visible to all) OR by current user (visible only to them)
     SELECT uft.food_id,
       jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name, 'slug', t.slug)) AS tags
-    FROM user_food_tags uft JOIN tags t ON t.id = uft.tag_id
-    WHERE uft.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
+    FROM user_food_tags uft
+    JOIN tags t ON t.id = uft.tag_id
+    WHERE (
+      -- Owner-added tags (food owner added this tag)
+      EXISTS (
+        SELECT 1 FROM food_database fd
+        WHERE fd.id = uft.food_id AND fd.user_id::text = uft.user_id::text
+      )
+      -- OR current user's tags
+      OR uft.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
+    )
     GROUP BY uft.food_id
   )
   SELECT
@@ -138,33 +130,33 @@ AS $$
     fd.serving_unit, fd.category, fd.brand, fd.barcode, fd.is_public,
     fd.is_approved, fd.is_liquid, fd.is_favourite, fd.has_image, fd.source,
     fd.portions, fd.created_at, fd.updated_at,
-    COALESCE(pt.tags, '[]'::jsonb) AS public_tags,
-    COALESCE(ut.tags, '[]'::jsonb) AS user_tags
+    COALESCE(vt.tags, '[]'::jsonb) AS tags
   FROM food_database fd
   LEFT JOIN user_last_used ulu ON ulu.food_id = fd.id
-  LEFT JOIN pub_tags pt ON pt.food_id = fd.id
-  LEFT JOIN usr_tags ut ON ut.food_id = fd.id
+  LEFT JOIN visible_tags vt ON vt.food_id = fd.id
   WHERE
     -- Text search
     (query = '' OR fd.name ILIKE '%' || query || '%'
       OR (fd.brand IS NOT NULL AND fd.brand ILIKE '%' || query || '%'))
-    -- Tag filter (food must have ALL requested tags, from public OR user tags)
+    -- Tag filter (food must have ALL requested tags from visible tags)
     AND (
       filter_tags IS NULL OR
       (
         SELECT count(*) = array_length(filter_tags, 1)
         FROM (
           SELECT DISTINCT t2.slug
-          FROM food_public_tags fpt2
-          JOIN tags t2 ON t2.id = fpt2.tag_id
-          WHERE fpt2.food_id = fd.id AND t2.slug = ANY(filter_tags)
-          UNION
-          SELECT DISTINCT t2.slug
           FROM user_food_tags uft2
           JOIN tags t2 ON t2.id = uft2.tag_id
           WHERE uft2.food_id = fd.id
-            AND uft2.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
             AND t2.slug = ANY(filter_tags)
+            AND (
+              -- Tag from owner OR from current user
+              EXISTS (
+                SELECT 1 FROM food_database fd2
+                WHERE fd2.id = uft2.food_id AND fd2.user_id::text = uft2.user_id::text
+              )
+              OR uft2.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
+            )
         ) AS matched_tags
       )
     )
@@ -180,17 +172,21 @@ AS $$
   LIMIT max_results
 $$;
 
--- Helper: get all tags available for filtering (in user's visible foods)
+-- Helper: get all tags available for filtering in user's visible foods
+-- Includes: owner-added tags (visible to all) + current user's tags
 DROP FUNCTION IF EXISTS get_available_food_tags();
 CREATE OR REPLACE FUNCTION get_available_food_tags()
 RETURNS SETOF tags
 LANGUAGE sql SECURITY INVOKER STABLE AS $$
   SELECT DISTINCT t.* FROM tags t
   WHERE EXISTS (
-    SELECT 1 FROM food_public_tags fpt
-    JOIN food_database fd ON fd.id = fpt.food_id
-    WHERE fpt.tag_id = t.id
+    -- Owner-added tags (visible to all users)
+    SELECT 1 FROM user_food_tags uft
+    JOIN food_database fd ON fd.id = uft.food_id
+    WHERE uft.tag_id = t.id
+      AND fd.user_id::text = uft.user_id::text
   ) OR EXISTS (
+    -- Current user's own tags
     SELECT 1 FROM user_food_tags uft
     WHERE uft.tag_id = t.id
       AND uft.user_id::text = current_setting('request.jwt.claims',true)::json->>'sub'
