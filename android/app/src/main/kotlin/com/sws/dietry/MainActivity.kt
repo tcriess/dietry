@@ -25,9 +25,13 @@ class MainActivity: FlutterFragmentActivity() {
         val action = intent.action
         val data = intent.data
 
+        println("🔗 handleIntent called: action=$action, data=$data")
+
         if (Intent.ACTION_VIEW == action && data != null) {
             startString = data.toString()
-            println("🔗 Deep Link empfangen: $startString")
+            println("✅ Deep Link gespeichert: $startString")
+        } else {
+            println("❌ Intent matched nicht (action=$action, data=$data)")
         }
     }
 
@@ -36,6 +40,7 @@ class MainActivity: FlutterFragmentActivity() {
         
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "getInitialLink") {
+                println("📞 getInitialLink called, returning: $startString")
                 result.success(startString)
             } else {
                 result.notImplemented()

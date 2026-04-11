@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:dietry/services/app_logger.dart';
 import 'jwt_helper.dart';
 import 'user_service.dart';
@@ -38,13 +37,12 @@ class NeonDatabaseService {
   Future<void> init() async {
     if (_initialized) return;
     
-    // Cookie-Jar initialisieren (nur für Native)
+    // Cookie-Jar initialisieren (nur für Native).
+    // In-memory CookieJar reicht aus — die Datenbank-API authentifiziert per JWT,
+    // nicht per Cookie. PersistCookieJar + FileStorage vermieden wegen
+    // ClassNotFoundException (io.flutter.util.PathUtils) in Release-Builds.
     if (!kIsWeb) {
-      // Native: Persistente Cookies
-      final appDocDir = await getApplicationDocumentsDirectory();
-      _cookieJar = PersistCookieJar(
-        storage: FileStorage('${appDocDir.path}/.cookies/'),
-      );
+      _cookieJar = CookieJar();
     }
     
     _dio = Dio(BaseOptions(
@@ -119,33 +117,14 @@ class NeonDatabaseService {
     // Versuche, gespeicherte Session-Daten zu laden
     await _loadSessionData();
     
-    // Prüfe ob geladener Token noch gültig ist
+    // Prüfe ob geladener Token noch gültig ist.
+    // Abgelaufene Tokens werden verworfen — kein Netzwerkaufruf während init(),
+    // um ein Hängen zu vermeiden. Der Interceptor behandelt 401-Fehler bei
+    // echten Requests und löst dort ggf. einen Token-Refresh aus.
     if (_jwt != null && JwtHelper.isExpired(_jwt!)) {
-      appLogger.w('⚠️ Geladener JWT-Token ist abgelaufen - refreshe automatisch...');
-
-      // Versuche Token zu refreshen wenn onTokenExpired Callback gesetzt ist
-      if (onTokenExpired != null) {
-        try {
-          final newToken = await onTokenExpired!();
-          if (newToken != null) {
-            _jwt = newToken;
-            await _storage.write(key: 'neon_jwt_token', value: _jwt);
-            appLogger.i('✅ JWT-Token erfolgreich refreshed beim Init');
-          } else {
-            appLogger.e('❌ Token-Refresh fehlgeschlagen - lösche alten Token');
-            _jwt = null;
-            await _storage.delete(key: 'neon_jwt_token');
-          }
-        } catch (e) {
-          appLogger.e('❌ Fehler beim automatischen Token-Refresh: $e');
-          _jwt = null;
-          await _storage.delete(key: 'neon_jwt_token');
-        }
-      } else {
-        appLogger.w('⚠️ Kein Token-Refresh-Callback gesetzt - lösche abgelaufenen Token');
-        _jwt = null;
-        await _storage.delete(key: 'neon_jwt_token');
-      }
+      appLogger.w('⚠️ Geladener JWT-Token ist abgelaufen — wird verworfen');
+      _jwt = null;
+      await _storage.delete(key: 'neon_jwt_token');
     }
     
     // Initialisiere PostgrestClient NACH dem Token-Refresh

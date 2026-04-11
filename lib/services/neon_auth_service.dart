@@ -375,39 +375,74 @@ class NeonAuthService extends ChangeNotifier {
 
       appLogger.d('📦 Loaded from storage: JWT=${_jwt != null}, Session=${_session != null}');
     } catch (e) {
-      appLogger.d('⚠️ Error loading from storage — clearing to prevent repeat failures: $e');
-      // Bei Fehler (z.B. korruptem Keystore): Alles löschen damit nächster Start sauber ist
-      try {
-        await _storage.deleteAll();
-        appLogger.d('✅ Storage cleared after error');
-      } catch (_) {
-        // Fehler beim Löschen ignorieren — nächster Start ist eh kaputt
-      }
+      appLogger.d('⚠️ Error loading from storage — clearing auth state: $e');
+      // ✅ WICHTIG: Nur Auth-Keys löschen, NICHT deleteAll()!
+      // deleteAll() würde auch den _challengeCookieKey löschen, der gerade für einen
+      // laufenden OAuth-Flow benötigt wird (Race Condition: _initialize() läuft parallel
+      // zu startOAuthFlow()).
+      try { await _storage.delete(key: _sessionKey); } catch (_) {}
+      try { await _storage.delete(key: _jwtKey); } catch (_) {}
+      try { await _storage.delete(key: _cookieKey); } catch (_) {}
+      appLogger.d('✅ Auth state cleared after error (challenge cookie preserved)');
     }
   }
   
   /// Speichert Session in SecureStorage
   Future<void> _saveToStorage() async {
+    appLogger.d('[_saveToStorage] Starting save operation');
     try {
+      appLogger.d('[_saveToStorage] Saving session data (session=${_session != null})');
       if (_session != null) {
-        await _storage.write(key: _sessionKey, value: jsonEncode(_session));
+        try {
+          final encoded = jsonEncode(_session);
+          appLogger.d('[_saveToStorage] ✓ Session JSON encoded (${encoded.length} bytes)');
+          await _storage.write(key: _sessionKey, value: encoded);
+          appLogger.d('[_saveToStorage] ✓ Session written to storage');
+        } catch (e) {
+          appLogger.d('[_saveToStorage] ❌ Error saving session: $e');
+          rethrow;
+        }
       } else {
+        appLogger.d('[_saveToStorage] Session is null, deleting from storage');
         await _storage.delete(key: _sessionKey);
+        appLogger.d('[_saveToStorage] ✓ Deleted session from storage');
       }
-      
+
+      appLogger.d('[_saveToStorage] Saving JWT (jwt=${_jwt != null ? "SET (${_jwt!.length} bytes)" : "NULL"})');
       if (_jwt != null) {
-        await _storage.write(key: _jwtKey, value: _jwt);
+        try {
+          await _storage.write(key: _jwtKey, value: _jwt!);
+          appLogger.d('[_saveToStorage] ✓ JWT written to storage');
+        } catch (e) {
+          appLogger.d('[_saveToStorage] ❌ Error saving JWT: $e');
+          rethrow;
+        }
       } else {
+        appLogger.d('[_saveToStorage] JWT is null, deleting from storage');
         await _storage.delete(key: _jwtKey);
+        appLogger.d('[_saveToStorage] ✓ Deleted JWT from storage');
       }
-      
+
+      appLogger.d('[_saveToStorage] Saving cookie (cookie=${_cookie != null ? "SET (${_cookie!.length} bytes)" : "NULL"})');
       if (_cookie != null) {
-        await _storage.write(key: _cookieKey, value: _cookie);
+        try {
+          await _storage.write(key: _cookieKey, value: _cookie!);
+          appLogger.d('[_saveToStorage] ✓ Cookie written to storage');
+        } catch (e) {
+          appLogger.d('[_saveToStorage] ❌ Error saving cookie: $e');
+          rethrow;
+        }
+      } else {
+        appLogger.d('[_saveToStorage] Cookie is null, skipping');
       }
-      
+
+      appLogger.d('[_saveToStorage] ✅ All data saved successfully');
       appLogger.d('💾 Saved to storage: JWT=${_jwt != null}, Session=${_session != null}');
     } catch (e) {
-      appLogger.d('⚠️ Error saving to storage: $e');
+      appLogger.d('[_saveToStorage] ❌ CRITICAL ERROR in _saveToStorage: $e');
+      appLogger.d('[_saveToStorage] ❌ Exception type: ${e.runtimeType}');
+      appLogger.e('⚠️ Error saving to storage: $e');
+      rethrow;
     }
   }
   
@@ -498,15 +533,20 @@ class NeonAuthService extends ChangeNotifier {
   /// - Web: Browser sendet Cookies automatisch
   Future<bool> getSessionWithVerifier(String verifier) async {
     try {
+      appLogger.d('🔐 getSessionWithVerifier called with verifier=$verifier');
       final verifierPreview = verifier.length > 20 ? verifier.substring(0, 20) : verifier;
       appLogger.d('🔑 Getting session with verifier: $verifierPreview...');
-      
+      appLogger.d('   Reading challenge cookie from storage...');
+
       // Native: Challenge-Cookie aus separatem Key laden (nie vom Token-Refresh überschrieben)
       // Web: Browser sendet Cookies automatisch
       String? cookieToSend;
       if (!kIsWeb) {
+        appLogger.d('   Is native platform');
         final challengeCookie = await _storage.read(key: _challengeCookieKey);
+        appLogger.d('   challengeCookie from storage: ${challengeCookie != null ? "SET" : "NULL"}');
         cookieToSend = challengeCookie ?? _cookie;
+        appLogger.d('   cookieToSend: ${cookieToSend != null ? "SET" : "NULL"}');
 
         final preview = cookieToSend != null
             ? cookieToSend.substring(0, min(100, cookieToSend.length))
@@ -515,83 +555,233 @@ class NeonAuthService extends ChangeNotifier {
 
         if (cookieToSend == null) {
           appLogger.d('❌ ERROR: No challenge cookie found! OAuth flow incomplete.');
+          appLogger.d('❌ ERROR: No challenge cookie found! OAuth flow incomplete.');
           return false;
         }
+      } else {
+        appLogger.d('   Is web platform');
       }
 
       // Sende Request mit Challenge-Cookie
+      final requestUrl = '$neonAuthBaseUrl/get-session?neon_auth_session_verifier=$verifier';
+      appLogger.d('   📤 Request URL: $requestUrl');
+      appLogger.d('   📤 Request headers: Cookie=${cookieToSend != null ? "SET (${cookieToSend.length} bytes)" : "NULL"}');
+
       final response = await _client.get(
-        Uri.parse('$neonAuthBaseUrl/get-session?neon_auth_session_verifier=$verifier'),
+        Uri.parse(requestUrl),
         headers: {
           if (!kIsWeb && cookieToSend != null) 'Cookie': cookieToSend,
           'Accept': 'application/json',
         },
       );
-
-      // Challenge-Cookie nach Verwendung löschen (einmalig gültig)
-      if (!kIsWeb) {
-        await _storage.delete(key: _challengeCookieKey);
+      appLogger.d('   📥 Response status: ${response.statusCode}');
+      try {
+        appLogger.d('   📥 Getting headers...');
+        appLogger.d('   📥 Response headers: ${response.headers}');
+      } catch (e) {
+        appLogger.d('   ❌ Error printing headers: $e');
+      }
+      try {
+        appLogger.d('   📥 Response body length: ${response.body.length} bytes');
+        appLogger.d('   📥 Response body preview: ${response.body.substring(0, min(200, response.body.length))}');
+      } catch (e) {
+        appLogger.d('   ❌ Error reading response body: $e');
       }
 
-      appLogger.d('📥 Session response: ${response.statusCode}');
-      appLogger.d('   Headers: ${response.headers}');
-      appLogger.d('   Body: ${response.body}');
+      // [1] Challenge-Cookie löschen (einmalig gültig)
+      appLogger.d('[1] 🔑 Deleting challenge cookie after use...');
+      try {
+        if (!kIsWeb) {
+          await _storage.delete(key: _challengeCookieKey);
+          appLogger.d('[1] ✓ Challenge cookie deleted from storage');
+        }
+      } catch (e) {
+        appLogger.d('[1] ❌ Error deleting challenge cookie: $e');
+        // Continue anyway, this is not critical
+      }
 
+      // [2] Status Code Check
+      appLogger.d('[2] 📊 Status code: ${response.statusCode}');
       if (response.statusCode != 200) {
+        appLogger.d('[2] ❌ Status code is not 200: ${response.statusCode}');
+        appLogger.d('[2] ❌ Response body: ${response.body}');
         throw Exception('Get session failed: ${response.statusCode} - ${response.body}');
       }
+      appLogger.d('[2] ✓ Status code OK (200)');
 
-      final data = jsonDecode(response.body);
+      // [3] Log response details
+      appLogger.d('[3] 📥 Response headers: ${response.headers.keys.toList()}');
+      appLogger.d('[3] 📥 Response body length: ${response.body.length} bytes');
+      appLogger.d('[3] 📥 Response body preview: ${response.body.substring(0, min(500, response.body.length))}');
 
+      // [4] Parse JSON response
+      appLogger.d('[4] 📦 Parsing JSON response body...');
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+        appLogger.d('[4] ✓ JSON parsed successfully');
+        appLogger.d('[4] ✓ Data type: ${data.runtimeType}');
+        if (data is Map<String, dynamic>) {
+          appLogger.d('[4] ✓ Top-level keys: ${data.keys.toList()}');
+        }
+      } catch (e) {
+        appLogger.d('[4] ❌ JSON parse error: $e');
+        appLogger.d('[4] ❌ Body was: ${response.body}');
+        rethrow;
+      }
+
+      // [5] Validate parsed data
+      appLogger.d('[5] 🔍 Validating parsed data...');
       if (data == null) {
-        appLogger.d('⚠️ Session response is null - not authenticated');
+        appLogger.d('[5] ❌ Parsed data is null');
         return false;
       }
+      appLogger.d('[5] ✓ Data is not null');
 
-      // Session-Cookie (für zukünftige Token-Refreshes) aktualisieren
+      // [6] Handle set-cookie header (native only)
+      appLogger.d('[6] 🍪 Processing session cookie...');
       if (!kIsWeb) {
-        final newCookie = response.headers['set-cookie'];
-        if (newCookie != null) {
-          _cookie = newCookie;
-          await _storage.write(key: _cookieKey, value: _cookie);
-          appLogger.d('🍪 Session-Cookie aktualisiert (Native)');
+        try {
+          final newCookie = response.headers['set-cookie'];
+          appLogger.d('[6] ℹ️  set-cookie header: ${newCookie != null ? "present (${newCookie.length} bytes)" : "MISSING"}');
+          if (newCookie != null && newCookie.isNotEmpty) {
+            _cookie = newCookie;
+            await _storage.write(key: _cookieKey, value: _cookie);
+            appLogger.d('[6] ✓ Cookie updated and saved to storage');
+          } else {
+            appLogger.d('[6] ℹ️  No new cookie, keeping existing');
+          }
+        } catch (e) {
+          appLogger.d('[6] ❌ Error processing cookie: $e');
+          // Continue anyway, cookie is not critical
         }
       }
-      
-      // Session-Daten enthalten user + session
-      _session = data;
-      
-      // ✅ JWT extrahieren aus set-auth-jwt Header (NICHT aus session.token!)
-      // session.token ist nur die Session-ID, NICHT der JWT!
-      _jwt = response.headers['set-auth-jwt'];
-      
+
+      // [7] Store session data
+      appLogger.d('[7] 💾 Storing session data...');
+      try {
+        _session = data;
+        appLogger.d('[7] ✓ Session data stored in memory');
+      } catch (e) {
+        appLogger.d('[7] ❌ Error storing session: $e');
+        rethrow;
+      }
+
+      // [8] Extract JWT from set-auth-jwt header
+      appLogger.d('[8] 🔑 Extracting JWT from response header...');
+      try {
+        _jwt = response.headers['set-auth-jwt'];
+        if (_jwt != null && _jwt!.isNotEmpty) {
+          appLogger.d('[8] ✓ JWT found in set-auth-jwt header');
+          appLogger.d('[8] ✓ JWT length: ${_jwt!.length} bytes');
+          appLogger.d('[8] ✓ JWT prefix: ${_jwt!.substring(0, min(30, _jwt!.length))}...');
+        } else {
+          appLogger.d('[8] ℹ️  set-auth-jwt header empty or missing, trying fallback...');
+        }
+      } catch (e) {
+        appLogger.d('[8] ❌ Error reading set-auth-jwt header: $e');
+        _jwt = null;
+      }
+
+      // [9] Fallback JWT extraction from session.token
       if (_jwt == null || _jwt!.isEmpty) {
-        appLogger.d('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
-        // Fallback: Versuche session.token (für alte API-Versionen)
-        final sessionData = data['session'] as Map<String, dynamic>?;
-        _jwt = sessionData?['token'] as String?;
+        appLogger.d('[9] 🔄 JWT fallback: extracting from session.token...');
+        try {
+          final sessionData = data['session'] as Map<String, dynamic>?;
+          appLogger.d('[9] ℹ️  session field: ${sessionData != null ? "present" : "missing"}');
+          if (sessionData != null) {
+            appLogger.d('[9] ℹ️  session keys: ${sessionData.keys.toList()}');
+            _jwt = sessionData['token'] as String?;
+            if (_jwt != null && _jwt!.isNotEmpty) {
+              appLogger.d('[9] ✓ JWT extracted from session.token');
+              appLogger.d('[9] ✓ JWT length: ${_jwt!.length} bytes');
+            } else {
+              appLogger.d('[9] ℹ️  session.token is null or empty');
+            }
+          }
+        } catch (e) {
+          appLogger.d('[9] ❌ Error extracting from session.token: $e');
+          _jwt = null;
+        }
       }
-      
+
+      // [10] Third fallback: fetch JWT from /token endpoint
       if (_jwt == null || _jwt!.isEmpty) {
-        appLogger.d('⚠️ Kein JWT gefunden - trying /token endpoint');
-        await _fetchJWT();
+        appLogger.d('[10] 🔄 JWT fallback 2: fetching from /token endpoint...');
+        try {
+          await _fetchJWT();
+          appLogger.d('[10] ✓ _fetchJWT completed');
+          if (_jwt != null && _jwt!.isNotEmpty) {
+            appLogger.d('[10] ✓ JWT obtained from /token endpoint');
+          } else {
+            appLogger.d('[10] ❌ _fetchJWT did not set JWT');
+          }
+        } catch (e) {
+          appLogger.d('[10] ❌ Error in _fetchJWT: $e');
+        }
       }
-      
-      await _saveToStorage();
-      notifyListeners();
-      
-      // Starte Token-Refresh-Timer (nur wenn JWT gültig ist)
-      if (_jwt != null && !JwtHelper.isExpired(_jwt!)) {
-        await _checkAndRefreshToken();
-      } else if (_jwt != null) {
-        appLogger.d('⚠️ JWT ist bereits abgelaufen - kein Timer gestartet');
+
+      // [11] Final JWT validation
+      appLogger.d('[11] 🔑 Final JWT validation...');
+      if (_jwt == null || _jwt!.isEmpty) {
+        appLogger.d('[11] ❌ CRITICAL: No JWT obtained from any source');
+        appLogger.e('❌ No JWT available after all fallbacks');
+        return false;
       }
-      
-      appLogger.d('✅ Session established: user=${data['user']?['email']}');
+      appLogger.d('[11] ✓ JWT is valid and ready');
+      appLogger.d('[11] ✓ JWT length: ${_jwt!.length}');
+
+      // [12] Save all data to persistent storage
+      appLogger.d('[12] 💾 Saving authentication data to persistent storage...');
+      try {
+        await _saveToStorage();
+        appLogger.d('[12] ✓ All data saved to storage');
+      } catch (e) {
+        appLogger.d('[12] ❌ Error saving to storage: $e');
+        appLogger.d('[12] ❌ Exception type: ${e.runtimeType}');
+        appLogger.d('[12] ❌ Stack trace: $e');
+        rethrow;
+      }
+
+      // [13] Notify listeners
+      appLogger.d('[13] 📢 Notifying listeners of authentication change...');
+      try {
+        notifyListeners();
+        appLogger.d('[13] ✓ Listeners notified successfully');
+      } catch (e) {
+        appLogger.d('[13] ❌ Error notifying listeners: $e');
+        rethrow;
+      }
+
+      // [14] Start token refresh timer
+      appLogger.d('[14] ⏰ Setting up token refresh timer...');
+      try {
+        if (_jwt != null && !JwtHelper.isExpired(_jwt!)) {
+          appLogger.d('[14] ℹ️  Token not expired, starting refresh timer');
+          await _checkAndRefreshToken();
+          appLogger.d('[14] ✓ Token refresh timer started');
+        } else {
+          appLogger.d('[14] ⚠️  Token is expired or null, skipping refresh timer');
+        }
+      } catch (e) {
+        appLogger.d('[14] ⚠️  Error setting up refresh timer: $e');
+        // Continue anyway, refresh can happen later
+      }
+
+      // [15] Final success log
+      appLogger.d('[15] ✅ SUCCESS: Session flow complete');
+      final userEmail = data['user']?['email'] ?? 'unknown';
+      appLogger.d('[15] ✅ User: $userEmail');
+      appLogger.d('[15] ✅ JWT prefix: ${_jwt!.substring(0, min(30, _jwt!.length))}...');
+      appLogger.d('✅ Session established: user=$userEmail');
       return true;
       
-    } catch (e) {
-      appLogger.d('❌ Error getting session with verifier: $e');
+    } catch (e, stackTrace) {
+      appLogger.d('❌ EXCEPTION in getSessionWithVerifier');
+      appLogger.d('❌ Exception type: ${e.runtimeType}');
+      appLogger.d('❌ Exception message: $e');
+      appLogger.d('❌ Stack trace: $stackTrace');
+      appLogger.e('❌ Error getting session with verifier: $e\n$stackTrace');
       return false;
     }
   }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show MethodChannel, TextInput;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main_web_imports_web.dart' if (dart.library.io) 'main_web_imports.dart' as html;
 import 'dart:async';
+import 'dart:math' show min;
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -980,27 +981,34 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   late final NeonAuthService _authService;
   NeonDatabaseService? _dbService;
   Locale? _locale;
+  bool _dbInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _authService = NeonAuthService();
     _authService.addListener(_onAuthChanged);
-    
-    // Initialisiere Database Service mit Token-Refresh-Callback
-    _initDatabaseService();
-    
+
     // Registriere App Lifecycle Observer
     WidgetsBinding.instance.addObserver(this);
-    
-    // ✅ Prüfe OAuth-Callback nur für Native Apps (Android Deep Links)
-    // Web-Apps verwenden auth_callback.html und setzen JWT direkt in localStorage
-    if (!kIsWeb) {
-      _checkOAuthCallback();
-    } else {
-      // Web: Prüfe localStorage auf JWT (von auth_callback.html gesetzt)
+
+    // Web: Prüfe localStorage auf JWT asynchron
+    if (kIsWeb) {
       _checkWebJWT();
     }
+
+    // Initialisiere Database Service mit Token-Refresh-Callback.
+    // catchError: setzt _dbInitialized=true damit die Spinner-Bedingung in build()
+    // nicht dauerhaft blockiert — auch bei Init-Fehlern muss der Login-Screen
+    // erreichbar sein.
+    _initDatabaseService().catchError((e) {
+      appLogger.e('Fehler bei DB-Initialisierung: $e');
+      appLogger.d('[_initDatabaseService] ❌ EXCEPTION caught: $e');
+      if (!_dbInitialized) {
+        _dbInitialized = true;
+        if (mounted) setState(() {});
+      }
+    });
   }
   
   Future<void> _initDatabaseService() async {
@@ -1008,6 +1016,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     _dbService = db;
 
     // ✅ WICHTIG: Setze Token-Refresh-Callback VOR init()
+    // Kein signOut() hier: dieser Callback wird auch während db.init() aufgerufen
+    // (wenn ein abgelaufener Token aus dem Storage geladen wird). signOut() macht
+    // einen Netzwerkaufruf ohne Timeout und würde db.init() zum Hängen bringen.
     db.onTokenExpired = () async {
       appLogger.i('🔄 Token-Refresh-Callback aufgerufen...');
       final success = await _authService.refreshToken();
@@ -1015,17 +1026,22 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         appLogger.i('✅ Token erfolgreich refreshed via NeonAuthService');
         return _authService.jwt;
       } else {
-        appLogger.e('❌ Token-Refresh fehlgeschlagen - Logout erforderlich');
-        await _authService.signOut();
+        appLogger.w('⚠️ Token-Refresh fehlgeschlagen — returning null (no sign-out here)');
         return null;
       }
     };
 
+    appLogger.d('[_initDatabaseService] Calling db.init()...');
     await db.init();
+    appLogger.d('[_initDatabaseService] ✓ db.init() completed');
+
+    _dbInitialized = true;
+    appLogger.d('[_initDatabaseService] ✓ _dbInitialized = true');
 
     // ✅ WICHTIG: Warte bis AuthService fertig geladen hat
     // NeonAuthService lädt Token asynchron im Konstruktor
     // Mit Timeout um Deadlock bei korruptem Keystore zu vermeiden
+    appLogger.d('[_initDatabaseService] Waiting for auth service...');
     int waitMs = 0;
     const int maxWaitMs = 15000;
     while (_authService.isLoading && waitMs < maxWaitMs) {
@@ -1035,19 +1051,51 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     if (_authService.isLoading) {
       appLogger.d('⚠️ Auth service still loading after timeout — proceeding without JWT');
+      appLogger.d('[_initDatabaseService] ⚠️ Auth service timeout');
+    } else {
+      appLogger.d('[_initDatabaseService] ✓ Auth service ready');
     }
 
     // Jetzt JWT setzen wenn vorhanden
+    appLogger.d('[_initDatabaseService] Checking JWT from auth service: ${_authService.jwt != null ? "SET" : "NULL"}');
     if (_authService.jwt != null) {
       try {
         appLogger.i('🔑 Setze JWT im DB-Service nach Auth-Init: ${_authService.jwt!.substring(0, 20)}...');
+        appLogger.d('[_initDatabaseService] Calling db.setJWT()...');
         await db.setJWT(_authService.jwt!);
+        appLogger.d('[_initDatabaseService] ✓ JWT synced to DB service');
       } catch (e) {
         appLogger.w('⚠️ Fehler beim Setzen des JWT: $e');
+        appLogger.d('[_initDatabaseService] ❌ Error syncing JWT: $e');
       }
     } else {
       appLogger.i('ℹ️ Kein JWT im AuthService - User ist nicht eingeloggt');
+      appLogger.d('[_initDatabaseService] ℹ️ No JWT available');
     }
+
+    // ✅ WICHTIG: Sync JWT again in case it changed while DB was initializing
+    // (race condition: OAuth might complete during db.init())
+    appLogger.d('[_initDatabaseService] Final JWT check after initialization...');
+    if (_authService.jwt != null && _dbInitialized) {
+      try {
+        appLogger.d('[_initDatabaseService] Final sync: calling db.setJWT()...');
+        await db.setJWT(_authService.jwt!);
+        appLogger.d('[_initDatabaseService] ✓ Final JWT sync completed');
+      } catch (e) {
+        appLogger.d('[_initDatabaseService] ⚠️ Error in final sync: $e');
+        appLogger.w('⚠️ Error in final JWT sync: $e');
+      }
+    }
+
+    // ✅ Rebuild the UI now that DB is fully initialized and JWT is synced.
+    // Without this, the spinner never goes away because build() checks _dbInitialized.
+    appLogger.d('[_initDatabaseService] Triggering setState after full init...');
+    if (mounted) {
+      setState(() {});
+      appLogger.d('[_initDatabaseService] ✓ setState called');
+    }
+
+    appLogger.d('[_initDatabaseService] ✅ Database service initialization complete');
   }
   
   @override
@@ -1062,8 +1110,10 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.resumed) {
-      // Android: Prüfe auf OAuth Callback
-      if (platform.isAndroid()) {
+      // Android: Prüfe auf OAuth Callback wenn App in Vordergrund kommt
+      // Dies wird NACH onNewIntent() aufgerufen, daher startString gesetzt ist
+      if (platform.isAndroid() && !kIsWeb) {
+        appLogger.d('📱 App resumed, checking OAuth callback...');
         _checkOAuthCallback();
       }
 
@@ -1196,71 +1246,137 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   }
   
   Future<void> _checkOAuthCallback() async {
+    appLogger.d('🔍 _checkOAuthCallback called');
     if (platform.isAndroid()) {
+      appLogger.d('📱 isAndroid=true, calling getInitialLink...');
       try {
         const platform = MethodChannel('com.sws.dietry/deeplink');
         final String? initialLink = await platform.invokeMethod('getInitialLink');
-        
+        appLogger.d('📞 getInitialLink returned: $initialLink');
+
         if (initialLink == null || initialLink.isEmpty) {
+          appLogger.d('⚠️ initialLink is empty, returning');
           return;
         }
-        
+
+        appLogger.d('✓ initialLink is not empty');
         final uri = Uri.parse(initialLink);
-        
+        appLogger.d('✓ Parsed URI: ${uri.host}${uri.path}');
+
         // Prüfe ob es ein OAuth Callback ist
         final androidCbUri = Uri.tryParse(AppConfig.androidCallbackUrl);
+        appLogger.d('✓ Expected callback URL: ${AppConfig.androidCallbackUrl}');
+
         if (androidCbUri != null &&
             uri.scheme == androidCbUri.scheme &&
             uri.host == androidCbUri.host &&
             uri.path == androidCbUri.path) {
+          appLogger.d('✓ URL matches callback pattern');
           final verifier = uri.queryParameters['neon_auth_session_verifier'];
-          
+          appLogger.d('✓ Verifier: $verifier');
+
           if (verifier != null && verifier.isNotEmpty) {
-            // ✅ Nutze NeonAuthService für Session-Exchange
-            final success = await _authService.getSessionWithVerifier(verifier);
-            
-            if (success && _authService.jwt != null) {
-              // Setze JWT im Database Service
-              await _dbService?.setJWT(_authService.jwt!);
-              
-              appLogger.i('✅ Android Login erfolgreich: ${_authService.session?['user']?['email']}');
-            } else {
-              appLogger.e('❌ Session-Exchange fehlgeschlagen');
+            // ✅ Nutze NeonAuthService für Session-Exchange (braucht DB nicht)
+            appLogger.d('🔐 OAuth Verifier empfangen, tausche gegen Session...');
+            appLogger.d('⏳ Waiting for getSessionWithVerifier...');
+            try {
+              final success = await _authService.getSessionWithVerifier(verifier);
+              appLogger.d('✓ getSessionWithVerifier returned: success=$success');
+
+              if (success && _authService.jwt != null) {
+                appLogger.d('✓ JWT is set: ${_authService.jwt!.substring(0, 20)}...');
+                appLogger.d('✅ Android Login erfolgreich: ${_authService.session?['user']?['email']}');
+                // JWT wird automatisch vom _onAuthChanged Listener in DB Service übernommen
+              } else {
+                appLogger.d('❌ Session-Exchange fehlgeschlagen: success=$success, jwt=${_authService.jwt != null}');
+              }
+            } catch (e) {
+              appLogger.d('❌ Exception in getSessionWithVerifier: $e');
             }
+          } else {
+            appLogger.d('❌ Verifier is null or empty');
           }
+        } else {
+          appLogger.d('❌ URL does not match callback pattern');
+          appLogger.d('   Expected: ${androidCbUri?.scheme}://${androidCbUri?.host}${androidCbUri?.path}');
+          appLogger.d('   Got:      ${uri.scheme}://${uri.host}${uri.path}');
         }
       } catch (e) {
-        appLogger.e('❌ Fehler beim Android Deep Link Handling: $e');
+        appLogger.d('❌ Fehler beim Android Deep Link Handling: $e');
       }
+    } else {
+      appLogger.d('❌ isAndroid=false');
     }
   }
 
 
 
   void _onAuthChanged() {
+    appLogger.d('🔄 [_onAuthChanged] Listener fired');
+    appLogger.d('🔄 [_onAuthChanged] State: jwt=${_authService.jwt != null ? "SET (${_authService.jwt!.length} bytes)" : "NULL"}, isLoggedIn=${_authService.isLoggedIn}, db=${_dbService != null ? "SET" : "NULL"}, dbInit=$_dbInitialized');
     final jwt = _authService.jwt;
     final db = _dbService;
-    if (jwt != null && _authService.isLoggedIn && db != null) {
+
+    if (jwt != null && _authService.isLoggedIn && db != null && _dbInitialized) {
+      appLogger.d('[_onAuthChanged] ✓ All conditions met, syncing JWT to DB...');
+      appLogger.d('[_onAuthChanged] ✓ JWT: ${jwt.substring(0, min(30, jwt.length))}...');
       // Sync new JWT to DB service (e.g. after auto-refresh).
-      db.setJWT(jwt).catchError((e) {
+      // Only call if db.init() has completed (_dio is initialized)
+      appLogger.d('[_onAuthChanged] Calling db.setJWT...');
+      db.setJWT(jwt).catchError((e, stackTrace) {
+        appLogger.d('[_onAuthChanged] ❌ Error in setJWT: $e');
+        appLogger.d('[_onAuthChanged] ❌ Stack trace: $stackTrace');
         appLogger.w('⚠️ Fehler beim Sync des JWT nach Auth-Änderung: $e');
+      }).then((_) {
+        appLogger.d('[_onAuthChanged] ✓ setJWT completed successfully');
       });
       // Aktualisiere Premium-Feature-Gates aus JWT-Claim.
-      AppFeatures.setFromJwt(jwt);
+      try {
+        AppFeatures.setFromJwt(jwt);
+        appLogger.d('[_onAuthChanged] ✓ Feature gates updated');
+      } catch (e) {
+        appLogger.d('[_onAuthChanged] ⚠️ Error updating feature gates: $e');
+      }
     } else if (!_authService.isLoggedIn && db != null) {
+      appLogger.d('[_onAuthChanged] ✓ User logged out, clearing session');
       // Clear stale JWT from db service on sign-out.
       db.clearSession().catchError((e) {
+        appLogger.d('[_onAuthChanged] ⚠️ Error clearing DB session: $e');
         appLogger.w('⚠️ Fehler beim Clearen der DB-Session: $e');
+      }).then((_) {
+        appLogger.d('[_onAuthChanged] ✓ DB session cleared');
       });
-      AppFeatures.reset();
+      try {
+        AppFeatures.reset();
+        appLogger.d('[_onAuthChanged] ✓ Feature gates reset');
+      } catch (e) {
+        appLogger.d('[_onAuthChanged] ⚠️ Error resetting feature gates: $e');
+      }
+    } else {
+      appLogger.d('[_onAuthChanged] ⚠️ No action taken');
+      appLogger.d('[_onAuthChanged] ⚠️ jwt=${jwt != null ? "SET (${jwt.length} bytes)" : "NULL"}');
+      appLogger.d('[_onAuthChanged] ⚠️ loggedIn=${_authService.isLoggedIn}');
+      appLogger.d('[_onAuthChanged] ⚠️ db=${db != null ? "SET" : "NULL"}');
+      appLogger.d('[_onAuthChanged] ⚠️ dbInit=$_dbInitialized');
+      if (jwt != null && db != null && !_dbInitialized) {
+        appLogger.d('[_onAuthChanged] ℹ️ JWT is available but DB not yet initialized — will be synced when DB ready');
+      }
     }
-    setState(() {});
+    appLogger.d('[_onAuthChanged] Calling setState...');
+    setState(() {
+      appLogger.d('[_onAuthChanged] ✓ Inside setState callback');
+    });
+    appLogger.d('[_onAuthChanged] ✓ setState completed');
   }
 
   @override
   Widget build(BuildContext context) {
     final db = _dbService;
-    if (_authService.isLoading || db == null) {
+    // Show spinner until both auth and DB are fully ready.
+    // When logged in, also wait for _dbInitialized so the main screen never
+    // renders before db.setJWT() has been called (otherwise data loading stalls).
+    // When not logged in, show the login screen immediately — no DB needed.
+    if (_authService.isLoading || db == null || (_authService.isLoggedIn && !_dbInitialized)) {
       return MaterialApp(
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
