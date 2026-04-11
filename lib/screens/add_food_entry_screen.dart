@@ -5,7 +5,9 @@ import '../models/food_item.dart';
 import '../models/food_search_result.dart';
 import '../models/food_entry.dart';
 import '../models/food_portion.dart';
+import '../models/tag.dart';
 import '../services/food_database_service.dart';
+import '../services/tag_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/food_image_service.dart';
 import '../services/data_store.dart';
@@ -14,6 +16,7 @@ import '../services/food_search_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
+import '../widgets/tag_editor.dart';
 import 'food_database_screen.dart';
 
 /// Screen zum Hinzufügen eines Food-Entries
@@ -423,14 +426,22 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         initialCategory: _selectedFood?.category,
         initialBrand: _selectedFood?.brand,
         initialPortions: _selectedFood?.portions ?? [],
+        dbService: widget.dbService,
       ),
     );
-    
+
     if (result != null) {
       try {
         final service = FoodDatabaseService(widget.dbService);
         final created = await service.createFood(result);
-        
+
+        // Save tags if any were added
+        if (result.publicTags.isNotEmpty) {
+          appLogger.d('💾 Saving ${result.publicTags.length} tags for newly created food');
+          final tagService = TagService(widget.dbService);
+          await tagService.setFoodPublicTags(created.id, result.publicTags);
+        }
+
         if (mounted) {
           // Directly select the newly created food — user always wants to use it.
           _selectFood(created);
@@ -1230,6 +1241,7 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
   final String? initialCategory;
   final String? initialBrand;
   final List<FoodPortion> initialPortions;
+  final NeonDatabaseService dbService;
 
   const _AddFoodToDatabaseDialog({
     required this.initialName,
@@ -1240,6 +1252,7 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
     this.initialCategory,
     this.initialBrand,
     this.initialPortions = const [],
+    required this.dbService,
   });
   
   @override
@@ -1262,6 +1275,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
   bool _isPublic = false;
   bool _isLiquid = false;
+
+  // Tags handling
+  late List<Tag> _editingTags;
+  late TagService _tagService;
   
   @override
   void initState() {
@@ -1285,6 +1302,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
             text: p.amountG % 1 == 0 ? p.amountG.toInt().toString() : p.amountG.toString()),
       ));
     }
+
+    // Initialize tag service
+    _tagService = TagService(widget.dbService);
+    _editingTags = [];
   }
   
   @override
@@ -1342,11 +1363,12 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       isPublic: _isPublic,
       isLiquid: _isLiquid,
       isApproved: false,
+      publicTags: _editingTags,  // Pass tags back via FoodItem
       source: 'Custom',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    
+
     Navigator.of(context).pop(food);
   }
   
@@ -1535,6 +1557,21 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                   _isPublic ? Icons.public : Icons.lock_outline,
                   color: _isPublic ? Colors.green : Colors.grey,
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Tags
+              Text(
+                'Tags',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              TagEditor(
+                tags: _editingTags,
+                onChanged: (tags) => setState(() => _editingTags = tags),
+                tagService: _tagService,
+                readOnly: false,
               ),
             ],
           ),

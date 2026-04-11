@@ -35,18 +35,12 @@ class TagEditor extends StatefulWidget {
 
 class _TagEditorState extends State<TagEditor> {
   late List<Tag> _currentTags;
-  late TextEditingController _inputController;
-  late FocusNode _inputFocus;
-  List<Tag> _suggestions = [];
-  bool _showSuggestions = false;
+  late TextEditingController _autocompleteController;
 
   @override
   void initState() {
     super.initState();
     _currentTags = List.from(widget.tags);
-    _inputController = TextEditingController();
-    _inputFocus = FocusNode();
-    _inputController.addListener(_onInputChanged);
   }
 
   @override
@@ -61,30 +55,7 @@ class _TagEditorState extends State<TagEditor> {
 
   @override
   void dispose() {
-    _inputController.dispose();
-    _inputFocus.dispose();
     super.dispose();
-  }
-
-  Future<void> _onInputChanged() async {
-    final query = _inputController.text.trim();
-    if (query.isEmpty) {
-      setState(() => _showSuggestions = false);
-      return;
-    }
-
-    // Fetch suggestions from service
-    final suggestions = await widget.tagService.fetchTagSuggestions(query);
-
-    // Filter out tags already added
-    final filtered = suggestions
-        .where((tag) => !_currentTags.any((t) => t.id == tag.id))
-        .toList();
-
-    setState(() {
-      _suggestions = filtered;
-      _showSuggestions = true;
-    });
   }
 
   Future<void> _addTag(String tagName) async {
@@ -110,24 +81,16 @@ class _TagEditorState extends State<TagEditor> {
           SnackBar(content: Text('${newTag.name} bereits hinzugefügt')),
         );
       }
-      _inputController.clear();
-      _inputFocus.requestFocus();
       return;
     }
 
     setState(() {
       _currentTags.add(newTag);
-      _suggestions = [];
-      _showSuggestions = false;
-      _inputController.clear();
+      _autocompleteController.clear();
     });
 
     widget.onChanged(_currentTags);
     appLogger.i('✅ Tag hinzugefügt: ${newTag.name}');
-
-    if (mounted) {
-      _inputFocus.requestFocus();
-    }
   }
 
   void _removeTag(Tag tag) {
@@ -136,6 +99,20 @@ class _TagEditorState extends State<TagEditor> {
       _currentTags.removeWhere((t) => t.id == tag.id);
     });
     widget.onChanged(_currentTags);
+  }
+
+  Future<List<Tag>> _getFilteredSuggestions(String query) async {
+    if (query.isEmpty) return [];
+
+    final suggestions = await widget.tagService.fetchTagSuggestions(query);
+
+    // Filter out tags already added
+    final filtered = suggestions
+        .where((tag) => !_currentTags.any((t) => t.id == tag.id))
+        .toList();
+
+    appLogger.d('💡 TagEditor suggestions: ${filtered.length} found for "$query"');
+    return filtered;
   }
 
   @override
@@ -162,50 +139,76 @@ class _TagEditorState extends State<TagEditor> {
         if (_currentTags.isNotEmpty && !widget.readOnly) const SizedBox(height: 12),
         // Add tag input (only if not readOnly)
         if (!widget.readOnly)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Input field with suggestions dropdown
-              TextField(
-                controller: _inputController,
-                focusNode: _inputFocus,
+          Autocomplete<Tag>(
+            displayStringForOption: (Tag option) => option.name,
+            optionsBuilder: (TextEditingValue textEditingValue) async {
+              return await _getFilteredSuggestions(textEditingValue.text);
+            },
+            onSelected: (Tag selectedTag) {
+              _addTag(selectedTag.name);
+            },
+            fieldViewBuilder: (BuildContext context,
+                TextEditingController textEditingController,
+                FocusNode focusNode,
+                VoidCallback onFieldSubmitted) {
+              // Store reference to Autocomplete's controller so we can clear it from _addTag
+              _autocompleteController = textEditingController;
+
+              return TextField(
+                controller: textEditingController,
+                focusNode: focusNode,
                 decoration: InputDecoration(
                   hintText: 'z.B. vegetarisch, vegan, roh',
                   prefixIcon: const Icon(Icons.label_outline),
-                  suffixIcon: _inputController.text.isNotEmpty
+                  suffixIcon: textEditingController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.add),
-                          onPressed: () => _addTag(_inputController.text),
+                          onPressed: () => _addTag(textEditingController.text),
                         )
                       : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onSubmitted: _addTag,
-              ),
-              // Suggestions dropdown
-              if (_showSuggestions && _suggestions.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _suggestions.length,
-                    itemBuilder: (context, index) {
-                      final tag = _suggestions[index];
-                      return ListTile(
-                        title: Text(tag.name),
-                        dense: true,
-                        onTap: () => _addTag(tag.name),
-                      );
-                    },
+                onSubmitted: (String value) {
+                  if (value.isNotEmpty) {
+                    _addTag(value);
+                  }
+                },
+                onChanged: (String value) {
+                  // Rebuild to update suffix icon visibility
+                  setState(() {});
+                },
+              );
+            },
+            optionsViewBuilder: (BuildContext context,
+                AutocompleteOnSelected<Tag> onSelected,
+                Iterable<Tag> options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4.0,
+                  child: SizedBox(
+                    width: 300,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final Tag option = options.elementAt(index);
+                        return InkWell(
+                          onTap: () => onSelected(option),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(option.name),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-            ],
+              );
+            },
           ),
       ],
     );
