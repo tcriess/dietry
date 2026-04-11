@@ -1329,4 +1329,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get per100g => 'pro 100g';
+
+  @override
+  String get tags => 'Tags';
+
+  @override
+  String get addTag => 'Tag hinzufügen';
+
+  @override
+  String get tagHint => 'z.B. vegetarisch, vegan, roh...';
+
+  @override
+  String get filterByTag => 'Nach Tag filtern';
 }

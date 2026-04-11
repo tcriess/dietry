@@ -1299,7 +1299,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
 
                 // Tags (public tags, only for owner)
                 Text(
-                  'Tags',
+                  l.tags,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),

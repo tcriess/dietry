@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dietry/models/tag.dart';
 import 'package:dietry/services/tag_service.dart';
 import 'package:dietry/services/app_logger.dart';
+import 'package:dietry/l10n/app_localizations.dart';
 
 /// Reusable widget for editing a list of tags
 ///
@@ -154,11 +155,12 @@ class _TagEditorState extends State<TagEditor> {
               // Store reference to Autocomplete's controller so we can clear it from _addTag
               _autocompleteController = textEditingController;
 
+              final l = AppLocalizations.of(context);
               return TextField(
                 controller: textEditingController,
                 focusNode: focusNode,
                 decoration: InputDecoration(
-                  hintText: 'z.B. vegetarisch, vegan, roh',
+                  hintText: l?.tagHint ?? 'e.g., vegetarian, vegan, raw...',
                   prefixIcon: const Icon(Icons.label_outline),
                   suffixIcon: textEditingController.text.isNotEmpty
                       ? IconButton(

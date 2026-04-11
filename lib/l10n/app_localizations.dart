@@ -2517,6 +2517,30 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'pro 100g'**
   String get per100g;
+
+  /// No description provided for @tags.
+  ///
+  /// In de, this message translates to:
+  /// **'Tags'**
+  String get tags;
+
+  /// No description provided for @addTag.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag hinzufügen'**
+  String get addTag;
+
+  /// No description provided for @tagHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z.B. vegetarisch, vegan, roh...'**
+  String get tagHint;
+
+  /// No description provided for @filterByTag.
+  ///
+  /// In de, this message translates to:
+  /// **'Nach Tag filtern'**
+  String get filterByTag;
 }
 
 class _AppLocalizationsDelegate

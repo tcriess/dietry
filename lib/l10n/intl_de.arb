@@ -621,5 +621,9 @@
   "shareFailed": "❌ Teilen fehlgeschlagen. Bitte versuche es erneut.",
   "logFood": "Lebensmittel eintragen",
   "nutritionInfo": "Nährwertinfo",
-  "per100g": "pro 100g"
+  "per100g": "pro 100g",
+  "tags": "Tags",
+  "addTag": "Tag hinzufügen",
+  "tagHint": "z.B. vegetarisch, vegan, roh...",
+  "filterByTag": "Nach Tag filtern"
 }

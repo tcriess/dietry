@@ -125,7 +125,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                   // Tags section (editable)
                   const SizedBox(height: 20),
                   Text(
-                    'Tags',
+                    l?.tags ?? 'Tags',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),

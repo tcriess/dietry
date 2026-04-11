@@ -586,10 +586,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final tags = await _tagService.getFoodTags(food.id);
     if (!mounted) return;
 
+    final l = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Tags für "${food.name}"'),
+        title: Text('${l?.tags ?? "Tags"} für "${food.name}"'),
         content: TagEditor(
           tags: tags,
           onChanged: (updatedTags) async {
@@ -802,7 +803,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                 // Tag button for adding/editing tags
                                 IconButton(
                                   icon: const Icon(Icons.label_outline),
-                                  tooltip: 'Tags',
+                                  tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
                                   onPressed: () => _editFoodTagsInline(food),
                                 ),
                                 // Menu or chevron for other actions
@@ -1473,6 +1474,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return AlertDialog(
       title: const Text('Zur Datenbank hinzufügen'),
       content: SingleChildScrollView(
@@ -1662,7 +1664,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
 
               // Tags
               Text(
-                'Tags',
+                l.tags,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),

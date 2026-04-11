@@ -621,5 +621,9 @@
   "shareFailed": "❌ Error al compartir. Por favor intenta de nuevo.",
   "logFood": "Registrar alimento",
   "nutritionInfo": "Información nutricional",
-  "per100g": "por 100g"
+  "per100g": "por 100g",
+  "tags": "Etiquetas",
+  "addTag": "Añadir etiqueta",
+  "tagHint": "p.ej. vegetariano, vegano, crudo...",
+  "filterByTag": "Filtrar por etiqueta"
 }
