@@ -159,9 +159,22 @@ class TagService {
         return [];
       }
 
-      final response = await _db.client.rpc('get_available_food_tags');
+      // Call RPC via dio client for better control
+      final url = '${NeonDatabaseService.dataApiUrl}/rpc/get_available_food_tags';
+      final response = await _db.dioClient.get(url);
 
-      final tags = (response as List)
+      if (response.statusCode != 200) {
+        appLogger.e('❌ RPC failed with status ${response.statusCode}: ${response.statusMessage}');
+        return [];
+      }
+
+      final data = response.data;
+      if (data is! List) {
+        appLogger.w('⚠️ Expected List, got ${data.runtimeType}');
+        return [];
+      }
+
+      final tags = data
         .map((json) => Tag.fromJson(json as Map<String, dynamic>))
         .toList();
 

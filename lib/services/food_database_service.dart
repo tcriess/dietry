@@ -80,23 +80,24 @@ class FoodDatabaseService {
     }
   }
 
-  /// Hole alle eigenen private Foods
+  /// Hole alle eigenen private Foods (mit Tags)
   Future<List<FoodItem>> getMyFoods() async {
     try {
       // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) return [];
-      
-      final userId = _userId;
-      if (userId == null) return [];
-      
-      final response = await _db.client
-        .from('food_database')
-        .select()
-        .eq('user_id', userId)
-        .order('is_public', ascending: false)  // Öffentliche zuerst
-        .order('created_at', ascending: false);
-      
+
+      // Use search_food_database() with empty query to get all own foods with tags
+      // This ensures tags are loaded via the RPC function
+      final response = await _db.client.rpc(
+        'search_food_database',
+        params: {
+          'query': '',
+          'filter_tags': null,
+          'max_results': 1000,
+        },
+      );
+
       return (response as List)
         .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
         .toList();

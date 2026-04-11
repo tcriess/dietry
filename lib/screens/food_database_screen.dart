@@ -44,11 +44,34 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   final Map<String, String?> _imageCache = {}; // Cache fetched images
   late FoodImageService _imageService;
 
+  // Tag filtering
+  late TagService _tagService;
+  List<Tag> _availableTags = [];
+  final Set<String> _selectedTagSlugs = {};
+  bool _tagsLoading = true;
+
   @override
   void initState() {
     super.initState();
     _imageService = FoodImageService(widget.dbService);
+    _tagService = TagService(widget.dbService);
     _loadFoods();
+    _loadAvailableTags();
+  }
+
+  Future<void> _loadAvailableTags() async {
+    try {
+      final tags = await _tagService.getAvailableFoodTags();
+      if (mounted) {
+        setState(() {
+          _availableTags = tags;
+          _tagsLoading = false;
+        });
+      }
+    } catch (e) {
+      appLogger.e('Error loading available tags: $e');
+      if (mounted) setState(() => _tagsLoading = false);
+    }
   }
 
   Future<void> _loadFoods() async {
@@ -56,8 +79,19 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
     setState(() => _isLoading = true);
     try {
       final service = FoodDatabaseService(widget.dbService);
-      final foods = await service.getMyFoods();
+      var foods = await service.getMyFoods();
       appLogger.d('_loadFoods: Loaded ${foods.length} foods');
+
+      // Apply tag filtering if tags are selected
+      if (_selectedTagSlugs.isNotEmpty) {
+        foods = foods.where((food) {
+          // Food must have all selected tags
+          final foodTagSlugs = food.tags.map((t) => t.slug).toSet();
+          return _selectedTagSlugs.every((slug) => foodTagSlugs.contains(slug));
+        }).toList();
+        appLogger.d('_loadFoods: After tag filtering: ${foods.length} foods');
+      }
+
       for (final f in foods) {
         if (f.hasImage) {
           appLogger.d('_loadFoods: Food ${f.name} has hasImage=true');
@@ -234,29 +268,64 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _foods.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.no_food, size: 64, color: Colors.grey.shade400),
-                      const SizedBox(height: 16),
-                      Text(
-                        l.entriesEmpty,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+          : Column(
+              children: [
+                // Tag filter chips
+                if (!_tagsLoading && _availableTags.isNotEmpty) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        children: _availableTags.map((tag) {
+                          final isSelected = _selectedTagSlugs.contains(tag.slug);
+                          return FilterChip(
+                            label: Text(tag.name),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedTagSlugs.add(tag.slug);
+                                } else {
+                                  _selectedTagSlugs.remove(tag.slug);
+                                }
+                              });
+                              // Re-load with new filters
+                              _loadFoods();
+                            },
+                          );
+                        }).toList(),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        l.foodDatabaseEmpty,
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                      ),
-                    ],
+                    ),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 88, top: 8, left: 4, right: 4),
-                  itemCount: _foods.length,
-                  itemBuilder: (context, index) {
+                  const Divider(height: 1),
+                ],
+                // Food list
+                Expanded(
+                  child: _foods.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.no_food, size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              Text(
+                                l.entriesEmpty,
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l.foodDatabaseEmpty,
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 88, top: 8, left: 4, right: 4),
+                          itemCount: _foods.length,
+                          itemBuilder: (context, index) {
                     final food = _foods[index];
                     final isSmallScreen = MediaQuery.of(context).size.width < 500;
 
@@ -362,6 +431,37 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+
+                                    // Tags display
+                                    if (food.tags.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 4,
+                                        children: food.tags.take(3).map((tag) {
+                                          return Chip(
+                                            label: Text(
+                                              tag.name,
+                                              style: const TextStyle(fontSize: 10),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                            labelStyle: TextStyle(
+                                              fontSize: 10,
+                                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                      if (food.tags.length > 3)
+                                        Text(
+                                          '+${food.tags.length - 3} mehr',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                    ],
 
                                     // Public status badge on small screens
                                     if (food.isPublic && isSmallScreen) ...[
@@ -545,6 +645,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                     );
                   },
                 ),
+                ),
+              ],
+            ),
     );
   }
 }

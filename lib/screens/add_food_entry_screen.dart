@@ -99,7 +99,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (widget.preselectedFood != null) {
       _selectFood(widget.preselectedFood!);
     }
-    _loadAvailableTags();
+    _loadAvailableTags();  // Load tags for filtering
   }
 
   Future<void> _loadAvailableTags() async {
@@ -791,11 +791,38 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                               ),
                             ),
                             title: Text(food.name),
-                            subtitle: Text(
-                              '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
-                              '${food.brand != null ? ' • ${food.brand}' : ''}'
-                              '${food.category != null ? ' • ${food.category}' : ''}'
-                              '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
+                                  '${food.brand != null ? ' • ${food.brand}' : ''}'
+                                  '${food.category != null ? ' • ${food.category}' : ''}'
+                                  '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
+                                ),
+                                if (food.tags.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: food.tags.map((tag) {
+                                      return Chip(
+                                        label: Text(
+                                          tag.name,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                        labelStyle: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ]
+                              ],
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,

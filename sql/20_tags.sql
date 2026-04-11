@@ -176,9 +176,9 @@ $$;
 -- Includes: owner-added tags (visible to all) + current user's tags
 DROP FUNCTION IF EXISTS get_available_food_tags();
 CREATE OR REPLACE FUNCTION get_available_food_tags()
-RETURNS SETOF tags
+RETURNS TABLE (id UUID, name TEXT, slug TEXT, created_by UUID, created_at TIMESTAMP)
 LANGUAGE sql SECURITY INVOKER STABLE AS $$
-  SELECT DISTINCT t.* FROM tags t
+  SELECT DISTINCT t.id, t.name, t.slug, t.created_by, t.created_at FROM tags t
   WHERE EXISTS (
     -- Owner-added tags (visible to all users)
     SELECT 1 FROM user_food_tags uft
