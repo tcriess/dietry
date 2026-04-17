@@ -1272,7 +1272,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get reportsBalance => 'Bilanz';
 
   @override
-  String get reportsUpsellBasic => 'Verfügbar in der Cloud Edition (Basic+)';
+  String get reportsUpsellBasic => 'Verfügbar in der Cloud Edition';
 
   @override
   String get reportsUpsellPro => 'Verfügbar für Pro-Nutzer';

@@ -2413,7 +2413,7 @@ abstract class AppLocalizations {
   /// No description provided for @reportsUpsellBasic.
   ///
   /// In de, this message translates to:
-  /// **'Verfügbar in der Cloud Edition (Basic+)'**
+  /// **'Verfügbar in der Cloud Edition'**
   String get reportsUpsellBasic;
 
   /// No description provided for @reportsUpsellPro.

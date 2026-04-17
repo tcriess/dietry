@@ -1280,7 +1280,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportsBalance => 'Balance';
 
   @override
-  String get reportsUpsellBasic => 'Disponible en Cloud Edition (Basic+)';
+  String get reportsUpsellBasic => 'Disponible en Cloud Edition';
 
   @override
   String get reportsUpsellPro => 'Disponible para usuarios Pro';
