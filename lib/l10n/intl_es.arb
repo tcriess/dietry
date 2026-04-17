@@ -585,7 +585,7 @@
   "reportsCaloriesBurned": "Quemadas",
   "reportsConsumed": "Consumidas",
   "reportsBalance": "Balance",
-  "reportsUpsellBasic": "Disponible en Cloud Edition (Basic+)",
+  "reportsUpsellBasic": "Disponible en Cloud Edition",
   "reportsUpsellPro": "Disponible para usuarios Pro",
   "reportsLoading": "Cargando informes…",
   "reportsExportTooltip": "Exportar como CSV",
