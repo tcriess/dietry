@@ -6,17 +6,18 @@ import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/user_body_measurements_service.dart';
+import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'tracking_method_screen.dart';
 
 /// Screen zur Eingabe von Körperdaten und Berechnung von Nutrition Goal Empfehlungen
 class GoalRecommendationScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
 
   const GoalRecommendationScreen({
     super.key,
-    required this.dbService,
+    this.dbService,
   });
 
   @override
@@ -52,16 +53,26 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
 
   Future<void> _loadProfileData() async {
     try {
-      final profileService = UserProfileService(widget.dbService);
-      final measurementService = UserBodyMeasurementsService(widget.dbService);
+      UserProfile? profile;
+      UserBodyMeasurement? measurement;
 
-      final results = await Future.wait([
-        profileService.getCurrentProfile(),
-        measurementService.getCurrentMeasurement(),
-      ]);
+      if (widget.dbService != null) {
+        // Remote mode: load from server
+        final profileService = UserProfileService(widget.dbService!);
+        final measurementService = UserBodyMeasurementsService(widget.dbService!);
 
-      final profile = results[0] as UserProfile?;
-      final measurement = results[1] as UserBodyMeasurement?;
+        final results = await Future.wait([
+          profileService.getCurrentProfile(),
+          measurementService.getCurrentMeasurement(),
+        ]);
+
+        profile = results[0] as UserProfile?;
+        measurement = results[1] as UserBodyMeasurement?;
+      } else {
+        // Guest mode: load from local database
+        profile = await LocalDataService.instance.getUserProfile();
+        measurement = await LocalDataService.instance.getCurrentMeasurement();
+      }
 
       if (mounted) {
         setState(() {
@@ -229,35 +240,72 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
       appLogger.d('      - Wasserziel: ${goal.waterGoalMl} ml');
 
       appLogger.d('');
-      appLogger.d('🔧 Erstelle NutritionGoalService...');
-      final goalService = NutritionGoalService(widget.dbService);
-      appLogger.d('   ✅ Service bereit');
+      appLogger.d('🔧 Speichermodus wird bestimmt (Remote vs. Guest)...');
 
-      appLogger.d('');
-      appLogger.d('💾 SPEICHERE Goal in Datenbank...');
-      await goalService.createOrUpdateGoal(goal);
-      appLogger.d('   ✅✅✅ GOAL ERFOLGREICH GESPEICHERT! ✅✅✅');
+      if (widget.dbService != null) {
+        // Remote mode: save to server
+        appLogger.d('   → REMOTE MODE: Speichere auf Server');
+        final goalService = NutritionGoalService(widget.dbService!);
+        appLogger.d('   ✅ NutritionGoalService bereit');
 
-      // Always save profile + measurement alongside goal
-      if (_birthdate != null) {
-        try {
-          final profileService = UserProfileService(widget.dbService);
-          final measurementService = UserBodyMeasurementsService(widget.dbService);
-          final profile = UserProfile(
-            birthdate: _birthdate,
-            height: _currentBodyData!.height,
-            gender: _currentBodyData!.gender,
-            activityLevel: _currentBodyData!.activityLevel,
-            weightGoal: _currentBodyData!.weightGoal,
-          );
-          await profileService.updateProfile(profile);
-          final measurement = UserBodyMeasurement(
-            weight: _currentBodyData!.weight,
-            measuredAt: DateTime.now(),
-          );
-          await measurementService.saveMeasurement(measurement);
-        } catch (e) {
-          // Not critical — goal was saved
+        appLogger.d('');
+        appLogger.d('💾 SPEICHERE Goal in Server-Datenbank...');
+        await goalService.createOrUpdateGoal(goal);
+        appLogger.d('   ✅✅✅ GOAL ERFOLGREICH AUF SERVER GESPEICHERT! ✅✅✅');
+
+        // Save profile + measurement alongside goal in remote mode
+        if (_birthdate != null) {
+          try {
+            final profileService = UserProfileService(widget.dbService!);
+            final measurementService = UserBodyMeasurementsService(widget.dbService!);
+            final profile = UserProfile(
+              birthdate: _birthdate,
+              height: _currentBodyData!.height,
+              gender: _currentBodyData!.gender,
+              activityLevel: _currentBodyData!.activityLevel,
+              weightGoal: _currentBodyData!.weightGoal,
+            );
+            await profileService.updateProfile(profile);
+            final measurement = UserBodyMeasurement(
+              weight: _currentBodyData!.weight,
+              measuredAt: DateTime.now(),
+            );
+            await measurementService.saveMeasurement(measurement);
+          } catch (e) {
+            // Not critical — goal was saved
+          }
+        }
+      } else {
+        // Guest mode: save to local database
+        appLogger.d('   → GUEST MODE: Speichere lokal');
+
+        appLogger.d('');
+        appLogger.d('💾 SPEICHERE Goal in lokaler Datenbank...');
+        await LocalDataService.instance.upsertGoal(goal);
+        appLogger.d('   ✅✅✅ GOAL ERFOLGREICH LOKAL GESPEICHERT! ✅✅✅');
+
+        // Save profile + measurement in guest mode
+        if (_birthdate != null) {
+          try {
+            final profile = UserProfile(
+              birthdate: _birthdate,
+              height: _currentBodyData!.height,
+              gender: _currentBodyData!.gender,
+              activityLevel: _currentBodyData!.activityLevel,
+              weightGoal: _currentBodyData!.weightGoal,
+            );
+            await LocalDataService.instance.saveUserProfile(profile);
+            appLogger.d('   ✅ Profil lokal gespeichert');
+
+            final measurement = UserBodyMeasurement(
+              weight: _currentBodyData!.weight,
+              measuredAt: DateTime.now(),
+            );
+            await LocalDataService.instance.saveMeasurement(measurement);
+            appLogger.d('   ✅ Körpermessungen lokal gespeichert');
+          } catch (e) {
+            appLogger.e('⚠️  Fehler beim Speichern von Profil/Messungen (nicht kritisch): $e');
+          }
         }
       }
 
@@ -281,8 +329,8 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         await showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) {
-            final ld = AppLocalizations.of(context)!;
+          builder: (dialogContext) {
+            final ld = AppLocalizations.of(dialogContext)!;
             return AlertDialog(
               icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
               title: Text(ld.goalSavedDialogTitle),
@@ -305,8 +353,14 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).pop();
+                    // Pop dialog first with dialog context
+                    Navigator.of(dialogContext).pop();
+                    // Then pop the screen using the screen's context (using Future to ensure dialog is closed first)
+                    Future.microtask(() {
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    });
                   },
                   child: Text(ld.toOverview),
                 ),

@@ -22,12 +22,17 @@ import 'app_features.dart';
 import 'services/neon_database_service.dart';
 import 'services/neon_auth_service.dart' show NeonAuthService, EmailVerificationPendingException;
 import 'services/nutrition_goal_service.dart';
+import 'services/food_entry_service.dart';
+import 'services/physical_activity_service.dart';
 import 'services/jwt_helper.dart';
 import 'services/data_store.dart';
 import 'services/sync_service.dart';
 import 'services/water_intake_service.dart';
 import 'services/water_reminder_service.dart';
 import 'services/cheat_day_service.dart';
+import 'services/guest_mode_service.dart';
+import 'services/guest_migration_service.dart';
+import 'services/local_data_service.dart';
 import 'app_config.dart';
 import 'services/server_config_service.dart';
 import 'services/feedback_service.dart';
@@ -40,7 +45,9 @@ import 'models/models.dart';
 // Screens
 import 'screens/goal_recommendation_screen.dart';
 import 'screens/food_entries_list_screen.dart';
+import 'screens/add_food_entry_screen.dart';
 import 'screens/activities_list_screen.dart';
+import 'screens/add_activity_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/info_screen.dart';
 import 'screens/reports_screen.dart';
@@ -51,16 +58,23 @@ void main() async {
   // Initialize app logger with configured log level
   initializeAppLogger();
 
+  // Initialize guest mode flag from SharedPreferences
+  await GuestModeService.init();
+
   // Initialize AppFeatures from environment (for PREMIUM_ROLE override in dev/test)
   AppFeatures.initializeFromEnvironment();
 
-  // sqflite needs FFI on Linux/Windows/macOS desktop (not web, not Android/iOS)
+  // Platform-specific database initialization
   if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.linux ||
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.macOS)) {
+    // Desktop: Use FFI
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    appLogger.d('🖥️ Desktop platform: Using SQLite FFI');
   }
+  // Web: LocalDataService will use idb_shim's IndexedDB API directly
+  // Mobile (Android/iOS): Uses default sqflite (no setup needed)
 
   // Load any user-configured server URLs before services start.
   try {
@@ -199,6 +213,21 @@ class LoginScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                 child: Text(
                   l.devBannerText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (GuestModeService.isGuestMode)
+              Container(
+                width: double.infinity,
+                color: Colors.blue.shade600,
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                child: Text(
+                  l.guestModeBannerText,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white,
@@ -481,6 +510,55 @@ class LoginScreen extends StatelessWidget {
             _EmailLoginSection(
               authService: authService,
               dbService: dbService,
+            ),
+
+            const SizedBox(height: 24),
+
+            // Guest mode button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.person_outline),
+                label: Text(l.continueAsGuest),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 16),
+                ),
+                onPressed: () async {
+                  try {
+                    appLogger.d('[GuestButton] enable() starting...');
+                    await GuestModeService.enable();
+                    appLogger.d('[GuestButton] enable() completed, isGuestMode=${GuestModeService.isGuestMode}');
+
+                    if (context.mounted) {
+                      appLogger.d('[GuestButton] navigating to AuthApp with guest mode enabled...');
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const AuthApp()),
+                        (route) => false,
+                      );
+                    }
+                  } catch (e) {
+                    appLogger.e('❌ Error enabling guest mode: $e');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l.guestModeError),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Guest mode note
+            Text(
+              l.guestModeNote,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
 
             const SizedBox(height: 20),
@@ -982,33 +1060,83 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   NeonDatabaseService? _dbService;
   Locale? _locale;
   bool _dbInitialized = false;
+  bool _guestModeInitStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _authService = NeonAuthService();
-    _authService.addListener(_onAuthChanged);
 
     // Registriere App Lifecycle Observer
     WidgetsBinding.instance.addObserver(this);
 
-    // Web: Prüfe localStorage auf JWT asynchron
-    if (kIsWeb) {
-      _checkWebJWT();
-    }
+    // Initialize auth service for all modes
+    _authService = NeonAuthService();
 
-    // Initialisiere Database Service mit Token-Refresh-Callback.
-    // catchError: setzt _dbInitialized=true damit die Spinner-Bedingung in build()
-    // nicht dauerhaft blockiert — auch bei Init-Fehlern muss der Login-Screen
-    // erreichbar sein.
-    _initDatabaseService().catchError((e) {
-      appLogger.e('Fehler bei DB-Initialisierung: $e');
-      appLogger.d('[_initDatabaseService] ❌ EXCEPTION caught: $e');
-      if (!_dbInitialized) {
-        _dbInitialized = true;
-        if (mounted) setState(() {});
+    // Check guest mode first
+    if (GuestModeService.isGuestMode) {
+      appLogger.i('👤 Guest mode enabled, initializing local storage...');
+      _initGuestModeAsync();
+    } else {
+      // Remote mode: normal auth flow
+      _authService.addListener(_onAuthChanged);
+
+      // Web: Prüfe localStorage auf JWT asynchron
+      if (kIsWeb) {
+        _checkWebJWT();
       }
+
+      // Initialisiere Database Service mit Token-Refresh-Callback.
+      _initDatabaseService().catchError((e) {
+        appLogger.e('Fehler bei DB-Initialisierung: $e');
+        appLogger.d('[_initDatabaseService] ❌ EXCEPTION caught: $e');
+        if (!_dbInitialized) {
+          _dbInitialized = true;
+          if (mounted) setState(() {});
+        }
+      });
+    }
+  }
+
+  /// Async wrapper to initialize guest mode and trigger rebuild
+  void _initGuestModeAsync() {
+    appLogger.d('[_initGuestModeAsync] starting...');
+    _initGuestMode().then((_) {
+      appLogger.d('[_initGuestModeAsync] ✅ _initGuestMode completed');
+      _dbInitialized = true;
+      appLogger.d('[_initGuestModeAsync] set _dbInitialized=true, calling setState()');
+      if (mounted) setState(() {});
+    }).catchError((e) {
+      appLogger.e('[_initGuestModeAsync] ❌ Error: $e');
+      _dbInitialized = true;
+      if (mounted) setState(() {});
     });
+  }
+
+  /// Initialize guest mode with local SQLite storage
+  Future<void> _initGuestMode() async {
+    appLogger.d('[_initGuestMode] Starting initialization');
+    try {
+      // Initialize local database
+      appLogger.d('[_initGuestMode] Initializing LocalDataService...');
+      final local = LocalDataService.instance;
+      await local.init();
+      appLogger.d('[_initGuestMode] LocalDataService initialized');
+
+      // Initialize DataStore with local database
+      appLogger.d('[_initGuestMode] Initializing DataStore with local...');
+      DataStore.instance.initLocal(local);
+      appLogger.d('[_initGuestMode] DataStore initialized');
+
+      // Initialize SyncService with local database
+      appLogger.d('[_initGuestMode] Initializing SyncService with local...');
+      SyncService.instance.initLocal(local);
+      appLogger.d('[_initGuestMode] SyncService initialized');
+
+      appLogger.i('✅ Guest mode initialized successfully');
+    } catch (e) {
+      appLogger.e('❌ Error in _initGuestMode: $e');
+      rethrow;
+    }
   }
   
   Future<void> _initDatabaseService() async {
@@ -1327,8 +1455,13 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         appLogger.d('[_onAuthChanged] ❌ Error in setJWT: $e');
         appLogger.d('[_onAuthChanged] ❌ Stack trace: $stackTrace');
         appLogger.w('⚠️ Fehler beim Sync des JWT nach Auth-Änderung: $e');
-      }).then((_) {
+      }).then((_) async {
         appLogger.d('[_onAuthChanged] ✓ setJWT completed successfully');
+        // Check if user was in guest mode and has data to migrate
+        if (mounted && GuestModeService.wasGuestMode) {
+          appLogger.i('👤 User was in guest mode, checking for data to migrate...');
+          _showGuestMigrationDialog(db);
+        }
       });
       // Aktualisiere Premium-Feature-Gates aus JWT-Claim.
       try {
@@ -1369,14 +1502,208 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     appLogger.d('[_onAuthChanged] ✓ setState completed');
   }
 
+  /// Check if user has any existing data in remote database
+  Future<bool> _userHasExistingData(NeonDatabaseService db) async {
+    try {
+      // Check if user has any nutrition goals
+      final goalService = NutritionGoalService(db);
+      final goal = await goalService.getCurrentGoal();
+      if (goal != null) {
+        appLogger.d('ℹ️ User has existing nutrition goal');
+        return true;
+      }
+
+      // Check if user has any food entries
+      final foodService = FoodEntryService(db);
+      final today = DateTime.now();
+      final entries = await foodService.getFoodEntriesForDate(today);
+      if (entries.isNotEmpty) {
+        appLogger.d('ℹ️ User has existing food entries');
+        return true;
+      }
+
+      // Check if user has any activities
+      final activityService = PhysicalActivityService(db);
+      final activities = await activityService.getActivitiesForDate(today);
+      if (activities.isNotEmpty) {
+        appLogger.d('ℹ️ User has existing activities');
+        return true;
+      }
+
+      appLogger.d('✅ User is fresh (no existing data)');
+      return false;
+    } catch (e) {
+      appLogger.w('⚠️ Could not check user data: $e');
+      // If we can't check, assume user is fresh (be lenient)
+      return false;
+    }
+  }
+
+  Future<void> _showGuestMigrationDialog(NeonDatabaseService db) async {
+    final l = AppLocalizations.of(context);
+    if (l == null || !mounted) return;
+
+    final local = LocalDataService.instance;
+    final userId = JwtHelper.extractUserId(_authService.jwt ?? '');
+
+    if (userId == null || userId.isEmpty) {
+      appLogger.e('❌ Could not extract userId from JWT');
+      _showSnackBar(l.migrationError);
+      return;
+    }
+
+    // Check if user already has data
+    appLogger.d('🔍 Checking if user has existing data...');
+    final hasExistingData = await _userHasExistingData(db);
+
+    if (hasExistingData) {
+      appLogger.w('⚠️ User already has data, skipping migration');
+      _showSnackBar('⚠️ Migration not possible: Account already has data');
+      // Guest data is preserved — user can log out and try a different account
+      return;
+    }
+
+    if (!mounted) return;
+
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l.migrationDialogTitle),
+        content: Text(l.migrationDialogContent),
+        actions: [
+          TextButton(
+            onPressed: () {
+              appLogger.d('Migration: User selected DISCARD');
+              Navigator.of(dialogContext).pop(false);
+            },
+            child: Text(l.migrationDiscard),
+          ),
+          TextButton(
+            onPressed: () {
+              appLogger.d('Migration: User selected TRANSFER');
+              Navigator.of(dialogContext).pop(true);
+            },
+            child: Text(l.migrationTransfer),
+          ),
+        ],
+      ),
+    ).then((shouldTransfer) async {
+      if (!mounted) return;
+
+      if (shouldTransfer == true) {
+        appLogger.i('🔄 Starting guest data migration...');
+        try {
+          final result = await GuestMigrationService.migrate(local, db, userId);
+
+          if (mounted) {
+            if (result.success) {
+              appLogger.i('✅ Migration completed successfully');
+              final summary = result.summary.isNotEmpty ? result.summary : 'Daten';
+              _showSnackBar('✅ $summary übertragen');
+              // Only clear guest data after successful migration
+              await local.clearAll();
+              await GuestModeService.disable();
+              appLogger.i('✅ Guest data cleared after successful migration');
+            } else {
+              appLogger.w('⚠️ Migration completed with errors: ${result.errors.join(', ')}');
+              _showSnackBar(l.migrationError);
+              // Do NOT clear guest data if migration had errors
+              appLogger.w('⚠️ Guest data preserved due to migration errors');
+            }
+          }
+        } catch (e) {
+          appLogger.e('❌ Migration failed: $e');
+          if (mounted) {
+            _showSnackBar(l.migrationError);
+          }
+          // Do NOT clear guest data if migration failed
+          appLogger.w('⚠️ Guest data preserved due to migration failure');
+        }
+      } else {
+        // User selected DISCARD
+        appLogger.d('🗑️ User discarding guest data');
+        await local.clearAll();
+        await GuestModeService.disable();
+        appLogger.i('✅ Guest data cleared by user');
+      }
+    });
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final db = _dbService;
+
+    // Guest mode check first
+    if (GuestModeService.isGuestMode) {
+      if (!_dbInitialized) {
+        return MaterialApp(
+          localizationsDelegates: [
+            ...AppLocalizations.localizationsDelegates,
+            ...CloudLocalizations.localizationsDelegates,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: _locale,
+          home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+        );
+      }
+      // Guest mode ready: show home screen without auth
+      return MaterialApp(
+        title: 'Dietry',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        locale: _locale,
+        home: DietryHomeWithLogout(
+          key: const ValueKey('guest_mode'),
+          authService: _authService,
+          dbService: db,
+          isGuestMode: true,
+          onLocaleChanged: (locale) => setState(() => _locale = locale),
+        ),
+        localizationsDelegates: [
+          ...AppLocalizations.localizationsDelegates,
+          ...CloudLocalizations.localizationsDelegates,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      );
+    }
+
+    // Remote mode: existing logic
     // Show spinner until both auth and DB are fully ready.
     // When logged in, also wait for _dbInitialized so the main screen never
     // renders before db.setJWT() has been called (otherwise data loading stalls).
     // When not logged in, show the login screen immediately — no DB needed.
-    if (_authService.isLoading || db == null || (_authService.isLoggedIn && !_dbInitialized)) {
+    // Check if still loading (remote mode) or waiting for guest mode initialization
+    final isGuestMode = GuestModeService.isGuestMode;
+    appLogger.d('[build] isGuestMode=$isGuestMode, _dbInitialized=$_dbInitialized, _guestModeInitStarted=$_guestModeInitStarted');
+
+    // Initialize guest mode if just activated
+    if (isGuestMode && !_guestModeInitStarted) {
+      appLogger.d('🔄 Guest mode detected in build(), starting initialization...');
+      _guestModeInitStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appLogger.d('[addPostFrameCallback] calling _initGuestModeAsync()');
+        _initGuestModeAsync();
+      });
+    }
+
+    final authServiceLoading = _authService.isLoading;
+    final remoteNeedsDb = !isGuestMode && (db == null || (_authService.isLoggedIn && !_dbInitialized));
+    final guestNeedsDb = isGuestMode && !_dbInitialized;
+    final isWaitingForInit = authServiceLoading || remoteNeedsDb || guestNeedsDb;
+
+    appLogger.d('[build] isWaitingForInit=$isWaitingForInit: '
+        'authServiceLoading=$authServiceLoading, remoteNeedsDb=$remoteNeedsDb, guestNeedsDb=$guestNeedsDb');
+
+    if (isWaitingForInit) {
       return MaterialApp(
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
@@ -1387,6 +1714,31 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
+
+    // Guest mode: show main app
+    if (isGuestMode) {
+      return MaterialApp(
+        title: 'Dietry',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        locale: _locale,
+        home: DietryHomeWithLogout(
+          key: const ValueKey('guest'),
+          authService: _authService,
+          dbService: null,
+          isGuestMode: true,
+          onLocaleChanged: (locale) => setState(() => _locale = locale),
+        ),
+        localizationsDelegates: [
+          ...AppLocalizations.localizationsDelegates,
+          ...CloudLocalizations.localizationsDelegates,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      );
+    }
+
     if (!_authService.isLoggedIn) {
       return MaterialApp(
         localizationsDelegates: [
@@ -1397,7 +1749,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         locale: _locale,
         home: LoginScreen(
           authService: _authService,
-          dbService: db,
+          dbService: db!,  // Non-null because isWaitingForInit checks db != null in remote mode
           onLocaleChanged: (locale) => setState(() => _locale = locale),
         ),
       );
@@ -1413,6 +1765,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         key: ValueKey(_authService.session?['user']?['id'] ?? _authService.jwt),
         authService: _authService,
         dbService: db,
+        isGuestMode: false,
         onLocaleChanged: (locale) => setState(() => _locale = locale),
       ),
       localizationsDelegates: [
@@ -1427,14 +1780,16 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 // Wrapper für DietryHome mit Logout-Button
 class DietryHomeWithLogout extends StatefulWidget {
   final NeonAuthService authService;
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final void Function(Locale?) onLocaleChanged;
+  final bool isGuestMode;
 
   const DietryHomeWithLogout({
     super.key,
     required this.authService,
-    required this.dbService,
+    this.dbService,
     required this.onLocaleChanged,
+    this.isGuestMode = false,
   });
 
   @override
@@ -1443,12 +1798,15 @@ class DietryHomeWithLogout extends StatefulWidget {
 
 class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
   final _dietryHomeKey = GlobalKey<_DietryHomeState>();
-  late final FeedbackService _feedbackService;
+  FeedbackService? _feedbackService;
 
   @override
   void initState() {
     super.initState();
-    _feedbackService = FeedbackService(widget.dbService);
+    // Only initialize FeedbackService in remote mode
+    if (!widget.isGuestMode && widget.dbService != null) {
+      _feedbackService = FeedbackService(widget.dbService!);
+    }
   }
 
   @override
@@ -1459,35 +1817,59 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
         key: _dietryHomeKey,
         dbService: widget.dbService,
         authService: widget.authService,
+        isGuestMode: widget.isGuestMode,
       ),
       appBar: AppBar(
         title: Text(l.appBarTitle),
-        bottom: AppConfig.showDeveloperBanner
+        bottom: (AppConfig.showDeveloperBanner || widget.isGuestMode)
             ? PreferredSize(
-                preferredSize: const Size.fromHeight(24),
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.orange.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Text(
-                    l.devBannerText,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                preferredSize: Size.fromHeight(
+                  (AppConfig.showDeveloperBanner ? 24 : 0) + (widget.isGuestMode ? 24 : 0),
+                ),
+                child: Column(
+                  children: [
+                    if (AppConfig.showDeveloperBanner)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.orange.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Text(
+                          l.devBannerText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    if (widget.isGuestMode)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.blue.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Text(
+                          l.guestModeBannerText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               )
             : null,
         actions: [
-          // Feedback
-          IconButton(
-            icon: const Icon(Icons.feedback_outlined),
-            tooltip: l.feedbackTooltip,
-            onPressed: () => FeedbackDialog.show(context, _feedbackService),
-          ),
+          // Feedback (remote mode only)
+          if (!widget.isGuestMode && _feedbackService != null)
+            IconButton(
+              icon: const Icon(Icons.feedback_outlined),
+              tooltip: l.feedbackTooltip,
+              onPressed: () => FeedbackDialog.show(context, _feedbackService!),
+            ),
           // Sprache wechseln
           PopupMenuButton<Locale?>(
             icon: const Icon(Icons.language),
@@ -1512,32 +1894,122 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               );
             },
           ),
-          // Profil
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: l.profileTooltip,
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProfileScreen(
-                    dbService: widget.dbService,
-                    authService: widget.authService,
+          // Profil / Ziel-Empfehlung
+          if (widget.isGuestMode)
+            IconButton(
+              icon: const Icon(Icons.person),
+              tooltip: l.profileTooltip,
+              onPressed: () async {
+                // Guest mode: navigate to GoalRecommendationScreen for profile/goal setup
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GoalRecommendationScreen(
+                      dbService: null,
+                    ),
                   ),
-                ),
-              );
+                );
+                _dietryHomeKey.currentState?._loadCurrentGoal();
+              },
+            )
+          else if (widget.dbService != null)
+            IconButton(
+              icon: const Icon(Icons.person),
+              tooltip: l.profileTooltip,
+              onPressed: () async {
+                // Remote mode: navigate to ProfileScreen
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileScreen(
+                      dbService: widget.dbService!,
+                      authService: widget.authService,
+                      isGuestMode: widget.isGuestMode,
+                    ),
+                  ),
+                );
 
-              // Nach Rückkehr: Goal neu laden (Ziel könnte geändert worden sein)
-              _dietryHomeKey.currentState?._loadCurrentGoal();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: l.logoutTooltip,
-            onPressed: () async {
-              await widget.authService.signOut();
-            },
-          ),
+                // Nach Rückkehr: Goal neu laden (Ziel könnte geändert worden sein)
+                _dietryHomeKey.currentState?._loadCurrentGoal();
+              },
+            ),
+          // Delete guest data (guest mode only)
+          if (widget.isGuestMode)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: l.deleteGuestDataTitle,
+              onPressed: () async {
+                final l = AppLocalizations.of(context)!;
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(l.deleteGuestDataTitle),
+                    content: Text(l.deleteGuestDataConfirm),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(l.cancel),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(l.delete),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  try {
+                    await LocalDataService.instance.clearAll();
+                    await GuestModeService.disable();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l.deleteGuestDataSuccess),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      // Navigate to login screen
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const AuthApp()),
+                        (route) => false,
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l.errorPrefix(e.toString())),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+            ),
+          // Sign in (guest mode) or Logout (remote mode)
+          if (widget.isGuestMode)
+            IconButton(
+              icon: const Icon(Icons.login),
+              tooltip: l.guestModeSignIn,
+              onPressed: () async {
+                await GuestModeService.disable();
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthApp()),
+                    (route) => false,
+                  );
+                }
+              },
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: l.logoutTooltip,
+              onPressed: () async {
+                await widget.authService.signOut();
+              },
+            ),
         ],
       ),
     );
@@ -1545,13 +2017,15 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
 }
 
 class DietryHome extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final NeonAuthService authService;
-  
+  final bool isGuestMode;
+
   const DietryHome({
     super.key,
-    required this.dbService,
+    this.dbService,
     required this.authService,
+    this.isGuestMode = false,
   });
 
   @override
@@ -1570,9 +2044,15 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _store.init(widget.dbService);
+
+    final db = widget.dbService;
+    if (!widget.isGuestMode && db != null) {
+      _store.init(db);
+      _sync.init(db);
+    }
+    // Guest mode: services already initialized in _initGuestMode()
+
     _store.addListener(_onStoreChanged);
-    _sync.init(widget.dbService);
     _initializeAndLoadData();
     // Refresh data every 60 s while the app is in the foreground.
     _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _silentRefresh());
@@ -1600,7 +2080,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
   /// Reload current day without showing a full-screen spinner.
   Future<void> _silentRefresh() async {
-    if (widget.dbService.userId == null) return;
+    final db = widget.dbService;
+
+    // Guest mode: no remote sync needed, just reload from local
+    if (widget.isGuestMode || db == null) {
+      await _store.loadDay(_selectedDay, silent: true);
+      return;
+    }
+
+    // Remote mode: check userId and do delta sync
+    if (db.userId == null) return;
     await _store.loadDay(_selectedDay, silent: true, delta: true);
     _sync.processPendingQueue();
   }
@@ -1636,11 +2125,13 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       return;
     }
     // Anderer Tag ausgewählt → heutigen Stand aus der DB holen und aktualisieren.
-    final currentIntake = await WaterIntakeService(widget.dbService)
-        .getIntakeForDate(today);
-    final newAmount = (currentIntake + deltaMl).clamp(0, 9999);
-    await WaterIntakeService(widget.dbService)
-        .setIntakeForDate(today, newAmount);
+    if (widget.dbService != null) {
+      final currentIntake = await WaterIntakeService(widget.dbService!)
+          .getIntakeForDate(today);
+      final newAmount = (currentIntake + deltaMl).clamp(0, 9999);
+      await WaterIntakeService(widget.dbService!)
+          .setIntakeForDate(today, newAmount);
+    }
   }
 
   void _onStoreChanged() {
@@ -1688,12 +2179,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
   Future<void> _initializeAndLoadData() async {
     await Future.delayed(const Duration(milliseconds: 100));
+
+    // In guest mode, dbService is null; proceed directly to loading
+    if (widget.isGuestMode || widget.dbService == null) {
+      await _store.loadDay(_selectedDay);
+      return;
+    }
+
     int attempts = 0;
-    while (widget.dbService.userId == null && attempts < 20) {
+    while (widget.dbService!.userId == null && attempts < 20) {
       await Future.delayed(const Duration(milliseconds: 100));
       attempts++;
     }
-    if (widget.dbService.userId == null) {
+    if (widget.dbService!.userId == null) {
       _store.setGoal(null); // triggers isInitialLoading = false via loadDay
       return;
     }
@@ -1710,10 +2208,13 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     final before = _store.waterIntakeMl;
     final newAmount = (before + deltaMl).clamp(0, 9999);
     _store.setWaterIntakeMl(newAmount); // optimistic
-    final saved = await WaterIntakeService(widget.dbService)
-        .setIntakeForDate(_selectedDay, newAmount);
-    if (saved == null) {
-      _store.setWaterIntakeMl(before); // revert to exact previous value
+
+    if (widget.dbService != null) {
+      final saved = await WaterIntakeService(widget.dbService!)
+          .setIntakeForDate(_selectedDay, newAmount);
+      if (saved == null) {
+        _store.setWaterIntakeMl(before); // revert to exact previous value
+      }
     }
   }
 
@@ -1725,7 +2226,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   }
 
   Future<void> _toggleCheatDay() async {
-    final svc = CheatDayService(widget.dbService);
+    if (widget.dbService == null) return;
+
+    final svc = CheatDayService(widget.dbService!);
     final wasCheatDay = _store.isCheatDay;
 
     // Optimistic update
@@ -1819,11 +2322,20 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     
     // ✅ Beschränkung 2: Prüfe ob Goal für neuen Tag existiert (beim Zurückblättern)
     if (offset < 0) {
-      final goalService = NutritionGoalService(widget.dbService);
-      final hasGoal = await goalService.hasGoalForDate(newDay);
-      
+      bool hasGoal = false;
+
+      if (widget.dbService != null) {
+        // Remote mode: check with NutritionGoalService
+        final goalService = NutritionGoalService(widget.dbService!);
+        hasGoal = await goalService.hasGoalForDate(newDay);
+      } else {
+        // Guest mode: check with LocalDataService
+        final localGoal = await LocalDataService.instance.getGoalForDate(newDay);
+        hasGoal = localGoal != null;
+      }
+
       if (!mounted) return;  // ✅ Prüfe nach async Operation
-      
+
       if (!hasGoal) {
         appLogger.w('⚠️ Kein Goal für ${newDay.toIso8601String().split('T')[0]} gefunden');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1891,24 +2403,43 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                FilledButton.icon(
-                  onPressed: () async {
-                    // Navigiere zu Goal-Empfehlung
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => GoalRecommendationScreen(
-                          dbService: widget.dbService,
+                if (widget.isGuestMode)
+                  FilledButton.icon(
+                    onPressed: () async {
+                      // Navigate to GoalRecommendationScreen for guest mode
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GoalRecommendationScreen(
+                            dbService: null,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                      // Nach Rückkehr: Goal neu laden
+                      _loadCurrentGoal();
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text(l.createGoal),
+                  )
+                else if (widget.dbService != null)
+                  FilledButton.icon(
+                    onPressed: () async {
+                      // Navigiere zu Goal-Empfehlung
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GoalRecommendationScreen(
+                            dbService: widget.dbService!,
+                          ),
+                        ),
+                      );
 
-                    // Nach Rückkehr: Goal neu laden
-                    _loadCurrentGoal();
-                  },
-                  icon: const Icon(Icons.add),
-                  label: Text(l.createGoal),
-                ),
+                      // Nach Rückkehr: Goal neu laden
+                      _loadCurrentGoal();
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text(l.createGoal),
+                  ),
               ],
             ),
           ),
@@ -1916,7 +2447,46 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       );
     }
     
+    // Build FAB based on selected tab
+    Widget? fab;
+    if (_selectedIndex == 1) {
+      // Food Entries tab: show add button
+      fab = FloatingActionButton(
+        heroTag: 'fab_add_entry',
+        onPressed: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AddFoodEntryScreen(
+                dbService: widget.dbService,
+                selectedDate: _selectedDay,
+              ),
+            ),
+          );
+        },
+        tooltip: l.addEntry,
+        child: const Icon(Icons.add),
+      );
+    } else if (_selectedIndex == 2) {
+      // Activities tab: show add button (works in both guest and authenticated modes)
+      fab = FloatingActionButton(
+        heroTag: 'fab_add_activity',
+        onPressed: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AddActivityScreen(
+                dbService: widget.dbService,
+                selectedDate: _selectedDay,
+              ),
+            ),
+          );
+        },
+        tooltip: l.addActivity,
+        child: const Icon(Icons.add),
+      );
+    }
+
     return Scaffold(
+      floatingActionButton: fab,
       body: Stack(
         children: [
           IndexedStack(
@@ -2062,7 +2632,7 @@ class OverviewScreen extends StatelessWidget {
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
   final void Function(int deltaMl) onWaterChanged;
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final bool isCheatDay;
   final int streak;
   final int bestStreak;
@@ -2633,11 +3203,11 @@ class OverviewScreen extends StatelessWidget {
           // Responsive nutrition overview (cards on mobile, table on desktop)
           _buildNutritionOverview(context, l),
           // Mikronährstoff-Karte (Premium, konfigurierbar)
-          if (AppFeatures.microNutrients) ...[
+          if (AppFeatures.microNutrients && dbService != null) ...[
             const SizedBox(height: 24),
             Builder(builder: (context) {
-              final jwt = dbService.jwt;
-              final userId = dbService.userId;
+              final jwt = dbService!.jwt;
+              final userId = dbService!.userId;
               if (jwt == null || userId == null) return const SizedBox.shrink();
               return premiumFeatures.buildMicroOverviewCard(
                 entryIds: entries.map((e) => e.id).toList(),

@@ -381,6 +381,10 @@
       }
     }
   },
+  "continueAsGuest": "Continue as Guest",
+  "guestModeNote": "Your data is stored locally on this device only. No account needed!",
+  "guestModeError": "Error enabling guest mode",
+  "guestModeSignIn": "Sign in to sync",
   "infoTitle": "Info & Legal Notice",
   "infoImpressumSection": "Legal Notice",
   "infoPrivacySection": "Privacy",
@@ -493,6 +497,7 @@
   "waterAdd": "Add water",
   "waterRemove": "Remove water",
   "devBannerText": "⚠️ Preview build · Development database · Data is not permanently stored",
+  "guestModeBannerText": "👤 Guest mode · Data stored locally · Sign in to sync",
   "waterGoalFieldLabel": "Water goal",
   "waterGoalFieldHint": "Recommended: approx. 35 ml per kg body weight",
   "waterReminderTitle": "Drink reminders",
@@ -625,5 +630,21 @@
   "tags": "Tags",
   "addTag": "Add Tag",
   "tagHint": "e.g., vegetarian, vegan, raw...",
-  "filterByTag": "Filter by tag"
+  "filterByTag": "Filter by tag",
+  "deleteGuestDataTitle": "Delete Guest Data",
+  "deleteGuestDataConfirm": "All your guest data (entries, goals, profile) will be deleted and cannot be recovered. Continue?",
+  "deleteGuestDataSuccess": "✅ All guest data deleted",
+  "migrationDialogTitle": "Transfer Guest Data?",
+  "migrationDialogContent": "You had entries in guest mode. These can be transferred to your account.",
+  "migrationTransfer": "Transfer",
+  "migrationDiscard": "Discard",
+  "migrationSuccess": "✅ {count} entries transferred",
+  "@migrationSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "migrationError": "⚠️ Migration error (entries can be transferred manually)"
 }

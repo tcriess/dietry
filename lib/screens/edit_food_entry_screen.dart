@@ -11,12 +11,12 @@ import '../l10n/app_localizations.dart';
 
 /// Screen zum Bearbeiten eines Food-Entries
 class EditFoodEntryScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final FoodEntry entry;
 
   const EditFoodEntryScreen({
     super.key,
-    required this.dbService,
+    this.dbService,
     required this.entry,
   });
 
@@ -134,7 +134,12 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
   Future<void> _loadFoodItem(String foodId) async {
     try {
-      final service = FoodDatabaseService(widget.dbService);
+      // In guest mode, dbService is null, so skip loading food item details
+      if (widget.dbService == null) {
+        return;
+      }
+
+      final service = FoodDatabaseService(widget.dbService!);
       final food = await service.getFoodById(foodId);
       if (food != null && mounted) {
         setState(() {

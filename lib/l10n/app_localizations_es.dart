@@ -856,6 +856,19 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get continueAsGuest => 'Continuar como Invitado';
+
+  @override
+  String get guestModeNote =>
+      'Tus datos se almacenan localmente solo en este dispositivo. ¡No se necesita cuenta!';
+
+  @override
+  String get guestModeError => 'Error al activar modo invitado';
+
+  @override
+  String get guestModeSignIn => 'Inicia sesión para sincronizar';
+
+  @override
   String get infoTitle => 'Info y Aviso Legal';
 
   @override
@@ -1075,6 +1088,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get devBannerText =>
       '⚠️ Versión preliminar · Base de datos de desarrollo · Los datos no se guardan permanentemente';
+
+  @override
+  String get guestModeBannerText =>
+      '👤 Modo invitado · Datos almacenados localmente · Inicia sesión para sincronizar';
 
   @override
   String get waterGoalFieldLabel => 'Objetivo de agua';
@@ -1348,4 +1365,37 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get filterByTag => 'Filtrar por etiqueta';
+
+  @override
+  String get deleteGuestDataTitle => 'Eliminar datos de invitado';
+
+  @override
+  String get deleteGuestDataConfirm =>
+      'Todos tus datos de invitado (entradas, objetivos, perfil) se eliminarán y no se pueden recuperar. ¿Continuar?';
+
+  @override
+  String get deleteGuestDataSuccess =>
+      '✅ Todos los datos de invitado eliminados';
+
+  @override
+  String get migrationDialogTitle => '¿Transferir datos de invitado?';
+
+  @override
+  String get migrationDialogContent =>
+      'Tenías entradas en modo invitado. Estas pueden transferirse a tu cuenta.';
+
+  @override
+  String get migrationTransfer => 'Transferir';
+
+  @override
+  String get migrationDiscard => 'Descartar';
+
+  @override
+  String migrationSuccess(int count) {
+    return '✅ $count entradas transferidas';
+  }
+
+  @override
+  String get migrationError =>
+      '⚠️ Error en la migración (las entradas se pueden transferir manualmente)';
 }

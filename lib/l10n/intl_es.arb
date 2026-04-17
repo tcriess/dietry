@@ -381,6 +381,10 @@
       }
     }
   },
+  "continueAsGuest": "Continuar como Invitado",
+  "guestModeNote": "Tus datos se almacenan localmente solo en este dispositivo. ¡No se necesita cuenta!",
+  "guestModeError": "Error al activar modo invitado",
+  "guestModeSignIn": "Inicia sesión para sincronizar",
   "infoTitle": "Info y Aviso Legal",
   "infoImpressumSection": "Aviso Legal",
   "infoPrivacySection": "Privacidad",
@@ -493,6 +497,7 @@
   "waterAdd": "Agregar agua",
   "waterRemove": "Quitar agua",
   "devBannerText": "⚠️ Versión preliminar · Base de datos de desarrollo · Los datos no se guardan permanentemente",
+  "guestModeBannerText": "👤 Modo invitado · Datos almacenados localmente · Inicia sesión para sincronizar",
   "waterGoalFieldLabel": "Objetivo de agua",
   "waterGoalFieldHint": "Recomendación: aprox. 35 ml por kg de peso corporal",
   "waterReminderTitle": "Recordatorios de agua",
@@ -625,5 +630,21 @@
   "tags": "Etiquetas",
   "addTag": "Añadir etiqueta",
   "tagHint": "p.ej. vegetariano, vegano, crudo...",
-  "filterByTag": "Filtrar por etiqueta"
+  "filterByTag": "Filtrar por etiqueta",
+  "deleteGuestDataTitle": "Eliminar datos de invitado",
+  "deleteGuestDataConfirm": "Todos tus datos de invitado (entradas, objetivos, perfil) se eliminarán y no se pueden recuperar. ¿Continuar?",
+  "deleteGuestDataSuccess": "✅ Todos los datos de invitado eliminados",
+  "migrationDialogTitle": "¿Transferir datos de invitado?",
+  "migrationDialogContent": "Tenías entradas en modo invitado. Estas pueden transferirse a tu cuenta.",
+  "migrationTransfer": "Transferir",
+  "migrationDiscard": "Descartar",
+  "migrationSuccess": "✅ {count} entradas transferidas",
+  "@migrationSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "migrationError": "⚠️ Error en la migración (las entradas se pueden transferir manualmente)"
 }

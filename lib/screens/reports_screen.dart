@@ -71,7 +71,7 @@ class _ReportsData {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 class ReportsScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final NutritionGoal? goal;
 
   const ReportsScreen({super.key, required this.dbService, this.goal});
@@ -90,8 +90,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    _svc = ReportsService(widget.dbService);
-    _reload();
+    if (widget.dbService != null) {
+      _svc = ReportsService(widget.dbService!);
+      _reload();
+    } else {
+      // Guest mode: return empty data
+      _future = Future.value(const _ReportsData(
+        nutrition: [],
+        water: [],
+        weight: [],
+      ));
+    }
   }
 
   void _reload() {
@@ -104,8 +113,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
   static String _fmt(DateTime d) => d.toIso8601String().split('T')[0];
 
   Future<_ReportsData> _load() async {
+    // In guest mode, dbService is null; return empty data
+    if (widget.dbService == null) {
+      return const _ReportsData(
+        nutrition: [],
+        water: [],
+        weight: [],
+      );
+    }
+
     // Ensure token is valid before fetching data
-    final tokenValid = await widget.dbService.ensureValidToken(minMinutesValid: 5);
+    final tokenValid = await widget.dbService!.ensureValidToken(minMinutesValid: 5);
     if (!tokenValid) {
       throw Exception('Token validation failed');
     }
@@ -131,7 +149,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _export() async {
     final data = _lastData;
-    if (data == null) return;
+    if (data == null || widget.dbService == null) return;
     setState(() => _exportBusy = true);
     try {
       final l = AppLocalizations.of(context)!;
@@ -140,8 +158,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ceExporter: exporter.exportCsvFiles,
         range: _range.name,
         role: AppFeatures.role,
-        userId: widget.dbService.userId ?? '',
-        authToken: widget.dbService.jwt ?? '',
+        userId: widget.dbService!.userId ?? '',
+        authToken: widget.dbService!.jwt ?? '',
         apiUrl: NeonDatabaseService.dataApiUrl,
         fromDate: from != null ? _fmt(from) : null,
         toDate: _fmt(to),
@@ -249,8 +267,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 data: data,
                 range: _range,
                 goal: widget.goal,
-                userId: widget.dbService.userId ?? '',
-                authToken: widget.dbService.jwt ?? '',
+                userId: widget.dbService?.userId ?? '',
+                authToken: widget.dbService?.jwt ?? '',
                 role: AppFeatures.role,
               );
             },

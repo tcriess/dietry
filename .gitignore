@@ -33,6 +33,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/coverage/
 
 # Cloud build override: nicht ins Community-Repo committen, falls es da ist
 /pubspec_overrides.yaml

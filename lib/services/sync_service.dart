@@ -5,7 +5,9 @@ import '../models/physical_activity.dart';
 import 'food_entry_service.dart';
 import 'physical_activity_service.dart';
 import 'neon_database_service.dart';
+import 'local_data_service.dart';
 import 'offline_queue.dart';
+import 'app_logger.dart';
 
 /// Monitors connectivity and replays queued offline operations.
 /// Also exposes [isOnline] and [pendingCount] for UI display.
@@ -14,6 +16,7 @@ class SyncService extends ChangeNotifier {
   SyncService._();
 
   NeonDatabaseService? _db;
+  LocalDataService? _local;
   bool _isOnline = true;
   int _pendingCount = 0;
   bool _isSyncing = false;
@@ -35,6 +38,14 @@ class SyncService extends ChangeNotifier {
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _periodicSync());
   }
 
+  /// Initialize for guest mode (local SQLite storage)
+  void initLocal(LocalDataService local) {
+    _local = local;
+    _isOnline = true;  // Always online in local mode (no queue)
+    _pendingCount = 0;  // No offline queue in local mode
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -46,6 +57,18 @@ class SyncService extends ChangeNotifier {
   /// Create a food entry. Returns the server-assigned entity (with real id/timestamps),
   /// or null if the operation was queued for later.
   Future<FoodEntry?> createFoodEntry(FoodEntry entry) async {
+    // Guest mode: direct local storage
+    if (_local != null) {
+      try {
+        final result = await _local!.createFoodEntry(entry);
+        return result;
+      } catch (e) {
+        appLogger.e('❌ Error creating food entry locally: $e');
+        return null;
+      }
+    }
+
+    // Remote mode: existing behavior
     try {
       final result = await FoodEntryService(_db!).createFoodEntry(entry);
       _markOnline();
@@ -63,6 +86,18 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<FoodEntry?> updateFoodEntry(FoodEntry entry) async {
+    // Guest mode: direct local storage
+    if (_local != null) {
+      try {
+        final result = await _local!.updateFoodEntry(entry);
+        return result;
+      } catch (e) {
+        appLogger.e('❌ Error updating food entry locally: $e');
+        return null;
+      }
+    }
+
+    // Remote mode: existing behavior
     try {
       final result = await FoodEntryService(_db!).updateFoodEntry(entry);
       _markOnline();
@@ -80,6 +115,18 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> deleteFoodEntry(String id) async {
+    // Guest mode: direct local storage
+    if (_local != null) {
+      try {
+        await _local!.deleteFoodEntry(id);
+        return;
+      } catch (e) {
+        appLogger.e('❌ Error deleting food entry locally: $e');
+        return;
+      }
+    }
+
+    // Remote mode: existing behavior
     try {
       await FoodEntryService(_db!).deleteFoodEntry(id);
       _markOnline();
@@ -95,6 +142,18 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<PhysicalActivity?> saveActivity(PhysicalActivity activity) async {
+    // Guest mode: direct local storage
+    if (_local != null) {
+      try {
+        final result = await _local!.createActivity(activity);
+        return result;
+      } catch (e) {
+        appLogger.e('❌ Error saving activity locally: $e');
+        return null;
+      }
+    }
+
+    // Remote mode: existing behavior
     try {
       final result = await PhysicalActivityService(_db!).saveActivity(activity);
       _markOnline();
@@ -112,6 +171,18 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<PhysicalActivity?> updateActivity(PhysicalActivity activity) async {
+    // Guest mode: direct local storage
+    if (_local != null) {
+      try {
+        final result = await _local!.updateActivity(activity);
+        return result;
+      } catch (e) {
+        appLogger.e('❌ Error updating activity locally: $e');
+        return null;
+      }
+    }
+
+    // Remote mode: existing behavior
     try {
       final result = await PhysicalActivityService(_db!).updateActivity(activity);
       _markOnline();
@@ -129,6 +200,18 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> deleteActivity(String id) async {
+    // Guest mode: direct local storage
+    if (_local != null) {
+      try {
+        await _local!.deleteActivity(id);
+        return;
+      } catch (e) {
+        appLogger.e('❌ Error deleting activity locally: $e');
+        return;
+      }
+    }
+
+    // Remote mode: existing behavior
     try {
       await PhysicalActivityService(_db!).deleteActivity(id);
       _markOnline();

@@ -1,21 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:dietry_cloud/dietry_cloud.dart';
-import '../app_features.dart';
 import '../models/physical_activity.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
-import '../services/physical_activity_service.dart';
-import '../services/health_connect_service.dart';
 import '../l10n/app_localizations.dart';
-import 'add_activity_screen.dart';
-import 'activity_database_screen.dart';
 import 'edit_activity_screen.dart';
 
 /// Screen zur Anzeige aller Aktivitäten eines Tages
 class ActivitiesListScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
@@ -67,121 +61,9 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
       );
     }
   }
-  
-  Future<void> _showActivityQuickAdd() async {
-    final db = widget.dbService;
-    final jwt = db.jwt;
-    final userId = db.userId;
-    if (jwt == null || userId == null) return;
-
-    premiumFeatures.showActivityQuickAddSheet(
-      context: context,
-      userId: userId,
-      authToken: jwt,
-      apiUrl: NeonDatabaseService.dataApiUrl,
-      date: widget.selectedDay,
-      onAdd: (data) async {
-        final activity = PhysicalActivity(
-          activityType: ActivityType.values.firstWhere(
-            (t) => t.name == data.activityType,
-            orElse: () => ActivityType.other,
-          ),
-          activityId: data.activityId,
-          activityName: data.activityName,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          durationMinutes: data.durationMinutes,
-          caloriesBurned: data.caloriesBurned,
-          distanceKm: data.distanceKm,
-          source: DataSource.manual,
-        );
-        final saved = await SyncService.instance.saveActivity(activity);
-        _store.addActivity(saved ?? activity);
-      },
-    );
-  }
-
-  Future<void> _importFromHealthConnect() async {
-    final l = AppLocalizations.of(context)!;
-    if (!HealthConnectService.isSupported) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.healthConnectUnavailable)),
-      );
-      return;
-    }
-
-    final hc = HealthConnectService();
-    final granted = await hc.requestPermissions();
-    if (!granted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectUnavailable)),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.healthConnectImporting)),
-    );
-
-    try {
-      // Import only the selected day (local timezone: midnight–23:59:59).
-      final d = widget.selectedDay;
-      final start = DateTime(d.year, d.month, d.day);
-      final end = DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
-      final imported = await hc.importActivities(start: start, end: end);
-
-      if (imported.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectNoResults)),
-          );
-        }
-        return;
-      }
-
-      final service = PhysicalActivityService(widget.dbService);
-      // Lade vorhandene HC-IDs um Duplikate zu vermeiden
-      final existing = await service.getActivitiesInRange(start: start, end: end);
-      final existingHcIds = existing
-          .map((a) => a.healthConnectRecordId)
-          .whereType<String>()
-          .toSet();
-
-      final toSave = imported
-          .where((a) => a.healthConnectRecordId == null ||
-              !existingHcIds.contains(a.healthConnectRecordId))
-          .toList();
-
-      for (final activity in toSave) {
-        final saved = await SyncService.instance.saveActivity(activity);
-        // Add to store with the server-returned entity (has real id) if available.
-        _store.addActivity(saved ?? activity);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.healthConnectSuccess(toSave.length)),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.healthConnectError(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   Future<void> _editActivity(PhysicalActivity activity) async {
+    // Allow editing in guest mode (dbService can be null)
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => EditActivityScreen(
@@ -426,76 +308,6 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                         },
                       ),
           ),
-        ],
-      ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (AppFeatures.activityQuickAdd) ...[
-            FloatingActionButton(
-              heroTag: 'fab_activity_quick_add',
-              onPressed: _showActivityQuickAdd,
-              tooltip: 'Schnelleintrag',
-              child: const Icon(Icons.bolt),
-            ),
-            const SizedBox(width: 12),
-          ],
-          if (HealthConnectService.isSupported)
-            FloatingActionButton(
-              heroTag: 'fab_health_connect',
-              onPressed: _importFromHealthConnect,
-              tooltip: l.importHealthConnect,
-              child: const Icon(Icons.health_and_safety_outlined),
-            ),
-          if (HealthConnectService.isSupported) const SizedBox(width: 12),
-          FloatingActionButton(
-            heroTag: 'fab_activity_database',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ActivityDatabaseScreen(dbService: widget.dbService),
-                ),
-              );
-            },
-            tooltip: l.myActivities,
-            child: const Icon(Icons.storage_outlined),
-          ),
-          const SizedBox(width: 12),
-          if (MediaQuery.of(context).size.width >= 550)
-            FloatingActionButton.extended(
-              heroTag: 'fab_add_activity',
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AddActivityScreen(
-                      dbService: widget.dbService,
-                      selectedDate: widget.selectedDay,
-                    ),
-                  ),
-                );
-                // DataStore is updated directly by AddActivityScreen.
-              },
-              icon: const Icon(Icons.add),
-              label: Text(l.addActivity),
-            )
-          else
-            FloatingActionButton(
-              heroTag: 'fab_add_activity',
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AddActivityScreen(
-                      dbService: widget.dbService,
-                      selectedDate: widget.selectedDay,
-                    ),
-                  ),
-                );
-                // DataStore is updated directly by AddActivityScreen.
-              },
-              tooltip: l.addActivity,
-              child: const Icon(Icons.add),
-            ),
         ],
       ),
     );

@@ -846,6 +846,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get continueAsGuest => 'Continue as Guest';
+
+  @override
+  String get guestModeNote =>
+      'Your data is stored locally on this device only. No account needed!';
+
+  @override
+  String get guestModeError => 'Error enabling guest mode';
+
+  @override
+  String get guestModeSignIn => 'Sign in to sync';
+
+  @override
   String get infoTitle => 'Info & Legal Notice';
 
   @override
@@ -1063,6 +1076,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get devBannerText =>
       '⚠️ Preview build · Development database · Data is not permanently stored';
+
+  @override
+  String get guestModeBannerText =>
+      '👤 Guest mode · Data stored locally · Sign in to sync';
 
   @override
   String get waterGoalFieldLabel => 'Water goal';
@@ -1335,4 +1352,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filterByTag => 'Filter by tag';
+
+  @override
+  String get deleteGuestDataTitle => 'Delete Guest Data';
+
+  @override
+  String get deleteGuestDataConfirm =>
+      'All your guest data (entries, goals, profile) will be deleted and cannot be recovered. Continue?';
+
+  @override
+  String get deleteGuestDataSuccess => '✅ All guest data deleted';
+
+  @override
+  String get migrationDialogTitle => 'Transfer Guest Data?';
+
+  @override
+  String get migrationDialogContent =>
+      'You had entries in guest mode. These can be transferred to your account.';
+
+  @override
+  String get migrationTransfer => 'Transfer';
+
+  @override
+  String get migrationDiscard => 'Discard';
+
+  @override
+  String migrationSuccess(int count) {
+    return '✅ $count entries transferred';
+  }
+
+  @override
+  String get migrationError =>
+      '⚠️ Migration error (entries can be transferred manually)';
 }
