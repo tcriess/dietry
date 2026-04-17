@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 import 'dart:convert' show base64Decode;
 import '../app_features.dart';
@@ -8,19 +7,14 @@ import '../models/food_entry.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
-import '../services/food_database_service.dart';
-import '../services/food_search_service.dart';
 import '../services/food_image_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
-import '../widgets/quick_food_entry_sheet.dart';
-import 'add_food_entry_screen.dart';
 import 'edit_food_entry_screen.dart';
-import 'food_database_screen.dart';
 
 /// Screen zur Anzeige und Verwaltung aller Food-Entries eines Tages
 class FoodEntriesListScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
@@ -46,8 +40,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   void initState() {
     super.initState();
     _store.addListener(_onStoreChanged);
-    _imageService = FoodImageService(widget.dbService);
-    _loadImagesForEntries(_store.foodEntries);
+    if (widget.dbService != null) {
+      _imageService = FoodImageService(widget.dbService!);
+      _loadImagesForEntries(_store.foodEntries);
+    }
   }
 
   @override
@@ -62,7 +58,8 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   void _loadImagesForEntries(List<FoodEntry> entries) {
-    final jwt = widget.dbService.jwt;
+    if (widget.dbService == null) return;
+    final jwt = widget.dbService!.jwt;
     final apiUrl = NeonDatabaseService.dataApiUrl;
 
     for (final entry in entries) {
@@ -88,10 +85,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   Future<void> _loadMealImage(String mealTemplateId, String cacheKey, String? jwt, String apiUrl) async {
-    if (jwt == null) return;
+    if (jwt == null || widget.dbService == null) return;
     try {
       // Use cloud edition's MealImageService via PostgREST
-      final response = await widget.dbService.dioClient.get(
+      final response = await widget.dbService!.dioClient.get(
         '/meal_images?template_id=eq.$mealTemplateId',
       );
 
@@ -176,151 +173,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     }
   }
 
-  /// Determines the most likely meal type based on the current time of day.
-  MealType _suggestMealType() {
-    final hour = DateTime.now().hour;
-    if (hour < 10) return MealType.breakfast;
-    if (hour < 14) return MealType.lunch;
-    if (hour < 18) return MealType.snack;
-    return MealType.dinner;
-  }
-
-  Future<void> _showQuickAddSheet() async {
-    final db = widget.dbService;
-    final jwt = db.jwt;
-    final userId = db.userId;
-    if (jwt == null || userId == null) return;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => FractionallySizedBox(
-        heightFactor: 0.85,
-        child: QuickFoodEntrySheet(
-          dbService: db,
-          date: widget.selectedDay,
-          initialMealType: _suggestMealType(),
-          onAdd: (entry) async {
-            final saved = await SyncService.instance.createFoodEntry(entry);
-            if (saved != null) DataStore.instance.addFoodEntry(saved);
-            if (AppFeatures.microNutrients && entry.foodId != null) {
-              premiumFeatures.copyFoodMicrosToEntry(
-                foodId: entry.foodId!,
-                entryId: saved?.id ?? entry.id,
-                userId: userId,
-                amountG: entry.amount,
-                authToken: jwt,
-                apiUrl: NeonDatabaseService.dataApiUrl,
-              );
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showMealTemplatesSheet() async {
-    appLogger.d('🍽️ _showMealTemplatesSheet called');
-    final db = widget.dbService;
-    final jwt = db.jwt;
-    final userId = db.userId;
-    appLogger.d('🍽️ jwt=${jwt != null}, userId=$userId, premium=${premiumFeatures.runtimeType}');
-    if (jwt == null || userId == null) return;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => FractionallySizedBox(
-        heightFactor: 0.7,
-        child: premiumFeatures.buildMealTemplatesSheet(
-        userId: userId,
-        date: widget.selectedDay,
-        authToken: jwt,
-        dataApiUrl: NeonDatabaseService.dataApiUrl,
-        onSearchIngredient: (query, {searchOnline = false}) async {
-          if (searchOnline) {
-            final results = await FoodSearchService().search(query, limit: 20);
-            return results.map((r) => MealIngredientCandidate(
-              id: r.food.id.isNotEmpty ? r.food.id : null,
-              name: r.food.name,
-              calories: r.food.calories,
-              protein: r.food.protein,
-              fat: r.food.fat,
-              carbs: r.food.carbs,
-              fiber: r.food.fiber,
-              sugar: r.food.sugar,
-              sodium: r.food.sodium,
-              source: r.food.source,
-              portions: r.food.portions
-                  .map((p) => (name: p.name, weightG: p.amountG))
-                  .toList(),
-              isLiquid: r.food.isLiquid,
-            )).toList();
-          } else {
-            final items = await FoodDatabaseService(widget.dbService)
-                .searchFoods(query, limit: 20);
-            return items.map((f) => MealIngredientCandidate(
-              id: f.id.isNotEmpty ? f.id : null,
-              name: f.name,
-              calories: f.calories,
-              protein: f.protein,
-              fat: f.fat,
-              carbs: f.carbs,
-              fiber: f.fiber,
-              sugar: f.sugar,
-              sodium: f.sodium,
-              portions: f.portions
-                  .map((p) => (name: p.name, weightG: p.amountG))
-                  .toList(),
-              isLiquid: f.isLiquid,
-            )).toList();
-          }
-        },
-        onLog: (data) async {
-          final entry = FoodEntry(
-            id: const Uuid().v4(),
-            userId: userId,
-            mealTemplateId: data.id,
-            entryDate: widget.selectedDay,
-            mealType: MealType.fromJson(data.mealType),
-            name: data.name,
-            amount: data.amount,
-            unit: data.unit,
-            calories: data.calories,
-            protein: data.protein,
-            fat: data.fat,
-            carbs: data.carbs,
-            fiber: data.fiber,
-            sugar: data.sugar,
-            sodium: data.sodium,
-            // Meals are never marked as isLiquid (they can be mixed)
-            // But amountMl is set if there are liquid ingredients
-            isLiquid: false,
-            amountMl: data.liquidMlContribution,
-            isMeal: true,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          );
-          final saved = await SyncService.instance.createFoodEntry(entry);
-          if (saved != null) {
-            DataStore.instance.addFoodEntry(saved);
-          }
-        },
-        ),
-      ),
-    );
-  }
-
   Future<void> _editEntry(FoodEntry entry) async {
     // EditFoodEntryScreen updates DataStore directly on save.
+    // dbService can be null in guest mode (will use LocalDataService via SyncService)
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => EditFoodEntryScreen(
@@ -371,6 +226,82 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+
+    // In guest mode, dbService is null; show basic view without images/search
+    if (widget.dbService == null) {
+      final formattedDate = DateFormat.yMMMMd(Localizations.localeOf(context).toString()).format(widget.selectedDay);
+      final isToday = DateUtils.isSameDay(widget.selectedDay, DateTime.now());
+      final entries = _store.foodEntries;
+
+      return Scaffold(
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      tooltip: l.previousDay,
+                      onPressed: () => widget.onChangeDay(-1),
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          l.entriesTitle,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        Text(
+                          formattedDate,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        if (!isToday)
+                          TextButton(
+                            onPressed: widget.onJumpToToday,
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(l.today, style: const TextStyle(fontSize: 12)),
+                          ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      tooltip: l.nextDay,
+                      onPressed: () => widget.onChangeDay(1),
+                    ),
+                  ],
+                ),
+              ),
+              if (entries.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('No entries for this day'),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return ListTile(
+                      title: Text(entry.name),
+                      subtitle: Text('${entry.amount} ${entry.unit}'),
+                      trailing: Text('${entry.calories.toStringAsFixed(0)} kcal'),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final formattedDate = DateFormat.yMMMMd(Localizations.localeOf(context).toString()).format(widget.selectedDay);
     final isToday = DateUtils.isSameDay(widget.selectedDay, DateTime.now());
     final entries = _store.foodEntries;
@@ -562,6 +493,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                               icon: const Icon(Icons.science_outlined, size: 20),
                                               onPressed: () {
                                                 final db = widget.dbService;
+                                                if (db == null) return;
                                                 final jwt = db.jwt;
                                                 final userId = db.userId;
                                                 if (jwt == null || userId == null) return;
@@ -605,77 +537,6 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                         ],
                       ),
           ),
-        ],
-      ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: 'fab_quick_add',
-            onPressed: _showQuickAddSheet,
-            tooltip: 'Schnelleintrag',
-            child: const Icon(Icons.bolt),
-          ),
-          const SizedBox(width: 12),
-          if (AppFeatures.mealTemplates) ...[
-            FloatingActionButton(
-              heroTag: 'fab_meal_templates',
-              onPressed: _showMealTemplatesSheet,
-              tooltip: 'Mahlzeiten-Vorlagen',
-              child: const Icon(Icons.restaurant_menu),
-            ),
-            const SizedBox(width: 12),
-          ],
-          FloatingActionButton(
-            heroTag: 'fab_database',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => FoodDatabaseScreen(
-                    dbService: widget.dbService,
-                    pickerMode: false,
-                  ),
-                ),
-              );
-            },
-            tooltip: l.myFoods,
-            child: const Icon(Icons.storage_outlined),
-          ),
-          const SizedBox(width: 12),
-          if (MediaQuery.of(context).size.width >= 550)
-            FloatingActionButton.extended(
-              heroTag: 'fab_add',
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AddFoodEntryScreen(
-                      dbService: widget.dbService,
-                      selectedDate: widget.selectedDay,
-                    ),
-                  ),
-                );
-                // DataStore is updated directly by AddFoodEntryScreen.
-              },
-              icon: const Icon(Icons.add),
-              label: Text(l.addEntry),
-            )
-          else
-            FloatingActionButton(
-              heroTag: 'fab_add',
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AddFoodEntryScreen(
-                      dbService: widget.dbService,
-                      selectedDate: widget.selectedDay,
-                    ),
-                  ),
-                );
-                // DataStore is updated directly by AddFoodEntryScreen.
-              },
-              tooltip: l.addEntry,
-              child: const Icon(Icons.add),
-            ),
         ],
       ),
     );

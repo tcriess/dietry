@@ -24,13 +24,15 @@ enum _MeasurementRange { month1, months3, months6, year1, all }
 class ProfileScreen extends StatefulWidget {
   final NeonDatabaseService dbService;
   final NeonAuthService authService;
-  
+  final bool isGuestMode;
+
   const ProfileScreen({
     super.key,
     required this.dbService,
     required this.authService,
+    this.isGuestMode = false,
   });
-  
+
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -47,18 +49,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Guest mode: show empty state
+    if (widget.isGuestMode) {
+      _isLoading = false;
+    } else {
+      _loadData();
+    }
   }
-  
+
   Future<void> _loadData() async {
+    final db = widget.dbService;
+
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      final profileService = UserProfileService(widget.dbService);
-      final measurementService = UserBodyMeasurementsService(widget.dbService);
-      final goalService = NutritionGoalService(widget.dbService);
+      final profileService = UserProfileService(db);
+      final measurementService = UserBodyMeasurementsService(db);
+      final goalService = NutritionGoalService(db);
 
       final end = DateTime.now();
       final start = _rangeStart(end);
@@ -106,8 +115,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _changeRange(_MeasurementRange range) async {
+    final db = widget.dbService;
+
     setState(() => _selectedRange = range);
-    final service = UserBodyMeasurementsService(widget.dbService);
+    final service = UserBodyMeasurementsService(db);
     final end = DateTime.now();
     final start = _rangeStart(end);
     final measurements = start != null
@@ -266,7 +277,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAccountInfo(BuildContext context) {
     final name = widget.authService.userName;
     final email = widget.authService.userEmail;
-    if (name == null && email == null) return const SizedBox.shrink();
 
     Widget? badge;
     if (AppFeatures.isPro) {
@@ -297,6 +307,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+
+    // Guest mode: show placeholder
+    if (widget.isGuestMode) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l.profileTitle)),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.person, size: 64, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(
+                l.guestModeSignIn,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Profile management requires signing in',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l.profileTitle),

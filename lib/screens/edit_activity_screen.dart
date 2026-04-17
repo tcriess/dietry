@@ -11,12 +11,12 @@ import '../l10n/app_localizations.dart';
 
 /// Screen zum Bearbeiten einer Aktivität
 class EditActivityScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final PhysicalActivity activity;
-  
+
   const EditActivityScreen({
     super.key,
-    required this.dbService,
+    this.dbService,
     required this.activity,
   });
   
@@ -63,7 +63,18 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
   /// Lade alle Activities aus Datenbank
   Future<void> _loadActivities() async {
     try {
-      final service = ActivityDatabaseService(widget.dbService);
+      // In guest mode (no dbService), skip loading from database
+      if (widget.dbService == null) {
+        appLogger.d('ℹ️ Guest mode: Skipping activity database load');
+        if (mounted) {
+          setState(() {
+            _isLoadingActivities = false;
+          });
+        }
+        return;
+      }
+
+      final service = ActivityDatabaseService(widget.dbService!);
       final publicActivities = await service.getPublicActivities();
       final myActivities = await service.getMyActivities();
       

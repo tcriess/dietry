@@ -1660,6 +1660,30 @@ abstract class AppLocalizations {
   /// **'Login fehlgeschlagen: {error}'**
   String loginFailed(String error);
 
+  /// No description provided for @continueAsGuest.
+  ///
+  /// In de, this message translates to:
+  /// **'Als Gast fortfahren'**
+  String get continueAsGuest;
+
+  /// No description provided for @guestModeNote.
+  ///
+  /// In de, this message translates to:
+  /// **'Deine Daten werden nur auf diesem Gerät gespeichert. Kein Konto erforderlich!'**
+  String get guestModeNote;
+
+  /// No description provided for @guestModeError.
+  ///
+  /// In de, this message translates to:
+  /// **'Fehler beim Aktivieren des Gastmodus'**
+  String get guestModeError;
+
+  /// No description provided for @guestModeSignIn.
+  ///
+  /// In de, this message translates to:
+  /// **'Anmelden zum Synchronisieren'**
+  String get guestModeSignIn;
+
   /// No description provided for @infoTitle.
   ///
   /// In de, this message translates to:
@@ -2037,6 +2061,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'⚠️ Vorab-Version · Entwicklungsdatenbank · Daten werden nicht dauerhaft gespeichert'**
   String get devBannerText;
+
+  /// No description provided for @guestModeBannerText.
+  ///
+  /// In de, this message translates to:
+  /// **'👤 Gastmodus · Daten werden lokal gespeichert · Melde dich an, um zu synchronisieren'**
+  String get guestModeBannerText;
 
   /// No description provided for @waterGoalFieldLabel.
   ///
@@ -2541,6 +2571,60 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Nach Tag filtern'**
   String get filterByTag;
+
+  /// No description provided for @deleteGuestDataTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Gast-Daten löschen'**
+  String get deleteGuestDataTitle;
+
+  /// No description provided for @deleteGuestDataConfirm.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle deine Gast-Daten (Einträge, Ziele, Profil) werden gelöscht und können nicht wiederhergestellt werden. Fortfahren?'**
+  String get deleteGuestDataConfirm;
+
+  /// No description provided for @deleteGuestDataSuccess.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ Alle Gast-Daten gelöscht'**
+  String get deleteGuestDataSuccess;
+
+  /// No description provided for @migrationDialogTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Gast-Daten übernehmen?'**
+  String get migrationDialogTitle;
+
+  /// No description provided for @migrationDialogContent.
+  ///
+  /// In de, this message translates to:
+  /// **'Du hattest bereits Einträge im Gast-Modus. Diese können auf deinen Account übertragen werden.'**
+  String get migrationDialogContent;
+
+  /// No description provided for @migrationTransfer.
+  ///
+  /// In de, this message translates to:
+  /// **'Übernehmen'**
+  String get migrationTransfer;
+
+  /// No description provided for @migrationDiscard.
+  ///
+  /// In de, this message translates to:
+  /// **'Verwerfen'**
+  String get migrationDiscard;
+
+  /// No description provided for @migrationSuccess.
+  ///
+  /// In de, this message translates to:
+  /// **'✅ {count} Einträge übertragen'**
+  String migrationSuccess(int count);
+
+  /// No description provided for @migrationError.
+  ///
+  /// In de, this message translates to:
+  /// **'⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)'**
+  String get migrationError;
 }
 
 class _AppLocalizationsDelegate

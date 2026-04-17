@@ -381,6 +381,10 @@
       }
     }
   },
+  "continueAsGuest": "Als Gast fortfahren",
+  "guestModeNote": "Deine Daten werden nur auf diesem Gerät gespeichert. Kein Konto erforderlich!",
+  "guestModeError": "Fehler beim Aktivieren des Gastmodus",
+  "guestModeSignIn": "Anmelden zum Synchronisieren",
   "infoTitle": "Info & Impressum",
   "infoImpressumSection": "Impressum",
   "infoPrivacySection": "Datenschutz",
@@ -493,6 +497,7 @@
   "waterAdd": "Wasser hinzufügen",
   "waterRemove": "Wasser entfernen",
   "devBannerText": "⚠️ Vorab-Version · Entwicklungsdatenbank · Daten werden nicht dauerhaft gespeichert",
+  "guestModeBannerText": "👤 Gastmodus · Daten werden lokal gespeichert · Melde dich an, um zu synchronisieren",
   "waterGoalFieldLabel": "Wasserziel",
   "waterGoalFieldHint": "Empfehlung: ca. 35 ml pro kg Körpergewicht",
   "waterReminderTitle": "Trink-Erinnerungen",
@@ -625,5 +630,21 @@
   "tags": "Tags",
   "addTag": "Tag hinzufügen",
   "tagHint": "z.B. vegetarisch, vegan, roh...",
-  "filterByTag": "Nach Tag filtern"
+  "filterByTag": "Nach Tag filtern",
+  "deleteGuestDataTitle": "Gast-Daten löschen",
+  "deleteGuestDataConfirm": "Alle deine Gast-Daten (Einträge, Ziele, Profil) werden gelöscht und können nicht wiederhergestellt werden. Fortfahren?",
+  "deleteGuestDataSuccess": "✅ Alle Gast-Daten gelöscht",
+  "migrationDialogTitle": "Gast-Daten übernehmen?",
+  "migrationDialogContent": "Du hattest bereits Einträge im Gast-Modus. Diese können auf deinen Account übertragen werden.",
+  "migrationTransfer": "Übernehmen",
+  "migrationDiscard": "Verwerfen",
+  "migrationSuccess": "✅ {count} Einträge übertragen",
+  "@migrationSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "migrationError": "⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)"
 }

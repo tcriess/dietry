@@ -849,6 +849,19 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get continueAsGuest => 'Als Gast fortfahren';
+
+  @override
+  String get guestModeNote =>
+      'Deine Daten werden nur auf diesem Gerät gespeichert. Kein Konto erforderlich!';
+
+  @override
+  String get guestModeError => 'Fehler beim Aktivieren des Gastmodus';
+
+  @override
+  String get guestModeSignIn => 'Anmelden zum Synchronisieren';
+
+  @override
   String get infoTitle => 'Info & Impressum';
 
   @override
@@ -1068,6 +1081,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get devBannerText =>
       '⚠️ Vorab-Version · Entwicklungsdatenbank · Daten werden nicht dauerhaft gespeichert';
+
+  @override
+  String get guestModeBannerText =>
+      '👤 Gastmodus · Daten werden lokal gespeichert · Melde dich an, um zu synchronisieren';
 
   @override
   String get waterGoalFieldLabel => 'Wasserziel';
@@ -1341,4 +1358,36 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get filterByTag => 'Nach Tag filtern';
+
+  @override
+  String get deleteGuestDataTitle => 'Gast-Daten löschen';
+
+  @override
+  String get deleteGuestDataConfirm =>
+      'Alle deine Gast-Daten (Einträge, Ziele, Profil) werden gelöscht und können nicht wiederhergestellt werden. Fortfahren?';
+
+  @override
+  String get deleteGuestDataSuccess => '✅ Alle Gast-Daten gelöscht';
+
+  @override
+  String get migrationDialogTitle => 'Gast-Daten übernehmen?';
+
+  @override
+  String get migrationDialogContent =>
+      'Du hattest bereits Einträge im Gast-Modus. Diese können auf deinen Account übertragen werden.';
+
+  @override
+  String get migrationTransfer => 'Übernehmen';
+
+  @override
+  String get migrationDiscard => 'Verwerfen';
+
+  @override
+  String migrationSuccess(int count) {
+    return '✅ $count Einträge übertragen';
+  }
+
+  @override
+  String get migrationError =>
+      '⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)';
 }

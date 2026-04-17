@@ -7,6 +7,8 @@ import 'water_intake_service.dart';
 import 'cheat_day_service.dart';
 import 'streak_service.dart';
 import 'neon_database_service.dart';
+import 'local_data_service.dart';
+import 'app_logger.dart';
 import '../app_features.dart';
 
 /// Singleton ChangeNotifier that is the single source of truth for the
@@ -31,6 +33,7 @@ class DataStore extends ChangeNotifier {
   bool _isInitialLoading = true;
 
   NeonDatabaseService? _db;
+  LocalDataService? _local;
 
   // ── Delta-Sync Zeitstempel ─────────────────────────────────────────────────
   // Null = noch kein Sync für den aktuellen Tag → immer Full-Fetch.
@@ -62,43 +65,63 @@ class DataStore extends ChangeNotifier {
     _db = db;
   }
 
+  /// Initialize for guest mode (local SQLite storage)
+  void initLocal(LocalDataService local) {
+    _local = local;
+  }
+
   // ── Remote load ───────────────────────────────────────────────────────────
 
-  /// Fetch data for [date] from the server.
+  /// Fetch data for [date] from the server or local database.
   ///
   /// [silent]  — kein Loading-Overlay (Hintergrund-Refresh).
   /// [delta]   — nur geänderte Records holen (ID-Set-Abgleich).
   ///             Setzt voraus dass [silent] true ist; wird von [_silentRefresh]
   ///             übergeben. Bei Tag-Wechsel immer false → Full-Fetch + Reset.
   Future<void> loadDay(DateTime date, {bool silent = false, bool delta = false}) async {
-    if (_db == null) return;
+    // Guest mode or remote mode?
+    if (_local == null && _db == null) return;
+
     if (!silent) {
       _isLoading = true;
       notifyListeners();
     }
 
-    if (delta) {
-      // Delta: nur Entries + Activities delta-fetchen.
-      // Goal + Water sind single-row und trivial leicht → immer full.
+    // Dispatch to local or remote loaders
+    if (_local != null) {
+      // Guest mode: load from local SQLite
       await Future.wait([
-        _loadGoal(date),
-        _loadEntriesDelta(date),
-        _loadActivitiesDelta(date),
-        _loadWaterIntake(date),
-        _loadCheatDay(date),
+        _loadGoalLocal(date),
+        _loadEntriesLocal(date),
+        _loadActivitiesLocal(date),
+        _loadWaterIntakeLocal(date),
+        _loadCheatDayLocal(date),
       ]);
-    } else {
-      // Full-Fetch: Sync-Zeitstempel zurücksetzen.
-      _lastEntriesSync = null;
-      _lastActivitiesSync = null;
-      await Future.wait([
-        _loadGoal(date),
-        _loadEntries(date),
-        _loadActivities(date),
-        _loadWaterIntake(date),
-        _loadCheatDay(date),
-        _loadStreak(),
-      ]);
+    } else if (_db != null) {
+      // Remote mode: existing behavior
+      if (delta) {
+        // Delta: nur Entries + Activities delta-fetchen.
+        // Goal + Water sind single-row und trivial leicht → immer full.
+        await Future.wait([
+          _loadGoal(date),
+          _loadEntriesDelta(date),
+          _loadActivitiesDelta(date),
+          _loadWaterIntake(date),
+          _loadCheatDay(date),
+        ]);
+      } else {
+        // Full-Fetch: Sync-Zeitstempel zurücksetzen.
+        _lastEntriesSync = null;
+        _lastActivitiesSync = null;
+        await Future.wait([
+          _loadGoal(date),
+          _loadEntries(date),
+          _loadActivities(date),
+          _loadWaterIntake(date),
+          _loadCheatDay(date),
+          _loadStreak(),
+        ]);
+      }
     }
 
     _isLoading = false;
@@ -361,6 +384,60 @@ class DataStore extends ChangeNotifier {
       _lastActivitiesSync = DateTime.now().toUtc();
     } catch (_) {
       await _loadActivities(date);
+    }
+  }
+
+  // ── Local mode loaders (SQLite) ───────────────────────────────────────────
+
+  /// Load nutrition goal from local SQLite
+  Future<void> _loadGoalLocal(DateTime date) async {
+    try {
+      _goal = await _local!.getGoalForDate(date);
+    } catch (e) {
+      appLogger.e('❌ Error loading goal locally: $e');
+      _goal = null;
+    }
+  }
+
+  /// Load food entries from local SQLite
+  Future<void> _loadEntriesLocal(DateTime date) async {
+    try {
+      _foodEntries = await _local!.getFoodEntriesForDate(date);
+      _lastEntriesSync = DateTime.now().toUtc();
+    } catch (e) {
+      appLogger.e('❌ Error loading entries locally: $e');
+      _foodEntries = [];
+    }
+  }
+
+  /// Load activities from local SQLite
+  Future<void> _loadActivitiesLocal(DateTime date) async {
+    try {
+      _activities = await _local!.getActivitiesForDate(date);
+      _lastActivitiesSync = DateTime.now().toUtc();
+    } catch (e) {
+      appLogger.e('❌ Error loading activities locally: $e');
+      _activities = [];
+    }
+  }
+
+  /// Load water intake from local SQLite
+  Future<void> _loadWaterIntakeLocal(DateTime date) async {
+    try {
+      _waterIntakeMl = await _local!.getWaterIntakeForDate(date);
+    } catch (e) {
+      appLogger.e('❌ Error loading water intake locally: $e');
+      _waterIntakeMl = 0;
+    }
+  }
+
+  /// Load cheat day from local SQLite
+  Future<void> _loadCheatDayLocal(DateTime date) async {
+    try {
+      _isCheatDay = await _local!.isCheatDay(date);
+    } catch (e) {
+      appLogger.e('❌ Error loading cheat day locally: $e');
+      _isCheatDay = false;
     }
   }
 }

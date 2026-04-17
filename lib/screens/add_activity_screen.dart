@@ -7,18 +7,21 @@ import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
+import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
+import '../services/anonymous_auth_service.dart';
+import '../app_config.dart';
 import '../l10n/app_localizations.dart';
 import 'activity_database_screen.dart';
 
 /// Screen zum Hinzufügen einer Aktivität
 class AddActivityScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final DateTime selectedDate;
-  
+
   const AddActivityScreen({
     super.key,
-    required this.dbService,
+    this.dbService,
     required this.selectedDate,
   });
   
@@ -56,14 +59,46 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   /// Lade alle Activities (public + eigene) aus Datenbank
   Future<void> _loadActivities() async {
     try {
-      final service = ActivityDatabaseService(widget.dbService);
-      
+      if (widget.dbService == null) {
+        // Guest mode: try to load public activities with anonymous token
+        appLogger.d('ℹ️ Guest mode: Trying to load public activities with anonymous token');
+
+        final anonToken = await AnonymousAuthService.getToken(AppConfig.authBaseUrl);
+        if (anonToken != null) {
+          // Create temporary NeonDatabaseService with anonymous token
+          final anonDbService = NeonDatabaseService();
+          await anonDbService.init();
+          await anonDbService.setJWT(anonToken);
+
+          final service = ActivityDatabaseService(anonDbService);
+          final publicActivities = await service.getPublicActivities();
+
+          if (!mounted) return;
+
+          setState(() {
+            _searchResults = publicActivities;
+          });
+
+          appLogger.i('✅ ${publicActivities.length} public activities loaded in guest mode');
+        } else {
+          appLogger.w('⚠️ Anonymous token unavailable, showing manual entry only');
+          if (mounted) {
+            setState(() {
+              _searchResults = [];
+            });
+          }
+        }
+        return;
+      }
+
+      final service = ActivityDatabaseService(widget.dbService!);
+
       // Hole public Activities + eigene private Activities
       final publicActivities = await service.getPublicActivities();
       final myActivities = await service.getMyActivities();
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         // Kombiniere: Eigene zuerst, dann public
         _searchResults = [...myActivities, ...publicActivities];
@@ -77,15 +112,36 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   
   Future<void> _loadWeight() async {
     try {
-      final service = UserBodyMeasurementsService(widget.dbService);
+      // In guest mode (no dbService), load weight from local database
+      if (widget.dbService == null) {
+        appLogger.d('ℹ️ Guest mode: Loading weight from local database');
+        final local = LocalDataService.instance;
+        final measurement = await local.getCurrentMeasurement();
+
+        if (!mounted) return;
+
+        setState(() {
+          _userWeight = measurement?.weight;
+        });
+
+        if (_userWeight != null) {
+          appLogger.i('✅ Gewicht geladen (lokal): ${_userWeight!.toStringAsFixed(1)}kg');
+          _calculateCaloriesIfNeeded();
+        } else {
+          appLogger.w('⚠️ Kein Gewicht im lokalen Speicher - Kalorien müssen manuell eingegeben werden');
+        }
+        return;
+      }
+
+      final service = UserBodyMeasurementsService(widget.dbService!);
       final measurement = await service.getCurrentMeasurement();
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _userWeight = measurement?.weight;
       });
-      
+
       if (_userWeight != null) {
         appLogger.i('✅ Gewicht geladen: ${_userWeight!.toStringAsFixed(1)}kg');
         // Trigger initiale Berechnung wenn Dauer schon eingegeben wurde
@@ -165,17 +221,12 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     setState(() {
       _isSaving = true;
     });
-    
+
     try {
-      final userId = widget.dbService.userId;
-      if (userId == null) {
-        throw Exception('Keine User-ID verfügbar');
-      }
-      
       // Kombiniere Datum + Uhrzeit
       final startDateTime = DateTime(
         widget.selectedDate.year,
@@ -184,10 +235,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         _startTime.hour,
         _startTime.minute,
       );
-      
+
       final durationMinutes = int.parse(_durationController.text);
       final endDateTime = startDateTime.add(Duration(minutes: durationMinutes));
-      
+
       final activity = PhysicalActivity(
         activityType: ActivityType.other,
         activityId: _selectedActivity?.id,
@@ -195,16 +246,16 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         startTime: startDateTime,
         endTime: endDateTime,
         durationMinutes: durationMinutes,
-        caloriesBurned: _caloriesController.text.isNotEmpty 
-            ? double.parse(_caloriesController.text) 
+        caloriesBurned: _caloriesController.text.isNotEmpty
+            ? double.parse(_caloriesController.text)
             : null,
-        distanceKm: _distanceController.text.isNotEmpty 
-            ? double.parse(_distanceController.text) 
+        distanceKm: _distanceController.text.isNotEmpty
+            ? double.parse(_distanceController.text)
             : null,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         source: DataSource.manual,
       );
-      
+
       final saved = await SyncService.instance.saveActivity(activity);
       // Add the server entity (real id) or the optimistic entry (queued offline).
       DataStore.instance.addActivity(saved ?? activity);
@@ -248,20 +299,21 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
       appBar: AppBar(
         title: Text(l.addActivity),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.storage_outlined),
-            tooltip: l.myActivities,
-            onPressed: () async {
-              final activity = await Navigator.of(context).push<ActivityItem>(
-                MaterialPageRoute(
-                  builder: (context) => ActivityDatabaseScreen(dbService: widget.dbService),
-                ),
-              );
-              if (activity != null && mounted) {
-                _selectActivity(activity);
-              }
-            },
-          ),
+          if (widget.dbService != null)
+            IconButton(
+              icon: const Icon(Icons.storage_outlined),
+              tooltip: l.myActivities,
+              onPressed: () async {
+                final activity = await Navigator.of(context).push<ActivityItem>(
+                  MaterialPageRoute(
+                    builder: (context) => ActivityDatabaseScreen(dbService: widget.dbService!),
+                  ),
+                );
+                if (activity != null && mounted) {
+                  _selectActivity(activity);
+                }
+              },
+            ),
         ],
       ),
       body: Form(
@@ -270,20 +322,8 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             // Aktivität aus Datenbank wählen
-            if (_searchResults.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(width: 16),
-                      Text(l.loading),
-                    ],
-                  ),
-                ),
-              )
-            else
+            if (_searchResults.isNotEmpty)
+              // Show dropdown if activities are available (both authenticated and guest mode)
               DropdownButtonFormField<ActivityItem>(
                 initialValue: _selectedActivity,
                 decoration: const InputDecoration(
@@ -329,66 +369,92 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                     _calculateCaloriesIfNeeded();
                   }
                 },
+              )
+            else if (widget.dbService != null)
+              // Show loading spinner in authenticated mode
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(width: 16),
+                      Text(l.loading),
+                    ],
+                  ),
+                ),
+              )
+            else
+              // In guest mode with no anonymous token: show note about manual entry
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'In guest mode, enter activities manually below',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
               ),
 
             const SizedBox(height: 12),
 
-            // Button: Eigene Aktivität zur Datenbank hinzufügen
-            OutlinedButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final lCtx = AppLocalizations.of(context)!;
-                final result = await showDialog<ActivityItem>(
-                  context: context,
-                  builder: (context) => const ActivityEditDialog(
-                    activity: null,
-                    isEditing: false,
-                  ),
-                );
+            // Button: Eigene Aktivität zur Datenbank hinzufügen (only in authenticated mode)
+            if (widget.dbService != null)
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final lCtx = AppLocalizations.of(context)!;
+                  final result = await showDialog<ActivityItem>(
+                    context: context,
+                    builder: (context) => const ActivityEditDialog(
+                      activity: null,
+                      isEditing: false,
+                    ),
+                  );
 
-                if (result != null) {
-                  try {
-                    final service = ActivityDatabaseService(widget.dbService);
-                    final created = await service.createActivity(result);
+                  if (result != null) {
+                    try {
+                      final service = ActivityDatabaseService(widget.dbService!);
+                      final created = await service.createActivity(result);
 
-                    if (mounted) {
-                      await _loadActivities();
+                      if (mounted) {
+                        await _loadActivities();
 
-                      setState(() {
-                        _selectedActivity = created;
-                        _nameController.text = created.name;
-                        _metValueController.text = created.metValue.toStringAsFixed(1);
-                      });
+                        setState(() {
+                          _selectedActivity = created;
+                          _nameController.text = created.name;
+                          _metValueController.text = created.metValue.toStringAsFixed(1);
+                        });
 
-                      _calculateCaloriesIfNeeded();
+                        _calculateCaloriesIfNeeded();
 
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(lCtx.foodAdded(created.name)),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
                       if (mounted) {
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text(lCtx.foodAdded(created.name)),
-                            backgroundColor: Colors.green,
+                            content: Text(lCtx.errorPrefix(e.toString())),
+                            backgroundColor: Colors.red,
                           ),
                         );
                       }
                     }
-                  } catch (e) {
-                    if (mounted) {
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(lCtx.errorPrefix(e.toString())),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
                   }
-                }
-              },
-              icon: const Icon(Icons.add_circle_outline),
-              label: Text(l.saveToDatabase),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.all(12),
+                },
+                icon: const Icon(Icons.add_circle_outline),
+                label: Text(l.saveToDatabase),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.all(12),
+                ),
               ),
-            ),
             
             const SizedBox(height: 16),
             

@@ -13,7 +13,10 @@ import '../services/food_image_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_search_service.dart';
+import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
+import '../services/anonymous_auth_service.dart';
+import '../app_config.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
@@ -27,14 +30,14 @@ import 'food_database_screen.dart';
 /// 3. Wähle Meal Type
 /// 4. Speichere Entry
 class AddFoodEntryScreen extends StatefulWidget {
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;
   final DateTime? selectedDate;
   final MealType? initialMealType;
   final FoodItem? preselectedFood;
 
   const AddFoodEntryScreen({
     super.key,
-    required this.dbService,
+    this.dbService,
     this.selectedDate,
     this.initialMealType,
     this.preselectedFood,
@@ -78,6 +81,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
+
+  // Guest mode: optional anonymous JWT for public food DB access
+  NeonDatabaseService? _anonDbService;
   late FoodImageService _imageService;
   final Map<String, String?> _imageCache = {};
 
@@ -90,8 +96,16 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   @override
   void initState() {
     super.initState();
-    _imageService = FoodImageService(widget.dbService);
-    _tagService = TagService(widget.dbService);
+    // Only initialize DB-dependent services if dbService is available (not guest mode)
+    if (widget.dbService != null) {
+      _imageService = FoodImageService(widget.dbService!);
+      _tagService = TagService(widget.dbService!);
+      _loadAvailableTags();  // Load tags for filtering
+    } else {
+      // Guest mode: try to get anonymous token for public food DB access
+      _tagsLoading = false;
+      _initializeAnonDbService();
+    }
     if (widget.initialMealType != null) {
       _selectedMealType = widget.initialMealType!;
     }
@@ -99,7 +113,39 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (widget.preselectedFood != null) {
       _selectFood(widget.preselectedFood!);
     }
-    _loadAvailableTags();  // Load tags for filtering
+  }
+
+  /// Initialize anonymous DB service for guest mode (read-only public foods).
+  Future<void> _initializeAnonDbService() async {
+    try {
+      final token = await AnonymousAuthService.getToken(AppConfig.authBaseUrl);
+      if (token != null) {
+        // Create new service instance for anonymous access
+        final anonDb = NeonDatabaseService();
+        // Initialize Dio HTTP client
+        await anonDb.init();
+        // Set the anonymous JWT token
+        try {
+          await anonDb.setJWT(token);
+        } catch (e) {
+          // setJWT() might fail if token is expired or invalid
+          // but it will retry/refresh, so let's just log and continue
+          appLogger.w('⚠️ setJWT() warning: $e');
+        }
+        if (mounted) {
+          setState(() {
+            _anonDbService = anonDb;
+          });
+          appLogger.i('✅ Guest mode: anonymous DB service initialized');
+        }
+      } else {
+        appLogger.d('ℹ️ Guest mode: anonymous token endpoint not available');
+        // Continue without anonymous access — external APIs (USDA, OFF) still work
+      }
+    } catch (e) {
+      appLogger.w('⚠️ Guest mode: failed to initialize anonymous DB access: $e');
+      // Continue without anonymous access — external APIs (USDA, OFF) still work
+    }
   }
 
   Future<void> _loadAvailableTags() async {
@@ -133,7 +179,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     super.dispose();
   }
   
-  /// Suche Foods in Datenbank
+  /// Suche Foods: entweder in Datenbank ("own db") ODER externe APIs
   Future<void> _searchFoods(String query) async {
     if (query.trim().isEmpty) {
       setState(() {
@@ -148,20 +194,58 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     });
 
     try {
-      final List<FoodSearchResult> results;
+      final List<FoodSearchResult> results = [];
+
       if (_useOpenFoodFacts) {
-        results = await FoodSearchService().search(query);
+        // User selected external APIs (USDA + Open Food Facts)
+        final externalResults = await FoodSearchService().search(query);
+        results.addAll(externalResults);
       } else {
-        final items = await FoodDatabaseService(widget.dbService).searchFoods(
-          query,
-          limit: 20,
-          filterTags: _selectedTagSlugs.toList(),
-        );
-        results = items.map((f) => FoodSearchResult(food: f)).toList();
+        // User selected "own db" - search database only (no API calls)
+        if (widget.dbService != null) {
+          // Authenticated mode: search own + public foods in database
+          final items = await FoodDatabaseService(widget.dbService!).searchFoods(
+            query,
+            limit: 20,
+            filterTags: _selectedTagSlugs.toList(),
+          );
+          results.addAll(items.map((f) => FoodSearchResult(food: f)));
+        } else {
+          // Guest mode: search public foods database + local guest foods (no external APIs)
+          // Search public foods database if anonymous JWT available
+          if (_anonDbService != null) {
+            try {
+              final items = await FoodDatabaseService(_anonDbService!).searchFoods(
+                query,
+                limit: 20,
+              );
+              results.addAll(items.map((f) => FoodSearchResult(food: f)));
+              appLogger.d('🔍 Found ${items.length} public foods from anonymous DB');
+            } catch (e) {
+              appLogger.w('⚠️ Anonymous food search failed: $e');
+            }
+          }
+
+          // Search locally stored guest foods
+          try {
+            final guestFoods = await LocalDataService.instance.searchGuestFoods(query);
+            results.addAll(guestFoods.map((f) => FoodSearchResult(food: f)));
+            appLogger.d('🔍 Found ${guestFoods.length} guest foods from local storage');
+          } catch (e) {
+            appLogger.w('⚠️ Guest food search failed: $e');
+          }
+        }
+      }
+
+      // Remove duplicates by food ID
+      final uniqueResults = <String, FoodSearchResult>{};
+      for (final result in results) {
+        final key = result.food.id;
+        uniqueResults[key] = result;
       }
 
       setState(() {
-        _searchResults = results;
+        _searchResults = uniqueResults.values.toList();
         _isSearching = false;
       });
     } catch (e) {
@@ -248,7 +332,17 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   /// Dropdown zur Portionsauswahl (benannte Portionen + g/ml)
   Widget _buildPortionSelector() {
     final food = _selectedFood;
-    final portions = food?.portions ?? [];
+    var portions = food?.portions ?? [];
+
+    // Deduplicate portions by name (keep first occurrence)
+    final seenNames = <String>{};
+    portions = portions.where((p) {
+      if (seenNames.contains(p.name)) {
+        return false;
+      }
+      seenNames.add(p.name);
+      return true;
+    }).toList();
 
     // Berechne den aktuellen Schlüssel
     final currentKey =
@@ -307,11 +401,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     });
     
     try {
-      final userId = widget.dbService.userId;
-      if (userId == null) {
-        throw Exception('Keine User-ID verfügbar');
-      }
-      
+      final dbService = widget.dbService;
+      final userId = dbService?.userId ?? '';  // Guest mode: empty userId
+
       final rawAmount = double.parse(_amountController.text);
 
       // Calculate amountMl for liquid foods
@@ -360,33 +452,35 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       DataStore.instance.addFoodEntry(effective);
 
       // Auto-copy micro nutrients (best-effort, fire-and-forget).
-      // For named portions, amount is count — convert to grams for micros.
-      final amountG = _selectedPortion != null
-          ? rawAmount * _selectedPortion!.amountG
-          : rawAmount;
-      final foodId = entry.foodId;
-      final jwt = widget.dbService.jwt;
-      if (saved != null && jwt != null) {
-        if (foodId != null && foodId.isNotEmpty) {
-          // Food aus eigener DB: Mikros aus food_database_micros kopieren
-          premiumFeatures.copyFoodMicrosToEntry(
-            foodId: foodId,
-            entryId: saved.id,
-            userId: userId,
-            amountG: amountG,
-            authToken: jwt,
-            apiUrl: NeonDatabaseService.dataApiUrl,
-          );
-        } else if (_selectedMicros.isNotEmpty) {
-          // Food aus OFF/USDA: Mikros direkt aus API-Daten schreiben
-          premiumFeatures.saveFoodEntryMicrosFromMap(
-            entryId: saved.id,
-            userId: userId,
-            micros100g: _selectedMicros,
-            amountG: amountG,
-            authToken: jwt,
-            apiUrl: NeonDatabaseService.dataApiUrl,
-          );
+      // Only in authenticated mode (cloud feature).
+      if (dbService != null) {
+        final amountG = _selectedPortion != null
+            ? rawAmount * _selectedPortion!.amountG
+            : rawAmount;
+        final foodId = entry.foodId;
+        final jwt = dbService.jwt;
+        if (saved != null && jwt != null) {
+          if (foodId != null && foodId.isNotEmpty) {
+            // Food aus eigener DB: Mikros aus food_database_micros kopieren
+            premiumFeatures.copyFoodMicrosToEntry(
+              foodId: foodId,
+              entryId: saved.id,
+              userId: userId,
+              amountG: amountG,
+              authToken: jwt,
+              apiUrl: NeonDatabaseService.dataApiUrl,
+            );
+          } else if (_selectedMicros.isNotEmpty) {
+            // Food aus OFF/USDA: Mikros direkt aus API-Daten schreiben
+            premiumFeatures.saveFoodEntryMicrosFromMap(
+              entryId: saved.id,
+              userId: userId,
+              micros100g: _selectedMicros,
+              amountG: amountG,
+              authToken: jwt,
+              apiUrl: NeonDatabaseService.dataApiUrl,
+            );
+          }
         }
       }
 
@@ -421,8 +515,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
   }
   
-  /// Speichere aktuelles Food zur Datenbank
+  /// Speichere aktuelles Food zur Datenbank (remote) oder lokal (guest mode)
   Future<void> _saveFoodToDatabase() async {
+    // In guest mode: save locally instead of to remote database
+    if (widget.dbService == null) {
+      await _saveFoodLocally();
+      return;
+    }
+
     // Für externe Ergebnisse (OFF, USDA): Nährwerte direkt aus _selectedFood (per 100g),
     // nicht aus den skalierten Controllern.
     final isExternal = _selectedFood != null && _selectedFood!.id.isEmpty;
@@ -453,19 +553,19 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         initialCategory: _selectedFood?.category,
         initialBrand: _selectedFood?.brand,
         initialPortions: _selectedFood?.portions ?? [],
-        dbService: widget.dbService,
+        dbService: widget.dbService!,
       ),
     );
 
     if (result != null) {
       try {
-        final service = FoodDatabaseService(widget.dbService);
+        final service = FoodDatabaseService(widget.dbService!);
         final created = await service.createFood(result);
 
         // Save tags if any were added
         if (result.tags.isNotEmpty) {
           appLogger.d('💾 Saving ${result.tags.length} tags for newly created food');
-          final tagService = TagService(widget.dbService);
+          final tagService = TagService(widget.dbService!);
           await tagService.setFoodTags(created.id, result.tags);
         }
 
@@ -493,16 +593,91 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
   }
   
-  /// Bearbeite ein eigenes Food direkt aus den Suchergebnissen
-  Future<void> _editFoodInSearch(FoodItem food) async {
+  /// Save food locally in guest mode
+  Future<void> _saveFoodLocally() async {
+    final isExternal = _selectedFood != null && _selectedFood!.id.isEmpty;
+    final initialCalories = isExternal
+        ? _selectedFood!.calories
+        : (double.tryParse(_caloriesController.text) ?? 0);
+    final initialProtein = isExternal
+        ? _selectedFood!.protein
+        : (double.tryParse(_proteinController.text) ?? 0);
+    final initialFat = isExternal
+        ? _selectedFood!.fat
+        : (double.tryParse(_fatController.text) ?? 0);
+    final initialCarbs = isExternal
+        ? _selectedFood!.carbs
+        : (double.tryParse(_carbsController.text) ?? 0);
+
+    if (!isExternal && !_formKey.currentState!.validate()) return;
+
+    // Show dialog to create food
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => FoodEditDialog(food: food, dbService: widget.dbService),
+      builder: (context) => _AddFoodToDatabaseDialog(
+        initialName: _nameController.text,
+        initialCalories: initialCalories,
+        initialProtein: initialProtein,
+        initialFat: initialFat,
+        initialCarbs: initialCarbs,
+        initialCategory: _selectedFood?.category,
+        initialBrand: _selectedFood?.brand,
+        initialPortions: _selectedFood?.portions ?? [],
+        dbService: null,  // No DB service in guest mode
+      ),
+    );
+
+    if (result != null) {
+      try {
+        // Save locally
+        final saved = await LocalDataService.instance.saveGuestFood(result);
+        _selectFood(saved);
+
+        if (mounted) {
+          final lCtx = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ ${lCtx.foodAdded(saved.name)} (lokal gespeichert)'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Fehler: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// Bearbeite ein eigenes Food direkt aus den Suchergebnissen
+  Future<void> _editFoodInSearch(FoodItem food) async {
+    // In guest mode: edit food is not available
+    if (widget.dbService == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Bearbeitung ist im Gast-Modus nicht verfügbar'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final result = await showDialog<FoodItem>(
+      context: context,
+      builder: (context) => FoodEditDialog(food: food, dbService: widget.dbService!),
     );
     if (result == null) return;
 
     try {
-      final service = FoodDatabaseService(widget.dbService);
+      final service = FoodDatabaseService(widget.dbService!);
       final updated = await service.updateFood(result);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -525,6 +700,19 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
   /// Lösche ein eigenes Food direkt aus den Suchergebnissen
   Future<void> _deleteFoodInSearch(FoodItem food) async {
+    // In guest mode: delete food is not available
+    if (widget.dbService == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Löschung ist im Gast-Modus nicht verfügbar'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -549,7 +737,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (confirmed != true) return;
 
     try {
-      final service = FoodDatabaseService(widget.dbService);
+      final service = FoodDatabaseService(widget.dbService!);
       await service.deleteFood(food.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -617,23 +805,25 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       appBar: AppBar(
         title: Text(l.addFoodScreenTitle),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.storage_outlined),
-            tooltip: 'Meine Datenbank',
-            onPressed: () async {
-              final food = await Navigator.of(context).push<FoodItem>(
-                MaterialPageRoute(
-                  builder: (context) => FoodDatabaseScreen(
-                    dbService: widget.dbService,
-                    pickerMode: true,
+          // Database button (only in authenticated mode)
+          if (widget.dbService != null)
+            IconButton(
+              icon: const Icon(Icons.storage_outlined),
+              tooltip: 'Meine Datenbank',
+              onPressed: () async {
+                final food = await Navigator.of(context).push<FoodItem>(
+                  MaterialPageRoute(
+                    builder: (context) => FoodDatabaseScreen(
+                      dbService: widget.dbService!,
+                      pickerMode: true,
+                    ),
                   ),
-                ),
-              );
-              if (food != null) {
-                _selectFood(food);
-              }
-            },
-          ),
+                );
+                if (food != null) {
+                  _selectFood(food);
+                }
+              },
+            ),
           if (!_showManualEntry)
             TextButton.icon(
               onPressed: () {
@@ -827,14 +1017,15 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Tag button for adding/editing tags
-                                IconButton(
-                                  icon: const Icon(Icons.label_outline),
-                                  tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
-                                  onPressed: () => _editFoodTagsInline(food),
-                                ),
-                                // Menu or chevron for other actions
-                                if (isOFF || food.isPublic)
+                                // Tag button for adding/editing tags (only in authenticated mode)
+                                if (widget.dbService != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.label_outline),
+                                    tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
+                                    onPressed: () => _editFoodTagsInline(food),
+                                  ),
+                                // Menu or chevron for other actions (only show menu in authenticated mode for own foods)
+                                if (isOFF || food.isPublic || widget.dbService == null)
                                   const Icon(Icons.chevron_right)
                                 else
                                   PopupMenuButton<String>(
@@ -1368,7 +1559,7 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
   final String? initialCategory;
   final String? initialBrand;
   final List<FoodPortion> initialPortions;
-  final NeonDatabaseService dbService;
+  final NeonDatabaseService? dbService;  // Nullable for guest mode
 
   const _AddFoodToDatabaseDialog({
     required this.initialName,
@@ -1430,8 +1621,10 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       ));
     }
 
-    // Initialize tag service
-    _tagService = TagService(widget.dbService);
+    // Initialize tag service (only if authenticated)
+    if (widget.dbService != null) {
+      _tagService = TagService(widget.dbService!);
+    }
     _editingTags = [];
   }
   
@@ -1468,6 +1661,16 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
             ))
         .where((p) => p.amountG > 0)
         .toList();
+
+    // Check for duplicate portion names
+    final portionNames = portions.map((p) => p.name.toLowerCase()).toList();
+    final uniqueNames = portionNames.toSet();
+    if (portionNames.length != uniqueNames.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ Portionen dürfen keine doppelten Namen haben')),
+      );
+      return;
+    }
 
     final food = FoodItem(
       id: '',
