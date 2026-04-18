@@ -194,6 +194,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addEntry => 'Eintragen';
 
   @override
+  String get mealTemplates => 'Mahlzeiten-Vorlagen';
+
+  @override
   String get activitiesTitle => 'Aktivitäten';
 
   @override

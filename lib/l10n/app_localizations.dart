@@ -460,6 +460,12 @@ abstract class AppLocalizations {
   /// **'Eintragen'**
   String get addEntry;
 
+  /// No description provided for @mealTemplates.
+  ///
+  /// In de, this message translates to:
+  /// **'Mahlzeiten-Vorlagen'**
+  String get mealTemplates;
+
   /// No description provided for @activitiesTitle.
   ///
   /// In de, this message translates to:

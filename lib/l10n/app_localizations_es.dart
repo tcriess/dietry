@@ -194,6 +194,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addEntry => 'Registrar Alimento';
 
   @override
+  String get mealTemplates => 'Plantillas de Comidas';
+
+  @override
   String get activitiesTitle => 'Actividades';
 
   @override

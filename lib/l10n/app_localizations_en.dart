@@ -194,6 +194,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addEntry => 'Log Food';
 
   @override
+  String get mealTemplates => 'Meal Templates';
+
+  @override
   String get activitiesTitle => 'Activities';
 
   @override
