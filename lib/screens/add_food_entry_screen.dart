@@ -17,6 +17,7 @@ import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
 import '../services/anonymous_auth_service.dart';
 import '../app_config.dart';
+import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
@@ -295,6 +296,46 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     });
   }
   
+  /// Öffnet den OCR-Scan-Flow (Premium, mobile) und prefillt die
+  /// manuelle Eingabemaske mit den erkannten Werten.
+  Future<void> _scanNutritionLabel() async {
+    if (!AppFeatures.nutritionLabelScan) return;
+    final locale = Localizations.localeOf(context);
+    final result = await premiumFeatures.scanNutritionLabel(
+      context: context,
+      preferredLocale: locale,
+    );
+    if (!mounted || result == null) return;
+
+    String fmt(double? v, {int digits = 1}) =>
+        v == null ? '' : v.toStringAsFixed(digits);
+
+    setState(() {
+      _showManualEntry = true;
+      _selectedFood = null;
+      _searchResults = [];
+      _amountController.text = '100';
+      _customUnit = 'g';
+      _caloriesController.text = fmt(result.caloriesPer100g, digits: 0);
+      _proteinController.text = fmt(result.proteinPer100g);
+      _fatController.text = fmt(result.fatPer100g);
+      _carbsController.text = fmt(result.carbsPer100g);
+      _saturatedFatController.text = fmt(result.satFatPer100g);
+      _sugarController.text = fmt(result.sugarPer100g);
+      _fiberController.text = fmt(result.fiberPer100g);
+      _sodiumController.text = fmt(result.saltPer100g, digits: 2);
+    });
+
+    if (result.warnings.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.warnings.join(' ')),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+  }
+
   /// Berechne Nährwerte basierend auf Menge
   void _calculateNutrition() {
     if (_selectedFood == null) return;
@@ -823,6 +864,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   _selectFood(food);
                 }
               },
+            ),
+          if (!_showManualEntry && AppFeatures.nutritionLabelScan)
+            IconButton(
+              icon: const Icon(Icons.document_scanner_outlined),
+              tooltip: 'Etikett scannen',
+              onPressed: _scanNutritionLabel,
             ),
           if (!_showManualEntry)
             TextButton.icon(

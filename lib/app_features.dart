@@ -101,4 +101,12 @@ class AppFeatures {
 
   /// Mehrere Profile (Familie / Trainer-Klienten).
   static bool get multipleProfiles => isPro;
+
+  /// OCR-Erkennung von Nährwerttabellen per Kamera (Pro, Android/iOS).
+  /// ML Kit Text Recognition läuft vollständig on-device.
+  static bool get nutritionLabelScan {
+    if (!isPro) return false;
+    if (kIsWeb) return false;
+    return io.Platform.isAndroid || io.Platform.isIOS;
+  }
 }

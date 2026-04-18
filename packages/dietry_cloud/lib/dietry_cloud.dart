@@ -148,6 +148,49 @@ class ReportsCloudWeightRow {
       {required this.date, required this.weight, this.bodyFatPct});
 }
 
+/// Ergebnis einer Nährwert-Etikett-Skanierung (OCR).
+/// Werte sind pro 100 g normalisiert; `null` wenn nicht erkannt.
+/// Der Nutzer bestätigt/korrigiert die Werte im Review-Screen.
+class NutritionLabelScanResult {
+  /// kcal pro 100 g (nicht kJ — bereits umgerechnet).
+  final double? caloriesPer100g;
+  final double? proteinPer100g;
+  final double? fatPer100g;
+  final double? satFatPer100g;
+  final double? carbsPer100g;
+  final double? sugarPer100g;
+  final double? fiberPer100g;
+  /// Salz in g pro 100 g. Sodium wird vom Parser zu Salz umgerechnet (×2.5).
+  final double? saltPer100g;
+
+  /// Rohe OCR-Ausgabe für Debug / manuelle Korrektur.
+  final String rawText;
+
+  /// Detektierte Bezugsbasis ("per 100 g", "per 250 ml", …), informativ.
+  final String? basisLabel;
+
+  /// Portionsgröße in g (falls gefunden).
+  final double? servingSizeG;
+
+  /// Warnhinweise (niedrige Konfidenz, mehrdeutige Werte, …).
+  final List<String> warnings;
+
+  const NutritionLabelScanResult({
+    this.caloriesPer100g,
+    this.proteinPer100g,
+    this.fatPer100g,
+    this.satFatPer100g,
+    this.carbsPer100g,
+    this.sugarPer100g,
+    this.fiberPer100g,
+    this.saltPer100g,
+    required this.rawText,
+    this.basisLabel,
+    this.servingSizeG,
+    this.warnings = const [],
+  });
+}
+
 // ── Globale Instanz ───────────────────────────────────────────────────────────
 
 /// Globale Premium-Feature-Instanz.
@@ -266,6 +309,22 @@ abstract class PremiumFeatures {
     String? sharingLabel,
   });
 
+  // ── Nährwert-Etikett-Scan (OCR) ───────────────────────────────────────────
+
+  /// Ob das OCR-Scan-Feature in dieser Build-/Rollen-Kombination verfügbar ist.
+  /// CE-Stub: immer `false`. Real: `true` in Cloud Pro auf Android/iOS.
+  bool get hasNutritionLabelScan;
+
+  /// Startet den Scan-Flow (Kamera → ML Kit OCR → geparste Werte).
+  /// Gibt das Ergebnis zurück, oder `null` wenn der Nutzer abbricht bzw.
+  /// das Feature nicht verfügbar ist (CE / Web / Desktop / Non-Pro).
+  /// Der Caller präsentiert das Ergebnis in einem Review-Screen und speichert
+  /// es als [FoodItem] / [FoodEntry].
+  Future<NutritionLabelScanResult?> scanNutritionLabel({
+    required BuildContext context,
+    Locale? preferredLocale,
+  });
+
   // ── Cloud-Berichte ────────────────────────────────────────────────────────
 
   /// Rendert die Cloud-exklusiven Report-Sektionen (Aktivität, Kalorienbilanz,
@@ -335,6 +394,14 @@ class NullPremiumFeatures implements PremiumFeatures {
   @override bool get hasMealTemplates => false;
   @override bool get hasMicroNutrients => false;
   @override bool get hasShareProgress => false;
+  @override bool get hasNutritionLabelScan => false;
+
+  @override
+  Future<NutritionLabelScanResult?> scanNutritionLabel({
+    required BuildContext context,
+    Locale? preferredLocale,
+  }) async =>
+      null;
 
   @override
   Widget buildMicroOverviewCard({
