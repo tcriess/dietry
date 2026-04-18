@@ -46,6 +46,7 @@ import 'models/models.dart';
 import 'screens/goal_recommendation_screen.dart';
 import 'screens/food_entries_list_screen.dart';
 import 'screens/add_food_entry_screen.dart';
+import 'widgets/quick_food_entry_sheet.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
 import 'screens/profile_screen.dart';
@@ -2155,6 +2156,14 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
+  MealType _suggestMealType() {
+    final hour = TimeOfDay.now().hour;
+    if (hour < 10) return MealType.breakfast;
+    if (hour < 14) return MealType.lunch;
+    if (hour < 18) return MealType.snack;
+    return MealType.dinner;
+  }
+
   void _onStoreChanged() {
     if (!mounted) return;
     // Drain milestone celebrations before rebuilding.
@@ -2471,18 +2480,42 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // Build FAB based on selected tab
     Widget? fab;
     if (_selectedIndex == 1) {
-      // Food Entries tab: show add button
+      // Food Entries tab: quick entry sheet (authenticated) or full screen (guest)
+      final db = widget.dbService;
       fab = FloatingActionButton(
         heroTag: 'fab_add_entry',
         onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddFoodEntryScreen(
-                dbService: widget.dbService,
-                selectedDate: _selectedDay,
+          if (!widget.isGuestMode && db != null) {
+            await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
-            ),
-          );
+              builder: (ctx) => FractionallySizedBox(
+                heightFactor: 0.85,
+                child: QuickFoodEntrySheet(
+                  dbService: db,
+                  date: _selectedDay,
+                  initialMealType: _suggestMealType(),
+                  onAdd: (entry) async {
+                    await _sync.createFoodEntry(entry);
+                    await _store.loadDay(_selectedDay, silent: true, delta: true);
+                  },
+                ),
+              ),
+            );
+          } else {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => AddFoodEntryScreen(
+                  dbService: widget.dbService,
+                  selectedDate: _selectedDay,
+                ),
+              ),
+            );
+          }
         },
         tooltip: l.addEntry,
         child: const Icon(Icons.add),
