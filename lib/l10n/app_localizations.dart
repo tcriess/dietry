@@ -2350,6 +2350,30 @@ abstract class AppLocalizations {
   /// **'Körpergewicht'**
   String get reportsBodyWeight;
 
+  /// No description provided for @reportsMostEatenFoods.
+  ///
+  /// In de, this message translates to:
+  /// **'Top-Lebensmittel'**
+  String get reportsMostEatenFoods;
+
+  /// No description provided for @reportsSortCalories.
+  ///
+  /// In de, this message translates to:
+  /// **'kcal'**
+  String get reportsSortCalories;
+
+  /// No description provided for @reportsSortCount.
+  ///
+  /// In de, this message translates to:
+  /// **'Häufigkeit'**
+  String get reportsSortCount;
+
+  /// No description provided for @reportsSortWeight.
+  ///
+  /// In de, this message translates to:
+  /// **'Gewicht'**
+  String get reportsSortWeight;
+
   /// No description provided for @reportsNoData.
   ///
   /// In de, this message translates to:
