@@ -1237,6 +1237,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportsBodyWeight => 'Body Weight';
 
   @override
+  String get reportsMostEatenFoods => 'Top Foods';
+
+  @override
+  String get reportsSortCalories => 'kcal';
+
+  @override
+  String get reportsSortCount => 'Count';
+
+  @override
+  String get reportsSortWeight => 'Weight';
+
+  @override
   String get reportsNoData => 'No data for this period.';
 
   @override

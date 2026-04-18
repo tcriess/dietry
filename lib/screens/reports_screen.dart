@@ -11,6 +11,8 @@ import '../services/neon_database_service.dart';
 import '../services/platform_export.dart' as exporter;
 import '../services/reports_service.dart';
 
+enum _FoodSortMode { calories, count, weight }
+
 // ── Time range ────────────────────────────────────────────────────────────────
 
 enum ReportRange { week, month, year, allTime }
@@ -60,11 +62,13 @@ class _ReportsData {
   final List<DailyNutritionData> nutrition;
   final List<DailyWaterData> water;
   final List<WeightEntry> weight;
+  final List<FoodFrequencyItem> mostEatenFoods;
 
   const _ReportsData({
     required this.nutrition,
     required this.water,
     required this.weight,
+    this.mostEatenFoods = const [],
   });
 }
 
@@ -134,12 +138,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _svc.getNutritionTrend(from, to),
       _svc.getWaterTrend(from, to),
       _svc.getWeightTrend(from, to),
+      _svc.getMostEatenFoods(from, to),
     ]);
 
     final result = _ReportsData(
       nutrition: results[0] as List<DailyNutritionData>,
       water: results[1] as List<DailyWaterData>,
       weight: results[2] as List<WeightEntry>,
+      mostEatenFoods: results[3] as List<FoodFrequencyItem>,
     );
     _lastData = result;
     return result;
@@ -333,6 +339,8 @@ class _ReportsBody extends StatelessWidget {
           title: l.reportsBodyWeight,
           child: _WeightTrendChart(weight: data.weight, range: range),
         ),
+        const SizedBox(height: 12),
+        _MostEatenFoodsCard(foods: data.mostEatenFoods),
 
         // ── Cloud-only charts (activity, balance, meal timing, goal compliance)
         const SizedBox(height: 20),
@@ -1244,3 +1252,180 @@ class _WeightTrendChart extends StatelessWidget {
   }
 }
 
+
+// ── CE: Most eaten foods card ─────────────────────────────────────────────────
+
+class _MostEatenFoodsCard extends StatefulWidget {
+  final List<FoodFrequencyItem> foods;
+
+  const _MostEatenFoodsCard({required this.foods});
+
+  @override
+  State<_MostEatenFoodsCard> createState() => _MostEatenFoodsCardState();
+}
+
+class _MostEatenFoodsCardState extends State<_MostEatenFoodsCard> {
+  _FoodSortMode _sort = _FoodSortMode.calories;
+
+  List<FoodFrequencyItem> get _sorted {
+    final items = [...widget.foods];
+    switch (_sort) {
+      case _FoodSortMode.calories:
+        items.sort((a, b) => b.totalCalories.compareTo(a.totalCalories));
+      case _FoodSortMode.count:
+        items.sort((a, b) => b.count.compareTo(a.count));
+      case _FoodSortMode.weight:
+        items.sort((a, b) => b.totalWeightG.compareTo(a.totalWeightG));
+    }
+    return items.take(10).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l.reportsMostEatenFoods,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ToggleButtons(
+                  isSelected: [
+                    _sort == _FoodSortMode.calories,
+                    _sort == _FoodSortMode.count,
+                    _sort == _FoodSortMode.weight,
+                  ],
+                  onPressed: (i) =>
+                      setState(() => _sort = _FoodSortMode.values[i]),
+                  constraints:
+                      const BoxConstraints(minWidth: 52, minHeight: 28),
+                  textStyle: const TextStyle(fontSize: 11),
+                  children: [
+                    Text(l.reportsSortCalories),
+                    Text(l.reportsSortCount),
+                    Text(l.reportsSortWeight),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (widget.foods.isEmpty)
+              const _NoData()
+            else
+              ..._buildRows(theme),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildRows(ThemeData theme) {
+    final items = _sorted;
+    if (items.isEmpty) return [const _NoData()];
+    final maxVal = switch (_sort) {
+      _FoodSortMode.calories => items.first.totalCalories,
+      _FoodSortMode.count => items.first.count.toDouble(),
+      _FoodSortMode.weight => items.first.totalWeightG,
+    };
+    return items.asMap().entries.map((e) {
+      final item = e.value;
+      final val = switch (_sort) {
+        _FoodSortMode.calories => item.totalCalories,
+        _FoodSortMode.count => item.count.toDouble(),
+        _FoodSortMode.weight => item.totalWeightG,
+      };
+      final label = switch (_sort) {
+        _FoodSortMode.calories => '${val.round()} kcal',
+        _FoodSortMode.count => '${item.count}\u00d7',
+        _FoodSortMode.weight => '${val.round()} g',
+      };
+      return _FoodFrequencyRow(
+        rank: e.key + 1,
+        name: item.name,
+        fraction: maxVal > 0 ? (val / maxVal).clamp(0.0, 1.0) : 0.0,
+        label: label,
+        theme: theme,
+      );
+    }).toList();
+  }
+}
+
+class _FoodFrequencyRow extends StatelessWidget {
+  final int rank;
+  final String name;
+  final double fraction;
+  final String label;
+  final ThemeData theme;
+
+  const _FoodFrequencyRow({
+    required this.rank,
+    required this.name,
+    required this.fraction,
+    required this.label,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            child: Text(
+              '$rank',
+              style: TextStyle(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                LinearProgressIndicator(
+                  value: fraction,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  minHeight: 4,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
