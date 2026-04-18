@@ -79,10 +79,14 @@ android {
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
 
-        // Manifest placeholders
+        // Manifest placeholders. `appName` is the visible launcher label;
+        // build.sh passes it via -PappName based on edition+environment
+        // (e.g. "Dietry CE Dev"). Defaults to "Dietry" for release builds
+        // without the property; debug builds fall back to "Dietry Dev".
         manifestPlaceholders = [
             'appAuthRedirectScheme': appId,
-            'applicationName': 'android.app.Application'
+            'applicationName': 'android.app.Application',
+            'appName': project.findProperty('appName') ?: 'Dietry'
         ]
     }
 
@@ -98,6 +102,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (!project.hasProperty('appName')) {
+                manifestPlaceholders.appName = 'Dietry Dev'
+            }
+        }
         release {
             signingConfig keystorePropertiesFile.exists()
                 ? signingConfigs.release

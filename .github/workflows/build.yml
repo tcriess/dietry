@@ -51,6 +51,7 @@ env:
   ANDROID_KEY_PASSWORD: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.ANDROID_PROD_KEY_PASSWORD || secrets.ANDROID_DEV_KEY_PASSWORD }}
   ANDROID_KEY_ALIAS: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.ANDROID_PROD_KEY_ALIAS || vars.ANDROID_DEV_KEY_ALIAS }}
   CE_CONFIG_JSON: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.CE_PROD_CONFIG_JSON || secrets.CE_DEV_CONFIG_JSON }}  # Must contain the full JSON config for CE builds
+  APP_NAME: ${{ (github.ref_name == 'main' || github.event_name == 'release') && 'Dietry CE' || 'Dietry CE Dev' }}   # Visible launcher label (Android manifestPlaceholder + iOS CFBundleDisplayName)
   DEPLOY_SSH_KEY: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.DEPLOY_PROD_SSH_KEY || secrets.DEPLOY_DEV_SSH_KEY}}  # Optional: required for server deploy step
   DEPLOY_HOST: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_HOST || vars.DEPLOY_DEV_HOST }}
   DEPLOY_USER: ${{ (github.ref_name == 'main' || github.event_name == 'release') && vars.DEPLOY_PROD_USER || vars.DEPLOY_DEV_USER }}
@@ -271,6 +272,8 @@ jobs:
           echo "edition=$EDITION" >> $GITHUB_OUTPUT
 
       - name: Build APK (direct install)
+        env:
+          ORG_GRADLE_PROJECT_appName: ${{ env.APP_NAME }}
         run: |
           flutter build apk --release \
             --dart-define-from-file=config/ce.json \
@@ -281,6 +284,8 @@ jobs:
             --build-number="${{ github.run_number }}"
 
       - name: Build App Bundle (Play Store)
+        env:
+          ORG_GRADLE_PROJECT_appName: ${{ env.APP_NAME }}
         run: |
           flutter build appbundle --release \
             --dart-define-from-file=config/ce.json \
@@ -456,6 +461,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Override iOS display name
+        run: echo "APP_DISPLAY_NAME = ${{ env.APP_NAME }}" >> ios/Flutter/Release.xcconfig
 
       - name: Build IPA
         run: |
