@@ -59,6 +59,7 @@ archive/
 /CLAUDE.md
 /.claudeignore
 /docs/assetlinks.json.template
+/build.sh
 
 # not ready yet
 /macos
