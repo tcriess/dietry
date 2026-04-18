@@ -906,7 +906,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoDataGoogleAccount =>
-      'Google-Konto-Daten (E-Mail, Name) für die Authentifizierung';
+      'Konto-Daten (E-Mail, Name) für die Authentifizierung';
 
   @override
   String get infoDataBody =>
@@ -920,7 +920,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoDataStorageText =>
-      'Alle Daten werden in einer gesicherten Datenbank (Neon PostgreSQL) gespeichert. Es werden keine Daten an Dritte weitergegeben. Die Authentifizierung erfolgt über Google OAuth 2.0 via Neon Auth.';
+      'Alle Daten werden in einer gesicherten Datenbank (Neon PostgreSQL) gespeichert. Es werden keine Daten an Dritte weitergegeben. Die Authentifizierung erfolgt über Neon Auth (Google OAuth 2.0 oder E-Mail/Passwort).';
 
   @override
   String get infoDataDeletion =>
@@ -939,6 +939,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lebensmittelnährstoffdatenbank des US-amerikanischen Landwirtschaftsministeriums.';
 
   @override
+  String get infoBlsName => 'Bundeslebensmittelschlüssel 4.0 (BLS)';
+
+  @override
+  String get infoBlsDescription =>
+      'Nationale deutsche Lebensmittelkompositionsdatenbank, herausgegeben vom Max Rubner-Institut (MRI) und dem Bundesministerium für Ernährung und Landwirtschaft.';
+
+  @override
+  String get infoBlsLicense => '© Max Rubner-Institut / BMEL';
+
+  @override
   String get infoNeonName => 'Neon (Datenbank & Authentifizierung)';
 
   @override
@@ -950,7 +960,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoGoogleDescription =>
-      'Authentifizierung über Google-Konto. Es werden nur E-Mail-Adresse und Name übertragen.';
+      'Optionale Authentifizierung über Google-Konto. Es werden nur E-Mail-Adresse und Name übertragen.';
+
+  @override
+  String get infoNrvName => 'EU-Nährstoffbezugswerte (NRV)';
+
+  @override
+  String get infoNrvDescription =>
+      'Tagesempfehlungen für Mikronährstoffe basieren auf den Nährstoffbezugswerten (NRV) gemäß Verordnung (EU) Nr. 1169/2011 des Europäischen Parlaments und des Rates.';
+
+  @override
+  String get infoNrvLicense => 'Verordnung (EU) Nr. 1169/2011';
 
   @override
   String get cannotNavigateToFuture =>
@@ -962,7 +982,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get infoCopyright => '© 2025 Simon Span · dietry.de';
+  String get infoCopyright => '© 2025 Thorsten Rieß · dietry.de';
 
   @override
   String get offlineMode =>

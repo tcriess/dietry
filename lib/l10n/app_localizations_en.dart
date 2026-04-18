@@ -903,7 +903,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get infoDataGoogleAccount =>
-      'Google account data (email, name) for authentication';
+      'Account data (email, name) for authentication';
 
   @override
   String get infoDataBody =>
@@ -917,7 +917,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get infoDataStorageText =>
-      'All data is stored in a secure database (Neon PostgreSQL). No data is shared with third parties. Authentication is handled via Google OAuth 2.0 through Neon Auth.';
+      'All data is stored in a secure database (Neon PostgreSQL). No data is shared with third parties. Authentication is handled via Neon Auth (Google OAuth 2.0 or email/password).';
 
   @override
   String get infoDataDeletion =>
@@ -936,6 +936,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Food nutrient database from the U.S. Department of Agriculture.';
 
   @override
+  String get infoBlsName => 'Bundeslebensmittelschlüssel 4.0 (BLS)';
+
+  @override
+  String get infoBlsDescription =>
+      'German national food composition database published by the Max Rubner-Institut (MRI) and the German Federal Ministry of Food and Agriculture.';
+
+  @override
+  String get infoBlsLicense => '© Max Rubner-Institut / BMEL';
+
+  @override
   String get infoNeonName => 'Neon (Database & Authentication)';
 
   @override
@@ -947,7 +957,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get infoGoogleDescription =>
-      'Authentication via Google account. Only email address and name are transmitted.';
+      'Optional authentication via Google account. Only email address and name are transmitted.';
+
+  @override
+  String get infoNrvName => 'EU Nutrient Reference Values (NRV)';
+
+  @override
+  String get infoNrvDescription =>
+      'Daily micronutrient recommendations are based on Nutrient Reference Values (NRV) per Regulation (EU) No 1169/2011 of the European Parliament and of the Council.';
+
+  @override
+  String get infoNrvLicense => 'Regulation (EU) No 1169/2011';
 
   @override
   String get cannotNavigateToFuture => 'You cannot navigate into the future';
@@ -958,7 +978,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get infoCopyright => '© 2025 Simon Span · dietry.de';
+  String get infoCopyright => '© 2025 Thorsten Rieß · dietry.de';
 
   @override
   String get offlineMode =>

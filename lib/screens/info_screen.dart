@@ -182,6 +182,16 @@ class InfoScreen extends StatelessWidget {
           const SizedBox(height: 8),
 
           _ApiCard(
+            name: l.infoBlsName,
+            description: l.infoBlsDescription,
+            license: l.infoBlsLicense,
+            url: 'https://www.blsdb.de/',
+            onTap: () => _launchUrl('https://www.blsdb.de/'),
+          ),
+
+          const SizedBox(height: 8),
+
+          _ApiCard(
             name: l.infoNeonName,
             description: l.infoNeonDescription,
             license: l.infoNeonLicense,
@@ -202,13 +212,12 @@ class InfoScreen extends StatelessWidget {
           if (AppFeatures.microNutrients) ...[
             const SizedBox(height: 8),
             _ApiCard(
-              name: 'EU-Nährstoffbezugswerte (NRV)',
-              description:
-                  'Tagesempfehlungen für Mikronährstoffe in der Übersichtsansicht basieren auf den Nährstoffbezugswerten (NRV) gemäß Verordnung (EU) Nr. 1169/2011 des Europäischen Parlaments und des Rates.',
-              license: 'Verordnung (EU) Nr. 1169/2011',
-              url: 'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32011R1169',
+              name: l.infoNrvName,
+              description: l.infoNrvDescription,
+              license: l.infoNrvLicense,
+              url: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32011R1169',
               onTap: () => _launchUrl(
-                  'https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32011R1169'),
+                  'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32011R1169'),
             ),
           ],
 
@@ -231,11 +240,24 @@ class InfoScreen extends StatelessWidget {
                 const _LibraryRow(name: 'dio', license: 'MIT'),
                 const _LibraryRow(name: 'postgrest-dart', license: 'MIT'),
                 const _LibraryRow(name: 'flutter_secure_storage', license: 'BSD 3-Clause'),
+                const _LibraryRow(name: 'shared_preferences', license: 'BSD 3-Clause'),
                 const _LibraryRow(name: 'url_launcher', license: 'BSD 3-Clause'),
                 const _LibraryRow(name: 'flutter_appauth', license: 'Apache 2.0'),
+                const _LibraryRow(name: 'flutter_web_auth_2', license: 'MIT'),
                 const _LibraryRow(name: 'health', license: 'MIT'),
+                const _LibraryRow(name: 'image_picker', license: 'Apache 2.0'),
+                const _LibraryRow(name: 'share_plus', license: 'BSD 3-Clause'),
+                const _LibraryRow(name: 'flutter_local_notifications', license: 'BSD 3-Clause'),
+                const _LibraryRow(name: 'webview_flutter', license: 'BSD 3-Clause'),
+                const _LibraryRow(name: 'sqflite', license: 'MIT'),
+                const _LibraryRow(name: 'http', license: 'BSD 3-Clause'),
+                const _LibraryRow(name: 'uuid', license: 'MIT'),
+                const _LibraryRow(name: 'logger', license: 'MIT'),
+                const _LibraryRow(name: 'package_info_plus', license: 'MIT'),
                 const _LibraryRow(name: 'intl', license: 'BSD 3-Clause'),
                 const _LibraryRow(name: 'dart_jsonwebtoken', license: 'MIT'),
+                if (AppConfig.isCloudEdition)
+                  const _LibraryRow(name: 'google_mlkit_text_recognition', license: 'MIT'),
               ],
             ),
           ),

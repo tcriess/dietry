@@ -913,7 +913,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get infoDataGoogleAccount =>
-      'Datos de cuenta de Google (email, nombre) para la autenticación';
+      'Datos de cuenta (email, nombre) para la autenticación';
 
   @override
   String get infoDataBody =>
@@ -928,7 +928,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get infoDataStorageText =>
-      'Todos los datos se almacenan en una base de datos segura (Neon PostgreSQL). No se comparten datos con terceros. La autenticación se realiza mediante Google OAuth 2.0 a través de Neon Auth.';
+      'Todos los datos se almacenan en una base de datos segura (Neon PostgreSQL). No se comparten datos con terceros. La autenticación se realiza mediante Neon Auth (Google OAuth 2.0 o correo/contraseña).';
 
   @override
   String get infoDataDeletion =>
@@ -947,6 +947,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'Base de datos de nutrientes alimentarios del Departamento de Agricultura de EE. UU.';
 
   @override
+  String get infoBlsName => 'Bundeslebensmittelschlüssel 4.0 (BLS)';
+
+  @override
+  String get infoBlsDescription =>
+      'Base de datos nacional alemana de composición de alimentos publicada por el Max Rubner-Institut (MRI) y el Ministerio Federal de Alimentación y Agricultura de Alemania.';
+
+  @override
+  String get infoBlsLicense => '© Max Rubner-Institut / BMEL';
+
+  @override
   String get infoNeonName => 'Neon (Base de datos y autenticación)';
 
   @override
@@ -958,7 +968,18 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get infoGoogleDescription =>
-      'Autenticación mediante cuenta de Google. Solo se transmiten la dirección de correo electrónico y el nombre.';
+      'Autenticación opcional mediante cuenta de Google. Solo se transmiten la dirección de correo electrónico y el nombre.';
+
+  @override
+  String get infoNrvName =>
+      'Valores de Referencia de Nutrientes de la UE (NRV)';
+
+  @override
+  String get infoNrvDescription =>
+      'Las recomendaciones diarias de micronutrientes se basan en los Valores de Referencia de Nutrientes (NRV) según el Reglamento (UE) n.º 1169/2011 del Parlamento Europeo y del Consejo.';
+
+  @override
+  String get infoNrvLicense => 'Reglamento (UE) n.º 1169/2011';
 
   @override
   String get cannotNavigateToFuture => 'No puedes navegar al futuro';
@@ -969,7 +990,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get infoCopyright => '© 2025 Simon Span · dietry.de';
+  String get infoCopyright => '© 2025 Thorsten Rieß · dietry.de';
 
   @override
   String get offlineMode =>

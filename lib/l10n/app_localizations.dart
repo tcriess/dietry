@@ -1765,7 +1765,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoDataGoogleAccount.
   ///
   /// In de, this message translates to:
-  /// **'Google-Konto-Daten (E-Mail, Name) für die Authentifizierung'**
+  /// **'Konto-Daten (E-Mail, Name) für die Authentifizierung'**
   String get infoDataGoogleAccount;
 
   /// No description provided for @infoDataBody.
@@ -1789,7 +1789,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoDataStorageText.
   ///
   /// In de, this message translates to:
-  /// **'Alle Daten werden in einer gesicherten Datenbank (Neon PostgreSQL) gespeichert. Es werden keine Daten an Dritte weitergegeben. Die Authentifizierung erfolgt über Google OAuth 2.0 via Neon Auth.'**
+  /// **'Alle Daten werden in einer gesicherten Datenbank (Neon PostgreSQL) gespeichert. Es werden keine Daten an Dritte weitergegeben. Die Authentifizierung erfolgt über Neon Auth (Google OAuth 2.0 oder E-Mail/Passwort).'**
   String get infoDataStorageText;
 
   /// No description provided for @infoDataDeletion.
@@ -1816,6 +1816,24 @@ abstract class AppLocalizations {
   /// **'Lebensmittelnährstoffdatenbank des US-amerikanischen Landwirtschaftsministeriums.'**
   String get infoUsdaDescription;
 
+  /// No description provided for @infoBlsName.
+  ///
+  /// In de, this message translates to:
+  /// **'Bundeslebensmittelschlüssel 4.0 (BLS)'**
+  String get infoBlsName;
+
+  /// No description provided for @infoBlsDescription.
+  ///
+  /// In de, this message translates to:
+  /// **'Nationale deutsche Lebensmittelkompositionsdatenbank, herausgegeben vom Max Rubner-Institut (MRI) und dem Bundesministerium für Ernährung und Landwirtschaft.'**
+  String get infoBlsDescription;
+
+  /// No description provided for @infoBlsLicense.
+  ///
+  /// In de, this message translates to:
+  /// **'© Max Rubner-Institut / BMEL'**
+  String get infoBlsLicense;
+
   /// No description provided for @infoNeonName.
   ///
   /// In de, this message translates to:
@@ -1837,8 +1855,26 @@ abstract class AppLocalizations {
   /// No description provided for @infoGoogleDescription.
   ///
   /// In de, this message translates to:
-  /// **'Authentifizierung über Google-Konto. Es werden nur E-Mail-Adresse und Name übertragen.'**
+  /// **'Optionale Authentifizierung über Google-Konto. Es werden nur E-Mail-Adresse und Name übertragen.'**
   String get infoGoogleDescription;
+
+  /// No description provided for @infoNrvName.
+  ///
+  /// In de, this message translates to:
+  /// **'EU-Nährstoffbezugswerte (NRV)'**
+  String get infoNrvName;
+
+  /// No description provided for @infoNrvDescription.
+  ///
+  /// In de, this message translates to:
+  /// **'Tagesempfehlungen für Mikronährstoffe basieren auf den Nährstoffbezugswerten (NRV) gemäß Verordnung (EU) Nr. 1169/2011 des Europäischen Parlaments und des Rates.'**
+  String get infoNrvDescription;
+
+  /// No description provided for @infoNrvLicense.
+  ///
+  /// In de, this message translates to:
+  /// **'Verordnung (EU) Nr. 1169/2011'**
+  String get infoNrvLicense;
 
   /// No description provided for @cannotNavigateToFuture.
   ///
@@ -1855,7 +1891,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoCopyright.
   ///
   /// In de, this message translates to:
-  /// **'© 2025 Simon Span · dietry.de'**
+  /// **'© 2025 Thorsten Rieß · dietry.de'**
   String get infoCopyright;
 
   /// No description provided for @offlineMode.
