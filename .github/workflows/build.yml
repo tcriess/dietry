@@ -274,10 +274,10 @@ jobs:
       - name: Build APK (direct install)
         env:
           ORG_GRADLE_PROJECT_appName: ${{ env.APP_NAME }}
+          ORG_GRADLE_PROJECT_edition: ${{ steps.config.outputs.edition }}
         run: |
           flutter build apk --release \
             --dart-define-from-file=config/ce.json \
-            --dart-define=flutter.edition=${{ steps.config.outputs.edition }} \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
             --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \
@@ -286,10 +286,10 @@ jobs:
       - name: Build App Bundle (Play Store)
         env:
           ORG_GRADLE_PROJECT_appName: ${{ env.APP_NAME }}
+          ORG_GRADLE_PROJECT_edition: ${{ steps.config.outputs.edition }}
         run: |
           flutter build appbundle --release \
             --dart-define-from-file=config/ce.json \
-            --dart-define=flutter.edition=${{ steps.config.outputs.edition }} \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
             --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
             --build-name="${{ github.ref_name }}" \
