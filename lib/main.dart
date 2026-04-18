@@ -49,7 +49,9 @@ import 'screens/add_food_entry_screen.dart';
 import 'widgets/quick_food_entry_sheet.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
+import 'screens/activity_database_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/health_connect_service.dart';
 import 'screens/info_screen.dart';
 import 'screens/reports_screen.dart';
 
@@ -2156,6 +2158,90 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _showActivityQuickAdd() async {
+    final db = widget.dbService;
+    final jwt = db?.jwt;
+    final userId = db?.userId;
+    if (jwt == null || userId == null) return;
+    premiumFeatures.showActivityQuickAddSheet(
+      context: context,
+      userId: userId,
+      authToken: jwt,
+      apiUrl: NeonDatabaseService.dataApiUrl,
+      date: _selectedDay,
+      onAdd: (data) async {
+        final activity = PhysicalActivity(
+          activityType: ActivityType.values.firstWhere(
+            (t) => t.name == data.activityType,
+            orElse: () => ActivityType.other,
+          ),
+          activityId: data.activityId,
+          activityName: data.activityName,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          durationMinutes: data.durationMinutes,
+          caloriesBurned: data.caloriesBurned,
+          distanceKm: data.distanceKm,
+          source: DataSource.manual,
+        );
+        final saved = await _sync.saveActivity(activity);
+        _store.addActivity(saved ?? activity);
+      },
+    );
+  }
+
+  Future<void> _importFromHealthConnect(BuildContext ctx) async {
+    final l = AppLocalizations.of(ctx)!;
+    if (!HealthConnectService.isSupported) {
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
+      return;
+    }
+    final hc = HealthConnectService();
+    final granted = await hc.requestPermissions();
+    if (!granted) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
+      return;
+    }
+    if (!ctx.mounted) return;
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectImporting)));
+    try {
+      final d = _selectedDay;
+      final start = DateTime(d.year, d.month, d.day);
+      final end = DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
+      final imported = await hc.importActivities(start: start, end: end);
+      if (imported.isEmpty) {
+        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectNoResults)));
+        return;
+      }
+      final db = widget.dbService;
+      Set<String> existingHcIds = {};
+      if (db != null) {
+        final existing = await PhysicalActivityService(db).getActivitiesInRange(start: start, end: end);
+        existingHcIds = existing.map((a) => a.healthConnectRecordId).whereType<String>().toSet();
+      } else {
+        existingHcIds = _store.activities.map((a) => a.healthConnectRecordId).whereType<String>().toSet();
+      }
+      final toSave = imported.where((a) => a.healthConnectRecordId == null || !existingHcIds.contains(a.healthConnectRecordId)).toList();
+      for (final activity in toSave) {
+        final saved = await _sync.saveActivity(activity);
+        _store.addActivity(saved ?? activity);
+      }
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(l.healthConnectSuccess(toSave.length)),
+          backgroundColor: Colors.green,
+        ));
+      }
+    } catch (e) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(l.healthConnectError(e.toString())),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
   MealType _suggestMealType() {
     final hour = TimeOfDay.now().hour;
     if (hour < 10) return MealType.breakfast;
@@ -2479,7 +2565,61 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     
     // Build FAB based on selected tab
     Widget? fab;
-    if (_selectedIndex == 1) {
+    if (_selectedIndex == 2) {
+      final db = widget.dbService;
+      fab = Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (AppFeatures.activityQuickAdd && db != null) ...[
+            FloatingActionButton(
+              heroTag: 'fab_activity_quick_add',
+              onPressed: _showActivityQuickAdd,
+              tooltip: l.activityQuickAdd,
+              child: const Icon(Icons.bolt),
+            ),
+            const SizedBox(width: 12),
+          ],
+          if (HealthConnectService.isSupported) ...[
+            FloatingActionButton(
+              heroTag: 'fab_health_connect',
+              onPressed: () => _importFromHealthConnect(context),
+              tooltip: l.importHealthConnect,
+              child: const Icon(Icons.health_and_safety_outlined),
+            ),
+            const SizedBox(width: 12),
+          ],
+          if (db != null) ...[
+            FloatingActionButton(
+              heroTag: 'fab_activity_database',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ActivityDatabaseScreen(dbService: db),
+              )),
+              tooltip: l.myActivities,
+              child: const Icon(Icons.storage_outlined),
+            ),
+            const SizedBox(width: 12),
+          ],
+          if (MediaQuery.of(context).size.width >= 550)
+            FloatingActionButton.extended(
+              heroTag: 'fab_add_activity',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AddActivityScreen(dbService: db, selectedDate: _selectedDay),
+              )),
+              icon: const Icon(Icons.add),
+              label: Text(l.addActivity),
+            )
+          else
+            FloatingActionButton(
+              heroTag: 'fab_add_activity',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AddActivityScreen(dbService: db, selectedDate: _selectedDay),
+              )),
+              tooltip: l.addActivity,
+              child: const Icon(Icons.add),
+            ),
+        ],
+      );
+    } else if (_selectedIndex == 1) {
       // Food Entries tab: quick entry sheet (authenticated) or full screen (guest)
       final db = widget.dbService;
       fab = FloatingActionButton(
@@ -2518,23 +2658,6 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           }
         },
         tooltip: l.addEntry,
-        child: const Icon(Icons.add),
-      );
-    } else if (_selectedIndex == 2) {
-      // Activities tab: show add button (works in both guest and authenticated modes)
-      fab = FloatingActionButton(
-        heroTag: 'fab_add_activity',
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddActivityScreen(
-                dbService: widget.dbService,
-                selectedDate: _selectedDay,
-              ),
-            ),
-          );
-        },
-        tooltip: l.addActivity,
         child: const Icon(Icons.add),
       );
     }

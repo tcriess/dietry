@@ -281,8 +281,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Widget? badge;
     if (AppFeatures.isPro) {
       badge = const _PlanBadge(label: 'Pro', color: Colors.amber);
-    } else if (AppFeatures.isBasic) {
-      badge = const _PlanBadge(label: 'Basic', color: Colors.blue);
     }
 
     return Card(

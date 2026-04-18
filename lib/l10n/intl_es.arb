@@ -88,6 +88,7 @@
   "activityDeleted": "Actividad eliminada",
   "addActivity": "Agregar Actividad",
   "myActivities": "Mis Actividades",
+  "activityQuickAdd": "Añadir actividad rápida",
   "importHealthConnect": "Importar de Health Connect",
   "healthConnectImporting": "Importando actividades...",
   "healthConnectNoResults": "No se encontraron nuevas actividades",

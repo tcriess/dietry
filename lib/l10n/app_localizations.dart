@@ -508,6 +508,12 @@ abstract class AppLocalizations {
   /// **'Meine Aktivitäten'**
   String get myActivities;
 
+  /// No description provided for @activityQuickAdd.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivität schnell hinzufügen'**
+  String get activityQuickAdd;
+
   /// No description provided for @importHealthConnect.
   ///
   /// In de, this message translates to:

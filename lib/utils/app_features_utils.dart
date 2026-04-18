@@ -94,7 +94,6 @@ class AppFeaturesUtils {
     final isCloud = AppFeatures.role != 'community';
     appLogger.d('Edition: ${isCloud ? "Cloud" : "Community"}');
     appLogger.d('Role: ${AppFeatures.role}');
-    appLogger.d('Is Basic: ${AppFeatures.isBasic}');
     appLogger.d('Is Pro: ${AppFeatures.isPro}');
     appLogger.d('');
     appLogger.d('Features:');

@@ -64,24 +64,21 @@ class AppFeatures {
 
   // ── Rollen-Checks ─────────────────────────────────────────────────────────
 
-  /// True für Basic- und Pro-Nutzer (Cloud).
-  static bool get isBasic => _isCloud && (_role == 'basic' || _role == 'pro');
-
   /// True nur für Pro-Nutzer (Cloud).
-  static bool get isPro => _isCloud && _role == 'pro';
+  static bool get isPro => _isCloud && (_role == 'pro' || _role == 'basic');
 
   // ── Feature-Gates ─────────────────────────────────────────────────────────
   // Jedes neue Premium-Feature bekommt hier einen Getter.
   // Community-Edition: immer false (kein isCloud-Check nötig, da _isCloud=false).
 
-  /// Mahlzeiten-Vorlagen: mehrere Zutaten mit Prozentanteilen als eine Mahlzeit.
-  static bool get mealTemplates => isBasic;
+  /// Mahlzeiten-Vorlagen: für alle Cloud-Nutzer verfügbar.
+  static bool get mealTemplates => _isCloud;
 
-  /// Mikronährstoffe & Vitamine pro Food-Entry.
-  static bool get microNutrients => isBasic;
+  /// Mikronährstoffe & Vitamine pro Food-Entry: für alle Cloud-Nutzer verfügbar.
+  static bool get microNutrients => _isCloud;
 
-  /// Schnell-Eintrag für Aktivitäten: Zuletzt / Favoriten / Kurzbefehle (Premium).
-  static bool get activityQuickAdd => isBasic;
+  /// Schnell-Eintrag für Aktivitäten: für alle Cloud-Nutzer verfügbar.
+  static bool get activityQuickAdd => _isCloud;
 
   /// Streak-Tracking mit persistenten Rekorden, Meilensteinen und Badges.
   /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).

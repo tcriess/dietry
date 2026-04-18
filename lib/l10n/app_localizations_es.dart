@@ -220,6 +220,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get myActivities => 'Mis Actividades';
 
   @override
+  String get activityQuickAdd => 'Añadir actividad rápida';
+
+  @override
   String get importHealthConnect => 'Importar de Health Connect';
 
   @override

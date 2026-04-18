@@ -21,7 +21,7 @@ class ActivitiesListScreen extends StatefulWidget {
     required this.onChangeDay,
     required this.onJumpToToday,
   });
-  
+
   @override
   State<ActivitiesListScreen> createState() => _ActivitiesListScreenState();
 }
@@ -47,23 +47,16 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
 
   Future<void> _deleteActivity(PhysicalActivity activity) async {
     final l = AppLocalizations.of(context)!;
-    // Optimistic remove.
     _store.removeActivity(activity.id!);
-
     await SyncService.instance.deleteActivity(activity.id!);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.activityDeleted),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text(l.activityDeleted), backgroundColor: Colors.green),
       );
     }
   }
 
   Future<void> _editActivity(PhysicalActivity activity) async {
-    // Allow editing in guest mode (dbService can be null)
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => EditActivityScreen(
@@ -72,20 +65,15 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
         ),
       ),
     );
-    // DataStore is updated directly by EditActivityScreen.
   }
-  
+
   String _formatDuration(int minutes) {
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
-    
-    if (hours > 0) {
-      return '${hours}h ${mins}min';
-    } else {
-      return '${mins}min';
-    }
+    if (hours > 0) return '${hours}h ${mins}min';
+    return '${mins}min';
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -93,14 +81,12 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     final isToday = DateUtils.isSameDay(widget.selectedDay, DateTime.now());
     final activities = _store.activities;
 
-    // Berechne Gesamt-Statistiken
     final totalDuration = activities.fold(0, (sum, a) => sum + (a.durationMinutes ?? a.calculatedDuration));
     final totalCalories = activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
 
     return Scaffold(
       body: Column(
         children: [
-          // Tagesauswahl
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -113,14 +99,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                 ),
                 Column(
                   children: [
-                    Text(
-                      l.activitiesTitle,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    Text(
-                      formattedDate,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    Text(l.activitiesTitle, style: Theme.of(context).textTheme.headlineSmall),
+                    Text(formattedDate, style: Theme.of(context).textTheme.bodyMedium),
                     if (!isToday)
                       TextButton(
                         onPressed: widget.onJumpToToday,
@@ -129,8 +109,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: Text(l.today,
-                            style: const TextStyle(fontSize: 12)),
+                        child: Text(l.today, style: const TextStyle(fontSize: 12)),
                       ),
                   ],
                 ),
@@ -142,8 +121,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
               ],
             ),
           ),
-          
-          // Tages-Statistik
+
           if (activities.isNotEmpty)
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -153,63 +131,35 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Column(
-                      children: [
-                        const Icon(Icons.timer, color: Colors.blue),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatDuration(totalDuration),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Gesamt',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+                    Column(children: [
+                      const Icon(Icons.timer, color: Colors.blue),
+                      const SizedBox(height: 4),
+                      Text(_formatDuration(totalDuration),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      Text('Gesamt', style: Theme.of(context).textTheme.bodySmall),
+                    ]),
                     if (totalCalories > 0)
-                      Column(
-                        children: [
-                          const Icon(Icons.local_fire_department, color: Colors.orange),
-                          const SizedBox(height: 4),
-                          Text(
-                            totalCalories.toStringAsFixed(0),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'kcal',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    Column(
-                      children: [
-                        const Icon(Icons.fitness_center, color: Colors.green),
+                      Column(children: [
+                        const Icon(Icons.local_fire_department, color: Colors.orange),
                         const SizedBox(height: 4),
-                        Text(
-                          '${activities.length}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          l.activitiesTitle,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+                        Text(totalCalories.toStringAsFixed(0),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text('kcal', style: Theme.of(context).textTheme.bodySmall),
+                      ]),
+                    Column(children: [
+                      const Icon(Icons.fitness_center, color: Colors.green),
+                      const SizedBox(height: 4),
+                      Text('${activities.length}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(l.activitiesTitle, style: Theme.of(context).textTheme.bodySmall),
+                    ]),
                   ],
                 ),
               ),
             ),
-          
+
           const Divider(height: 1),
-          
-          // Aktivitäten-Liste
+
           Expanded(
             child: _store.isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -220,19 +170,11 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                           children: [
                             Icon(Icons.directions_run, size: 64, color: Colors.grey.shade400),
                             const SizedBox(height: 16),
-                            Text(
-                              l.activitiesEmpty,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
+                            Text(l.activitiesEmpty,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600)),
                             const SizedBox(height: 8),
-                            Text(
-                              l.activitiesEmptyHint,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
+                            Text(l.activitiesEmptyHint,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500)),
                           ],
                         ),
                       )
@@ -242,7 +184,6 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                         itemBuilder: (context, index) {
                           final activity = activities[index];
                           final timeFormat = DateFormat.Hm();
-                          
                           return Dismissible(
                             key: Key(activity.id!),
                             direction: DismissDirection.endToStart,
@@ -275,18 +216,13 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                 },
                               );
                             },
-                            onDismissed: (direction) {
-                              _deleteActivity(activity);
-                            },
+                            onDismissed: (direction) => _deleteActivity(activity),
                             child: Card(
                               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                               child: ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: Colors.blue.shade100,
-                                  child: const Icon(
-                                    Icons.fitness_center,
-                                    color: Colors.blue,
-                                  ),
+                                  child: const Icon(Icons.fitness_center, color: Colors.blue),
                                 ),
                                 title: Text(activity.displayName),
                                 subtitle: Text(
@@ -313,4 +249,3 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     );
   }
 }
-
