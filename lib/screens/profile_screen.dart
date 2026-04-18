@@ -1053,18 +1053,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
+              interval: 1,
               getTitlesWidget: (value, meta) {
+                // Ignore fractional ticks fl_chart sometimes emits.
+                if (value != value.roundToDouble()) return const SizedBox();
                 final index = value.toInt();
-                if (index < 0 || index >= sortedMeasurements.length) {
-                  return const SizedBox();
-                }
-                final measurement = sortedMeasurements[index];
+                final n = sortedMeasurements.length;
+                if (index < 0 || index >= n) return const SizedBox();
+                // Show every k-th label to avoid crowding.
+                final k = n <= 7 ? 1 : n <= 15 ? 2 : n <= 30 ? 3 : 5;
+                if (index % k != 0 && index != n - 1) return const SizedBox();
+                final m = sortedMeasurements[index];
+                final multiYear = sortedMeasurements.first.measuredAt.year !=
+                    sortedMeasurements.last.measuredAt.year;
+                final label = multiYear
+                    ? '${m.measuredAt.day}.${m.measuredAt.month}.${m.measuredAt.year % 100}'
+                    : '${m.measuredAt.day}.${m.measuredAt.month}.';
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    '${measurement.measuredAt.day}.${measurement.measuredAt.month}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
+                  child: Text(label, style: const TextStyle(fontSize: 10)),
                 );
               },
             ),

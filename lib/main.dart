@@ -1739,6 +1739,26 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       );
     }
 
+    final rawJwt = _authService.jwt;
+    if (rawJwt != null && JwtHelper.isTokenExpired(rawJwt)) {
+      // Token expired and refresh failed — treat as logged out immediately.
+      // Trigger background cleanup without waiting (signOut has no timeout).
+      _authService.signOut().ignore();
+      return MaterialApp(
+        localizationsDelegates: [
+          ...AppLocalizations.localizationsDelegates,
+          ...CloudLocalizations.localizationsDelegates,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: _locale,
+        home: LoginScreen(
+          authService: _authService,
+          dbService: db!,
+          onLocaleChanged: (locale) => setState(() => _locale = locale),
+        ),
+      );
+    }
+
     if (!_authService.isLoggedIn) {
       return MaterialApp(
         localizationsDelegates: [
@@ -2035,6 +2055,7 @@ class DietryHome extends StatefulWidget {
 class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   DateTime _selectedDay = DateTime.now();
+  final _reportsRefreshTrigger = ValueNotifier<int>(0);
 
   final _store = DataStore.instance;
   final _sync = SyncService.instance;
@@ -2526,6 +2547,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
               ReportsScreen(
                 dbService: widget.dbService,
                 goal: _store.goal,
+                refreshTrigger: _reportsRefreshTrigger,
               ),
             ],
           ),
@@ -2592,6 +2614,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
+          if (index == 3 && _selectedIndex != 3) {
+            _reportsRefreshTrigger.value++;
+          }
           setState(() {
             _selectedIndex = index;
           });
@@ -2961,19 +2986,15 @@ class OverviewScreen extends StatelessWidget {
             if (liquidFoodIntakeMl > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 2,
                   children: [
                     Text(
                       '💧 $waterIntakeMl ml ${l.waterManual}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '•',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(width: 8),
+                    Text('•', style: Theme.of(context).textTheme.bodySmall),
                     Text(
                       '🥤 $liquidFoodIntakeMl ml ${l.waterFromFood}',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -3149,13 +3170,30 @@ class OverviewScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal'),
-                if (totalCaloriesBurned > 0)
-                  Text(
-                    '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
-                    style: TextStyle(color: Colors.green.shade700),
+                Flexible(
+                  child: Text(
+                    '${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal',
+                    overflow: TextOverflow.ellipsis,
                   ),
-                Text('${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal'),
+                ),
+                if (totalCaloriesBurned > 0) ...[
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
+                      style: TextStyle(color: Colors.green.shade700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    '${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal',
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
+                ),
               ],
             ),
             Text(

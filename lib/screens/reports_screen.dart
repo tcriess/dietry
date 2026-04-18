@@ -77,8 +77,15 @@ class _ReportsData {
 class ReportsScreen extends StatefulWidget {
   final NeonDatabaseService? dbService;
   final NutritionGoal? goal;
+  /// Increment to trigger a data reload (e.g. when switching to this tab).
+  final ValueNotifier<int>? refreshTrigger;
 
-  const ReportsScreen({super.key, required this.dbService, this.goal});
+  const ReportsScreen({
+    super.key,
+    required this.dbService,
+    this.goal,
+    this.refreshTrigger,
+  });
 
   @override
   State<ReportsScreen> createState() => _ReportsScreenState();
@@ -98,13 +105,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _svc = ReportsService(widget.dbService!);
       _reload();
     } else {
-      // Guest mode: return empty data
       _future = Future.value(const _ReportsData(
         nutrition: [],
         water: [],
         weight: [],
       ));
     }
+    widget.refreshTrigger?.addListener(_reload);
+  }
+
+  @override
+  void didUpdateWidget(ReportsScreen old) {
+    super.didUpdateWidget(old);
+    if (old.refreshTrigger != widget.refreshTrigger) {
+      old.refreshTrigger?.removeListener(_reload);
+      widget.refreshTrigger?.addListener(_reload);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.refreshTrigger?.removeListener(_reload);
+    super.dispose();
   }
 
   void _reload() {
@@ -499,17 +521,26 @@ class _StatsSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final n = nutrition.length;
-    final avgCal = n == 0
-        ? 0.0
-        : nutrition.fold(0.0, (s, d) => s + d.calories) / n;
-    final avgWater = water.isEmpty
+    // Exclude today from averages — the day is incomplete and skews stats.
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final completed = nutrition
+        .where((d) => d.date.toIso8601String().split('T')[0] != todayStr)
+        .toList();
+    final n = completed.length;
+    final avgCal =
+        n == 0 ? 0.0 : completed.fold(0.0, (s, d) => s + d.calories) / n;
+    final completedWater = water
+        .where((d) => d.date.toIso8601String().split('T')[0] != todayStr)
+        .toList();
+    final avgWater = completedWater.isEmpty
         ? 0
-        : (water.fold(0, (s, d) => s + d.amountMl) / water.length).round();
+        : (completedWater.fold(0, (s, d) => s + d.amountMl) /
+                completedWater.length)
+            .round();
 
     final calGoal = goal?.calories ?? 0;
     final daysOnTarget = calGoal > 0
-        ? nutrition
+        ? completed
             .where((d) {
               final r = d.calories / calGoal;
               return r >= 0.9 && r <= 1.1;
