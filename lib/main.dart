@@ -1210,6 +1210,15 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       appLogger.d('[_initDatabaseService] ✓ setState called');
     }
 
+    // Fetch role here too: _onAuthChanged fires before _dbInitialized is true on
+    // startup, so its role fetch is skipped. This ensures role is loaded on first login.
+    final jwt = _authService.jwt;
+    final userId = db.userId;
+    if (jwt != null && _authService.isLoggedIn && userId != null) {
+      appLogger.d('[_initDatabaseService] Fetching user role after DB init...');
+      _fetchAndApplyRole(jwt: jwt, userId: userId);
+    }
+
     appLogger.d('[_initDatabaseService] ✅ Database service initialization complete');
   }
   
@@ -1451,27 +1460,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         }
         final userId = db.userId;
         if (mounted && userId != null) {
-          // Restore cached role immediately — avoids role flash on resume/token-refresh.
-          // Neon Auth has no custom JWT claims, so setFromJwt always yields 'free'
-          // and must not be used. Role is sourced from the DB; cache bridges the gap.
-          final prefs = await SharedPreferences.getInstance();
-          final cachedRole = prefs.getString('user_role_$userId');
-          if (cachedRole != null && mounted) {
-            AppFeatures.setRole(cachedRole);
-            setState(() {});
-          }
-          // Fetch fresh role from DB and update cache.
-          premiumFeatures.fetchUserRole(
-            userId: userId,
-            authToken: jwt,
-            apiUrl: AppConfig.dataApiUrl,
-          ).then((role) {
-            prefs.setString('user_role_$userId', role);
-            AppFeatures.setRole(role);
-            if (mounted) setState(() {});
-          }).catchError((e) {
-            appLogger.w('⚠️ Rolle konnte nicht abgerufen werden: $e');
-          });
+          _fetchAndApplyRole(jwt: jwt, userId: userId);
         }
       });
     } else if (!_authService.isLoggedIn && db != null) {
@@ -1504,6 +1493,30 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       appLogger.d('[_onAuthChanged] ✓ Inside setState callback');
     });
     appLogger.d('[_onAuthChanged] ✓ setState completed');
+  }
+
+  /// Restore cached role immediately, then fetch fresh role from DB and update cache.
+  /// Called both from _onAuthChanged (resume/token-refresh) and _initDatabaseService
+  /// (initial login), because the auth listener fires before DB is ready on startup
+  /// and the role fetch would otherwise be silently skipped.
+  Future<void> _fetchAndApplyRole({required String jwt, required String userId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedRole = prefs.getString('user_role_$userId');
+    if (cachedRole != null && mounted) {
+      AppFeatures.setRole(cachedRole);
+      setState(() {});
+    }
+    premiumFeatures.fetchUserRole(
+      userId: userId,
+      authToken: jwt,
+      apiUrl: AppConfig.dataApiUrl,
+    ).then((role) {
+      prefs.setString('user_role_$userId', role);
+      AppFeatures.setRole(role);
+      if (mounted) setState(() {});
+    }).catchError((e) {
+      appLogger.w('⚠️ Rolle konnte nicht abgerufen werden: $e');
+    });
   }
 
   /// Check if user has any existing data in remote database
