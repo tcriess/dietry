@@ -336,15 +336,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.profileTitle),
-        actions: [
-          if (HealthConnectService.isSupported)
-            IconButton(
-              icon: const Icon(Icons.health_and_safety_outlined),
-              tooltip: l.importHealthConnect,
-              onPressed: _importBodyFromHealthConnect,
-            ),
-        ],
       ),
+      floatingActionButton: HealthConnectService.isSupported
+          ? FloatingActionButton(
+              heroTag: 'fab_profile_health_connect',
+              onPressed: _importBodyFromHealthConnect,
+              tooltip: l.importHealthConnect,
+              child: const Icon(Icons.health_and_safety_outlined),
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(

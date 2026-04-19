@@ -32,6 +32,7 @@ import 'services/water_reminder_service.dart';
 import 'services/cheat_day_service.dart';
 import 'services/guest_mode_service.dart';
 import 'services/guest_migration_service.dart';
+import 'services/user_body_measurements_service.dart';
 import 'services/local_data_service.dart';
 import 'app_config.dart';
 import 'services/server_config_service.dart';
@@ -2242,6 +2243,85 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _importBodyWeightsFromHealthConnect(BuildContext ctx) async {
+    final l = AppLocalizations.of(ctx)!;
+    final db = widget.dbService;
+    if (db == null || !HealthConnectService.isSupported) return;
+
+    final hc = HealthConnectService();
+    final granted = await hc.requestPermissions();
+    if (!granted) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
+      return;
+    }
+    if (!ctx.mounted) return;
+
+    final earliestGoalDate = await NutritionGoalService(db).getEarliestGoalDate();
+    if (!ctx.mounted) return;
+
+    final dateStr = earliestGoalDate != null
+        ? '${earliestGoalDate.day.toString().padLeft(2, '0')}.${earliestGoalDate.month.toString().padLeft(2, '0')}.${earliestGoalDate.year}'
+        : null;
+
+    final useAllData = await showDialog<bool>(
+      context: ctx,
+      builder: (dlgCtx) {
+        final ld = AppLocalizations.of(dlgCtx)!;
+        return SimpleDialog(
+          title: Text(ld.importRangeTitle),
+          children: [
+            if (earliestGoalDate != null)
+              SimpleDialogOption(
+                onPressed: () => Navigator.of(dlgCtx).pop(false),
+                child: Text(ld.importRangeSinceGoal(dateStr!)),
+              ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(dlgCtx).pop(true),
+              child: Text(ld.importRangeAll),
+            ),
+          ],
+        );
+      },
+    );
+    if (useAllData == null || !ctx.mounted) return;
+
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectImporting)));
+
+    try {
+      final end = DateTime.now();
+      final start = (useAllData || earliestGoalDate == null) ? DateTime(2000) : earliestGoalDate;
+      final imported = await hc.importBodyMeasurements(start: start, end: end);
+
+      if (imported.isEmpty) {
+        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectNoResults)));
+        return;
+      }
+
+      final service = UserBodyMeasurementsService(db);
+      int saved = 0;
+      for (final m in imported) {
+        await service.saveMeasurement(m);
+        saved++;
+      }
+      await NutritionGoalService.autoAdjustGoal(db);
+
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(l.healthConnectSuccessBody(saved)),
+          backgroundColor: Colors.green,
+        ));
+        _reportsRefreshTrigger.value++;
+      }
+    } catch (e) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(l.healthConnectError(e.toString())),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
+
   MealType _suggestMealType() {
     final hour = TimeOfDay.now().hour;
     if (hour < 10) return MealType.breakfast;
@@ -2565,20 +2645,18 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     
     // Build FAB based on selected tab
     Widget? fab;
-    if (_selectedIndex == 2) {
+    if (_selectedIndex == 3 && HealthConnectService.isSupported && widget.dbService != null) {
+      fab = FloatingActionButton(
+        heroTag: 'fab_reports_health_connect',
+        onPressed: () => _importBodyWeightsFromHealthConnect(context),
+        tooltip: l.importHealthConnect,
+        child: const Icon(Icons.health_and_safety_outlined),
+      );
+    } else if (_selectedIndex == 2) {
       final db = widget.dbService;
       fab = Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          if (AppFeatures.activityQuickAdd && db != null) ...[
-            FloatingActionButton(
-              heroTag: 'fab_activity_quick_add',
-              onPressed: _showActivityQuickAdd,
-              tooltip: l.activityQuickAdd,
-              child: const Icon(Icons.bolt),
-            ),
-            const SizedBox(width: 12),
-          ],
           if (HealthConnectService.isSupported) ...[
             FloatingActionButton(
               heroTag: 'fab_health_connect',
@@ -2596,6 +2674,15 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
               )),
               tooltip: l.myActivities,
               child: const Icon(Icons.storage_outlined),
+            ),
+            const SizedBox(width: 12),
+          ],
+          if (AppFeatures.activityQuickAdd && db != null) ...[
+            FloatingActionButton(
+              heroTag: 'fab_activity_quick_add',
+              onPressed: _showActivityQuickAdd,
+              tooltip: l.activityQuickAdd,
+              child: const Icon(Icons.bolt),
             ),
             const SizedBox(width: 12),
           ],
