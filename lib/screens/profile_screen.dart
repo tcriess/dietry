@@ -279,7 +279,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = widget.authService.userEmail;
 
     Widget? badge;
-    if (AppFeatures.isPro) {
+    if (AppFeatures.isPaid) {
       badge = const _PlanBadge(label: 'Pro', color: Colors.amber);
     }
 

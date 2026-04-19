@@ -64,8 +64,8 @@ class AppFeatures {
 
   // ── Rollen-Checks ─────────────────────────────────────────────────────────
 
-  /// True nur für Pro-Nutzer (Cloud).
-  static bool get isPro => _isCloud && (_role == 'pro' || _role == 'basic');
+  /// True für bezahlte Cloud-Nutzer (Pro-Tier, intern auch 'basic' genannt).
+  static bool get isPaid => _isCloud && (_role == 'pro' || _role == 'basic');
 
   // ── Feature-Gates ─────────────────────────────────────────────────────────
   // Jedes neue Premium-Feature bekommt hier einen Getter.
@@ -74,8 +74,8 @@ class AppFeatures {
   /// Mahlzeiten-Vorlagen: für alle Cloud-Nutzer verfügbar.
   static bool get mealTemplates => _isCloud;
 
-  /// Mikronährstoffe & Vitamine pro Food-Entry: für alle Cloud-Nutzer verfügbar.
-  static bool get microNutrients => _isCloud;
+  /// Mikronährstoffe & Vitamine pro Food-Entry: nur für Pro-Nutzer (Cloud).
+  static bool get microNutrients => isPaid;
 
   /// Schnell-Eintrag für Aktivitäten: für alle Cloud-Nutzer verfügbar.
   static bool get activityQuickAdd => _isCloud;
@@ -94,15 +94,12 @@ class AppFeatures {
   static bool get shareProgress => _isCloud && _platformSupportsSocialSharing;
 
   /// Erweiterte Analysen: Wochen-/Monatsberichte, Trend-Charts.
-  static bool get advancedAnalytics => isPro;
-
-  /// Mehrere Profile (Familie / Trainer-Klienten).
-  static bool get multipleProfiles => isPro;
+  static bool get advancedAnalytics => isPaid;
 
   /// OCR-Erkennung von Nährwerttabellen per Kamera (Pro, Android/iOS).
   /// ML Kit Text Recognition läuft vollständig on-device.
   static bool get nutritionLabelScan {
-    if (!isPro) return false;
+    if (!isPaid) return false;
     if (kIsWeb) return false;
     return io.Platform.isAndroid || io.Platform.isIOS;
   }
