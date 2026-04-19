@@ -745,12 +745,16 @@ class _CalorieTrendLineChart extends StatelessWidget {
           ),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (spots) => spots
-                  .map((s) => LineTooltipItem(
-                        '${s.y.round()} kcal',
-                        const TextStyle(fontSize: 12, color: Colors.white),
-                      ))
-                  .toList(),
+              getTooltipItems: (spots) => spots.map((s) {
+                final idx = s.x.toInt();
+                final date = idx >= 0 && idx < pts.length
+                    ? _xLabel(pts[idx].date, range)
+                    : '';
+                return LineTooltipItem(
+                  '$date\n${s.y.round()} kcal',
+                  const TextStyle(fontSize: 12, color: Colors.white),
+                );
+              }).toList(),
             ),
           ),
           lineBarsData: [
@@ -837,10 +841,15 @@ class _CalorieTrendBarChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, _, rod, __) => BarTooltipItem(
-                '${rod.toY.round()} kcal',
-                const TextStyle(fontSize: 12, color: Colors.white),
-              ),
+              getTooltipItem: (group, _, rod, __) {
+                final date = group.x >= 0 && group.x < pts.length
+                    ? _xLabel(pts[group.x].date, range)
+                    : '';
+                return BarTooltipItem(
+                  '$date\n${rod.toY.round()} kcal',
+                  const TextStyle(fontSize: 12, color: Colors.white),
+                );
+              },
             ),
           ),
           titlesData: FlTitlesData(
@@ -1030,10 +1039,15 @@ class _WaterTrendChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, _, rod, __) => BarTooltipItem(
-                '${(rod.toY / 1000).toStringAsFixed(2)} L',
-                const TextStyle(fontSize: 12, color: Colors.white),
-              ),
+              getTooltipItem: (group, _, rod, __) {
+                final date = group.x >= 0 && group.x < pts.length
+                    ? _xLabel(pts[group.x].date, range)
+                    : '';
+                return BarTooltipItem(
+                  '$date\n${(rod.toY / 1000).toStringAsFixed(2)} L',
+                  const TextStyle(fontSize: 12, color: Colors.white),
+                );
+              },
             ),
           ),
           titlesData: FlTitlesData(
@@ -1181,19 +1195,21 @@ class _WeightTrendChart extends StatelessWidget {
             touchTooltipData: LineTouchTooltipData(
               getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                 return touchedBarSpots.map((barSpot) {
+                  final idx = barSpot.x.toInt();
+                  final dateLabel = idx >= 0 && idx < wPts.length
+                      ? _xLabel(wPts[idx].date, range)
+                      : '';
                   final isWeightLine = barSpot.barIndex == 0;
                   late String value;
                   if (isWeightLine) {
-                    // Convert from normalized back to actual weight
                     final actualWeight = minW + barSpot.y / 100 * wRange;
-                    value = '${actualWeight.toStringAsFixed(1)} kg';
+                    value = '$dateLabel\n${actualWeight.toStringAsFixed(1)} kg';
                   } else if (barSpot.barIndex == 1 && normalizedBfPts.isNotEmpty) {
-                    // Convert from normalized back to actual body fat percentage
                     final bfRange = maxBf - minBf;
                     final actualBf = minBf + barSpot.y / 100 * bfRange;
-                    value = '${actualBf.toStringAsFixed(1)}%';
+                    value = '$dateLabel\n${actualBf.toStringAsFixed(1)}%';
                   } else {
-                    value = barSpot.y.toStringAsFixed(1);
+                    value = '$dateLabel\n${barSpot.y.toStringAsFixed(1)}';
                   }
                   return LineTooltipItem(value, const TextStyle(color: Colors.white));
                 }).toList();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/physical_activity.dart';
 import '../models/activity_item.dart';
@@ -247,10 +248,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         endTime: endDateTime,
         durationMinutes: durationMinutes,
         caloriesBurned: _caloriesController.text.isNotEmpty
-            ? double.parse(_caloriesController.text)
+            ? parseDouble(_caloriesController.text)
             : null,
         distanceKm: _distanceController.text.isNotEmpty
-            ? double.parse(_distanceController.text)
+            ? parseDouble(_distanceController.text)
             : null,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         source: DataSource.manual,
@@ -513,7 +514,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
               ],
             ),
             
@@ -531,7 +532,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                 ],
               ),
               const SizedBox(height: 16),

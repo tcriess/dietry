@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
@@ -200,7 +201,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   /// For food entries: scales per-100g values by grams.
   /// For meal entries: scales stored totals by portion ratio.
   Map<String, double> _computeTotals() {
-    final amount = double.tryParse(_amountController.text) ?? 0;
+    final amount = tryParseDouble(_amountController.text) ?? 0;
     if (amount <= 0) {
       return {
         'calories': 0,
@@ -229,10 +230,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     final factor = grams / 100.0;
 
     return {
-      'calories': (double.tryParse(_caloriesController.text) ?? 0) * factor,
-      'protein':  (double.tryParse(_proteinController.text)  ?? 0) * factor,
-      'fat':      (double.tryParse(_fatController.text)      ?? 0) * factor,
-      'carbs':    (double.tryParse(_carbsController.text)    ?? 0) * factor,
+      'calories': (tryParseDouble(_caloriesController.text) ?? 0) * factor,
+      'protein':  (tryParseDouble(_proteinController.text)  ?? 0) * factor,
+      'fat':      (tryParseDouble(_fatController.text)      ?? 0) * factor,
+      'carbs':    (tryParseDouble(_carbsController.text)    ?? 0) * factor,
     };
   }
 
@@ -242,7 +243,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     setState(() { _isSaving = true; });
 
     try {
-      final rawAmount = double.parse(_amountController.text);
+      final rawAmount = parseDouble(_amountController.text);
       final displayUnit = _selectedPortion?.name ?? _customUnit;
       final isMealEntry = widget.entry.isMeal;
 
@@ -275,10 +276,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         }
       } else {
         // For food entries: convert per-100g values back to totals
-        final per100gCalories = double.parse(_caloriesController.text);
-        final per100gProtein = double.parse(_proteinController.text);
-        final per100gFat = double.parse(_fatController.text);
-        final per100gCarbs = double.parse(_carbsController.text);
+        final per100gCalories = parseDouble(_caloriesController.text);
+        final per100gProtein = parseDouble(_proteinController.text);
+        final per100gFat = parseDouble(_fatController.text);
+        final per100gCarbs = parseDouble(_carbsController.text);
 
         // Calculate grams for the current unit/amount
         final grams = _selectedPortion != null
@@ -292,17 +293,17 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         totalCarbs = per100gCarbs * grams / 100.0;
 
         // Optional fields: convert per-100g to totals
-        totalFiber = double.tryParse(_fiberController.text) != null
-            ? double.parse(_fiberController.text) * grams / 100.0
+        totalFiber = tryParseDouble(_fiberController.text) != null
+            ? parseDouble(_fiberController.text) * grams / 100.0
             : null;
-        totalSugar = double.tryParse(_sugarController.text) != null
-            ? double.parse(_sugarController.text) * grams / 100.0
+        totalSugar = tryParseDouble(_sugarController.text) != null
+            ? parseDouble(_sugarController.text) * grams / 100.0
             : null;
-        totalSodium = double.tryParse(_sodiumController.text) != null
-            ? double.parse(_sodiumController.text) * grams / 100.0
+        totalSodium = tryParseDouble(_sodiumController.text) != null
+            ? parseDouble(_sodiumController.text) * grams / 100.0
             : null;
-        totalSaturatedFat = double.tryParse(_saturatedFatController.text) != null
-            ? double.parse(_saturatedFatController.text) * grams / 100.0
+        totalSaturatedFat = tryParseDouble(_saturatedFatController.text) != null
+            ? parseDouble(_saturatedFatController.text) * grams / 100.0
             : null;
 
         // Calculate amountMl for liquid foods
@@ -422,7 +423,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     final totals = _computeTotals();
     if (totals.isEmpty) return const SizedBox.shrink();
 
-    final amount = double.tryParse(_amountController.text) ?? 0;
+    final amount = tryParseDouble(_amountController.text) ?? 0;
     final amountStr = amount == amount.truncateToDouble()
         ? amount.toInt().toString()
         : amount.toStringAsFixed(1);
@@ -502,7 +503,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                     ],
                     onChanged: (_) {
                       _recalculate();
@@ -510,7 +511,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                     },
                     validator: (value) {
                       if (value == null || value.isEmpty) return l.requiredField;
-                      final amount = double.tryParse(value);
+                      final amount = tryParseDouble(value);
                       if (amount == null || amount <= 0) return l.weightInvalid;
                       return null;
                     },

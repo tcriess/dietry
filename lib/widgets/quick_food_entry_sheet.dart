@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../models/food_entry.dart';
@@ -755,7 +756,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   bool _savingShortcut = false;
 
   double get _currentAmount =>
-      double.tryParse(_amountCtrl.text) ?? widget.initialAmount;
+      tryParseDouble(_amountCtrl.text) ?? widget.initialAmount;
 
   @override
   void initState() {
@@ -915,7 +916,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
                   ],
                   onChanged: (_) => setState(() {}),
                 ),

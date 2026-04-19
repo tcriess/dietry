@@ -1,4 +1,5 @@
 import 'dart:convert' show base64Decode;
+import '../utils/number_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -967,21 +968,21 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       id: foodId,
       userId: widget.food?.userId,
       name: _nameController.text.trim(),
-      calories: double.parse(_caloriesController.text),
-      protein: double.parse(_proteinController.text),
-      fat: double.parse(_fatController.text),
-      carbs: double.parse(_carbsController.text),
-      fiber: double.tryParse(_fiberController.text),
-      sugar: double.tryParse(_sugarController.text),
-      sodium: double.tryParse(_sodiumController.text),
-      saturatedFat: double.tryParse(_saturatedFatController.text),
+      calories: parseDouble(_caloriesController.text),
+      protein: parseDouble(_proteinController.text),
+      fat: parseDouble(_fatController.text),
+      carbs: parseDouble(_carbsController.text),
+      fiber: tryParseDouble(_fiberController.text),
+      sugar: tryParseDouble(_sugarController.text),
+      sodium: tryParseDouble(_sodiumController.text),
+      saturatedFat: tryParseDouble(_saturatedFatController.text),
       servingSize: null,
       servingUnit: null,
       portions: _portionRows
           .where((r) => r.name.text.trim().isNotEmpty && r.amount.text.isNotEmpty)
           .map((r) => FoodPortion(
                 name: r.name.text.trim(),
-                amountG: double.tryParse(r.amount.text) ?? 0,
+                amountG: tryParseDouble(r.amount.text) ?? 0,
               ))
           .where((p) => p.amountG > 0)
           .toList(),
@@ -1026,7 +1027,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         isDense: true,
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
       validator: (v) =>
           (v == null || v.isEmpty) ? requiredMsg : null,
     );
@@ -1217,7 +1218,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             isDense: true,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
                         )),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1231,7 +1232,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             isDense: true,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
                         )),
                   ],
                 ),
@@ -1250,7 +1251,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             isDense: true,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
                         )),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1263,7 +1264,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             isDense: true,
                           ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
                         )),
                   ],
                 ),

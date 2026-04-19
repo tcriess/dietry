@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/user_body_data.dart';
 import '../services/user_body_data_service.dart';
@@ -75,8 +76,8 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
     try {
       final bodyData = UserBodyData(
         id: widget.existingData?.id,
-        weight: double.parse(_weightController.text),
-        height: double.parse(_heightController.text),
+        weight: parseDouble(_weightController.text),
+        height: parseDouble(_heightController.text),
         age: int.parse(_ageController.text),
         gender: _selectedGender,
         activityLevel: _selectedActivityLevel,
@@ -170,13 +171,13 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
               ],
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Bitte Gewicht eingeben';
                 }
-                final weight = double.tryParse(value);
+                final weight = tryParseDouble(value);
                 if (weight == null || weight <= 0 || weight > 300) {
                   return 'Ungültiges Gewicht';
                 }
@@ -203,7 +204,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
                 if (value == null || value.isEmpty) {
                   return 'Bitte Größe eingeben';
                 }
-                final height = double.tryParse(value);
+                final height = tryParseDouble(value);
                 if (height == null || height < 100 || height > 250) {
                   return 'Ungültige Größe (100-250cm)';
                 }

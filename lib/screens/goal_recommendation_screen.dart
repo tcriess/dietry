@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../services/nutrition_calculator.dart';
@@ -133,8 +134,8 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
 
     try {
       final bodyData = UserBodyData(
-        weight: double.parse(_weightController.text),
-        height: double.parse(_heightController.text),
+        weight: parseDouble(_weightController.text),
+        height: parseDouble(_heightController.text),
         gender: _gender,
         age: _ageFromBirthdate()!,
         activityLevel: _activityLevel,
@@ -459,13 +460,13 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+[.,]?\d{0,1}')),
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return l.weightRequired;
                   }
-                  final weight = double.tryParse(value);
+                  final weight = tryParseDouble(value);
                   if (weight == null || weight < 30 || weight > 300) {
                     return l.weightInvalidRec;
                   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/user_body_data.dart';
 import '../services/user_body_measurements_service.dart';
@@ -95,15 +96,15 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
     try {
       final measurement = UserBodyMeasurement(
         id: widget.existingMeasurement?.id,
-        weight: double.parse(_weightController.text),
+        weight: parseDouble(_weightController.text),
         bodyFatPercentage: _bodyFatController.text.isNotEmpty
-            ? double.parse(_bodyFatController.text)
+            ? parseDouble(_bodyFatController.text)
             : null,
         muscleMassKg: _muscleMassController.text.isNotEmpty
-            ? double.parse(_muscleMassController.text)
+            ? parseDouble(_muscleMassController.text)
             : null,
         waistCm: _waistController.text.isNotEmpty
-            ? double.parse(_waistController.text)
+            ? parseDouble(_waistController.text)
             : null,
         measuredAt: _selectedDate,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
@@ -234,13 +235,13 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
               ],
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return l.weightRequired;
                 }
-                final weight = double.tryParse(value);
+                final weight = tryParseDouble(value);
                 if (weight == null || weight <= 0 || weight > 300) {
                   return l.weightInvalid;
                 }
@@ -272,11 +273,11 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                   ],
                   validator: (value) {
                     if (value != null && value.isNotEmpty) {
-                      final fat = double.tryParse(value);
+                      final fat = tryParseDouble(value);
                       if (fat == null || fat < 0 || fat > 50) {
                         return l.bodyFatInvalid;
                       }
@@ -298,7 +299,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                   ],
                 ),
 

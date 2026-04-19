@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_item.dart';
@@ -341,7 +342,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (_selectedFood == null) return;
     if (_amountController.text.isEmpty) return;
 
-    final rawAmount = double.tryParse(_amountController.text);
+    final rawAmount = tryParseDouble(_amountController.text);
     if (rawAmount == null || rawAmount <= 0) return;
 
     final grams = _selectedPortion != null
@@ -445,7 +446,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       final dbService = widget.dbService;
       final userId = dbService?.userId ?? '';  // Guest mode: empty userId
 
-      final rawAmount = double.parse(_amountController.text);
+      final rawAmount = parseDouble(_amountController.text);
 
       // Calculate amountMl for liquid foods
       double? amountMl;
@@ -472,14 +473,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         name: _nameController.text,
         amount: rawAmount,
         unit: _selectedPortion?.name ?? _customUnit,
-        calories: double.parse(_caloriesController.text) * scale,
-        protein: double.parse(_proteinController.text)  * scale,
-        fat:     double.parse(_fatController.text)       * scale,
-        carbs:   double.parse(_carbsController.text)     * scale,
-        fiber:   double.tryParse(_fiberController.text) != null ? double.parse(_fiberController.text) * scale : null,
-        sugar:   double.tryParse(_sugarController.text) != null ? double.parse(_sugarController.text) * scale : null,
-        sodium:  double.tryParse(_sodiumController.text) != null ? double.parse(_sodiumController.text) * scale : null,
-        saturatedFat: double.tryParse(_saturatedFatController.text) != null ? double.parse(_saturatedFatController.text) * scale : null,
+        calories: parseDouble(_caloriesController.text) * scale,
+        protein: parseDouble(_proteinController.text)  * scale,
+        fat:     parseDouble(_fatController.text)       * scale,
+        carbs:   parseDouble(_carbsController.text)     * scale,
+        fiber:   tryParseDouble(_fiberController.text) != null ? parseDouble(_fiberController.text) * scale : null,
+        sugar:   tryParseDouble(_sugarController.text) != null ? parseDouble(_sugarController.text) * scale : null,
+        sodium:  tryParseDouble(_sodiumController.text) != null ? parseDouble(_sodiumController.text) * scale : null,
+        saturatedFat: tryParseDouble(_saturatedFatController.text) != null ? parseDouble(_saturatedFatController.text) * scale : null,
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: false,
@@ -569,16 +570,16 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final isExternal = _selectedFood != null && _selectedFood!.id.isEmpty;
     final initialCalories = isExternal
         ? _selectedFood!.calories
-        : (double.tryParse(_caloriesController.text) ?? 0);
+        : (tryParseDouble(_caloriesController.text) ?? 0);
     final initialProtein = isExternal
         ? _selectedFood!.protein
-        : (double.tryParse(_proteinController.text) ?? 0);
+        : (tryParseDouble(_proteinController.text) ?? 0);
     final initialFat = isExternal
         ? _selectedFood!.fat
-        : (double.tryParse(_fatController.text) ?? 0);
+        : (tryParseDouble(_fatController.text) ?? 0);
     final initialCarbs = isExternal
         ? _selectedFood!.carbs
-        : (double.tryParse(_carbsController.text) ?? 0);
+        : (tryParseDouble(_carbsController.text) ?? 0);
 
     if (!isExternal && !_formKey.currentState!.validate()) return;
 
@@ -639,16 +640,16 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final isExternal = _selectedFood != null && _selectedFood!.id.isEmpty;
     final initialCalories = isExternal
         ? _selectedFood!.calories
-        : (double.tryParse(_caloriesController.text) ?? 0);
+        : (tryParseDouble(_caloriesController.text) ?? 0);
     final initialProtein = isExternal
         ? _selectedFood!.protein
-        : (double.tryParse(_proteinController.text) ?? 0);
+        : (tryParseDouble(_proteinController.text) ?? 0);
     final initialFat = isExternal
         ? _selectedFood!.fat
-        : (double.tryParse(_fatController.text) ?? 0);
+        : (tryParseDouble(_fatController.text) ?? 0);
     final initialCarbs = isExternal
         ? _selectedFood!.carbs
-        : (double.tryParse(_carbsController.text) ?? 0);
+        : (tryParseDouble(_carbsController.text) ?? 0);
 
     if (!isExternal && !_formKey.currentState!.validate()) return;
 
@@ -1237,13 +1238,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                       ],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Bitte Menge eingeben';
                         }
-                        final amount = double.tryParse(value);
+                        final amount = tryParseDouble(value);
                         if (amount == null || amount <= 0) {
                           return 'Ungültige Menge';
                         }
@@ -1704,7 +1705,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
         .where((r) => r.name.text.trim().isNotEmpty && r.amount.text.isNotEmpty)
         .map((r) => FoodPortion(
               name: r.name.text.trim(),
-              amountG: double.tryParse(r.amount.text) ?? 0,
+              amountG: tryParseDouble(r.amount.text) ?? 0,
             ))
         .where((p) => p.amountG > 0)
         .toList();
@@ -1723,14 +1724,14 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       id: '',
       userId: null,
       name: _nameController.text,
-      calories: double.parse(_caloriesController.text),
-      protein: double.parse(_proteinController.text),
-      fat: double.parse(_fatController.text),
-      carbs: double.parse(_carbsController.text),
-      fiber: double.tryParse(_fiberController.text),
-      sugar: double.tryParse(_sugarController.text),
-      sodium: double.tryParse(_sodiumController.text),
-      saturatedFat: double.tryParse(_saturatedFatController.text),
+      calories: parseDouble(_caloriesController.text),
+      protein: parseDouble(_proteinController.text),
+      fat: parseDouble(_fatController.text),
+      carbs: parseDouble(_carbsController.text),
+      fiber: tryParseDouble(_fiberController.text),
+      sugar: tryParseDouble(_sugarController.text),
+      sodium: tryParseDouble(_sodiumController.text),
+      saturatedFat: tryParseDouble(_saturatedFatController.text),
       servingSize: null,
       servingUnit: null,
       portions: portions,

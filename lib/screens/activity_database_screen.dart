@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/activity_item.dart';
 import '../services/activity_database_service.dart';
@@ -367,12 +368,12 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
       id: widget.activity?.id ?? '',
       userId: widget.activity?.userId,
       name: _nameController.text.trim(),
-      metValue: double.parse(_metValueController.text),
+      metValue: parseDouble(_metValueController.text),
       category: _categoryController.text.isNotEmpty ? _categoryController.text.trim() : null,
       intensity: _intensity,
       description: _descriptionController.text.isNotEmpty ? _descriptionController.text.trim() : null,
       avgSpeedKmh: _avgSpeedController.text.isNotEmpty
-          ? double.tryParse(_avgSpeedController.text)
+          ? tryParseDouble(_avgSpeedController.text)
           : null,
       isPublic: _isPublic,
       isApproved: false,  // Immer zurücksetzen beim Speichern
@@ -465,11 +466,11 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) return l.requiredField;
-                  final met = double.tryParse(value);
+                  final met = tryParseDouble(value);
                   if (met == null || met <= 0) return l.weightInvalid;
                   return null;
                 },
@@ -532,7 +533,7 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
                 ],
               ),
 
