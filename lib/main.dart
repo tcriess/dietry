@@ -1167,12 +1167,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     await db.init();
     appLogger.d('[_initDatabaseService] ✓ db.init() completed');
 
-    _dbInitialized = true;
-    appLogger.d('[_initDatabaseService] ✓ _dbInitialized = true');
-
-    // ✅ WICHTIG: Warte bis AuthService fertig geladen hat
-    // NeonAuthService lädt Token asynchron im Konstruktor
-    // Mit Timeout um Deadlock bei korruptem Keystore zu vermeiden
+    // Wait for auth service to finish loading (includes expired-token refresh on startup).
+    // Must complete before syncing JWT, otherwise we'd sync an expired token or null.
     appLogger.d('[_initDatabaseService] Waiting for auth service...');
     int waitMs = 0;
     const int maxWaitMs = 15000;
@@ -1182,46 +1178,32 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
 
     if (_authService.isLoading) {
-      appLogger.d('⚠️ Auth service still loading after timeout — proceeding without JWT');
-      appLogger.d('[_initDatabaseService] ⚠️ Auth service timeout');
+      appLogger.d('[_initDatabaseService] ⚠️ Auth service still loading after timeout — proceeding without JWT');
     } else {
       appLogger.d('[_initDatabaseService] ✓ Auth service ready');
     }
 
-    // Jetzt JWT setzen wenn vorhanden
-    appLogger.d('[_initDatabaseService] Checking JWT from auth service: ${_authService.jwt != null ? "SET" : "NULL"}');
+    // Sync JWT to DB service (sets db.userId, enabling data queries).
     if (_authService.jwt != null) {
       try {
         appLogger.i('🔑 Setze JWT im DB-Service nach Auth-Init: ${_authService.jwt!.substring(0, 20)}...');
-        appLogger.d('[_initDatabaseService] Calling db.setJWT()...');
         await db.setJWT(_authService.jwt!);
         appLogger.d('[_initDatabaseService] ✓ JWT synced to DB service');
       } catch (e) {
         appLogger.w('⚠️ Fehler beim Setzen des JWT: $e');
-        appLogger.d('[_initDatabaseService] ❌ Error syncing JWT: $e');
       }
     } else {
       appLogger.i('ℹ️ Kein JWT im AuthService - User ist nicht eingeloggt');
-      appLogger.d('[_initDatabaseService] ℹ️ No JWT available');
     }
 
-    // ✅ WICHTIG: Sync JWT again in case it changed while DB was initializing
-    // (race condition: OAuth might complete during db.init())
-    appLogger.d('[_initDatabaseService] Final JWT check after initialization...');
-    if (_authService.jwt != null && _dbInitialized) {
-      try {
-        appLogger.d('[_initDatabaseService] Final sync: calling db.setJWT()...');
-        await db.setJWT(_authService.jwt!);
-        appLogger.d('[_initDatabaseService] ✓ Final JWT sync completed');
-      } catch (e) {
-        appLogger.d('[_initDatabaseService] ⚠️ Error in final sync: $e');
-        appLogger.w('⚠️ Error in final JWT sync: $e');
-      }
-    }
+    // Only mark DB as initialized after JWT is synced. Setting this flag earlier
+    // (before the auth wait + JWT sync) caused a startup race condition: DietryHome
+    // mounted before db.userId was set, _initializeAndLoadData() timed out, and the
+    // overview showed "no nutrition goal" until the user navigated away and back.
+    _dbInitialized = true;
+    appLogger.d('[_initDatabaseService] ✓ _dbInitialized = true');
 
-    // ✅ Rebuild the UI now that DB is fully initialized and JWT is synced.
-    // Without this, the spinner never goes away because build() checks _dbInitialized.
-    appLogger.d('[_initDatabaseService] Triggering setState after full init...');
+    // Rebuild so the spinner is replaced by the home screen now that DB + JWT are ready.
     if (mounted) {
       setState(() {});
       appLogger.d('[_initDatabaseService] ✓ setState called');
