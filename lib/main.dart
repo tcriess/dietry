@@ -1448,15 +1448,24 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           appLogger.i('👤 User was in guest mode, checking for data to migrate...');
           _showGuestMigrationDialog(db);
         }
-        // Fetch role from DB (cloud only). JWT claims not yet supported by Neon Auth.
-        // Fire-and-forget: updates AppFeatures and rebuilds when result arrives.
         final userId = db.userId;
         if (mounted && userId != null) {
+          // Restore cached role immediately — avoids role flash on resume/token-refresh.
+          // Neon Auth has no custom JWT claims, so setFromJwt always yields 'free'
+          // and must not be used. Role is sourced from the DB; cache bridges the gap.
+          final prefs = await SharedPreferences.getInstance();
+          final cachedRole = prefs.getString('user_role_$userId');
+          if (cachedRole != null && mounted) {
+            AppFeatures.setRole(cachedRole);
+            setState(() {});
+          }
+          // Fetch fresh role from DB and update cache.
           premiumFeatures.fetchUserRole(
             userId: userId,
             authToken: jwt,
             apiUrl: AppConfig.dataApiUrl,
           ).then((role) {
+            prefs.setString('user_role_$userId', role);
             AppFeatures.setRole(role);
             if (mounted) setState(() {});
           }).catchError((e) {
@@ -1464,13 +1473,6 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           });
         }
       });
-      // Aktualisiere Premium-Feature-Gates aus JWT-Claim.
-      try {
-        AppFeatures.setFromJwt(jwt);
-        appLogger.d('[_onAuthChanged] ✓ Feature gates updated');
-      } catch (e) {
-        appLogger.d('[_onAuthChanged] ⚠️ Error updating feature gates: $e');
-      }
     } else if (!_authService.isLoggedIn && db != null) {
       appLogger.d('[_onAuthChanged] ✓ User logged out, clearing session');
       // Clear stale JWT from db service on sign-out.
