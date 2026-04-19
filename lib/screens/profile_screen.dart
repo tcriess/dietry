@@ -1017,6 +1017,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final yMin = (minWeight - weightRange * 0.1).floorToDouble();
     final yMax = (maxWeight + weightRange * 0.1).ceilToDouble();
     
+    final shownDateLabels = <String>{};
     return LineChart(
       LineChartData(
         minY: yMin,
@@ -1058,15 +1059,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final index = value.toInt();
                 final n = sortedMeasurements.length;
                 if (index < 0 || index >= n) return const SizedBox();
-                // Show every k-th label to avoid crowding.
+                // Show every k-th label; no special last-index case to avoid
+                // adjacent duplicate labels when measurements share a date.
                 final k = n <= 7 ? 1 : n <= 15 ? 2 : n <= 30 ? 3 : 5;
-                if (index % k != 0 && index != n - 1) return const SizedBox();
+                if (index % k != 0) return const SizedBox();
                 final m = sortedMeasurements[index];
                 final multiYear = sortedMeasurements.first.measuredAt.year !=
                     sortedMeasurements.last.measuredAt.year;
                 final label = multiYear
                     ? '${m.measuredAt.day}.${m.measuredAt.month}.${m.measuredAt.year % 100}'
                     : '${m.measuredAt.day}.${m.measuredAt.month}.';
+                // Skip if this date label was already shown at a previous tick.
+                if (shownDateLabels.contains(label)) return const SizedBox();
+                shownDateLabels.add(label);
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(label, style: const TextStyle(fontSize: 10)),

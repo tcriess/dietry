@@ -3333,28 +3333,31 @@ class OverviewScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('$totalLiquidMl ml', style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(l.waterGoalLabel(waterGoal)),
+                Flexible(
+                  child: Text(
+                    '$totalLiquidMl ml',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    l.waterGoalLabel(waterGoal),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
+                ),
               ],
             ),
             // Show breakdown if there's liquid food contribution
             if (liquidFoodIntakeMl > 0)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 2,
-                  children: [
-                    Text(
-                      '💧 $waterIntakeMl ml ${l.waterManual}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text('•', style: Theme.of(context).textTheme.bodySmall),
-                    Text(
-                      '🥤 $liquidFoodIntakeMl ml ${l.waterFromFood}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '💧 $waterIntakeMl ml ${l.waterManual} · 🥤 $liquidFoodIntakeMl ml ${l.waterFromFood}',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
             const SizedBox(height: 12),

@@ -20,7 +20,9 @@ enum ReportRange { week, month, year, allTime }
 extension _RangeExt on ReportRange {
   (DateTime?, DateTime) get dates {
     final today = DateTime.now();
-    final to = DateTime(today.year, today.month, today.day);
+    // Exclude today — partial-day data is misleading in diagrams
+    final to = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 1));
     return switch (this) {
       ReportRange.week => (to.subtract(const Duration(days: 6)), to),
       ReportRange.month => (to.subtract(const Duration(days: 29)), to),
