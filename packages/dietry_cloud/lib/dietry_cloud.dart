@@ -325,6 +325,16 @@ abstract class PremiumFeatures {
     Locale? preferredLocale,
   });
 
+  // ── Nutzer-Rolle ─────────────────────────────────────────────────────────
+
+  /// Fetches the user's subscription role from the [user_roles] DB table.
+  /// Returns 'free' on any error or if no row exists.
+  Future<String> fetchUserRole({
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+  });
+
   // ── Cloud-Berichte ────────────────────────────────────────────────────────
 
   /// Rendert die Cloud-exklusiven Report-Sektionen (Aktivität, Kalorienbilanz,
@@ -508,6 +518,13 @@ class NullPremiumFeatures implements PremiumFeatures {
     int? waterGoalMl,
   }) =>
       const SizedBox.shrink();
+
+  @override
+  Future<String> fetchUserRole({
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+  }) async => 'free';
 
   @override
   Future<bool> exportReportsData({

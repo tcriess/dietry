@@ -60,6 +60,9 @@ archive/
 /.claudeignore
 /docs/assetlinks.json.template
 /build.sh
+dietry-*.apk
+dietry-*.aab
+dietry-*.tar.bz2
 
 # not ready yet
 /macos

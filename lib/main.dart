@@ -1448,6 +1448,21 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           appLogger.i('👤 User was in guest mode, checking for data to migrate...');
           _showGuestMigrationDialog(db);
         }
+        // Fetch role from DB (cloud only). JWT claims not yet supported by Neon Auth.
+        // Fire-and-forget: updates AppFeatures and rebuilds when result arrives.
+        final userId = db.userId;
+        if (mounted && userId != null) {
+          premiumFeatures.fetchUserRole(
+            userId: userId,
+            authToken: jwt,
+            apiUrl: AppConfig.dataApiUrl,
+          ).then((role) {
+            AppFeatures.setRole(role);
+            if (mounted) setState(() {});
+          }).catchError((e) {
+            appLogger.w('⚠️ Rolle konnte nicht abgerufen werden: $e');
+          });
+        }
       });
       // Aktualisiere Premium-Feature-Gates aus JWT-Claim.
       try {

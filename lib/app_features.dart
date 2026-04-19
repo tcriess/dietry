@@ -45,6 +45,9 @@ class AppFeatures {
         : jwtRole;
   }
 
+  /// Setzt die Rolle direkt (z.B. nach DB-Lookup für Cloud Pro).
+  static void setRole(String role) => _role = role;
+
   /// Setzt die Rolle zurück (beim Logout).
   static void reset() => _role = 'community';
 
