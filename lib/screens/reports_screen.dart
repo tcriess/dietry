@@ -500,11 +500,21 @@ class _UpsellCard extends StatelessWidget {
 
 // ── x-axis label helper ───────────────────────────────────────────────────────
 
+// Axis labels: compact but always include both day and month so a bar
+// under "15." isn't ambiguous about which month it belongs to.
 String _xLabel(DateTime date, ReportRange range) => switch (range) {
-      ReportRange.week => DateFormat('E').format(date),
-      ReportRange.month => date.day.toString(),
-      ReportRange.year => DateFormat('d MMM').format(date),
+      ReportRange.week => '${date.day}.${date.month}.',
+      ReportRange.month => '${date.day}.${date.month}.',
+      ReportRange.year => '${date.day}.${date.month}.',
       ReportRange.allTime => DateFormat('MMM yy').format(date),
+    };
+
+// Tooltip labels: more verbose than axis labels — room to show the year.
+String _tooltipLabel(DateTime date, ReportRange range) => switch (range) {
+      ReportRange.week => '${date.day}.${date.month}.${date.year}',
+      ReportRange.month => '${date.day}.${date.month}.${date.year}',
+      ReportRange.year => '${date.day}.${date.month}.${date.year}',
+      ReportRange.allTime => DateFormat('MMMM yyyy').format(date),
     };
 
 // Only show labels every N points to avoid crowding.
@@ -756,7 +766,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
               getTooltipItems: (spots) => spots.map((s) {
                 final idx = s.x.toInt();
                 final date = idx >= 0 && idx < pts.length
-                    ? _xLabel(pts[idx].date, range)
+                    ? _tooltipLabel(pts[idx].date, range)
                     : '';
                 return LineTooltipItem(
                   '$date\n${s.y.round()} kcal',
@@ -851,7 +861,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
             touchTooltipData: BarTouchTooltipData(
               getTooltipItem: (group, _, rod, __) {
                 final date = group.x >= 0 && group.x < pts.length
-                    ? _xLabel(pts[group.x].date, range)
+                    ? _tooltipLabel(pts[group.x].date, range)
                     : '';
                 return BarTooltipItem(
                   '$date\n${rod.toY.round()} kcal',
@@ -1049,7 +1059,7 @@ class _WaterTrendChart extends StatelessWidget {
             touchTooltipData: BarTouchTooltipData(
               getTooltipItem: (group, _, rod, __) {
                 final date = group.x >= 0 && group.x < pts.length
-                    ? _xLabel(pts[group.x].date, range)
+                    ? _tooltipLabel(pts[group.x].date, range)
                     : '';
                 return BarTooltipItem(
                   '$date\n${(rod.toY / 1000).toStringAsFixed(2)} L',
@@ -1205,7 +1215,7 @@ class _WeightTrendChart extends StatelessWidget {
                 return touchedBarSpots.map((barSpot) {
                   final idx = barSpot.x.toInt();
                   final dateLabel = idx >= 0 && idx < wPts.length
-                      ? _xLabel(wPts[idx].date, range)
+                      ? _tooltipLabel(wPts[idx].date, range)
                       : '';
                   final isWeightLine = barSpot.barIndex == 0;
                   late String value;

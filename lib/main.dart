@@ -3370,13 +3370,15 @@ class OverviewScreen extends StatelessWidget {
                 ),
               ],
             ),
-            // Show breakdown if there's liquid food contribution
+            // Show breakdown if there's liquid food contribution.
+            // Allow soft-wrap (no ellipsis, no fixed maxLines) so narrow
+            // Android screens break onto a second line instead of clipping
+            // the "from food" amount.
             if (liquidFoodIntakeMl > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   '💧 $waterIntakeMl ml ${l.waterManual} · 🥤 $liquidFoodIntakeMl ml ${l.waterFromFood}',
-                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),

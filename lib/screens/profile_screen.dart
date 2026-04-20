@@ -1017,7 +1017,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final yMin = (minWeight - weightRange * 0.1).floorToDouble();
     final yMax = (maxWeight + weightRange * 0.1).ceilToDouble();
     
-    final shownDateLabels = <String>{};
+    // Pre-compute which index "owns" each unique date so only one label
+    // renders per date, regardless of the order fl_chart invokes
+    // getTitlesWidget (previous Set-mutation-in-callback approach sometimes
+    // let adjacent same-day measurements show twice — "1.3. 1.3. 3.3.").
+    final multiYear = sortedMeasurements.first.measuredAt.year !=
+        sortedMeasurements.last.measuredAt.year;
+    String dateKey(DateTime d) => multiYear
+        ? '${d.year}-${d.month}-${d.day}'
+        : '${d.month}-${d.day}';
+    final firstIndexForDate = <String, int>{};
+    for (int i = 0; i < sortedMeasurements.length; i++) {
+      firstIndexForDate.putIfAbsent(
+          dateKey(sortedMeasurements[i].measuredAt), () => i);
+    }
     return LineChart(
       LineChartData(
         minY: yMin,
@@ -1059,19 +1072,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final index = value.toInt();
                 final n = sortedMeasurements.length;
                 if (index < 0 || index >= n) return const SizedBox();
-                // Show every k-th label; no special last-index case to avoid
-                // adjacent duplicate labels when measurements share a date.
-                final k = n <= 7 ? 1 : n <= 15 ? 2 : n <= 30 ? 3 : 5;
-                if (index % k != 0) return const SizedBox();
                 final m = sortedMeasurements[index];
-                final multiYear = sortedMeasurements.first.measuredAt.year !=
-                    sortedMeasurements.last.measuredAt.year;
+                // Only render on the first index of each unique date.
+                if (firstIndexForDate[dateKey(m.measuredAt)] != index) {
+                  return const SizedBox();
+                }
+                // Show every k-th unique-date label to avoid crowding.
+                final uniqueDateCount = firstIndexForDate.length;
+                final k = uniqueDateCount <= 7
+                    ? 1
+                    : uniqueDateCount <= 15
+                        ? 2
+                        : uniqueDateCount <= 30
+                            ? 3
+                            : 5;
+                // Position within the deduped date sequence (0, 1, 2, …).
+                final datePos = firstIndexForDate.values
+                    .toList()
+                    .indexOf(index);
+                if (datePos % k != 0) return const SizedBox();
                 final label = multiYear
                     ? '${m.measuredAt.day}.${m.measuredAt.month}.${m.measuredAt.year % 100}'
                     : '${m.measuredAt.day}.${m.measuredAt.month}.';
-                // Skip if this date label was already shown at a previous tick.
-                if (shownDateLabels.contains(label)) return const SizedBox();
-                shownDateLabels.add(label);
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(label, style: const TextStyle(fontSize: 10)),
