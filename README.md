@@ -13,7 +13,7 @@ Dietry is a full-featured Flutter nutrition tracker backed by a PostgreSQL datab
 
 ## Features
 
-- **Food diary** — log meals with a built-in food database, barcode scanning, or custom foods
+- **Food diary** — log meals from your own food database, the Open Food Facts catalog, or as custom entries
 - **Macros & calories** — daily/weekly breakdown of calories, protein, fat, carbs, fiber, and more
 - **Personal goals** — nutrition targets based on BMR/TDEE (Mifflin-St Jeor), activity level, and body goals
 - **Activity tracking** — log workouts; import from Health Connect (Android) and Apple Health (iOS)

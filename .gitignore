@@ -60,6 +60,7 @@ archive/
 /.claudeignore
 /docs/assetlinks.json.template
 /build.sh
+/build_and_release_all.sh
 dietry-*.apk
 dietry-*.aab
 dietry-*.tar.bz2
