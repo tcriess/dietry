@@ -105,7 +105,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     super.initState();
     if (widget.dbService != null) {
       _svc = ReportsService(widget.dbService!);
-      _reload();
+      // Assign directly — calling setState() in initState() is an anti-pattern
+      // and initState runs before the first build anyway.
+      _future = _load();
     } else {
       _future = Future.value(const _ReportsData(
         nutrition: [],
@@ -132,8 +134,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _reload() {
+    // Deliberately don't clear _lastData: the FutureBuilder falls back to it
+    // while the new future is in flight, so the fl_chart widgets stay mounted
+    // instead of unmounting mid-animation (which hits "dirty widget in the
+    // wrong build scope" when the AnimationController's tick fires after the
+    // chart's element is gone).
     setState(() {
-      _lastData = null;
       _future = _load();
     });
   }
@@ -283,16 +289,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
           FutureBuilder<_ReportsData>(
             future: _future,
             builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
+              // Prefer fresh data; fall back to the last loaded data while a
+              // new future is in flight so the chart widgets don't unmount.
+              final data = snap.data ?? _lastData;
+              if (data == null) {
+                if (snap.hasError) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 60),
                   child: Center(child: Text(l.reportsLoading)),
                 );
               }
-              if (snap.hasError || !snap.hasData) {
-                return const SizedBox.shrink();
-              }
-              final data = snap.data!;
               return _ReportsBody(
                 data: data,
                 range: _range,
