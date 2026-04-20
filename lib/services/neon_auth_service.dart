@@ -302,8 +302,18 @@ class NeonAuthService extends ChangeNotifier {
         return false;
       }
 
-      // 200 mit null-Body oder anderer Status: Session nicht verfügbar
-      appLogger.d('⚠️ Token-Refresh: keine Session (Status ${response.statusCode}, Body leer/null)');
+      // 200 mit leerem/ungültigem Body: Neon Auth signalisiert "keine Session".
+      // Stale _jwt/_session würden sonst isLoggedIn=true lassen, während jeder
+      // API-Call 401 liefert (profile funktioniert aus _session-Cache, der Rest
+      // zeigt "kein Ziel"). Nur für 200 auslogggen — bei 5xx/Netzwerkfehlern
+      // nicht, um transiente Fehler nicht in einen forced logout zu drehen.
+      if (response.statusCode == 200) {
+        appLogger.d('❌ /get-session 200 mit leerem Body — Session verloren, Logout');
+        await signOut();
+        return false;
+      }
+
+      appLogger.d('⚠️ Token-Refresh: transienter Fehler (Status ${response.statusCode}) — kein Logout');
       return false;
       
     } catch (e) {

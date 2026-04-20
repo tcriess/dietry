@@ -3093,76 +3093,83 @@ class OverviewScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final l = AppLocalizations.of(context)!;
+                final stats = <({String label, String value, Color? color})>[
+                  (label: l.goal, value: goalValue, color: null),
+                  (label: l.consumed, value: consumedValue, color: null),
+                  if (burnedValue != '-')
+                    (label: l.caloriesBurned, value: burnedValue, color: Colors.green.shade700),
+                ];
+
+                // On narrow screens (typical Android phones with ellipsis-kicking-in
+                // widths) stack the stats vertically so values stay legible.
+                final isNarrow = constraints.maxWidth < 320;
+
+                if (isNarrow) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        AppLocalizations.of(context)!.goal,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      Text(
-                        goalValue,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.consumed,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      Text(
-                        consumedValue,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (burnedValue != '-')
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context)!.caloriesBurned,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                            fontSize: 11,
-                          ),
-                        ),
-                        Text(
-                          burnedValue,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
-                          ),
+                      for (int i = 0; i < stats.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                stats[i].label,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              stats[i].value,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: stats[i].color,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ),
-              ],
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (final s in stats)
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.label,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade600,
+                                fontSize: s.color != null ? 11 : null,
+                              ),
+                            ),
+                            Text(
+                              s.value,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: s.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 8),
             Container(
@@ -3538,34 +3545,67 @@ class OverviewScreen extends StatelessWidget {
               backgroundColor: Colors.grey[300],
               color: Colors.deepPurple,
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    '${l.consumed}: ${totalCalories.toStringAsFixed(0)} kcal',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (totalCaloriesBurned > 0) ...[
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      '${l.caloriesBurned}: ${totalCaloriesBurned.toStringAsFixed(0)} kcal',
-                      style: TextStyle(color: Colors.green.shade700),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Flexible(
-                  child: Text(
-                    '${l.goal}: ${goal.calories.toStringAsFixed(0)} kcal',
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.end,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stats = <({String label, String value, Color? color})>[
+                  (label: l.consumed, value: '${totalCalories.toStringAsFixed(0)} kcal', color: null),
+                  if (totalCaloriesBurned > 0)
+                    (label: l.caloriesBurned, value: '${totalCaloriesBurned.toStringAsFixed(0)} kcal', color: Colors.green.shade700),
+                  (label: l.goal, value: '${goal.calories.toStringAsFixed(0)} kcal', color: null),
+                ];
+
+                // Narrow screens: stack label:value rows vertically so the
+                // actual numbers stay visible instead of being ellipsis'd away.
+                final isNarrow = constraints.maxWidth < 360;
+
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < stats.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${stats[i].label}:',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: stats[i].color),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              stats[i].value,
+                              style: TextStyle(
+                                color: stats[i].color,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    for (int i = 0; i < stats.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '${stats[i].label}: ${stats[i].value}',
+                          style: TextStyle(color: stats[i].color),
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: i == stats.length - 1 ? TextAlign.end : TextAlign.start,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
             Text(
               '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}',

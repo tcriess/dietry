@@ -264,31 +264,72 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
   }
   
-  /// Wähle Food aus Suchergebnissen
-  void _selectFood(FoodItem food, {Map<String, double> micros = const {}}) {
+  /// Wähle Food aus Suchergebnissen.
+  ///
+  /// Befüllt die Nährwert-Controller immer mit den per-100g-Werten des Foods
+  /// (nicht skaliert). Ein separater Totals-Preview zeigt den skalierten Wert.
+  ///
+  /// [preservedAmountG]: falls gesetzt (z.B. nach Rückkehr vom "Zur Datenbank
+  /// hinzufügen"-Dialog), wird der ursprüngliche Mengen-Input des Users erhalten.
+  /// Passt eine Portion exakt zu dieser Grammzahl, wird sie ausgewählt; sonst
+  /// wird die Menge in g/ml beibehalten.
+  void _selectFood(
+    FoodItem food, {
+    Map<String, double> micros = const {},
+    double? preservedAmountG,
+  }) {
     setState(() {
       _selectedFood = food;
       _selectedMicros = micros;
       _nameController.text = food.name;
-      
-      // Portionsgröße vorauswählen
-      if (food.portions.isNotEmpty) {
-        _selectedPortion = food.portions.first;
-        _amountController.text = '1';
-      } else {
-        _selectedPortion = null;
-        // Einheit aus servingUnit ableiten, aber ml wenn Flüssigkeit
-        final unit = food.servingUnit ?? 'g';
-        _customUnit = (unit.startsWith('ml') || food.isLiquid) ? 'ml' : 'g';
-        _amountController.text =
-            food.servingSize != null ? food.servingSize!.toInt().toString() : '100';
-      }
+
+      // Per-100g-Werte aus FoodItem in die Controller schreiben — NICHT skalieren.
+      _caloriesController.text = food.calories.toStringAsFixed(0);
+      _proteinController.text = food.protein.toStringAsFixed(1);
+      _fatController.text = food.fat.toStringAsFixed(1);
+      _carbsController.text = food.carbs.toStringAsFixed(1);
+      _fiberController.text =
+          food.fiber != null ? food.fiber!.toStringAsFixed(1) : '';
+      _sugarController.text =
+          food.sugar != null ? food.sugar!.toStringAsFixed(1) : '';
+      _sodiumController.text =
+          food.sodium != null ? food.sodium!.toStringAsFixed(1) : '';
+      _saturatedFatController.text = food.saturatedFat != null
+          ? food.saturatedFat!.toStringAsFixed(1)
+          : '';
 
       _isLiquid = food.isLiquid;
 
-      // Berechne Nährwerte für Portion
-      if (_amountController.text.isNotEmpty) {
-        _calculateNutrition();
+      if (preservedAmountG != null && preservedAmountG > 0) {
+        // Nach "zur DB hinzufügen": User-Menge erhalten.
+        final matching = food.portions
+            .where((p) => p.amountG == preservedAmountG)
+            .firstOrNull;
+        if (matching != null) {
+          _selectedPortion = matching;
+          _amountController.text = '1';
+        } else {
+          _selectedPortion = null;
+          _customUnit = food.isLiquid ? 'ml' : 'g';
+          _amountController.text =
+              preservedAmountG == preservedAmountG.truncateToDouble()
+                  ? preservedAmountG.toInt().toString()
+                  : preservedAmountG.toStringAsFixed(1);
+        }
+      } else {
+        // Standard: erste Portion auswählen, sonst servingSize oder 100g.
+        if (food.portions.isNotEmpty) {
+          _selectedPortion = food.portions.first;
+          _amountController.text = '1';
+        } else {
+          _selectedPortion = null;
+          final unit = food.servingUnit ?? 'g';
+          _customUnit =
+              (unit.startsWith('ml') || food.isLiquid) ? 'ml' : 'g';
+          _amountController.text = food.servingSize != null
+              ? food.servingSize!.toInt().toString()
+              : '100';
+        }
       }
 
       // Verberge Suchergebnisse
@@ -337,40 +378,71 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
   }
 
-  /// Berechne Nährwerte basierend auf Menge
-  void _calculateNutrition() {
-    if (_selectedFood == null) return;
-    if (_amountController.text.isEmpty) return;
-
-    final rawAmount = tryParseDouble(_amountController.text);
-    if (rawAmount == null || rawAmount <= 0) return;
-
-    final grams = _selectedPortion != null
+  /// Grams equivalent of the current amount+unit (used for scaling per-100g values).
+  /// For portions: amount × portion.amountG. For custom g/ml units: amount directly.
+  double _currentGrams() {
+    final rawAmount = tryParseDouble(_amountController.text) ?? 0;
+    if (rawAmount <= 0) return 0;
+    return _selectedPortion != null
         ? rawAmount * _selectedPortion!.amountG
         : rawAmount;
-
-    final nutrition = _selectedFood!.calculateNutrition(grams);
-
-    setState(() {
-      _caloriesController.text = nutrition['calories']!.toStringAsFixed(0);
-      _proteinController.text = nutrition['protein']!.toStringAsFixed(1);
-      _fatController.text = nutrition['fat']!.toStringAsFixed(1);
-      _carbsController.text = nutrition['carbs']!.toStringAsFixed(1);
-      if (nutrition['fiber'] != null) {
-        _fiberController.text = nutrition['fiber']!.toStringAsFixed(1);
-      }
-      if (nutrition['sugar'] != null) {
-        _sugarController.text = nutrition['sugar']!.toStringAsFixed(1);
-      }
-      if (nutrition['sodium'] != null) {
-        _sodiumController.text = nutrition['sodium']!.toStringAsFixed(1);
-      }
-      if (nutrition['saturated_fat'] != null) {
-        _saturatedFatController.text = nutrition['saturated_fat']!.toStringAsFixed(1);
-      }
-    });
   }
-  
+
+  /// Compute total nutrition for the current amount from per-100g values in the
+  /// controllers. Pure calculation — does NOT mutate controllers, which always
+  /// hold per-100g values.
+  Map<String, double> _computeTotals() {
+    final grams = _currentGrams();
+    if (grams <= 0) {
+      return const {'calories': 0, 'protein': 0, 'fat': 0, 'carbs': 0};
+    }
+    final factor = grams / 100.0;
+    return {
+      'calories': (tryParseDouble(_caloriesController.text) ?? 0) * factor,
+      'protein': (tryParseDouble(_proteinController.text) ?? 0) * factor,
+      'fat': (tryParseDouble(_fatController.text) ?? 0) * factor,
+      'carbs': (tryParseDouble(_carbsController.text) ?? 0) * factor,
+    };
+  }
+
+  /// Card showing total nutrition for the current amount.
+  Widget _buildTotalsPreview() {
+    final totals = _computeTotals();
+    final rawAmount = tryParseDouble(_amountController.text) ?? 0;
+    if (rawAmount <= 0) return const SizedBox.shrink();
+
+    final amountStr = rawAmount == rawAmount.truncateToDouble()
+        ? rawAmount.toInt().toString()
+        : rawAmount.toStringAsFixed(1);
+    final unitLabel = _selectedPortion?.name ?? _customUnit;
+
+    return Card(
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Gesamt für $amountStr$unitLabel:',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _PreviewMacro('kcal', totals['calories']!.toStringAsFixed(0)),
+                _PreviewMacro('P', '${totals['protein']!.toStringAsFixed(1)}g'),
+                _PreviewMacro('F', '${totals['fat']!.toStringAsFixed(1)}g'),
+                _PreviewMacro('KH', '${totals['carbs']!.toStringAsFixed(1)}g'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Dropdown zur Portionsauswahl (benannte Portionen + g/ml)
   Widget _buildPortionSelector() {
     final food = _selectedFood;
@@ -426,7 +498,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
               _amountController.text = food!.servingSize!.toInt().toString();
             }
           }
-          _calculateNutrition();
+          // setState rebuilds the totals preview; nutrition controllers stay per-100g.
         });
       },
     );
@@ -460,9 +532,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         }
       }
 
-      // For manual entry: fields are per-100g, scale to total
-      // For food-from-DB: _calculateNutrition() already filled controllers with totals
-      final scale = _selectedFood == null ? rawAmount / 100.0 : 1.0;
+      // Nutrition controllers are ALWAYS per-100g (both manual entry and selected
+      // food). Scale to totals by actual grams (portion amount × amountG, or
+      // raw amount for g/ml).
+      final grams = _selectedPortion != null
+          ? rawAmount * _selectedPortion!.amountG
+          : rawAmount;
+      final scale = grams / 100.0;
 
       final entry = FoodEntry(
         id: '',  // Wird von DB generiert
@@ -612,8 +688,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         }
 
         if (mounted) {
-          // Directly select the newly created food — user always wants to use it.
-          _selectFood(created);
+          // Preserve the user's current amount (in grams) so returning from the
+          // dialog doesn't reset it. _selectFood picks a matching portion if one
+          // exists, otherwise falls back to grams.
+          final prevGrams = _currentGrams();
+          _selectFood(
+            created,
+            preservedAmountG: prevGrams > 0 ? prevGrams : null,
+          );
           final lCtx = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -634,7 +716,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       }
     }
   }
-  
+
   /// Save food locally in guest mode
   Future<void> _saveFoodLocally() async {
     final isExternal = _selectedFood != null && _selectedFood!.id.isEmpty;
@@ -673,7 +755,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       try {
         // Save locally
         final saved = await LocalDataService.instance.saveGuestFood(result);
-        _selectFood(saved);
+        final prevGrams = _currentGrams();
+        _selectFood(
+          saved,
+          preservedAmountG: prevGrams > 0 ? prevGrams : null,
+        );
 
         if (mounted) {
           final lCtx = AppLocalizations.of(context)!;
@@ -1251,9 +1337,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         return null;
                       },
                       onChanged: (_) {
-                        if (_selectedFood != null) {
-                          _calculateNutrition();
-                        }
+                        // Rebuild so the totals preview reflects the new amount.
+                        setState(() {});
                       },
                     ),
                   ),
@@ -1263,9 +1348,15 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   ),
                 ],
               ),
-              
+
+              const SizedBox(height: 12),
+
+              // Totals preview: shows scaled nutrition so the user sees the
+              // effect of the current amount on the per-100g values below.
+              _buildTotalsPreview(),
+
               const SizedBox(height: 16),
-              
+
               // Meal Type
               DropdownButtonFormField<MealType>(
                 initialValue: _selectedMealType,
@@ -1361,6 +1452,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       readOnly: _selectedFood != null,
+                      onChanged: (_) => setState(() {}),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Erforderlich';
@@ -1380,6 +1472,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       readOnly: _selectedFood != null,
+                      onChanged: (_) => setState(() {}),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Erforderlich';
@@ -1390,9 +1483,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -1405,6 +1498,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       readOnly: _selectedFood != null,
+                      onChanged: (_) => setState(() {}),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Erforderlich';
@@ -1424,6 +1518,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       readOnly: _selectedFood != null,
+                      onChanged: (_) => setState(() {}),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Erforderlich';
@@ -1968,6 +2063,28 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
             foregroundColor: Colors.white,
           ),
           child: const Text('Hinzufügen'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Small label+value widget for the totals preview card.
+class _PreviewMacro extends StatelessWidget {
+  final String label;
+  final String value;
+  const _PreviewMacro(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ],
     );
