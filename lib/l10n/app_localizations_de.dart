@@ -1428,4 +1428,15 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get migrationError =>
       '⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)';
+
+  @override
+  String get upgradeProTitle => 'Dietry Pro';
+
+  @override
+  String get upgradeProReportsDescription =>
+      'Erweiterte Analysen freischalten: Aktivitätsbilanz, Zieleinhaltung, Mahlzeiten-Timing und mehr.';
+
+  @override
+  String get upgradeProProfileDescription =>
+      'Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.';
 }

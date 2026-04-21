@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../app_config.dart';
 import '../app_features.dart';
+import '../utils/app_features_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../services/neon_database_service.dart';
@@ -398,6 +399,12 @@ class _ReportsBody extends StatelessWidget {
             carbsGoal: goal?.carbs,
             waterGoalMl: goal?.waterGoalMl,
           ),
+          if (!AppFeatures.isPaid)
+            AppFeaturesUtils.buildUpgradePrompt(
+              context,
+              feature: l.upgradeProTitle,
+              description: l.upgradeProReportsDescription,
+            ),
         ] else ...[
           _UpsellCard(message: l.reportsUpsellBasic, icon: Icons.directions_run),
           const SizedBox(height: 12),

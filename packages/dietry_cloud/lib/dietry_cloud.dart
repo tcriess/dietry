@@ -335,6 +335,23 @@ abstract class PremiumFeatures {
     required String apiUrl,
   });
 
+  // ── Subscriptions ─────────────────────────────────────────────────────────
+
+  Future<void> initSubscriptions({
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    required String playProductId,
+    required void Function(String role) onRoleChanged,
+  });
+
+  void showUpgradeSheet({
+    required BuildContext context,
+    String? featureName,
+  });
+
+  void disposeSubscriptions();
+
   // ── Admin-Dashboard ───────────────────────────────────────────────────────
 
   /// CE stub: never reached because AppFeatures.isAdmin is always false in CE.
@@ -535,6 +552,24 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String authToken,
     required String apiUrl,
   }) async => 'free';
+
+  @override
+  Future<void> initSubscriptions({
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    required String playProductId,
+    required void Function(String role) onRoleChanged,
+  }) async {}
+
+  @override
+  void showUpgradeSheet({
+    required BuildContext context,
+    String? featureName,
+  }) {}
+
+  @override
+  void disposeSubscriptions() {}
 
   @override
   Widget buildAdminDashboard({

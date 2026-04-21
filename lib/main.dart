@@ -1489,6 +1489,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       });
       try {
         AppFeatures.reset();
+        premiumFeatures.disposeSubscriptions();
         appLogger.d('[_onAuthChanged] ✓ Feature gates reset');
       } catch (e) {
         appLogger.d('[_onAuthChanged] ⚠️ Error resetting feature gates: $e');
@@ -1532,6 +1533,21 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }).catchError((e) {
       appLogger.w('⚠️ Rolle konnte nicht abgerufen werden: $e');
     });
+
+    // Initialise Play Store subscriptions (Android + Cloud only)
+    if (AppConfig.isCloudEdition && AppConfig.playSubscriptionSku.isNotEmpty) {
+      premiumFeatures.initSubscriptions(
+        userId: userId,
+        authToken: jwt,
+        apiUrl: AppConfig.dataApiUrl,
+        playProductId: AppConfig.playSubscriptionSku,
+        onRoleChanged: (role) {
+          prefs.setString('user_role_$userId', role);
+          AppFeatures.setRole(role);
+          if (mounted) setState(() {});
+        },
+      );
+    }
   }
 
   /// Check if user has any existing data in remote database

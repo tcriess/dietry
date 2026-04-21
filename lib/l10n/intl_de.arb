@@ -658,5 +658,8 @@
       }
     }
   },
-  "migrationError": "⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)"
+  "migrationError": "⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)",
+  "upgradeProTitle": "Dietry Pro",
+  "upgradeProReportsDescription": "Erweiterte Analysen freischalten: Aktivitätsbilanz, Zieleinhaltung, Mahlzeiten-Timing und mehr.",
+  "upgradeProProfileDescription": "Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen."
 }

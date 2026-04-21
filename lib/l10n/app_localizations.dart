@@ -2697,6 +2697,24 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)'**
   String get migrationError;
+
+  /// No description provided for @upgradeProTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Dietry Pro'**
+  String get upgradeProTitle;
+
+  /// No description provided for @upgradeProReportsDescription.
+  ///
+  /// In de, this message translates to:
+  /// **'Erweiterte Analysen freischalten: Aktivitätsbilanz, Zieleinhaltung, Mahlzeiten-Timing und mehr.'**
+  String get upgradeProReportsDescription;
+
+  /// No description provided for @upgradeProProfileDescription.
+  ///
+  /// In de, this message translates to:
+  /// **'Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.'**
+  String get upgradeProProfileDescription;
 }
 
 class _AppLocalizationsDelegate

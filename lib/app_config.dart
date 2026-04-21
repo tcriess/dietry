@@ -87,6 +87,14 @@ class AppConfig {
     return _showDeveloperBannerConfigured.toLowerCase() != 'false';
   }
 
+  // ── Subscriptions ────────────────────────────────────────────────────────
+
+  /// Google Play subscription product ID (SKU) for the Pro tier.
+  /// Set via PLAY_SUBSCRIPTION_SKU in the cloud config file.
+  /// Empty in Community Edition builds.
+  static const String playSubscriptionSku =
+      String.fromEnvironment('PLAY_SUBSCRIPTION_SKU');
+
   // ── Edition ───────────────────────────────────────────────────────────────
 
   /// Build-Zeit-Edition: `community` (default) oder `cloud`.

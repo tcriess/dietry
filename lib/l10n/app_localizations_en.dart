@@ -1422,4 +1422,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get migrationError =>
       '⚠️ Migration error (entries can be transferred manually)';
+
+  @override
+  String get upgradeProTitle => 'Dietry Pro';
+
+  @override
+  String get upgradeProReportsDescription =>
+      'Unlock advanced analytics: activity balance, goal compliance, meal timing, and more.';
+
+  @override
+  String get upgradeProProfileDescription =>
+      'Get access to advanced analytics, detailed reports, and all Pro features.';
 }

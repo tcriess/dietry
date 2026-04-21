@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dietry_cloud/dietry_cloud.dart' show premiumFeatures;
+import '../app_config.dart';
 import '../app_features.dart';
 import '../services/app_logger.dart';
 
@@ -63,11 +65,17 @@ class AppFeaturesUtils {
                   textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onUpgrade,
-                child: const Text('Upgrade to Pro'),
-              ),
+              if (AppConfig.isCloudEdition) ...[
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: onUpgrade ??
+                      () => premiumFeatures.showUpgradeSheet(
+                            context: context,
+                            featureName: feature,
+                          ),
+                  child: const Text('Upgrade to Pro'),
+                ),
+              ],
             ],
           ),
         ),
