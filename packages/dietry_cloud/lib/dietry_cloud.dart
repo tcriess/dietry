@@ -335,6 +335,16 @@ abstract class PremiumFeatures {
     required String apiUrl,
   });
 
+  // ── Admin-Dashboard ───────────────────────────────────────────────────────
+
+  /// CE stub: never reached because AppFeatures.isAdmin is always false in CE.
+  Widget buildAdminDashboard({
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    required VoidCallback onLogout,
+  });
+
   // ── Cloud-Berichte ────────────────────────────────────────────────────────
 
   /// Rendert die Cloud-exklusiven Report-Sektionen (Aktivität, Kalorienbilanz,
@@ -525,6 +535,15 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String authToken,
     required String apiUrl,
   }) async => 'free';
+
+  @override
+  Widget buildAdminDashboard({
+    required String userId,
+    required String authToken,
+    required String apiUrl,
+    required VoidCallback onLogout,
+  }) =>
+      const SizedBox.shrink();
 
   @override
   Future<bool> exportReportsData({

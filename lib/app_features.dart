@@ -68,7 +68,11 @@ class AppFeatures {
   // ── Rollen-Checks ─────────────────────────────────────────────────────────
 
   /// True für bezahlte Cloud-Nutzer (Pro-Tier, intern auch 'basic' genannt).
-  static bool get isPaid => _isCloud && (_role == 'pro' || _role == 'basic');
+  /// Admins erhalten automatisch Pro-Zugang.
+  static bool get isPaid => _isCloud && (_role == 'pro' || _role == 'basic' || _role == 'admin');
+
+  /// True für Admin-Nutzer (Cloud, Web only).
+  static bool get isAdmin => _isCloud && kIsWeb && _role == 'admin';
 
   // ── Feature-Gates ─────────────────────────────────────────────────────────
   // Jedes neue Premium-Feature bekommt hier einen Getter.

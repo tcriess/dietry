@@ -1915,6 +1915,25 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               )
             : null,
         actions: [
+          // Admin-Dashboard (Cloud web, role=admin only)
+          if (AppFeatures.isAdmin)
+            IconButton(
+              icon: const Icon(Icons.admin_panel_settings),
+              tooltip: 'Admin',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => premiumFeatures.buildAdminDashboard(
+                      userId: widget.dbService?.userId ?? '',
+                      authToken: widget.authService.jwt ?? '',
+                      apiUrl: AppConfig.dataApiUrl,
+                      onLogout: widget.authService.signOut,
+                    ),
+                  ),
+                );
+              },
+            ),
           // Feedback (remote mode only)
           if (!widget.isGuestMode && _feedbackService != null)
             IconButton(
