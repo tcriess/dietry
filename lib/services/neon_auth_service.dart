@@ -112,32 +112,41 @@ class NeonAuthService extends ChangeNotifier {
   /// Prüft ob Token abgelaufen ist und refresht es bei Bedarf
   Future<void> _checkAndRefreshToken() async {
     if (_jwt == null) return;
-    
+
+    // Snapshot before any await.  If setJWT() is called concurrently (e.g. from
+    // _checkWebJWT() delivering a fresh OAuth JWT), we skip the signOut() so we
+    // don't clobber the new valid session.
+    final jwtAtStart = _jwt;
+
     try {
       // Prüfe ob Token dekodierbar ist
       final payload = JwtHelper.decodeToken(_jwt!);
       if (payload == null) {
         appLogger.d('❌ JWT kann nicht dekodiert werden - invalider Token');
         _refreshAttempts++;
-        
+
         // ✅ Endlosschleifen-Protection
         if (_refreshAttempts >= _maxRefreshAttempts) {
           appLogger.d('❌ Maximale Refresh-Versuche erreicht ($_maxRefreshAttempts) - Logout erforderlich');
+          if (_jwt != jwtAtStart) {
+            appLogger.d('⚠️ JWT geändert während Check — kein Logout');
+            return;
+          }
           await signOut();
           return;
         }
-        
+
         // Warte kurz vor erneutem Versuch (Exponential Backoff)
         await Future.delayed(Duration(seconds: _refreshAttempts * 2));
-        
+
         appLogger.d('⚠️ JWT invalide - versuche Refresh (Versuch $_refreshAttempts/$_maxRefreshAttempts)...');
         await refreshToken();
         return;
       }
-      
+
       // Reset Retry-Counter bei erfolgreichem Dekodieren
       _refreshAttempts = 0;
-      
+
       // Prüfe Expiration
       final isExpired = JwtHelper.isExpired(_jwt!);
 
@@ -147,6 +156,10 @@ class NeonAuthService extends ChangeNotifier {
         final success = await refreshTokenWithRetry(maxAttempts: 3);
         if (!success) {
           appLogger.d('❌ Token-Refresh nach Startup fehlgeschlagen - Logout erforderlich');
+          if (_jwt != jwtAtStart) {
+            appLogger.d('⚠️ JWT geändert während Retry — kein Logout');
+            return;
+          }
           await signOut();
         }
       } else {
@@ -155,9 +168,9 @@ class NeonAuthService extends ChangeNotifier {
           final exp = payload['exp'] as int;
           final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
           final timeUntilExpiry = expirationDate.difference(DateTime.now());
-          
+
           appLogger.d('⏰ JWT läuft ab in: ${timeUntilExpiry.inMinutes} Minuten');
-          
+
           // Starte Timer für automatisches Refresh (5 Minuten vor Ablauf)
           _scheduleTokenRefresh(timeUntilExpiry);
         }
@@ -165,10 +178,14 @@ class NeonAuthService extends ChangeNotifier {
     } catch (e) {
       appLogger.d('❌ Fehler beim Token-Check: $e');
       _refreshAttempts++;
-      
+
       // ✅ Endlosschleifen-Protection
       if (_refreshAttempts >= _maxRefreshAttempts) {
         appLogger.d('❌ Maximale Fehler erreicht - Logout erforderlich');
+        if (_jwt != jwtAtStart) {
+          appLogger.d('⚠️ JWT geändert während Check — kein Logout');
+          return;
+        }
         await signOut();
       }
     }
@@ -224,7 +241,13 @@ class NeonAuthService extends ChangeNotifier {
   Future<bool> refreshToken() async {
     try {
       appLogger.d('🔄 Refreshe JWT-Token...');
-      
+
+      // Snapshot the JWT before the async network call.  If setJWT() is called
+      // concurrently (e.g. _checkWebJWT() in main.dart delivers a fresh OAuth JWT
+      // while this refresh is in-flight), we must not sign the user out when the
+      // stale refresh finishes — the new JWT is already in place.
+      final jwtAtStart = _jwt;
+
       // Hole neue Session vom Server.
       // Native: Cookie manuell mitschicken.
       // Web: Browser-Cookies werden via withCredentials gesendet; zusätzlich
@@ -234,7 +257,7 @@ class NeonAuthService extends ChangeNotifier {
         Uri.parse('$neonAuthBaseUrl/get-session'),
         headers: {
           if (!kIsWeb && _cookie != null) 'Cookie': _cookie!,
-          if (_jwt != null) 'Authorization': 'Bearer $_jwt',
+          if (jwtAtStart != null) 'Authorization': 'Bearer $jwtAtStart',
           'Accept': 'application/json',
         },
       );
@@ -298,6 +321,10 @@ class NeonAuthService extends ChangeNotifier {
       } else if (response.statusCode == 401) {
         // Session abgelaufen - User muss neu einloggen
         appLogger.d('❌ Session abgelaufen - Logout erforderlich');
+        if (_jwt != jwtAtStart) {
+          appLogger.d('⚠️ JWT wurde während des Refreshes geändert (setJWT concurrent) — kein Logout');
+          return false;
+        }
         await signOut();
         return false;
       }
@@ -309,6 +336,10 @@ class NeonAuthService extends ChangeNotifier {
       // nicht, um transiente Fehler nicht in einen forced logout zu drehen.
       if (response.statusCode == 200) {
         appLogger.d('❌ /get-session 200 mit leerem Body — Session verloren, Logout');
+        if (_jwt != jwtAtStart) {
+          appLogger.d('⚠️ JWT wurde während des Refreshes geändert (setJWT concurrent) — kein Logout');
+          return false;
+        }
         await signOut();
         return false;
       }

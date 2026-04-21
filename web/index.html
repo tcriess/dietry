@@ -46,16 +46,17 @@
 <body>
   <script>
     // Service Worker Registration (für PWA)
+    //
+    // Note: we deliberately do NOT auto-reload on 'controllerchange'.  Doing so
+    // caused a hard-to-spot bug: when the user clicked "Login with Google" the
+    // browser would start navigating to /auth_callback.html, the SW would
+    // update during that navigation, skipWaiting()+clients.claim() would fire
+    // 'controllerchange' on the still-active page, the handler would call
+    // window.location.reload(), and the reload cancelled the pending
+    // navigation — so auth_callback.html never ran and the user was thrown
+    // back to the login screen.  The SW's skipWaiting + claim already makes
+    // the new version take over immediately; no explicit reload is needed.
     if ('serviceWorker' in navigator) {
-      // Auto-reload when a new SW version activates (skipWaiting + claim).
-      let _swRefreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (!_swRefreshing) {
-          _swRefreshing = true;
-          window.location.reload();
-        }
-      });
-
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js').then(
           function(registration) {

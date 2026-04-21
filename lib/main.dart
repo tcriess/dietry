@@ -1283,18 +1283,22 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
       final jwtFromStorage = html.getFromLocalStorage('neon_jwt');
 
+      // Consume-on-read: remove neon_jwt from localStorage immediately so that a
+      // subsequent signOut() (e.g. triggered by a failed token refresh) cannot leave
+      // a stale JWT that auth_callback.html would pick up again on the next login attempt.
       if (jwtFromStorage != null && jwtFromStorage.isNotEmpty) {
-        // If the auth service already refreshed successfully on startup, the neon_jwt
-        // in localStorage may be the old (expired) entry written by the previous
-        // auth_callback.html.  Overwriting the live session with it would sign the
-        // user out immediately.  Clean up the stale entry and return instead.
-        if (_authService.isLoggedIn) {
-          appLogger.i('✅ AuthService bereits eingeloggt – entferne veraltetes neon_jwt aus localStorage');
-          html.removeFromLocalStorage('neon_jwt');
-          html.removeFromLocalStorage('neon_user_email');
-          html.removeFromLocalStorage('neon_session_id');
-          return;
-        }
+        html.removeFromLocalStorage('neon_jwt');
+        html.removeFromLocalStorage('neon_user_email');
+        html.removeFromLocalStorage('neon_session_id');
+      }
+
+      if (jwtFromStorage != null && jwtFromStorage.isNotEmpty) {
+        // Always process neon_jwt from localStorage — it comes from a fresh OAuth
+        // flow (auth_callback.html just wrote it).  Do NOT skip when isLoggedIn==true:
+        // the AuthService might be holding a near-expired FlutterSecureStorage JWT
+        // whose timer is about to fire and cause an immediate signOut.  Calling
+        // setJWT() with the fresh OAuth JWT below cancels that timer and replaces
+        // the stale JWT, keeping the user logged in.
 
         appLogger.d('🔍 JWT in localStorage gefunden, validiere...');
 
@@ -1304,12 +1308,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
         if (!isValid || isExpired) {
           appLogger.e('❌ JWT in localStorage ist ungültig oder abgelaufen');
-          appLogger.i('   Cleane localStorage UND FlutterSecureStorage...');
-          
-          // ✅ Cleane localStorage (Web)
-          html.removeFromLocalStorage('neon_jwt');
-          html.removeFromLocalStorage('neon_user_email');
-          html.removeFromLocalStorage('neon_session_id');
+          appLogger.i('   Cleane FlutterSecureStorage...');
+
+          // localStorage already cleaned above (consume-on-read)
           
           // ✅ Cleane FlutterSecureStorage MANUELL (nicht nur signOut)
           final storage = const FlutterSecureStorage();
@@ -1364,6 +1365,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       appLogger.e('❌ Fehler beim Initialisieren des Web-Login: $e');
 
       // Bei Fehler: Nur Auth-Daten cleanen (NICHT alle Einstellungen!)
+      // neon_jwt was already consumed (removed) above at the top of the happy path,
+      // but we try to remove it here too in case the error happened before that point.
       html.removeFromLocalStorage('neon_jwt');
       html.removeFromLocalStorage('neon_user_email');
       html.removeFromLocalStorage('neon_session_id');
