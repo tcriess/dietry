@@ -400,19 +400,41 @@
                             console.log('✅ Aktive Session gefunden!');
                             console.log('   User:', data.user?.email);
 
-                            // Update localStorage (nur wenn echtes JWT)
-                            const newToken = data.session.token;
-                            if (newToken && newToken.split('.').length === 3) {
-                                localStorage.setItem('neon_jwt', newToken);
-                            }
-
                             // Prüfe ob wir von einem OAuth-Callback kommen
                             const urlParams = new URLSearchParams(window.location.search);
                             if (!urlParams.has('neon_auth_session_verifier')) {
-                                // Kein Verifier in URL = User ist bereits eingeloggt
-                                // → Weiterleitung zur Flutter-App (nicht hier bleiben!)
-                                console.log('🔄 JWT vorhanden, redirecte zur Flutter-App...');
-                                window.location.href = '/';
+                                // Kein Verifier in URL = User ist bereits eingeloggt.
+                                // Hole immer ein frisches JWT vom /token-Endpoint, damit Flutter
+                                // kein abgelaufenes neon_jwt aus dem localStorage liest.
+                                let freshJwt = null;
+                                try {
+                                    const tokenResponse = await fetch(AUTH_BASE_URL + '/token', {
+                                        method: 'GET',
+                                        credentials: 'include',
+                                    });
+                                    if (tokenResponse.ok) {
+                                        const tokenData = await tokenResponse.json();
+                                        const candidate = tokenData.token || tokenData.access_token;
+                                        if (candidate && candidate.split('.').length === 3) {
+                                            freshJwt = candidate;
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn('⚠️ /token Fehler:', e.message);
+                                }
+
+                                if (freshJwt) {
+                                    localStorage.setItem('neon_jwt', freshJwt);
+                                    localStorage.setItem('neon_user_email', data.user?.email || '');
+                                    console.log('🔄 Frisches JWT gespeichert, redirecte zur Flutter-App...');
+                                    window.location.href = '/';
+                                } else {
+                                    // Kein frisches JWT → OAuth-Flow starten statt Flutter direkt aufzurufen
+                                    console.warn('⚠️ Kein gültiges JWT von /token – cleane localStorage, starte OAuth...');
+                                    localStorage.removeItem('neon_jwt');
+                                    localStorage.removeItem('neon_user_email');
+                                    localStorage.removeItem('neon_session_id');
+                                }
                                 return;
                             }
                         } else {
