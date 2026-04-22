@@ -295,7 +295,9 @@
   "goalSectionTitle": "Tu Objetivo",
   "weightGoalRecLabel": "Objetivo de Peso",
   "calculateButton": "Calcular Recomendación",
+  "recalculateButton": "Recalcular",
   "calculating": "Calculando...",
+  "trackingMethodRecLabel": "Método de seguimiento",
   "recommendationTitle": "Tu Recomendación",
   "trackingMethodLabel": "Método de seguimiento: {method}",
   "@trackingMethodLabel": {

@@ -1707,6 +1707,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
+          snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
         ),
         locale: _locale,
         home: DietryHomeWithLogout(
@@ -1770,6 +1771,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
+          snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
         ),
         locale: _locale,
         home: DietryHomeWithLogout(

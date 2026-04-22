@@ -1270,11 +1270,23 @@ abstract class AppLocalizations {
   /// **'Empfehlung berechnen'**
   String get calculateButton;
 
+  /// No description provided for @recalculateButton.
+  ///
+  /// In de, this message translates to:
+  /// **'Neu berechnen'**
+  String get recalculateButton;
+
   /// No description provided for @calculating.
   ///
   /// In de, this message translates to:
   /// **'Berechne...'**
   String get calculating;
+
+  /// No description provided for @trackingMethodRecLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Tracking-Methode'**
+  String get trackingMethodRecLabel;
 
   /// No description provided for @recommendationTitle.
   ///

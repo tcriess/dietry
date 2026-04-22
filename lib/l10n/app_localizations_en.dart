@@ -625,7 +625,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calculateButton => 'Calculate Recommendation';
 
   @override
+  String get recalculateButton => 'Recalculate';
+
+  @override
   String get calculating => 'Calculating...';
+
+  @override
+  String get trackingMethodRecLabel => 'Tracking Method';
 
   @override
   String get recommendationTitle => 'Your Recommendation';

@@ -689,21 +689,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         }
 
         if (mounted) {
-          // Preserve the user's current amount (in grams) so returning from the
-          // dialog doesn't reset it. _selectFood picks a matching portion if one
-          // exists, otherwise falls back to grams.
           final prevGrams = _currentGrams();
           _selectFood(
             created,
             preservedAmountG: prevGrams > 0 ? prevGrams : null,
           );
-          final lCtx = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(lCtx.foodAdded(created.name)),
-              backgroundColor: Colors.green,
-            ),
-          );
+          await _saveEntry();
         }
       } catch (e) {
         if (mounted) {
@@ -763,13 +754,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         );
 
         if (mounted) {
-          final lCtx = AppLocalizations.of(context)!;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ ${lCtx.foodAdded(saved.name)} (lokal gespeichert)'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          await _saveEntry();
         }
       } catch (e) {
         if (mounted) {
@@ -975,9 +960,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
             // Food-Suche (nur wenn nicht manuell)
             if (!_showManualEntry) ...[
               TextField(
@@ -1665,27 +1653,40 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 const SizedBox(height: 16),
               ],
               
-              // Speichern Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _saveEntry,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check),
-                  label: Text(_isSaving ? 'Speichere...' : 'Speichern'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ),
             ],
+          ],
+        ),
+      ),
+      AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              child: (_selectedFood != null || _showManualEntry)
+                  ? SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _isSaving ? null : _saveEntry,
+                            icon: _isSaving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.check),
+                            label: Text(_isSaving ? 'Speichere...' : 'Speichern'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),

@@ -10,7 +10,6 @@ import '../services/user_body_measurements_service.dart';
 import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
-import 'tracking_method_screen.dart';
 
 /// Screen zur Eingabe von Körperdaten und Berechnung von Nutrition Goal Empfehlungen
 class GoalRecommendationScreen extends StatefulWidget {
@@ -40,10 +39,12 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   MacroRecommendation? _recommendation;
   int _waterGoalMl = 2000;
   final _waterGoalController = TextEditingController(text: '2000');
+  final _scrollController = ScrollController();
   bool _isCalculating = false;
   bool _isSaving = false;
   bool _isLoadingProfile = true;
   bool _macroOnly = false;
+  TrackingMethod _trackingMethod = TrackingMethod.tdeeHybrid;
   UserBodyData? _currentBodyData;
 
   @override
@@ -100,6 +101,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
     _weightController.dispose();
     _heightController.dispose();
     _waterGoalController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -115,9 +117,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   }
 
   void _calculateRecommendation() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
     if (_birthdate == null) {
       final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -126,9 +126,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
       return;
     }
 
-    setState(() {
-      _isCalculating = true;
-    });
+    setState(() => _isCalculating = true);
 
     final messenger = ScaffoldMessenger.of(context);
 
@@ -142,52 +140,34 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         weightGoal: _weightGoal,
       );
 
+      final method = _macroOnly ? TrackingMethod.tdeeComplete : _trackingMethod;
+      final recommendation = NutritionCalculator.calculateMacros(bodyData, method: method);
+      final autoWater = NutritionCalculator.calculateWaterGoal(bodyData.weight);
+
       setState(() {
         _isCalculating = false;
+        _recommendation = recommendation;
+        _currentBodyData = bodyData;
+        _waterGoalMl = autoWater;
+        _waterGoalController.text = autoWater.toString();
       });
 
-      MacroRecommendation? recommendation;
+      appLogger.i('✅ Empfehlung berechnet: ${recommendation.calories.toInt()} kcal (${method.displayName})');
 
-      if (_macroOnly) {
-        // Macro-only mode: use tdeeComplete directly without method selection
-        appLogger.d('📊 Macro-only mode: Verwende tdeeComplete automatisch');
-        recommendation = NutritionCalculator.calculateMacros(bodyData, method: TrackingMethod.tdeeComplete);
-      } else {
-        // Normal mode: open tracking method screen for user to choose
-        recommendation = await Navigator.of(context).push<MacroRecommendation>(
-          MaterialPageRoute(
-            builder: (_) => TrackingMethodScreen(
-              userData: bodyData,
-              onRecommendationSelected: (rec) {
-                Navigator.of(context).pop(rec);
-              },
-            ),
-          ),
-        );
-      }
-
-      if (recommendation != null) {
-        final autoWater = NutritionCalculator.calculateWaterGoal(bodyData.weight);
-        setState(() {
-          _recommendation = recommendation;
-          _currentBodyData = bodyData;
-          _waterGoalMl = autoWater;
-          _waterGoalController.text = autoWater.toString();
-        });
-
-        appLogger.i('✅ Empfehlung berechnet: ${recommendation.calories.toInt()} kcal');
-        appLogger.i('   Methode: ${recommendation.method.displayName}');
-      }
+      // Scroll down so the recommendation card is visible
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     } catch (e) {
-      setState(() {
-        _isCalculating = false;
-      });
-
+      setState(() => _isCalculating = false);
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Fehler bei Berechnung: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Fehler bei Berechnung: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -325,50 +305,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
-
-        // Show success dialog with option to go back
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) {
-            final ld = AppLocalizations.of(dialogContext)!;
-            return AlertDialog(
-              icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-              title: Text(ld.goalSavedDialogTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(ld.goalSavedDialogContent),
-                  const SizedBox(height: 16),
-                  if (!_macroOnly)
-                    Text(
-                      ld.goalTargetLine(goal.calories.toInt()),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  Text('${ld.nutrientProtein}: ${goal.protein.toInt()}g'),
-                  Text('${ld.nutrientFat}: ${goal.fat.toInt()}g'),
-                  Text('${ld.nutrientCarbs}: ${goal.carbs.toInt()}g'),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    // Pop dialog first with dialog context
-                    Navigator.of(dialogContext).pop();
-                    // Then pop the screen using the screen's context (using Future to ensure dialog is closed first)
-                    Future.microtask(() {
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    });
-                  },
-                  child: Text(ld.toOverview),
-                ),
-              ],
-            );
-          },
-        );
+        Navigator.of(context).pop();
       }
     } catch (e, stackTrace) {
       appLogger.e('❌ Fehler beim Speichern des Goals: $e');
@@ -403,13 +340,17 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
       ),
       body: _isLoadingProfile
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          : Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // Intro
               Card(
                 child: Padding(
@@ -642,29 +583,98 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 contentPadding: EdgeInsets.zero,
               ),
 
-              const SizedBox(height: 32),
-
-              // Berechnen Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isCalculating ? null : _calculateRecommendation,
-                  icon: const Icon(Icons.calculate),
-                  label: Text(_isCalculating ? l.calculating : l.calculateButton),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
+              // Tracking method selector (hidden in macro-only mode)
+              if (!_macroOnly) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<TrackingMethod>(
+                  initialValue: _trackingMethod,
+                  decoration: InputDecoration(
+                    labelText: l.trackingMethodRecLabel,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.track_changes),
                   ),
+                  items: TrackingMethod.values.map((method) {
+                    return DropdownMenuItem(
+                      value: method,
+                      child: Text(method.localizedName(l)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _trackingMethod = value);
+                  },
                 ),
-              ),
+              ],
 
               // Empfehlung anzeigen
               if (_recommendation != null) ...[
                 const SizedBox(height: 32),
                 _buildRecommendationCard(_recommendation!),
               ],
+
+              const SizedBox(height: 8),
             ],
           ),
         ),
+      ),
+          ),
+          _buildStickyBar(l),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStickyBar(AppLocalizations l) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: _recommendation == null
+            ? SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isCalculating ? null : _calculateRecommendation,
+                  icon: _isCalculating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.calculate),
+                  label: Text(_isCalculating ? l.calculating : l.calculateButton),
+                  style: FilledButton.styleFrom(padding: const EdgeInsets.all(16)),
+                ),
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isCalculating ? null : _calculateRecommendation,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(l.recalculateButton),
+                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(16)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _isSaving ? null : _saveGoal,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.save),
+                      label: Text(_isSaving ? l.saving : l.saveAsGoal),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -928,23 +938,6 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                     ),
                   ),
                 ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Speichern-Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveGoal,
-                icon: const Icon(Icons.save),
-                label: Text(_isSaving ? l.saving : l.saveAsGoal),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                ),
               ),
             ),
 
