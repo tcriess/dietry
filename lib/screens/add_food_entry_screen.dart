@@ -358,6 +358,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       _searchResults = [];
       _amountController.text = '100';
       _customUnit = 'g';
+      if (result.productName != null) _nameController.text = result.productName!;
       _caloriesController.text = fmt(result.caloriesPer100g, digits: 0);
       _proteinController.text = fmt(result.proteinPer100g);
       _fatController.text = fmt(result.fatPer100g);

@@ -152,6 +152,9 @@ class ReportsCloudWeightRow {
 /// Werte sind pro 100 g normalisiert; `null` wenn nicht erkannt.
 /// Der Nutzer bestätigt/korrigiert die Werte im Review-Screen.
 class NutritionLabelScanResult {
+  /// Erkannter Produktname (aus prominentem Text oberhalb der Nährwerttabelle).
+  final String? productName;
+
   /// kcal pro 100 g (nicht kJ — bereits umgerechnet).
   final double? caloriesPer100g;
   final double? proteinPer100g;
@@ -176,6 +179,7 @@ class NutritionLabelScanResult {
   final List<String> warnings;
 
   const NutritionLabelScanResult({
+    this.productName,
     this.caloriesPer100g,
     this.proteinPer100g,
     this.fatPer100g,

@@ -164,11 +164,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     final (from, to) = _range.dates;
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
 
     final results = await Future.wait([
       _svc.getNutritionTrend(from, to),
       _svc.getWaterTrend(from, to),
-      _svc.getWeightTrend(from, to),
+      _svc.getWeightTrend(from, todayDate),
       _svc.getMostEatenFoods(from, to),
     ]);
 
