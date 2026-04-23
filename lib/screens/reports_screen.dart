@@ -9,6 +9,7 @@ import '../utils/app_features_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../services/neon_database_service.dart';
+import '../services/nutrition_goal_service.dart';
 import '../services/platform_export.dart' as exporter;
 import '../services/reports_service.dart';
 
@@ -44,6 +45,18 @@ extension _RangeExt on ReportRange {
 
 // ── Aggregation helpers ───────────────────────────────────────────────────────
 
+/// Returns the calorie goal valid on [date], or null if none found.
+/// [goals] must be sorted descending by validFrom (as returned by getAllGoals()).
+double? _goalCalForDate(List<NutritionGoal> goals, DateTime date) {
+  for (final g in goals) {
+    final from = g.validFrom;
+    if (from == null || !from.isAfter(date)) {
+      return g.calories > 0 ? g.calories : null;
+    }
+  }
+  return null;
+}
+
 List<({DateTime date, double value})> _bucket(
     List<({DateTime date, double value})> pts, ReportRange range) {
   if (range == ReportRange.week || range == ReportRange.month) return pts;
@@ -66,12 +79,14 @@ class _ReportsData {
   final List<DailyWaterData> water;
   final List<WeightEntry> weight;
   final List<FoodFrequencyItem> mostEatenFoods;
+  final List<NutritionGoal> goalHistory;
 
   const _ReportsData({
     required this.nutrition,
     required this.water,
     required this.weight,
     this.mostEatenFoods = const [],
+    this.goalHistory = const [],
   });
 }
 
@@ -172,6 +187,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _svc.getWaterTrend(from, to),
       _svc.getWeightTrend(from, todayDate),
       _svc.getMostEatenFoods(from, to),
+      NutritionGoalService(widget.dbService!).getAllGoals(),
     ]);
 
     final result = _ReportsData(
@@ -179,6 +195,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       water: results[1] as List<DailyWaterData>,
       weight: results[2] as List<WeightEntry>,
       mostEatenFoods: results[3] as List<FoodFrequencyItem>,
+      goalHistory: results[4] as List<NutritionGoal>,
     );
     _lastData = result;
     return result;
@@ -353,7 +370,7 @@ class _ReportsBody extends StatelessWidget {
           _CalorieTrendCard(
             nutrition: data.nutrition,
             range: range,
-            goal: goal,
+            goalHistory: data.goalHistory,
           ),
           const SizedBox(height: 12),
         ],
@@ -640,10 +657,10 @@ class _StatTile extends StatelessWidget {
 class _CalorieTrendCard extends StatefulWidget {
   final List<DailyNutritionData> nutrition;
   final ReportRange range;
-  final NutritionGoal? goal;
+  final List<NutritionGoal> goalHistory;
 
   const _CalorieTrendCard(
-      {required this.nutrition, required this.range, this.goal});
+      {required this.nutrition, required this.range, required this.goalHistory});
 
   @override
   State<_CalorieTrendCard> createState() => _CalorieTrendCardState();
@@ -692,12 +709,12 @@ class _CalorieTrendCardState extends State<_CalorieTrendCard> {
                 ? _CalorieTrendBarChart(
                     nutrition: widget.nutrition,
                     range: widget.range,
-                    goal: widget.goal,
+                    goalHistory: widget.goalHistory,
                   )
                 : _CalorieTrendLineChart(
                     nutrition: widget.nutrition,
                     range: widget.range,
-                    goal: widget.goal,
+                    goalHistory: widget.goalHistory,
                   ),
           ],
         ),
@@ -711,10 +728,10 @@ class _CalorieTrendCardState extends State<_CalorieTrendCard> {
 class _CalorieTrendLineChart extends StatelessWidget {
   final List<DailyNutritionData> nutrition;
   final ReportRange range;
-  final NutritionGoal? goal;
+  final List<NutritionGoal> goalHistory;
 
   const _CalorieTrendLineChart(
-      {required this.nutrition, required this.range, this.goal});
+      {required this.nutrition, required this.range, required this.goalHistory});
 
   @override
   Widget build(BuildContext context) {
@@ -725,9 +742,14 @@ class _CalorieTrendLineChart extends StatelessWidget {
 
     if (pts.isEmpty) return const _NoData();
 
+    final goalSpots = pts.asMap().entries.expand<FlSpot>((e) {
+      final g = _goalCalForDate(goalHistory, pts[e.key].date);
+      return g != null ? [FlSpot(e.key.toDouble(), g)] : [];
+    }).toList();
+
     final maxY = ([
           ...pts.map((p) => p.value),
-          if (goal != null) goal!.calories,
+          ...goalSpots.map((s) => s.y),
         ].reduce((a, b) => a > b ? a : b) *
             1.1)
         .ceilToDouble();
@@ -802,13 +824,10 @@ class _CalorieTrendLineChart extends StatelessWidget {
                 color: Colors.blue.withValues(alpha: 0.08),
               ),
             ),
-            // Goal reference line
-            if (goal != null && goal!.calories > 0)
+            // Goal reference line (step function — reflects historical goals)
+            if (goalSpots.isNotEmpty)
               LineChartBarData(
-                spots: [
-                  FlSpot(0, goal!.calories),
-                  FlSpot((pts.length - 1).toDouble(), goal!.calories),
-                ],
+                spots: goalSpots,
                 isCurved: false,
                 color: Colors.red.withValues(alpha: 0.45),
                 barWidth: 1.5,
@@ -827,10 +846,10 @@ class _CalorieTrendLineChart extends StatelessWidget {
 class _CalorieTrendBarChart extends StatelessWidget {
   final List<DailyNutritionData> nutrition;
   final ReportRange range;
-  final NutritionGoal? goal;
+  final List<NutritionGoal> goalHistory;
 
   const _CalorieTrendBarChart(
-      {required this.nutrition, required this.range, this.goal});
+      {required this.nutrition, required this.range, required this.goalHistory});
 
   @override
   Widget build(BuildContext context) {
@@ -841,12 +860,11 @@ class _CalorieTrendBarChart extends StatelessWidget {
 
     if (pts.isEmpty) return const _NoData();
 
-    final goalCal = goal != null && goal!.calories > 0
-        ? goal!.calories.toDouble()
-        : null;
+    final goalByIndex = List.generate(
+        pts.length, (i) => _goalCalForDate(goalHistory, pts[i].date));
     final maxY = ([
           ...pts.map((p) => p.value),
-          if (goalCal != null) goalCal,
+          ...goalByIndex.whereType<double>(),
         ].reduce((a, b) => a > b ? a : b) *
             1.1)
         .ceilToDouble();
@@ -901,31 +919,31 @@ class _CalorieTrendBarChart extends StatelessWidget {
               ),
             ),
           ),
-          extraLinesData: goalCal != null
-              ? ExtraLinesData(horizontalLines: [
-                  HorizontalLine(
-                    y: goalCal,
-                    color: Colors.red.withValues(alpha: 0.45),
-                    strokeWidth: 1.5,
-                    dashArray: [6, 4],
-                  ),
-                ])
-              : null,
           barGroups: pts
               .asMap()
               .entries
-              .map((e) => BarChartGroupData(
-                    x: e.key,
-                    barRods: [
-                      BarChartRodData(
-                        toY: e.value.value,
-                        color: Colors.blue.withValues(alpha: 0.75),
-                        width: barWidth,
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(3)),
-                      ),
-                    ],
-                  ))
+              .map((e) {
+                final goalForBar = goalByIndex[e.key];
+                return BarChartGroupData(
+                  x: e.key,
+                  barRods: [
+                    BarChartRodData(
+                      toY: e.value.value,
+                      color: Colors.blue.withValues(alpha: 0.75),
+                      width: barWidth,
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(3)),
+                      backDrawRodData: goalForBar != null
+                          ? BackgroundBarChartRodData(
+                              show: true,
+                              toY: goalForBar,
+                              color: Colors.red.withValues(alpha: 0.10),
+                            )
+                          : BackgroundBarChartRodData(show: false),
+                    ),
+                  ],
+                );
+              })
               .toList(),
         ),
       ),
