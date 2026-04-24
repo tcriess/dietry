@@ -1383,7 +1383,7 @@ class AppLocalizationsDe extends AppLocalizations {
       '❌ Teilen fehlgeschlagen. Bitte versuche es erneut.';
 
   @override
-  String get logFood => 'Lebensmittel eintragen';
+  String get logFood => 'Eintragen';
 
   @override
   String get nutritionInfo => 'Nährwertinfo';
@@ -1445,6 +1445,26 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get upgradeProProfileDescription =>
       'Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.';
+
+  @override
+  String get sortBy => 'Sortieren';
+
+  @override
+  String get sortAlphabetical => 'Alphabetisch';
+
+  @override
+  String get sortNewest => 'Neueste zuerst';
+
+  @override
+  String get sortRecentlyUsed => 'Zuletzt verwendet';
+
+  @override
+  String get searchMyFoodsHint => 'Meine Lebensmittel durchsuchen…';
+
+  @override
+  String noSearchResults(String query) {
+    return 'Keine Ergebnisse für \"$query\"';
+  }
 
   @override
   String get barcodeScanTitle => 'Barcode scannen';

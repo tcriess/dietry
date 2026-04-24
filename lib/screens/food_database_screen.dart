@@ -19,22 +19,20 @@ import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
-import 'food_detail_screen.dart';
+// food_detail_screen.dart removed — detail nav replaced by log-food action;
 
 /// Screen zur Verwaltung eigener Lebensmittel in der Datenbank.
 ///
 /// Listet alle privaten (eigenen) Einträge mit Edit/Delete.
-/// Wenn [pickerMode] = true: Tippen auf einen Eintrag gibt ihn als Pop-Ergebnis zurück
-/// (für Auswahl in AddFoodEntryScreen).
-/// Wenn [pickerMode] = false: Tippen öffnet ein Detail-Page (Browsing-Modus).
+/// Manage food database entries: view, search, sort, add, edit, delete.
+enum _SortOrder { alphabetical, newest, recentlyUsed }
+
 class FoodDatabaseScreen extends StatefulWidget {
   final NeonDatabaseService dbService;
-  final bool pickerMode;
 
   const FoodDatabaseScreen({
     super.key,
     required this.dbService,
-    this.pickerMode = true,
   });
 
   @override
@@ -53,6 +51,42 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   final Set<String> _selectedTagSlugs = {};
   bool _tagsLoading = true;
 
+  // Search + sort
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  _SortOrder _sortOrder = _SortOrder.newest;
+  List<String> _recentlyUsedFoodIds = [];
+
+  List<FoodItem> get _displayedFoods {
+    var foods = List<FoodItem>.from(_foods);
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      foods = foods.where((f) =>
+        f.name.toLowerCase().contains(q) ||
+        (f.brand?.toLowerCase().contains(q) ?? false) ||
+        (f.category?.toLowerCase().contains(q) ?? false)
+      ).toList();
+    }
+
+    switch (_sortOrder) {
+      case _SortOrder.alphabetical:
+        foods.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      case _SortOrder.newest:
+        foods.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      case _SortOrder.recentlyUsed:
+        final order = {for (var i = 0; i < _recentlyUsedFoodIds.length; i++) _recentlyUsedFoodIds[i]: i};
+        foods.sort((a, b) {
+          final ai = order[a.id] ?? _recentlyUsedFoodIds.length;
+          final bi = order[b.id] ?? _recentlyUsedFoodIds.length;
+          if (ai != bi) return ai.compareTo(bi);
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+    }
+
+    return foods;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +94,16 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
     _tagService = TagService(widget.dbService);
     _loadFoods();
     _loadAvailableTags();
+    _loadRecentlyUsedFoodIds();
+  }
+
+  Future<void> _loadRecentlyUsedFoodIds() async {
+    try {
+      final ids = await FoodDatabaseService(widget.dbService).getRecentlyUsedFoodIds();
+      if (mounted) setState(() => _recentlyUsedFoodIds = ids);
+    } catch (e) {
+      appLogger.w('_loadRecentlyUsedFoodIds: $e');
+    }
   }
 
   Future<void> _loadAvailableTags() async {
@@ -258,9 +302,44 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       appBar: AppBar(
         title: Text(l.foodDatabaseTitle),
         actions: [
+          PopupMenuButton<_SortOrder>(
+            icon: const Icon(Icons.sort),
+            tooltip: l.sortBy,
+            initialValue: _sortOrder,
+            onSelected: (order) => setState(() => _sortOrder = order),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: _SortOrder.newest,
+                child: Row(children: [
+                  Icon(_sortOrder == _SortOrder.newest ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.sortNewest),
+                ]),
+              ),
+              PopupMenuItem(
+                value: _SortOrder.alphabetical,
+                child: Row(children: [
+                  Icon(_sortOrder == _SortOrder.alphabetical ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.sortAlphabetical),
+                ]),
+              ),
+              PopupMenuItem(
+                value: _SortOrder.recentlyUsed,
+                child: Row(children: [
+                  Icon(_sortOrder == _SortOrder.recentlyUsed ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.sortRecentlyUsed),
+                ]),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadFoods,
+            onPressed: () {
+              _loadFoods();
+              _loadRecentlyUsedFoodIds();
+            },
           ),
         ],
       ),
@@ -273,6 +352,30 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: l.searchMyFoodsHint,
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      isDense: true,
+                    ),
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                  ),
+                ),
                 // Tag filter chips
                 if (!_tagsLoading && _availableTags.isNotEmpty) ...[
                   SingleChildScrollView(
@@ -306,48 +409,39 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                 ],
                 // Food list
                 Expanded(
-                  child: _foods.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.no_food, size: 64, color: Colors.grey.shade400),
-                              const SizedBox(height: 16),
-                              Text(
-                                l.entriesEmpty,
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l.foodDatabaseEmpty,
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
+                  child: Builder(builder: (context) {
+                    final displayed = _displayedFoods;
+                    if (_foods.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.no_food, size: 64, color: Colors.grey.shade400),
+                            const SizedBox(height: 16),
+                            Text(l.entriesEmpty, style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                            const SizedBox(height: 8),
+                            Text(l.foodDatabaseEmpty, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                          ],
+                        ),
+                      );
+                    }
+                    if (displayed.isEmpty) {
+                      return Center(
+                        child: Text(
+                          l.noSearchResults(_searchQuery),
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
                           padding: const EdgeInsets.only(bottom: 88, top: 8, left: 4, right: 4),
-                          itemCount: _foods.length,
+                          itemCount: displayed.length,
                           itemBuilder: (context, index) {
-                    final food = _foods[index];
+                    final food = displayed[index];
                     final isSmallScreen = MediaQuery.of(context).size.width < 500;
 
                     return GestureDetector(
-                      onTap: () {
-                        if (widget.pickerMode) {
-                          Navigator.of(context).pop(food);
-                        } else {
-                          // Navigate to food detail screen (not yet created)
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => FoodDetailScreen(
-                                food: food,
-                                dbService: widget.dbService,
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                      onTap: () => _editFood(food),
                       child: Card(
                         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: Padding(
@@ -647,11 +741,18 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                       ),
                     );
                   },
-                ),
+                );
+                  }),
                 ),
               ],
             ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }
 

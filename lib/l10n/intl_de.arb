@@ -665,6 +665,19 @@
   "upgradeProReportsDescription": "Erweiterte Analysen freischalten: Aktivitätsbilanz, Zieleinhaltung, Mahlzeiten-Timing und mehr.",
   "upgradeProProfileDescription": "Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.",
 
+  "sortBy": "Sortieren",
+  "sortAlphabetical": "Alphabetisch",
+  "sortNewest": "Neueste zuerst",
+  "sortRecentlyUsed": "Zuletzt verwendet",
+  "searchMyFoodsHint": "Meine Lebensmittel durchsuchen…",
+  "noSearchResults": "Keine Ergebnisse für \"{query}\"",
+  "@noSearchResults": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "logFood": "Eintragen",
+
   "barcodeScanTitle": "Barcode scannen",
   "barcodeField": "Barcode",
   "barcodeHint": "z.B. 4006381333931",

@@ -665,6 +665,19 @@
   "upgradeProReportsDescription": "Unlock advanced analytics: activity balance, goal compliance, meal timing, and more.",
   "upgradeProProfileDescription": "Get access to advanced analytics, detailed reports, and all Pro features.",
 
+  "sortBy": "Sort",
+  "sortAlphabetical": "Alphabetical",
+  "sortNewest": "Newest first",
+  "sortRecentlyUsed": "Recently used",
+  "searchMyFoodsHint": "Search my foods…",
+  "noSearchResults": "No results for \"{query}\"",
+  "@noSearchResults": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "logFood": "Log Food",
+
   "barcodeScanTitle": "Scan Barcode",
   "barcodeField": "Barcode",
   "barcodeHint": "e.g. 4006381333931",

@@ -2617,7 +2617,7 @@ abstract class AppLocalizations {
   /// No description provided for @logFood.
   ///
   /// In de, this message translates to:
-  /// **'Lebensmittel eintragen'**
+  /// **'Eintragen'**
   String get logFood;
 
   /// No description provided for @nutritionInfo.
@@ -2727,6 +2727,42 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.'**
   String get upgradeProProfileDescription;
+
+  /// No description provided for @sortBy.
+  ///
+  /// In de, this message translates to:
+  /// **'Sortieren'**
+  String get sortBy;
+
+  /// No description provided for @sortAlphabetical.
+  ///
+  /// In de, this message translates to:
+  /// **'Alphabetisch'**
+  String get sortAlphabetical;
+
+  /// No description provided for @sortNewest.
+  ///
+  /// In de, this message translates to:
+  /// **'Neueste zuerst'**
+  String get sortNewest;
+
+  /// No description provided for @sortRecentlyUsed.
+  ///
+  /// In de, this message translates to:
+  /// **'Zuletzt verwendet'**
+  String get sortRecentlyUsed;
+
+  /// No description provided for @searchMyFoodsHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Meine Lebensmittel durchsuchen…'**
+  String get searchMyFoodsHint;
+
+  /// No description provided for @noSearchResults.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Ergebnisse für \"{query}\"'**
+  String noSearchResults(String query);
 
   /// No description provided for @barcodeScanTitle.
   ///

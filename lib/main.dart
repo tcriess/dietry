@@ -51,7 +51,6 @@ import 'widgets/quick_food_entry_sheet.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
 import 'screens/activity_database_screen.dart';
-import 'screens/food_database_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/health_connect_service.dart';
 import 'screens/info_screen.dart';
@@ -2835,15 +2834,6 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
               ),
               const SizedBox(width: 12),
             ],
-            FloatingActionButton(
-              heroTag: 'fab_food_database',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => FoodDatabaseScreen(dbService: db),
-              )),
-              tooltip: l.myFoods,
-              child: const Icon(Icons.storage_outlined),
-            ),
-            const SizedBox(width: 12),
             FloatingActionButton(
               heroTag: 'fab_quick_entry',
               onPressed: () async {

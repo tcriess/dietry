@@ -1441,6 +1441,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Get access to advanced analytics, detailed reports, and all Pro features.';
 
   @override
+  String get sortBy => 'Sort';
+
+  @override
+  String get sortAlphabetical => 'Alphabetical';
+
+  @override
+  String get sortNewest => 'Newest first';
+
+  @override
+  String get sortRecentlyUsed => 'Recently used';
+
+  @override
+  String get searchMyFoodsHint => 'Search my foods…';
+
+  @override
+  String noSearchResults(String query) {
+    return 'No results for \"$query\"';
+  }
+
+  @override
   String get barcodeScanTitle => 'Scan Barcode';
 
   @override

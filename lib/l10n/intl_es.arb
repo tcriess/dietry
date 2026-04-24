@@ -665,6 +665,19 @@
   "upgradeProReportsDescription": "Desbloquea análisis avanzados: balance de actividad, cumplimiento de objetivos, horario de comidas y más.",
   "upgradeProProfileDescription": "Accede a análisis avanzados, informes detallados y todas las funciones Pro.",
 
+  "sortBy": "Ordenar",
+  "sortAlphabetical": "Alfabético",
+  "sortNewest": "Más recientes",
+  "sortRecentlyUsed": "Usados recientemente",
+  "searchMyFoodsHint": "Buscar mis alimentos…",
+  "noSearchResults": "Sin resultados para \"{query}\"",
+  "@noSearchResults": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "logFood": "Registrar",
+
   "barcodeScanTitle": "Escanear código",
   "barcodeField": "Código de barras",
   "barcodeHint": "p.ej. 4006381333931",

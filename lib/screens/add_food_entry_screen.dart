@@ -33,6 +33,8 @@ import 'food_database_screen.dart';
 /// 2. Wähle Menge & Einheit
 /// 3. Wähle Meal Type
 /// 4. Speichere Entry
+enum _FoodSortOrder { alphabetical, newest, recentlyUsed }
+
 class AddFoodEntryScreen extends StatefulWidget {
   final NeonDatabaseService? dbService;
   final DateTime? selectedDate;
@@ -97,6 +99,72 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   final Set<String> _selectedTagSlugs = {};  // tag slugs selected for filtering
   bool _tagsLoading = true;
 
+  // Own foods preloaded list (authenticated mode)
+  List<FoodItem> _myFoods = [];
+  bool _isLoadingMyFoods = false;
+  List<String> _recentlyUsedFoodIds = [];
+  _FoodSortOrder _sortOrder = _FoodSortOrder.recentlyUsed;
+
+  List<FoodItem> get _displayedMyFoods {
+    var foods = List<FoodItem>.from(_myFoods);
+
+    if (_selectedTagSlugs.isNotEmpty) {
+      foods = foods.where((f) {
+        final slugs = f.tags.map((t) => t.slug).toSet();
+        return _selectedTagSlugs.every(slugs.contains);
+      }).toList();
+    }
+
+    final q = _searchController.text.toLowerCase().trim();
+    if (q.isNotEmpty) {
+      foods = foods.where((f) =>
+        f.name.toLowerCase().contains(q) ||
+        (f.brand?.toLowerCase().contains(q) ?? false) ||
+        (f.category?.toLowerCase().contains(q) ?? false)
+      ).toList();
+    }
+
+    switch (_sortOrder) {
+      case _FoodSortOrder.alphabetical:
+        foods.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      case _FoodSortOrder.newest:
+        foods.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      case _FoodSortOrder.recentlyUsed:
+        final order = {for (var i = 0; i < _recentlyUsedFoodIds.length; i++) _recentlyUsedFoodIds[i]: i};
+        foods.sort((a, b) {
+          final ai = order[a.id] ?? _recentlyUsedFoodIds.length;
+          final bi = order[b.id] ?? _recentlyUsedFoodIds.length;
+          if (ai != bi) return ai.compareTo(bi);
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+    }
+
+    return foods;
+  }
+
+  Future<void> _loadMyFoods() async {
+    if (widget.dbService == null) return;
+    setState(() => _isLoadingMyFoods = true);
+    try {
+      final foods = await FoodDatabaseService(widget.dbService!).getVisibleFoods();
+      if (mounted) setState(() => _myFoods = foods);
+    } catch (e) {
+      appLogger.w('⚠️ Foods konnten nicht geladen werden: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingMyFoods = false);
+    }
+  }
+
+  Future<void> _loadRecentlyUsedFoodIds() async {
+    if (widget.dbService == null) return;
+    try {
+      final ids = await FoodDatabaseService(widget.dbService!).getRecentlyUsedFoodIds();
+      if (mounted) setState(() => _recentlyUsedFoodIds = ids);
+    } catch (e) {
+      appLogger.w('⚠️ MRU Foods konnten nicht geladen werden: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -104,7 +172,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (widget.dbService != null) {
       _imageService = FoodImageService(widget.dbService!);
       _tagService = TagService(widget.dbService!);
-      _loadAvailableTags();  // Load tags for filtering
+      _loadAvailableTags();
+      _loadMyFoods();
+      _loadRecentlyUsedFoodIds();
     } else {
       // Guest mode: try to get anonymous token for public food DB access
       _tagsLoading = false;
@@ -186,6 +256,15 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   /// Suche Foods: entweder in Datenbank ("own db") ODER externe APIs
   Future<void> _searchFoods(String query) async {
     if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    // In authenticated My DB mode, filtering is done client-side via _displayedMyFoods.
+    if (!_useOpenFoodFacts && widget.dbService != null) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
@@ -843,8 +922,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Suchergebnisse neu laden
-        _searchFoods(_searchController.text);
+        _loadMyFoods();
       }
     } catch (e) {
       if (mounted) {
@@ -915,7 +993,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             _carbsController.clear();
           });
         }
-        _searchFoods(_searchController.text);
+        _loadMyFoods();
       }
     } catch (e) {
       if (mounted) {
@@ -932,7 +1010,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (!mounted) return;
 
     final l = AppLocalizations.of(context);
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${l?.tags ?? "Tags"} für "${food.name}"'),
@@ -953,6 +1031,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         ],
       ),
     );
+    if (mounted) _loadMyFoods();
   }
 
   @override
@@ -962,23 +1041,54 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       appBar: AppBar(
         title: Text(l.addFoodScreenTitle),
         actions: [
-          // Database button (only in authenticated mode)
+          // Sort order (only in My DB authenticated mode)
+          if (widget.dbService != null && !_showManualEntry && !_useOpenFoodFacts)
+            PopupMenuButton<_FoodSortOrder>(
+              icon: const Icon(Icons.sort),
+              tooltip: AppLocalizations.of(context)?.sortBy ?? 'Sortieren',
+              initialValue: _sortOrder,
+              onSelected: (order) => setState(() => _sortOrder = order),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: _FoodSortOrder.recentlyUsed,
+                  child: Row(children: [
+                    Icon(_sortOrder == _FoodSortOrder.recentlyUsed ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.of(context)?.sortRecentlyUsed ?? 'Zuletzt verwendet'),
+                  ]),
+                ),
+                PopupMenuItem(
+                  value: _FoodSortOrder.alphabetical,
+                  child: Row(children: [
+                    Icon(_sortOrder == _FoodSortOrder.alphabetical ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.of(context)?.sortAlphabetical ?? 'Alphabetisch'),
+                  ]),
+                ),
+                PopupMenuItem(
+                  value: _FoodSortOrder.newest,
+                  child: Row(children: [
+                    Icon(_sortOrder == _FoodSortOrder.newest ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                    const SizedBox(width: 8),
+                    Text(AppLocalizations.of(context)?.sortNewest ?? 'Neueste'),
+                  ]),
+                ),
+              ],
+            ),
+          // Manage database (only in authenticated mode)
           if (widget.dbService != null)
             IconButton(
-              icon: const Icon(Icons.storage_outlined),
-              tooltip: 'Meine Datenbank',
+              icon: const Icon(Icons.edit_note),
+              tooltip: 'Datenbank verwalten',
               onPressed: () async {
-                final food = await Navigator.of(context).push<FoodItem>(
+                await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => FoodDatabaseScreen(
                       dbService: widget.dbService!,
-                      pickerMode: true,
                     ),
                   ),
                 );
-                if (food != null) {
-                  _selectFood(food);
-                }
+                if (mounted) _loadMyFoods();
               },
             ),
           if (!_showManualEntry)
@@ -1040,15 +1150,20 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 ),
                 textInputAction: TextInputAction.search,
                 onChanged: (value) {
-                  // Eigene DB: sofort suchen; OFF: nur UI-Update (kein Request)
-                  if (!_useOpenFoodFacts) {
+                  if (!_useOpenFoodFacts && widget.dbService != null) {
+                    // Authenticated My DB: _displayedMyFoods reacts to controller text
+                    setState(() {});
+                  } else if (!_useOpenFoodFacts) {
+                    // Guest mode: search public/local foods
                     _searchFoods(value);
                   } else {
-                    setState(() {}); // Nur für suffixIcon-Update
+                    setState(() {}); // Online: update suffixIcon, search on Enter
                   }
                 },
                 onSubmitted: (value) {
-                  _searchFoods(value);
+                  if (_useOpenFoodFacts || widget.dbService == null) {
+                    _searchFoods(value);
+                  }
                 },
               ),
 
@@ -1063,9 +1178,6 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       onSelected: (_) => setState(() {
                         _useOpenFoodFacts = false;
                         _searchResults = [];
-                        if (_searchController.text.isNotEmpty) {
-                          _searchFoods(_searchController.text);
-                        }
                       }),
                     ),
                     const SizedBox(width: 8),
@@ -1104,8 +1216,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                 _selectedTagSlugs.remove(tag.slug);
                               }
                             });
-                            // Re-search with new filters
-                            _searchFoods(_searchController.text);
+                            // Online mode: re-search; My DB mode: _displayedMyFoods reacts
+                            if (_useOpenFoodFacts) _searchFoods(_searchController.text);
                           },
                         );
                       }).toList(),
@@ -1114,9 +1226,141 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 ),
               ],
 
-              // Suchergebnisse
-              if (_isSearching)
+              // My DB preloaded list (authenticated) or online/guest search results
+              if ((_isLoadingMyFoods && !_useOpenFoodFacts && widget.dbService != null) ||
+                  (_isSearching && (_useOpenFoodFacts || widget.dbService == null)))
                 const Center(child: CircularProgressIndicator())
+              else if (!_useOpenFoodFacts && widget.dbService != null) ...[
+                if (_myFoods.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.no_food, size: 48, color: Colors.grey.shade400),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Noch keine Lebensmittel in der Datenbank',
+                            style: TextStyle(color: Colors.grey.shade600),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_displayedMyFoods.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'Keine Ergebnisse',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    ),
+                  )
+                else
+                  Card(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _displayedMyFoods.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final food = _displayedMyFoods[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(
+                              food.isPublic && food.isApproved ? '🌍' : food.isPublic ? '🕐' : '👤',
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
+                          title: Text(food.name),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
+                                '${food.brand != null ? ' • ${food.brand}' : ''}'
+                                '${food.category != null ? ' • ${food.category}' : ''}',
+                              ),
+                              if (food.tags.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 4,
+                                  children: food.tags.map((tag) {
+                                    return Chip(
+                                      label: Text(tag.name, style: const TextStyle(fontSize: 11)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                                      labelStyle: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.label_outline),
+                                tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
+                                onPressed: () => _editFoodTagsInline(food),
+                              ),
+                              if (food.isPublic)
+                                const Icon(Icons.chevron_right)
+                              else
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert),
+                                  tooltip: 'Optionen',
+                                  onSelected: (action) async {
+                                    if (action == 'use') {
+                                      _selectFood(food);
+                                    } else if (action == 'edit') {
+                                      await _editFoodInSearch(food);
+                                    } else if (action == 'delete') {
+                                      await _deleteFoodInSearch(food);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'use',
+                                      child: ListTile(
+                                        leading: Icon(Icons.check_circle_outline),
+                                        title: Text('Verwenden'),
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: ListTile(
+                                        leading: Icon(Icons.edit_outlined),
+                                        title: Text('Bearbeiten'),
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: ListTile(
+                                        leading: Icon(Icons.delete_outline, color: Colors.red),
+                                        title: Text('Löschen', style: TextStyle(color: Colors.red)),
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          onTap: () => _selectFood(food),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ]
+              // Online search or guest mode results
               else if (_searchResults.isNotEmpty) ...[
                 Card(
                   child: Column(
@@ -1169,34 +1413,26 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                     spacing: 4,
                                     children: food.tags.map((tag) {
                                       return Chip(
-                                        label: Text(
-                                          tag.name,
-                                          style: const TextStyle(fontSize: 11),
-                                        ),
+                                        label: Text(tag.name, style: const TextStyle(fontSize: 11)),
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                         backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                                        labelStyle: TextStyle(
-                                          fontSize: 11,
-                                          color: Theme.of(context).colorScheme.onSecondaryContainer,
-                                        ),
+                                        labelStyle: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
                                       );
                                     }).toList(),
                                   ),
-                                ]
+                                ],
                               ],
                             ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Tag button for adding/editing tags (only in authenticated mode)
                                 if (widget.dbService != null)
                                   IconButton(
                                     icon: const Icon(Icons.label_outline),
                                     tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
                                     onPressed: () => _editFoodTagsInline(food),
                                   ),
-                                // Menu or chevron for other actions (only show menu in authenticated mode for own foods)
                                 if (isOFF || food.isPublic || widget.dbService == null)
                                   const Icon(Icons.chevron_right)
                                 else
@@ -1232,10 +1468,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                       const PopupMenuItem(
                                         value: 'delete',
                                         child: ListTile(
-                                          leading: Icon(Icons.delete_outline,
-                                              color: Colors.red),
-                                          title: Text('Löschen',
-                                              style: TextStyle(color: Colors.red)),
+                                          leading: Icon(Icons.delete_outline, color: Colors.red),
+                                          title: Text('Löschen', style: TextStyle(color: Colors.red)),
                                           contentPadding: EdgeInsets.zero,
                                         ),
                                       ),

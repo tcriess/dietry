@@ -81,21 +81,16 @@ class FoodDatabaseService {
   }
 
   /// Hole alle eigenen private Foods (mit Tags)
+  /// Own foods only — for the manage screen (FoodDatabaseScreen).
+  /// Uses list_own_foods(): no similarity(), index scan on user_id.
   Future<List<FoodItem>> getMyFoods() async {
     try {
-      // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) return [];
 
-      // Use search_food_database() with empty query to get all own foods with tags
-      // This ensures tags are loaded via the RPC function
       final response = await _db.client.rpc(
-        'search_food_database',
-        params: {
-          'query': '',
-          'filter_tags': null,
-          'max_results': 1000,
-        },
+        'list_own_foods',
+        params: {'max_results': 500},
       );
 
       return (response as List)
@@ -103,6 +98,27 @@ class FoodDatabaseService {
         .toList();
     } catch (e) {
       appLogger.e('❌ Fehler beim Laden eigener Foods: $e');
+      return [];
+    }
+  }
+
+  /// Own foods + public approved foods — for the add-food screen (AddFoodEntryScreen).
+  /// Uses list_visible_foods(): no similarity(), own foods shown first.
+  Future<List<FoodItem>> getVisibleFoods() async {
+    try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return [];
+
+      final response = await _db.client.rpc(
+        'list_visible_foods',
+        params: {'max_results': 300},
+      );
+
+      return (response as List)
+        .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
+        .toList();
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Laden sichtbarer Foods: $e');
       return [];
     }
   }
@@ -347,6 +363,33 @@ class FoodDatabaseService {
   }
 
   /// Hole alle verfügbaren Kategorien
+  /// Returns food IDs ordered by when they were most recently logged,
+  /// deduped (first occurrence = most recent). Used for MRU sort.
+  Future<List<String>> getRecentlyUsedFoodIds({int limit = 300}) async {
+    try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return [];
+
+      final response = await _db.client
+        .from('food_entries')
+        .select('food_id')
+        .not('food_id', 'is', null)
+        .order('entry_date', ascending: false)
+        .limit(limit);
+
+      final seen = <String>{};
+      final result = <String>[];
+      for (final row in (response as List)) {
+        final id = row['food_id'] as String?;
+        if (id != null && seen.add(id)) result.add(id);
+      }
+      return result;
+    } catch (e) {
+      appLogger.w('⚠️ Fehler beim Laden der zuletzt verwendeten Foods: $e');
+      return [];
+    }
+  }
+
   Future<List<String>> getCategories() async {
     try {
       // Token prüfen

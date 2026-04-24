@@ -1391,7 +1391,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get shareFailed => '❌ Error al compartir. Por favor intenta de nuevo.';
 
   @override
-  String get logFood => 'Registrar alimento';
+  String get logFood => 'Registrar';
 
   @override
   String get nutritionInfo => 'Información nutricional';
@@ -1454,6 +1454,26 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get upgradeProProfileDescription =>
       'Accede a análisis avanzados, informes detallados y todas las funciones Pro.';
+
+  @override
+  String get sortBy => 'Ordenar';
+
+  @override
+  String get sortAlphabetical => 'Alfabético';
+
+  @override
+  String get sortNewest => 'Más recientes';
+
+  @override
+  String get sortRecentlyUsed => 'Usados recientemente';
+
+  @override
+  String get searchMyFoodsHint => 'Buscar mis alimentos…';
+
+  @override
+  String noSearchResults(String query) {
+    return 'Sin resultados para \"$query\"';
+  }
 
   @override
   String get barcodeScanTitle => 'Escanear código';
