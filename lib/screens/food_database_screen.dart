@@ -13,6 +13,8 @@ import '../services/food_image_service.dart';
 import '../services/tag_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/app_logger.dart';
+import '../services/barcode_lookup_service.dart';
+import '../widgets/barcode_scanner_sheet.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
@@ -678,6 +680,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   late final TextEditingController _sugarController;
   late final TextEditingController _sodiumController;
   late final TextEditingController _saturatedFatController;
+  late final TextEditingController _barcodeController;
   final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
   late bool _isPublic;
   late bool _isLiquid;
@@ -720,6 +723,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         text: f?.sodium != null ? f!.sodium!.toStringAsFixed(1) : '');
     _saturatedFatController = TextEditingController(
         text: f?.saturatedFat != null ? f!.saturatedFat!.toStringAsFixed(1) : '');
+    _barcodeController = TextEditingController(text: f?.barcode ?? '');
     for (final p in (widget.food?.portions ?? [])) {
       _portionRows.add((
         name: TextEditingController(text: p.name),
@@ -929,11 +933,79 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     _sugarController.dispose();
     _sodiumController.dispose();
     _saturatedFatController.dispose();
+    _barcodeController.dispose();
     for (final row in _portionRows) {
       row.name.dispose();
       row.amount.dispose();
     }
     super.dispose();
+  }
+
+  /// Scans a barcode and fills the barcode field. If the barcode is found on
+  /// Open Food Facts and all nutrition fields are currently empty, offers to
+  /// import the nutrition data.
+  Future<void> _scanBarcodeForField() async {
+    final barcode = await showBarcodeScannerSheet(context);
+    if (barcode == null || !mounted) return;
+
+    _barcodeController.text = barcode;
+
+    final nutritionEmpty = _caloriesController.text.trim().isEmpty &&
+        _proteinController.text.trim().isEmpty &&
+        _fatController.text.trim().isEmpty &&
+        _carbsController.text.trim().isEmpty;
+
+    if (!nutritionEmpty) return;
+
+    final locale = Localizations.localeOf(context).languageCode;
+    final result = await BarcodeLookupService.lookup(
+      barcode,
+      dbService: FoodDatabaseService(widget.dbService),
+      locale: locale,
+    );
+    if (!mounted || result == null || !result.fromOff) return;
+
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.barcodeFoundOff),
+        content: Text('${result.food.name}\n\n${l.barcodeImportOff}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.barcodeImport),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final f = result.food;
+    setState(() {
+      if (_nameController.text.trim().isEmpty) _nameController.text = f.name;
+      if (_brandController.text.trim().isEmpty && f.brand != null) {
+        _brandController.text = f.brand!;
+      }
+      if (_categoryController.text.trim().isEmpty && f.category != null) {
+        _categoryController.text = f.category!;
+      }
+      _caloriesController.text = f.calories.toStringAsFixed(0);
+      _proteinController.text = f.protein.toStringAsFixed(1);
+      _fatController.text = f.fat.toStringAsFixed(1);
+      _carbsController.text = f.carbs.toStringAsFixed(1);
+      if (f.fiber != null) _fiberController.text = f.fiber!.toStringAsFixed(1);
+      if (f.sugar != null) _sugarController.text = f.sugar!.toStringAsFixed(1);
+      if (f.sodium != null) _sodiumController.text = f.sodium!.toStringAsFixed(1);
+      if (f.saturatedFat != null) {
+        _saturatedFatController.text = f.saturatedFat!.toStringAsFixed(1);
+      }
+    });
   }
 
   void _save() async {
@@ -989,7 +1061,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       category:
           _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : null,
       brand: _brandController.text.trim().isNotEmpty ? _brandController.text.trim() : null,
-      barcode: widget.food?.barcode,
+      barcode: _barcodeController.text.trim().isNotEmpty ? _barcodeController.text.trim() : null,
       isPublic: _isPublic,
       isApproved: false,  // Immer zurücksetzen – Admin muss erneut freigeben
       isFavourite: widget.food?.isFavourite ?? false,
@@ -1288,6 +1360,24 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                     labelText: l.foodBrand,
                     border: const OutlineInputBorder(),
                     isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Barcode
+                TextFormField(
+                  controller: _barcodeController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: l.barcodeField,
+                    hintText: l.barcodeHint,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner),
+                      tooltip: l.barcodeScanTitle,
+                      onPressed: _scanBarcodeForField,
+                    ),
                   ),
                 ),
                 // Portionsgrößen

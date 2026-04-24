@@ -663,5 +663,16 @@
   "migrationError": "⚠️ Fehler bei der Migration (Einträge können manuell übernommen werden)",
   "upgradeProTitle": "Dietry Pro",
   "upgradeProReportsDescription": "Erweiterte Analysen freischalten: Aktivitätsbilanz, Zieleinhaltung, Mahlzeiten-Timing und mehr.",
-  "upgradeProProfileDescription": "Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen."
+  "upgradeProProfileDescription": "Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.",
+
+  "barcodeScanTitle": "Barcode scannen",
+  "barcodeField": "Barcode",
+  "barcodeHint": "z.B. 4006381333931",
+  "barcodeScanHint": "Barcode in den Rahmen halten",
+  "barcodeScanConfirm": "Suchen",
+  "barcodeNotFound": "Produkt nicht gefunden",
+  "barcodeNotFoundHint": "Kein Produkt zu diesem Barcode gefunden.",
+  "barcodeFoundOff": "Bei Open Food Facts gefunden",
+  "barcodeImportOff": "Nährwerte von Open Food Facts importieren?",
+  "barcodeImport": "Importieren"
 }

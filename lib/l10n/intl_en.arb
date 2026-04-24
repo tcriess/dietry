@@ -663,5 +663,16 @@
   "migrationError": "⚠️ Migration error (entries can be transferred manually)",
   "upgradeProTitle": "Dietry Pro",
   "upgradeProReportsDescription": "Unlock advanced analytics: activity balance, goal compliance, meal timing, and more.",
-  "upgradeProProfileDescription": "Get access to advanced analytics, detailed reports, and all Pro features."
+  "upgradeProProfileDescription": "Get access to advanced analytics, detailed reports, and all Pro features.",
+
+  "barcodeScanTitle": "Scan Barcode",
+  "barcodeField": "Barcode",
+  "barcodeHint": "e.g. 4006381333931",
+  "barcodeScanHint": "Hold barcode inside the frame",
+  "barcodeScanConfirm": "Search",
+  "barcodeNotFound": "Product not found",
+  "barcodeNotFoundHint": "No product matched this barcode.",
+  "barcodeFoundOff": "Found on Open Food Facts",
+  "barcodeImportOff": "Import nutrition data from Open Food Facts?",
+  "barcodeImport": "Import"
 }

@@ -79,6 +79,9 @@ dependencies:
   package_info_plus: ^9.0.1
   idb_shim: ^2.8.5+2
 
+  # Barcode scanner (Android, iOS, macOS, web; Linux: manual text-entry fallback)
+  mobile_scanner: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

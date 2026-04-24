@@ -22,6 +22,8 @@ import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
+import '../widgets/barcode_scanner_sheet.dart';
+import '../services/barcode_lookup_service.dart';
 import 'food_database_screen.dart';
 
 /// Screen zum Hinzufügen eines Food-Entries
@@ -374,6 +376,47 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         SnackBar(
           content: Text(result.warnings.join(' ')),
           duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+  }
+
+  /// Opens the barcode scanner, looks up the scanned barcode in the local DB and
+  /// Open Food Facts, and selects the food if found.
+  Future<void> _scanBarcode() async {
+    final barcode = await showBarcodeScannerSheet(context);
+    if (barcode == null || !mounted) return;
+
+    setState(() => _isSearching = true);
+
+    final locale = Localizations.localeOf(context).languageCode;
+    final dbService = widget.dbService != null
+        ? FoodDatabaseService(widget.dbService!)
+        : null;
+    final result = await BarcodeLookupService.lookup(
+      barcode,
+      dbService: dbService,
+      locale: locale,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSearching = false);
+
+    final l = AppLocalizations.of(context);
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l?.barcodeNotFound ?? 'Produkt nicht gefunden')),
+      );
+      return;
+    }
+
+    _selectFood(result.food, micros: result.micros);
+
+    if (result.fromOff) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${l?.barcodeFoundOff ?? 'Open Food Facts'}: ${result.food.name}'),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -937,6 +980,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                   _selectFood(food);
                 }
               },
+            ),
+          if (!_showManualEntry)
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              tooltip: AppLocalizations.of(context)?.barcodeScanTitle ?? 'Barcode scannen',
+              onPressed: _scanBarcode,
             ),
           if (!_showManualEntry && AppFeatures.nutritionLabelScan)
             IconButton(

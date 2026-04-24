@@ -2727,6 +2727,66 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.'**
   String get upgradeProProfileDescription;
+
+  /// No description provided for @barcodeScanTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Barcode scannen'**
+  String get barcodeScanTitle;
+
+  /// No description provided for @barcodeField.
+  ///
+  /// In de, this message translates to:
+  /// **'Barcode'**
+  String get barcodeField;
+
+  /// No description provided for @barcodeHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z.B. 4006381333931'**
+  String get barcodeHint;
+
+  /// No description provided for @barcodeScanHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Barcode in den Rahmen halten'**
+  String get barcodeScanHint;
+
+  /// No description provided for @barcodeScanConfirm.
+  ///
+  /// In de, this message translates to:
+  /// **'Suchen'**
+  String get barcodeScanConfirm;
+
+  /// No description provided for @barcodeNotFound.
+  ///
+  /// In de, this message translates to:
+  /// **'Produkt nicht gefunden'**
+  String get barcodeNotFound;
+
+  /// No description provided for @barcodeNotFoundHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Produkt zu diesem Barcode gefunden.'**
+  String get barcodeNotFoundHint;
+
+  /// No description provided for @barcodeFoundOff.
+  ///
+  /// In de, this message translates to:
+  /// **'Bei Open Food Facts gefunden'**
+  String get barcodeFoundOff;
+
+  /// No description provided for @barcodeImportOff.
+  ///
+  /// In de, this message translates to:
+  /// **'Nährwerte von Open Food Facts importieren?'**
+  String get barcodeImportOff;
+
+  /// No description provided for @barcodeImport.
+  ///
+  /// In de, this message translates to:
+  /// **'Importieren'**
+  String get barcodeImport;
 }
 
 class _AppLocalizationsDelegate

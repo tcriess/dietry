@@ -663,5 +663,16 @@
   "migrationError": "⚠️ Error en la migración (las entradas se pueden transferir manualmente)",
   "upgradeProTitle": "Dietry Pro",
   "upgradeProReportsDescription": "Desbloquea análisis avanzados: balance de actividad, cumplimiento de objetivos, horario de comidas y más.",
-  "upgradeProProfileDescription": "Accede a análisis avanzados, informes detallados y todas las funciones Pro."
+  "upgradeProProfileDescription": "Accede a análisis avanzados, informes detallados y todas las funciones Pro.",
+
+  "barcodeScanTitle": "Escanear código",
+  "barcodeField": "Código de barras",
+  "barcodeHint": "p.ej. 4006381333931",
+  "barcodeScanHint": "Mantén el código dentro del marco",
+  "barcodeScanConfirm": "Buscar",
+  "barcodeNotFound": "Producto no encontrado",
+  "barcodeNotFoundHint": "No se encontró ningún producto con este código.",
+  "barcodeFoundOff": "Encontrado en Open Food Facts",
+  "barcodeImportOff": "¿Importar datos nutricionales de Open Food Facts?",
+  "barcodeImport": "Importar"
 }

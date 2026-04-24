@@ -1454,4 +1454,36 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get upgradeProProfileDescription =>
       'Accede a análisis avanzados, informes detallados y todas las funciones Pro.';
+
+  @override
+  String get barcodeScanTitle => 'Escanear código';
+
+  @override
+  String get barcodeField => 'Código de barras';
+
+  @override
+  String get barcodeHint => 'p.ej. 4006381333931';
+
+  @override
+  String get barcodeScanHint => 'Mantén el código dentro del marco';
+
+  @override
+  String get barcodeScanConfirm => 'Buscar';
+
+  @override
+  String get barcodeNotFound => 'Producto no encontrado';
+
+  @override
+  String get barcodeNotFoundHint =>
+      'No se encontró ningún producto con este código.';
+
+  @override
+  String get barcodeFoundOff => 'Encontrado en Open Food Facts';
+
+  @override
+  String get barcodeImportOff =>
+      '¿Importar datos nutricionales de Open Food Facts?';
+
+  @override
+  String get barcodeImport => 'Importar';
 }
