@@ -44,7 +44,7 @@ on:
 
 # ── Global env ────────────────────────────────────────────────────────────────
 env:
-  FLUTTER_VERSION: '3.41.6'   # pin for reproducible builds; bump deliberately
+  FLUTTER_VERSION: '3.41.7'   # pin for reproducible builds; bump deliberately
   JAVA_VERSION: '21'
   ANDROID_KEYSTORE_BASE64: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.ANDROID_PROD_KEYSTORE_BASE64 || secrets.ANDROID_DEV_KEYSTORE_BASE64 }}
   ANDROID_KEYSTORE_PASSWORD: ${{ (github.ref_name == 'main' || github.event_name == 'release') && secrets.ANDROID_PROD_KEYSTORE_PASSWORD || secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
