@@ -179,7 +179,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 88),
+                        padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
                         itemCount: activities.length,
                         itemBuilder: (context, index) {
                           final activity = activities[index];

@@ -136,7 +136,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
           children: [
             // Info-Card
             Card(

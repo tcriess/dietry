@@ -193,6 +193,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                   ),
                 )
               : ListView.builder(
+                  padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
                   itemCount: _activities.length,
                   itemBuilder: (context, index) {
                     final activity = _activities[index];

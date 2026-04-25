@@ -382,7 +382,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                         ),
                       )
                     : ListView(
-                        padding: const EdgeInsets.only(bottom: 88),
+                        padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
                         children: [
                           // Gruppiere nach Meal-Type
                           ...MealType.values.map((mealType) {

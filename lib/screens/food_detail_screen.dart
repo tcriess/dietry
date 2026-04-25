@@ -149,7 +149,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                       readOnly: false,
                     ),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 80 + MediaQuery.paddingOf(context).bottom),
                 ],
               ),
             ),

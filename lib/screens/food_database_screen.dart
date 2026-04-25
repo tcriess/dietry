@@ -434,7 +434,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                       );
                     }
                     return ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 88, top: 8, left: 4, right: 4),
+                          padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom, top: 8, left: 4, right: 4),
                           itemCount: displayed.length,
                           itemBuilder: (context, index) {
                     final food = displayed[index];

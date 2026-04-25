@@ -220,7 +220,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
           children: [
             // Aktivität aus Datenbank wählen
             if (_isLoadingActivities)

@@ -46,7 +46,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
         title: Text(l.trackingChooseTitle),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
