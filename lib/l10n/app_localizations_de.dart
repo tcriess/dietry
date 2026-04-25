@@ -1019,6 +1019,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get languageTooltip => 'Sprache wechseln';
 
   @override
+  String get themeTooltip => 'Design wechseln';
+
+  @override
+  String get themeLight => 'Hell';
+
+  @override
+  String get themeDark => 'Dunkel';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
   String get logoutTooltip => 'Logout';
 
   @override

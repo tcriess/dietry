@@ -1960,6 +1960,30 @@ abstract class AppLocalizations {
   /// **'Sprache wechseln'**
   String get languageTooltip;
 
+  /// No description provided for @themeTooltip.
+  ///
+  /// In de, this message translates to:
+  /// **'Design wechseln'**
+  String get themeTooltip;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In de, this message translates to:
+  /// **'Hell'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In de, this message translates to:
+  /// **'Dunkel'**
+  String get themeDark;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In de, this message translates to:
+  /// **'System'**
+  String get themeSystem;
+
   /// No description provided for @logoutTooltip.
   ///
   /// In de, this message translates to:

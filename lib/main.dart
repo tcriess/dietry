@@ -172,16 +172,26 @@ class _NeonAuthWebViewDialogState extends State<NeonAuthWebViewDialog> {
   }
 }
 
+IconData _themeModeIcon(ThemeMode mode) => switch (mode) {
+  ThemeMode.light => Icons.light_mode,
+  ThemeMode.dark => Icons.dark_mode,
+  ThemeMode.system => Icons.brightness_auto,
+};
+
 // LoginScreen mit Google-Login (Neon Auth)
 class LoginScreen extends StatelessWidget {
   final NeonAuthService authService;
   final NeonDatabaseService dbService;
   final void Function(Locale?)? onLocaleChanged;
+  final void Function(ThemeMode)? onThemeModeChanged;
+  final ThemeMode themeMode;
   const LoginScreen({
     super.key,
     required this.authService,
     required this.dbService,
     this.onLocaleChanged,
+    this.onThemeModeChanged,
+    this.themeMode = ThemeMode.system,
   });
 
   @override
@@ -193,6 +203,21 @@ class LoginScreen extends StatelessWidget {
               backgroundColor: Colors.transparent,
               elevation: 0,
               actions: [
+                if (onThemeModeChanged != null)
+                  PopupMenuButton<ThemeMode>(
+                    icon: Icon(_themeModeIcon(themeMode)),
+                    tooltip: l.themeTooltip,
+                    onSelected: onThemeModeChanged,
+                    itemBuilder: (ctx) {
+                      final l = AppLocalizations.of(ctx)!;
+                      return [
+                        PopupMenuItem(value: ThemeMode.light, child: Row(children: [const Icon(Icons.light_mode, size: 20), const SizedBox(width: 8), Text(l.themeLight)])),
+                        PopupMenuItem(value: ThemeMode.dark, child: Row(children: [const Icon(Icons.dark_mode, size: 20), const SizedBox(width: 8), Text(l.themeDark)])),
+                        const PopupMenuDivider(),
+                        PopupMenuItem(value: ThemeMode.system, child: Row(children: [const Icon(Icons.brightness_auto, size: 20), const SizedBox(width: 8), Text(l.themeSystem)])),
+                      ];
+                    },
+                  ),
                 PopupMenuButton<Locale?>(
                   icon: const Icon(Icons.language),
                   onSelected: onLocaleChanged,
@@ -1063,12 +1088,50 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   late final NeonAuthService _authService;
   NeonDatabaseService? _dbService;
   Locale? _locale;
+  ThemeMode _themeMode = ThemeMode.system;
   bool _dbInitialized = false;
   bool _guestModeInitStarted = false;
+
+  static const _themeModeKey = 'theme_mode';
+
+  static ThemeData get _lightTheme => ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+    useMaterial3: true,
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+  );
+
+  static ThemeData get _darkTheme => ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+    useMaterial3: true,
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+  );
+
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_themeModeKey);
+    final mode = switch (saved) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+    if (mounted) setState(() => _themeMode = mode);
+  }
+
+  Future<void> _onThemeModeChanged(ThemeMode mode) async {
+    setState(() => _themeMode = mode);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeModeKey, switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+
+    _loadThemeMode();
 
     // Registriere App Lifecycle Observer
     WidgetsBinding.instance.addObserver(this);
@@ -1691,6 +1754,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     if (GuestModeService.isGuestMode) {
       if (!_dbInitialized) {
         return MaterialApp(
+          theme: _lightTheme,
+          darkTheme: _darkTheme,
+          themeMode: _themeMode,
           localizationsDelegates: [
             ...AppLocalizations.localizationsDelegates,
             ...CloudLocalizations.localizationsDelegates,
@@ -1703,11 +1769,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       // Guest mode ready: show home screen without auth
       return MaterialApp(
         title: 'Dietry',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-          snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-        ),
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
+        themeMode: _themeMode,
         locale: _locale,
         home: DietryHomeWithLogout(
           key: const ValueKey('guest_mode'),
@@ -1715,6 +1779,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           dbService: db,
           isGuestMode: true,
           onLocaleChanged: (locale) => setState(() => _locale = locale),
+          onThemeModeChanged: _onThemeModeChanged,
+          themeMode: _themeMode,
         ),
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
@@ -1753,6 +1819,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     if (isWaitingForInit) {
       return MaterialApp(
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
+        themeMode: _themeMode,
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
           ...CloudLocalizations.localizationsDelegates,
@@ -1767,11 +1836,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     if (isGuestMode) {
       return MaterialApp(
         title: 'Dietry',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-          snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-        ),
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
+        themeMode: _themeMode,
         locale: _locale,
         home: DietryHomeWithLogout(
           key: const ValueKey('guest'),
@@ -1779,6 +1846,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           dbService: null,
           isGuestMode: true,
           onLocaleChanged: (locale) => setState(() => _locale = locale),
+          onThemeModeChanged: _onThemeModeChanged,
+          themeMode: _themeMode,
         ),
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
@@ -1794,6 +1863,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       // Trigger background cleanup without waiting (signOut has no timeout).
       _authService.signOut().ignore();
       return MaterialApp(
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
+        themeMode: _themeMode,
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
           ...CloudLocalizations.localizationsDelegates,
@@ -1804,12 +1876,17 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           authService: _authService,
           dbService: db!,
           onLocaleChanged: (locale) => setState(() => _locale = locale),
+          onThemeModeChanged: _onThemeModeChanged,
+          themeMode: _themeMode,
         ),
       );
     }
 
     if (!_authService.isLoggedIn) {
       return MaterialApp(
+        theme: _lightTheme,
+        darkTheme: _darkTheme,
+        themeMode: _themeMode,
         localizationsDelegates: [
           ...AppLocalizations.localizationsDelegates,
           ...CloudLocalizations.localizationsDelegates,
@@ -1818,17 +1895,18 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         locale: _locale,
         home: LoginScreen(
           authService: _authService,
-          dbService: db!,  // Non-null because isWaitingForInit checks db != null in remote mode
+          dbService: db!,
           onLocaleChanged: (locale) => setState(() => _locale = locale),
+          onThemeModeChanged: _onThemeModeChanged,
+          themeMode: _themeMode,
         ),
       );
     }
     return MaterialApp(
       title: 'Dietry',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: _lightTheme,
+      darkTheme: _darkTheme,
+      themeMode: _themeMode,
       locale: _locale,
       home: DietryHomeWithLogout(
         key: ValueKey(_authService.session?['user']?['id'] ?? _authService.jwt),
@@ -1836,6 +1914,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         dbService: db,
         isGuestMode: false,
         onLocaleChanged: (locale) => setState(() => _locale = locale),
+        onThemeModeChanged: _onThemeModeChanged,
+        themeMode: _themeMode,
       ),
       localizationsDelegates: [
         ...AppLocalizations.localizationsDelegates,
@@ -1851,6 +1931,8 @@ class DietryHomeWithLogout extends StatefulWidget {
   final NeonAuthService authService;
   final NeonDatabaseService? dbService;
   final void Function(Locale?) onLocaleChanged;
+  final void Function(ThemeMode) onThemeModeChanged;
+  final ThemeMode themeMode;
   final bool isGuestMode;
 
   const DietryHomeWithLogout({
@@ -1858,6 +1940,8 @@ class DietryHomeWithLogout extends StatefulWidget {
     required this.authService,
     this.dbService,
     required this.onLocaleChanged,
+    required this.onThemeModeChanged,
+    this.themeMode = ThemeMode.system,
     this.isGuestMode = false,
   });
 
@@ -1958,6 +2042,21 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               tooltip: l.feedbackTooltip,
               onPressed: () => FeedbackDialog.show(context, _feedbackService!),
             ),
+          // Design-Modus wechseln
+          PopupMenuButton<ThemeMode>(
+            icon: Icon(_themeModeIcon(widget.themeMode)),
+            tooltip: l.themeTooltip,
+            onSelected: widget.onThemeModeChanged,
+            itemBuilder: (ctx) {
+              final lm = AppLocalizations.of(ctx)!;
+              return [
+                PopupMenuItem(value: ThemeMode.light, child: Row(children: [const Icon(Icons.light_mode, size: 20), const SizedBox(width: 8), Text(lm.themeLight)])),
+                PopupMenuItem(value: ThemeMode.dark, child: Row(children: [const Icon(Icons.dark_mode, size: 20), const SizedBox(width: 8), Text(lm.themeDark)])),
+                const PopupMenuDivider(),
+                PopupMenuItem(value: ThemeMode.system, child: Row(children: [const Icon(Icons.brightness_auto, size: 20), const SizedBox(width: 8), Text(lm.themeSystem)])),
+              ];
+            },
+          ),
           // Sprache wechseln
           PopupMenuButton<Locale?>(
             icon: const Icon(Icons.language),

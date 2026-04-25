@@ -1015,6 +1015,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageTooltip => 'Change language';
 
   @override
+  String get themeTooltip => 'Change theme';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
   String get logoutTooltip => 'Logout';
 
   @override
