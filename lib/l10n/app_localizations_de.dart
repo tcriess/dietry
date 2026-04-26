@@ -254,6 +254,12 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get healthConnectImportingBody => 'Importiere Messwerte...';
+
+  @override
+  String get healthConnectNoResultsBody => 'Keine neuen Messwerte gefunden';
+
+  @override
   String get importRangeTitle => 'Importzeitraum';
 
   @override

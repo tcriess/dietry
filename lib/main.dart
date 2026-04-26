@@ -24,6 +24,9 @@ import 'services/neon_auth_service.dart' show NeonAuthService, EmailVerification
 import 'services/nutrition_goal_service.dart';
 import 'services/food_entry_service.dart';
 import 'services/physical_activity_service.dart';
+import 'services/activity_database_service.dart';
+import 'services/user_body_data_service.dart';
+import 'models/activity_item.dart';
 import 'services/jwt_helper.dart';
 import 'services/data_store.dart';
 import 'services/sync_service.dart';
@@ -2378,6 +2381,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         return;
       }
       final db = widget.dbService;
+      // Auto-link imported workouts to a row in activity_database (so the edit
+      // screen's dropdown finds a match) and fill in calories via MET when
+      // Health Connect didn't record any.
+      final enriched = db != null
+          ? await _enrichImportedActivities(db, imported)
+          : imported;
       Set<String> existingHcIds = {};
       if (db != null) {
         final existing = await PhysicalActivityService(db).getActivitiesInRange(start: start, end: end);
@@ -2385,7 +2394,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       } else {
         existingHcIds = _store.activities.map((a) => a.healthConnectRecordId).whereType<String>().toSet();
       }
-      final toSave = imported.where((a) => a.healthConnectRecordId == null || !existingHcIds.contains(a.healthConnectRecordId)).toList();
+      final toSave = enriched.where((a) => a.healthConnectRecordId == null || !existingHcIds.contains(a.healthConnectRecordId)).toList();
       for (final activity in toSave) {
         final saved = await _sync.saveActivity(activity);
         _store.addActivity(saved ?? activity);
@@ -2403,6 +2412,74 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           backgroundColor: Colors.red,
         ));
       }
+    }
+  }
+
+  /// Links each imported PhysicalActivity to a matching `activity_database`
+  /// row (via [ActivityType.dbActivityCandidates]) and fills in
+  /// [PhysicalActivity.caloriesBurned] via MET × weight × hours when Health
+  /// Connect didn't record a calorie value. Activities with no matching row
+  /// are returned unchanged.
+  Future<List<PhysicalActivity>> _enrichImportedActivities(
+    NeonDatabaseService db,
+    List<PhysicalActivity> imported,
+  ) async {
+    try {
+      final activityService = ActivityDatabaseService(db);
+      final results = await Future.wait([
+        activityService.getMyActivities(),
+        activityService.getPublicActivities(),
+        UserBodyDataService(db).getCurrentBodyData(),
+      ]);
+      final myActivities = results[0] as List<ActivityItem>;
+      final publicActivities = results[1] as List<ActivityItem>;
+      final bodyData = results[2] as UserBodyData?;
+      final allActivities = [...myActivities, ...publicActivities];
+      final weightKg = bodyData?.weight;
+
+      ActivityItem? findMatch(ActivityType type) {
+        for (final candidate in type.dbActivityCandidates) {
+          final candLower = candidate.toLowerCase();
+          for (final item in allActivities) {
+            if (item.name.toLowerCase() == candLower) return item;
+          }
+        }
+        return null;
+      }
+
+      return imported.map((a) {
+        final match = findMatch(a.activityType);
+        if (match == null) return a;
+
+        double? calories = a.caloriesBurned;
+        final duration = a.durationMinutes ?? a.calculatedDuration;
+        if (calories == null && weightKg != null && duration > 0) {
+          calories = match.calculateCalories(
+            weightKg: weightKg,
+            durationMinutes: duration,
+          );
+        }
+
+        return PhysicalActivity(
+          id: a.id,
+          activityType: a.activityType,
+          activityId: match.id,
+          activityName: match.name,
+          startTime: a.startTime,
+          endTime: a.endTime,
+          durationMinutes: a.durationMinutes,
+          caloriesBurned: calories,
+          distanceKm: a.distanceKm,
+          steps: a.steps,
+          avgHeartRate: a.avgHeartRate,
+          notes: a.notes,
+          source: a.source,
+          healthConnectRecordId: a.healthConnectRecordId,
+        );
+      }).toList();
+    } catch (e) {
+      appLogger.w('⚠️ Failed to enrich imported activities, using raw HC data: $e');
+      return imported;
     }
   }
 
@@ -2448,7 +2525,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     );
     if (useAllData == null || !ctx.mounted) return;
 
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectImporting)));
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectImportingBody)));
 
     try {
       final end = DateTime.now();
@@ -2456,7 +2533,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       final imported = await hc.importBodyMeasurements(start: start, end: end);
 
       if (imported.isEmpty) {
-        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectNoResults)));
+        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectNoResultsBody)));
         return;
       }
 

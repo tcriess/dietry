@@ -118,6 +118,8 @@
       }
     }
   },
+  "healthConnectImportingBody": "Importiere Messwerte...",
+  "healthConnectNoResultsBody": "Keine neuen Messwerte gefunden",
   "importRangeTitle": "Importzeitraum",
   "importRangeSinceGoal": "Ab Tracking-Start ({date})",
   "@importRangeSinceGoal": {

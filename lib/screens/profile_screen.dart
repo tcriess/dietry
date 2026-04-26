@@ -216,7 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (useAllData == null || !mounted) return; // dialog dismissed
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.healthConnectImporting)),
+      SnackBar(content: Text(l.healthConnectImportingBody)),
     );
 
     try {
@@ -229,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (imported.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectNoResults)),
+            SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectNoResultsBody)),
           );
         }
         return;

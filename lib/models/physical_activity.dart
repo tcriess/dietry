@@ -142,6 +142,47 @@ extension ActivityTypeExtension on ActivityType {
     }
   }
 
+  /// Candidate `activity_database.name` values (DE/EN/ES) used to auto-link
+  /// this activity type to a row in the activity database — e.g. when
+  /// importing workouts from Health Connect. Listed in preference order;
+  /// first case-insensitive name match wins. The DE entries match the
+  /// German public seed; EN/ES variants forward-compat for localized seeds.
+  List<String> get dbActivityCandidates {
+    switch (this) {
+      case ActivityType.walking:
+        return const ['Gehen (normal)', 'Gehen', 'Walking', 'Caminar'];
+      case ActivityType.running:
+        return const ['Laufen (moderat)', 'Joggen (langsam)', 'Joggen', 'Laufen', 'Running', 'Correr'];
+      case ActivityType.cycling:
+        return const ['Radfahren (normal)', 'Radfahren', 'Cycling', 'Biking', 'Ciclismo'];
+      case ActivityType.swimming:
+        return const ['Schwimmen (normal)', 'Schwimmen', 'Swimming', 'Natación'];
+      case ActivityType.hiking:
+        return const ['Wandern', 'Hiking', 'Senderismo'];
+      case ActivityType.yoga:
+        return const ['Yoga'];
+      case ActivityType.pilates:
+        return const ['Pilates'];
+      case ActivityType.dancing:
+        return const ['Zumba', 'Aerobic', 'Dancing', 'Tanzen', 'Baile'];
+      case ActivityType.weightTraining:
+        return const [
+          'Krafttraining (intensiv)', 'Krafttraining (leicht)', 'Krafttraining',
+          'Weight training', 'Strength training', 'Pesas',
+        ];
+      case ActivityType.bodyweight:
+        return const ['Bodyweight-Training', 'Bodyweight', 'Calisthenics', 'Calistenia'];
+      case ActivityType.football:
+        return const ['Fußball', 'Football', 'Soccer', 'Fútbol'];
+      case ActivityType.basketball:
+        return const ['Basketball', 'Baloncesto'];
+      case ActivityType.tennis:
+        return const ['Tennis', 'Tenis'];
+      case ActivityType.other:
+        return const [];
+    }
+  }
+
   IconData get icon {
     switch (this) {
       case ActivityType.walking:

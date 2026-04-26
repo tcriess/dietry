@@ -562,6 +562,18 @@ abstract class AppLocalizations {
   /// **'{count} Messwerte importiert'**
   String healthConnectSuccessBody(int count);
 
+  /// No description provided for @healthConnectImportingBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Importiere Messwerte...'**
+  String get healthConnectImportingBody;
+
+  /// No description provided for @healthConnectNoResultsBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine neuen Messwerte gefunden'**
+  String get healthConnectNoResultsBody;
+
   /// No description provided for @importRangeTitle.
   ///
   /// In de, this message translates to:

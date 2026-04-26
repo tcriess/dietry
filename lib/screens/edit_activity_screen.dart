@@ -84,17 +84,32 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
       setState(() {
         _availableActivities = [...myActivities, ...publicActivities];
         _isLoadingActivities = false;
-        
-        // Versuche die ursprüngliche Activity zu finden (falls aus DB)
+
+        // Try to find a matching ActivityItem from the DB:
+        //   1. Match by activityId if set (manual entries linked to the DB).
+        //   2. Match by activityName case-insensitively (Health Connect imports
+        //      have a free-text name like "Walking" but no DB id).
+        // Don't fall back to _availableActivities.first — that silently rewrites
+        // the entry with whatever sorts first (often a user's custom activity).
+        ActivityItem? match;
         if (widget.activity.activityId != null) {
-          _selectedActivity = _availableActivities.firstWhere(
-            (a) => a.id == widget.activity.activityId,
-            orElse: () => _availableActivities.first,
-          );
-        } else {
-          // Keine DB-Activity, verwende erste als Default
-          _selectedActivity = _availableActivities.isNotEmpty ? _availableActivities.first : null;
+          for (final a in _availableActivities) {
+            if (a.id == widget.activity.activityId) {
+              match = a;
+              break;
+            }
+          }
         }
+        if (match == null && widget.activity.activityName != null) {
+          final target = widget.activity.activityName!.toLowerCase();
+          for (final a in _availableActivities) {
+            if (a.name.toLowerCase() == target) {
+              match = a;
+              break;
+            }
+          }
+        }
+        _selectedActivity = match;
       });
 
       appLogger.i('✅ ${_availableActivities.length} Activities für Edit geladen');
@@ -155,17 +170,19 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
       
       final updatedActivity = PhysicalActivity(
         id: widget.activity.id,
-        activityType: ActivityType.other,
-        activityId: _selectedActivity?.id,
-        activityName: _selectedActivity?.name,
+        // Preserve original values when no DB activity is selected (e.g. Health
+        // Connect imports without a matching database row).
+        activityType: widget.activity.activityType,
+        activityId: _selectedActivity?.id ?? widget.activity.activityId,
+        activityName: _selectedActivity?.name ?? widget.activity.activityName,
         startTime: startDateTime,
         endTime: endDateTime,
         durationMinutes: durationMinutes,
-        caloriesBurned: _caloriesController.text.isNotEmpty 
-            ? parseDouble(_caloriesController.text) 
+        caloriesBurned: _caloriesController.text.isNotEmpty
+            ? parseDouble(_caloriesController.text)
             : null,
-        distanceKm: _distanceController.text.isNotEmpty 
-            ? parseDouble(_distanceController.text) 
+        distanceKm: _distanceController.text.isNotEmpty
+            ? parseDouble(_distanceController.text)
             : null,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         source: widget.activity.source,  // Behalte Original-Source

@@ -118,6 +118,8 @@
       }
     }
   },
+  "healthConnectImportingBody": "Importing measurements...",
+  "healthConnectNoResultsBody": "No new measurements found",
   "importRangeTitle": "Import range",
   "importRangeSinceGoal": "Since tracking start ({date})",
   "@importRangeSinceGoal": {

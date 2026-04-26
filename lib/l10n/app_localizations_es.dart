@@ -254,6 +254,13 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get healthConnectImportingBody => 'Importando mediciones...';
+
+  @override
+  String get healthConnectNoResultsBody =>
+      'No se encontraron nuevas mediciones';
+
+  @override
   String get importRangeTitle => 'Período de importación';
 
   @override

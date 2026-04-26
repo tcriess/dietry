@@ -254,6 +254,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get healthConnectImportingBody => 'Importing measurements...';
+
+  @override
+  String get healthConnectNoResultsBody => 'No new measurements found';
+
+  @override
   String get importRangeTitle => 'Import range';
 
   @override
