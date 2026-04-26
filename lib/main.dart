@@ -2237,6 +2237,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   /// first check completes.
   bool _canGoBack = false;
 
+  // Last (intake, goal) snapshot pushed to WaterReminderService — used to skip
+  // re-scheduling notifications when an unrelated store change fires.
+  int? _lastReminderIntakeMl;
+  int? _lastReminderGoalMl;
+
   @override
   void initState() {
     super.initState();
@@ -2272,6 +2277,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _silentRefresh();
+      // Re-evaluate today's water reminders — date may have rolled over while
+      // the app was backgrounded.
+      WaterReminderService.refreshSchedule();
     }
   }
 
@@ -2588,6 +2596,18 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         if (mounted) _showMilestoneCelebration(highest);
       });
     }
+
+    // If today's water intake or goal changed, re-evaluate scheduled reminders
+    // so already-met goals stop firing notifications.
+    final currentIntake = _store.waterIntakeMl + _store.liquidFoodIntakeMl;
+    final currentGoal = _store.goal?.waterGoalMl ?? 2000;
+    if (currentIntake != _lastReminderIntakeMl ||
+        currentGoal != _lastReminderGoalMl) {
+      _lastReminderIntakeMl = currentIntake;
+      _lastReminderGoalMl = currentGoal;
+      WaterReminderService.refreshSchedule();
+    }
+
     setState(() {});
   }
 

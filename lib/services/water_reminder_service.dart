@@ -111,6 +111,18 @@ class WaterReminderService {
     return enabled;
   }
 
+  /// Re-evaluates today's Android system notifications based on current intake
+  /// and pushes them to tomorrow if today's slots are no longer useful
+  /// (goal already reached, or projected ≥ 50 % of goal).
+  ///
+  /// Web/Desktop check intake per-fire via [_shouldNotify], so this is a no-op
+  /// there.
+  static Future<void> refreshSchedule() async {
+    if (!_initialized || !_isAndroid) return;
+    if (!await isEnabled()) return;
+    await _scheduleSystemNotifications();
+  }
+
   // ── Berechtigungen ────────────────────────────────────────────────────────
 
   static Future<bool> _requestPermission() async {
@@ -161,9 +173,12 @@ class WaterReminderService {
   ///
   /// Gibt false zurück wenn:
   /// - Tagesziel bereits erreicht
-  /// - Vor dem ersten Erinnerungsfenster (vor 12 Uhr)
   /// - Hochgerechneter Tagesendwert ≥ 50 % des Ziels
-  static bool _shouldNotify() {
+  ///
+  /// Das Verhalten vor 12 Uhr unterscheidet sich:
+  /// - [atFireTime] true (eigentliches Auslösen): "noch zu früh" → false
+  /// - [atFireTime] false (Vor-Planung): Slot liegt noch in der Zukunft → true
+  static bool _isReminderUseful({required bool atFireTime}) {
     final status = getWaterStatus?.call();
     if (status == null) return true; // kein Datenzugang → lieber zu viel
 
@@ -178,7 +193,7 @@ class WaterReminderService {
     final totalMinutes = windowEnd.difference(windowStart).inMinutes; // 480
     final elapsedMinutes = now.difference(windowStart).inMinutes;
 
-    if (elapsedMinutes <= 0) return false; // noch vor 12 Uhr
+    if (elapsedMinutes <= 0) return !atFireTime;
 
     final elapsed = elapsedMinutes.clamp(0, totalMinutes) / totalMinutes;
     final projected = intake / elapsed;
@@ -186,6 +201,8 @@ class WaterReminderService {
     // Nur benachrichtigen wenn Hochrechnung < 50 % des Ziels
     return projected < goal / 2;
   }
+
+  static bool _shouldNotify() => _isReminderUseful(atFireTime: true);
 
   static Future<void> _fireReminder() async {
     if (!_shouldNotify()) return;
@@ -211,11 +228,16 @@ class WaterReminderService {
 
     final location = tz.local;
     final now = tz.TZDateTime.now(location);
+    // Wenn die heutigen Erinnerungen nicht mehr nützlich sind (Ziel erreicht
+    // oder Hochrechnung ≥ 50 %), schieben wir sämtliche Slots auf morgen.
+    // Die tägliche Recurrence (matchDateTimeComponents.time) übernimmt dann.
+    final skipToday = !_isReminderUseful(atFireTime: false);
 
     for (int i = 0; i < _ids.length; i++) {
       var scheduled = tz.TZDateTime(
           location, now.year, now.month, now.day, _reminderHours[i]);
-      if (scheduled.isBefore(now.add(const Duration(minutes: 1)))) {
+      final isPast = scheduled.isBefore(now.add(const Duration(minutes: 1)));
+      if (isPast || skipToday) {
         scheduled = scheduled.add(const Duration(days: 1));
       }
 
