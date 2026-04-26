@@ -13,6 +13,8 @@ class ActivitiesListScreen extends StatefulWidget {
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
+  final bool canGoBack;
+  final bool canGoForward;
 
   const ActivitiesListScreen({
     super.key,
@@ -20,6 +22,8 @@ class ActivitiesListScreen extends StatefulWidget {
     required this.selectedDay,
     required this.onChangeDay,
     required this.onJumpToToday,
+    required this.canGoBack,
+    required this.canGoForward,
   });
 
   @override
@@ -92,10 +96,16 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  tooltip: l.previousDay,
-                  onPressed: () => widget.onChangeDay(-1),
+                Visibility(
+                  visible: widget.canGoBack,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    tooltip: l.previousDay,
+                    onPressed: () => widget.onChangeDay(-1),
+                  ),
                 ),
                 Column(
                   children: [
@@ -113,10 +123,16 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                       ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  tooltip: l.nextDay,
-                  onPressed: () => widget.onChangeDay(1),
+                Visibility(
+                  visible: widget.canGoForward,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    tooltip: l.nextDay,
+                    onPressed: () => widget.onChangeDay(1),
+                  ),
                 ),
               ],
             ),

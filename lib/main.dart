@@ -2231,6 +2231,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   final _sync = SyncService.instance;
   Timer? _refreshTimer;
 
+  /// True when navigating back one day would land on a date that has a
+  /// nutrition goal — i.e. when the back-chevron should be shown. Computed
+  /// asynchronously by [_refreshCanGoBack]; defaults to false until the
+  /// first check completes.
+  bool _canGoBack = false;
+
   @override
   void initState() {
     super.initState();
@@ -2619,6 +2625,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // In guest mode, dbService is null; proceed directly to loading
     if (widget.isGuestMode || widget.dbService == null) {
       await _store.loadDay(_selectedDay);
+      await _refreshCanGoBack();
       return;
     }
 
@@ -2632,6 +2639,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       return;
     }
     await _store.loadDay(_selectedDay);
+    await _refreshCanGoBack();
     // Try flushing any queued operations now that we're online.
     _sync.processPendingQueue();
   }
@@ -2659,6 +2667,25 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     if (DateUtils.isSameDay(_selectedDay, today)) return;
     setState(() => _selectedDay = today);
     await _store.loadDay(today);
+    await _refreshCanGoBack();
+  }
+
+  /// Recomputes [_canGoBack] for the current [_selectedDay]: true iff a
+  /// nutrition goal exists for the previous day. Mirrors the validation in
+  /// [_changeDay] so that the back-chevron is hidden exactly when navigating
+  /// back would have been refused.
+  Future<void> _refreshCanGoBack() async {
+    final previousDay = _selectedDay.subtract(const Duration(days: 1));
+    bool hasGoal;
+    if (widget.dbService != null) {
+      hasGoal = await NutritionGoalService(widget.dbService!).hasGoalForDate(previousDay);
+    } else {
+      hasGoal = (await LocalDataService.instance.getGoalForDate(previousDay)) != null;
+    }
+    if (!mounted) return;
+    if (_canGoBack != hasGoal) {
+      setState(() => _canGoBack = hasGoal);
+    }
   }
 
   Future<void> _toggleCheatDay() async {
@@ -2792,6 +2819,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
     setState(() => _selectedDay = newDay);
     await _store.loadDay(newDay);
+    await _refreshCanGoBack();
   }
 
   @override
@@ -3096,6 +3124,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 selectedDay: _selectedDay,
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
+                canGoBack: _canGoBack,
+                canGoForward: !DateUtils.isSameDay(_selectedDay, DateTime.now()),
                 onWaterChanged: _onWaterChanged,
                 dbService: widget.dbService,
                 isCheatDay: _store.isCheatDay,
@@ -3111,12 +3141,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 selectedDay: _selectedDay,
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
+                canGoBack: _canGoBack,
+                canGoForward: !DateUtils.isSameDay(_selectedDay, DateTime.now()),
               ),
               ActivitiesListScreen(
                 dbService: widget.dbService,
                 selectedDay: _selectedDay,
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
+                canGoBack: _canGoBack,
+                canGoForward: !DateUtils.isSameDay(_selectedDay, DateTime.now()),
               ),
               ReportsScreen(
                 dbService: widget.dbService,
@@ -3230,6 +3264,8 @@ class OverviewScreen extends StatelessWidget {
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
+  final bool canGoBack;
+  final bool canGoForward;
   final void Function(int deltaMl) onWaterChanged;
   final NeonDatabaseService? dbService;
   final bool isCheatDay;
@@ -3248,6 +3284,8 @@ class OverviewScreen extends StatelessWidget {
     required this.selectedDay,
     required this.onChangeDay,
     required this.onJumpToToday,
+    required this.canGoBack,
+    required this.canGoForward,
     required this.onWaterChanged,
     required this.dbService,
     required this.isCheatDay,
@@ -3627,10 +3665,16 @@ class OverviewScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                tooltip: l.previousDay,
-                onPressed: () => onChangeDay(-1),
+              Visibility(
+                visible: canGoBack,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  tooltip: l.previousDay,
+                  onPressed: () => onChangeDay(-1),
+                ),
               ),
               Column(
                 children: [
@@ -3655,10 +3699,16 @@ class OverviewScreen extends StatelessWidget {
                     ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                tooltip: l.nextDay,
-                onPressed: () => onChangeDay(1),
+              Visibility(
+                visible: canGoForward,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  tooltip: l.nextDay,
+                  onPressed: () => onChangeDay(1),
+                ),
               ),
             ],
           ),

@@ -18,6 +18,8 @@ class FoodEntriesListScreen extends StatefulWidget {
   final DateTime selectedDay;
   final void Function(int offset) onChangeDay;
   final VoidCallback onJumpToToday;
+  final bool canGoBack;
+  final bool canGoForward;
 
   const FoodEntriesListScreen({
     super.key,
@@ -25,6 +27,8 @@ class FoodEntriesListScreen extends StatefulWidget {
     required this.selectedDay,
     required this.onChangeDay,
     required this.onJumpToToday,
+    required this.canGoBack,
+    required this.canGoForward,
   });
   
   @override
@@ -242,10 +246,16 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      tooltip: l.previousDay,
-                      onPressed: () => widget.onChangeDay(-1),
+                    Visibility(
+                      visible: widget.canGoBack,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        tooltip: l.previousDay,
+                        onPressed: () => widget.onChangeDay(-1),
+                      ),
                     ),
                     Column(
                       children: [
@@ -269,10 +279,16 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                           ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right),
-                      tooltip: l.nextDay,
-                      onPressed: () => widget.onChangeDay(1),
+                    Visibility(
+                      visible: widget.canGoForward,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        tooltip: l.nextDay,
+                        onPressed: () => widget.onChangeDay(1),
+                      ),
                     ),
                   ],
                 ),
@@ -315,10 +331,16 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  tooltip: l.previousDay,
-                  onPressed: () => widget.onChangeDay(-1),
+                Visibility(
+                  visible: widget.canGoBack,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    tooltip: l.previousDay,
+                    onPressed: () => widget.onChangeDay(-1),
+                  ),
                 ),
                 Column(
                   children: [
@@ -343,10 +365,16 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                       ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  tooltip: l.nextDay,
-                  onPressed: () => widget.onChangeDay(1),
+                Visibility(
+                  visible: widget.canGoForward,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    tooltip: l.nextDay,
+                    onPressed: () => widget.onChangeDay(1),
+                  ),
                 ),
               ],
             ),
