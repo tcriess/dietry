@@ -151,27 +151,38 @@ class PhysicalActivityService {
       json['user_id'] = userId;
       json.remove('id');  // ID wird von DB generiert
 
-      appLogger.d('   Führe INSERT via Dio aus...');
+      // Health Connect imports carry a record id and the table has
+      // UNIQUE(user_id, health_connect_record_id). Re-imports (queue replays,
+      // races, repeated syncs) would otherwise 409. Upsert via PostgREST so the
+      // existing row is updated in place. Manual saves keep plain INSERT
+      // semantics (NULLs are distinct, no constraint to merge against).
+      final hasHcId = activity.healthConnectRecordId != null;
+      final path = hasHcId
+          ? '/physical_activities?on_conflict=user_id,health_connect_record_id'
+          : '/physical_activities';
+      final prefer = hasHcId
+          ? 'return=representation,resolution=merge-duplicates'
+          : 'return=representation';
 
-      // ✅ INSERT via Dio (umgeht postgrest Prefer-Header-Bug)
+      appLogger.d('   Führe ${hasHcId ? "UPSERT" : "INSERT"} via Dio aus...');
+
       final response = await _db.dioClient.post(
-        '/physical_activities',
+        path,
         data: json,
         options: Options(
-          headers: {
-            'Prefer': 'return=representation',
-          },
+          headers: {'Prefer': prefer},
         ),
       );
 
-      if (response.statusCode != 201) {
-        throw Exception('INSERT fehlgeschlagen: ${response.statusCode}');
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception(
+            'INSERT fehlgeschlagen: ${response.statusCode}');
       }
 
       final createdJson = (response.data as List).first as Map<String, dynamic>;
       final created = PhysicalActivity.fromJson(createdJson);
 
-      appLogger.i('✅ Aktivität erfolgreich erstellt: ${created.id}');
+      appLogger.i('✅ Aktivität erfolgreich gespeichert: ${created.id}');
       return created;
     } catch (e) {
       appLogger.e('❌ Fehler beim Speichern der Aktivität: $e');
