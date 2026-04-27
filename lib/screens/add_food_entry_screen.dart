@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
@@ -87,6 +89,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
+
+  // Debounce timer for the search field (avoids hitting the DB on every keystroke).
+  Timer? _searchDebounce;
 
   // Guest mode: optional anonymous JWT for public food DB access
   NeonDatabaseService? _anonDbService;
@@ -247,6 +252,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _nameController.dispose();
     _amountController.dispose();
@@ -264,15 +270,6 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   /// Suche Foods: entweder in Datenbank ("own db") ODER externe APIs
   Future<void> _searchFoods(String query) async {
     if (query.trim().isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _isSearching = false;
-      });
-      return;
-    }
-
-    // In authenticated My DB mode, filtering is done client-side via _displayedMyFoods.
-    if (!_useOpenFoodFacts && widget.dbService != null) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
@@ -1167,8 +1164,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Food-Suche (nur wenn nicht manuell)
-                  if (!_showManualEntry) ...[
+                  // Food-Suche (nur wenn nicht manuell und noch nichts ausgewählt)
+                  if (!_showManualEntry && _selectedFood == null) ...[
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
@@ -1179,9 +1176,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             ? IconButton(
                                 icon: const Icon(Icons.clear),
                                 onPressed: () {
+                                  _searchDebounce?.cancel();
                                   _searchController.clear();
                                   setState(() {
                                     _searchResults = [];
+                                    _isSearching = false;
                                   });
                                 },
                               )
@@ -1195,8 +1194,21 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       textInputAction: TextInputAction.search,
                       onChanged: (value) {
                         if (!_useOpenFoodFacts && widget.dbService != null) {
-                          // Authenticated My DB: _displayedMyFoods reacts to controller text
+                          // Authenticated My DB: server-side full-text search
+                          // (debounced). Empty query falls back to the preloaded
+                          // list rendered via _displayedMyFoods.
                           setState(() {});
+                          _searchDebounce?.cancel();
+                          if (value.trim().isEmpty) {
+                            setState(() {
+                              _searchResults = [];
+                              _isSearching = false;
+                            });
+                          } else {
+                            _searchDebounce = Timer(
+                                const Duration(milliseconds: 300),
+                                () => _searchFoods(value));
+                          }
                         } else if (!_useOpenFoodFacts) {
                           // Guest mode: search public/local foods
                           _searchFoods(value);
@@ -1207,6 +1219,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       },
                       onSubmitted: (value) {
                         if (_useOpenFoodFacts || widget.dbService == null) {
+                          _searchFoods(value);
+                        } else if (widget.dbService != null) {
+                          _searchDebounce?.cancel();
                           _searchFoods(value);
                         }
                       },
@@ -1277,14 +1292,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     ],
 
                     // My DB preloaded list (authenticated) or online/guest search results
-                    if ((_isLoadingMyFoods &&
-                            !_useOpenFoodFacts &&
-                            widget.dbService != null) ||
-                        (_isSearching &&
-                            (_useOpenFoodFacts || widget.dbService == null)))
+                    if (_isLoadingMyFoods || _isSearching)
                       const Center(child: CircularProgressIndicator())
                     else if (!_useOpenFoodFacts &&
-                        widget.dbService != null) ...[
+                        widget.dbService != null &&
+                        _searchController.text.trim().isEmpty) ...[
                       if (_myFoods.isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1593,6 +1605,18 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+                    ]
+                    // No-results fallback when a query is typed but nothing matched
+                    else if (_searchController.text.trim().isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Center(
+                          child: Text(
+                            'Keine Ergebnisse',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
+                      ),
                     ],
                   ],
 
