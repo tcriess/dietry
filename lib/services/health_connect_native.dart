@@ -90,7 +90,7 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
               ? value.totalDistance! / 1000.0  // m → km
               : null,
           source: DataSource.healthConnect,
-          healthConnectRecordId: d.sourceId,
+          healthConnectRecordId: d.uuid,
         ));
       } catch (e) {
         appLogger.w('⚠️ Failed to parse a WORKOUT record (value type=${d.value.runtimeType}): $e');
