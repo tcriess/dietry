@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart' show MethodChannel, TextInput;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'main_web_imports_web.dart' if (dart.library.io) 'main_web_imports.dart' as html;
+import 'main_web_imports_web.dart' if (dart.library.io) 'main_web_imports.dart'
+    as html;
 import 'dart:async';
 import 'dart:math' show min;
 import 'package:intl/intl.dart';
@@ -20,7 +22,8 @@ import 'package:dietry_cloud/dietry_cloud.dart';
 // Services
 import 'app_features.dart';
 import 'services/neon_database_service.dart';
-import 'services/neon_auth_service.dart' show NeonAuthService, EmailVerificationPendingException;
+import 'services/neon_auth_service.dart'
+    show NeonAuthService, EmailVerificationPendingException;
 import 'services/nutrition_goal_service.dart';
 import 'services/food_entry_service.dart';
 import 'services/physical_activity_service.dart';
@@ -72,9 +75,10 @@ void main() async {
   AppFeatures.initializeFromEnvironment();
 
   // Platform-specific database initialization
-  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.linux ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS)) {
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS)) {
     // Desktop: Use FFI
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -94,7 +98,7 @@ void main() async {
   // dieselbe URL verwendet wie die Flutter-App (verhindert Cookie-Domain-Mismatch).
   if (kIsWeb) {
     html.setToLocalStorage(
-      'dietry_auth_base_url', ServerConfigService.effectiveAuthBaseUrl);
+        'dietry_auth_base_url', ServerConfigService.effectiveAuthBaseUrl);
   }
 
   try {
@@ -106,14 +110,13 @@ void main() async {
   runApp(const AuthApp());
 }
 
-
 // Widget für den Auth-Dialog mit WebView (für OAuth-Redirect-URL)
 class NeonAuthWebViewDialog extends StatefulWidget {
   final String authUrl; // OAuth-Redirect-URL vom Auth-Server
   final String callbackUrl; // Erwartete Callback-URL
   const NeonAuthWebViewDialog({
-    super.key, 
-    required this.authUrl, 
+    super.key,
+    required this.authUrl,
     required this.callbackUrl,
   });
 
@@ -134,18 +137,18 @@ class _NeonAuthWebViewDialogState extends State<NeonAuthWebViewDialog> {
         onNavigationRequest: (nav) {
           final url = nav.url;
           final uri = Uri.parse(url);
-          
+
           if (uri.queryParameters.containsKey('neon_auth_session_verifier')) {
             final verifier = uri.queryParameters['neon_auth_session_verifier'];
             Navigator.of(context).pop({'success': true, 'verifier': verifier});
             return NavigationDecision.prevent;
           }
-          
+
           return NavigationDecision.navigate;
         },
         onPageFinished: (url) {
           setState(() => _loading = false);
-          
+
           final uri = Uri.parse(url);
           if (uri.queryParameters.containsKey('neon_auth_session_verifier')) {
             final verifier = uri.queryParameters['neon_auth_session_verifier'];
@@ -156,7 +159,6 @@ class _NeonAuthWebViewDialogState extends State<NeonAuthWebViewDialog> {
     _controller.loadRequest(Uri.parse(widget.authUrl));
   }
 
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -166,8 +168,7 @@ class _NeonAuthWebViewDialogState extends State<NeonAuthWebViewDialog> {
         child: Stack(
           children: [
             WebViewWidget(controller: _controller),
-            if (_loading)
-              const Center(child: CircularProgressIndicator()),
+            if (_loading) const Center(child: CircularProgressIndicator()),
           ],
         ),
       ),
@@ -176,10 +177,10 @@ class _NeonAuthWebViewDialogState extends State<NeonAuthWebViewDialog> {
 }
 
 IconData _themeModeIcon(ThemeMode mode) => switch (mode) {
-  ThemeMode.light => Icons.light_mode,
-  ThemeMode.dark => Icons.dark_mode,
-  ThemeMode.system => Icons.brightness_auto,
-};
+      ThemeMode.light => Icons.light_mode,
+      ThemeMode.dark => Icons.dark_mode,
+      ThemeMode.system => Icons.brightness_auto,
+    };
 
 // LoginScreen mit Google-Login (Neon Auth)
 class LoginScreen extends StatelessWidget {
@@ -214,10 +215,28 @@ class LoginScreen extends StatelessWidget {
                     itemBuilder: (ctx) {
                       final l = AppLocalizations.of(ctx)!;
                       return [
-                        PopupMenuItem(value: ThemeMode.light, child: Row(children: [const Icon(Icons.light_mode, size: 20), const SizedBox(width: 8), Text(l.themeLight)])),
-                        PopupMenuItem(value: ThemeMode.dark, child: Row(children: [const Icon(Icons.dark_mode, size: 20), const SizedBox(width: 8), Text(l.themeDark)])),
+                        PopupMenuItem(
+                            value: ThemeMode.light,
+                            child: Row(children: [
+                              const Icon(Icons.light_mode, size: 20),
+                              const SizedBox(width: 8),
+                              Text(l.themeLight)
+                            ])),
+                        PopupMenuItem(
+                            value: ThemeMode.dark,
+                            child: Row(children: [
+                              const Icon(Icons.dark_mode, size: 20),
+                              const SizedBox(width: 8),
+                              Text(l.themeDark)
+                            ])),
                         const PopupMenuDivider(),
-                        PopupMenuItem(value: ThemeMode.system, child: Row(children: [const Icon(Icons.brightness_auto, size: 20), const SizedBox(width: 8), Text(l.themeSystem)])),
+                        PopupMenuItem(
+                            value: ThemeMode.system,
+                            child: Row(children: [
+                              const Icon(Icons.brightness_auto, size: 20),
+                              const SizedBox(width: 8),
+                              Text(l.themeSystem)
+                            ])),
                       ];
                     },
                   ),
@@ -225,9 +244,12 @@ class LoginScreen extends StatelessWidget {
                   icon: const Icon(Icons.language),
                   onSelected: onLocaleChanged,
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: Locale('de'), child: Text('🇩🇪  Deutsch')),
-                    PopupMenuItem(value: Locale('en'), child: Text('🇬🇧  English')),
-                    PopupMenuItem(value: Locale('es'), child: Text('🇪🇸  Español')),
+                    PopupMenuItem(
+                        value: Locale('de'), child: Text('🇩🇪  Deutsch')),
+                    PopupMenuItem(
+                        value: Locale('en'), child: Text('🇬🇧  English')),
+                    PopupMenuItem(
+                        value: Locale('es'), child: Text('🇪🇸  Español')),
                     PopupMenuDivider(),
                     PopupMenuItem(value: null, child: Text('⚙️  System')),
                   ],
@@ -242,7 +264,8 @@ class LoginScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 color: Colors.orange.shade700,
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                 child: Text(
                   l.devBannerText,
                   textAlign: TextAlign.center,
@@ -257,7 +280,8 @@ class LoginScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 color: Colors.blue.shade600,
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                 child: Text(
                   l.guestModeBannerText,
                   textAlign: TextAlign.center,
@@ -270,375 +294,417 @@ class LoginScreen extends StatelessWidget {
               ),
             Expanded(
               child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 24),
 
-              // Logo
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: Icon(
-                  Icons.restaurant_menu,
-                  size: 52,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l.appTitle,
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l.appSubtitle,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 40),
-
-              // Features
-              _FeatureRow(
-                icon: Icons.track_changes,
-                title: l.featureTrackTitle,
-                subtitle: l.featureTrackSubtitle,
-              ),
-              const SizedBox(height: 12),
-              _FeatureRow(
-                icon: Icons.search,
-                title: l.featureDatabaseTitle,
-                subtitle: l.featureDatabaseSubtitle,
-              ),
-              const SizedBox(height: 12),
-              _FeatureRow(
-                icon: Icons.directions_run,
-                title: l.featureActivitiesTitle,
-                subtitle: l.featureActivitiesSubtitle,
-              ),
-              const SizedBox(height: 12),
-              _FeatureRow(
-                icon: Icons.flag_outlined,
-                title: l.featureGoalsTitle,
-                subtitle: l.featureGoalsSubtitle,
-              ),
-
-              const SizedBox(height: 40),
-
-              // Login Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.login),
-                  label: Text(l.loginWithGoogle),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    textStyle: const TextStyle(fontSize: 16),
-                  ),
-                  onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final lErr = AppLocalizations.of(context)!;
-                try {
-                  // WEB: Redirect zu auth_callback.html (übernimmt kompletten OAuth-Flow)
-                  if (kIsWeb) {
-                    html.browserRedirect('/auth_callback.html');
-                    return;
-                  }
-                  
-                  // NATIVE: Plattform-spezifischer OAuth-Flow
-                  String callbackUrl;
-                  Completer<String>? desktopCallbackCompleter;
-                  
-                  if (platform.isAndroid()) {
-                    callbackUrl = AppConfig.androidCallbackUrl;
-                  } else if (platform.isLinux() || platform.isWindows()) {
-                    // Desktop: Lokaler HTTP-Server auf einem freien Port.
-                    // Port 0 lässt das OS einen freien Port wählen — kein Konflikt
-                    // mit anderen Diensten möglich.
-                    desktopCallbackCompleter = Completer<String>();
-
-                    FutureOr<shelf.Response> handler(shelf.Request request) async {
-                      if (request.url.path == 'callback') {
-                        final verifier = request.url.queryParameters['neon_auth_session_verifier'];
-                        if (verifier != null && !desktopCallbackCompleter!.isCompleted) {
-                          desktopCallbackCompleter.complete(verifier);
-                          return shelf.Response.ok(
-                            '<html lang="de"><body><h1>Login erfolgreich!</h1><p>Sie können dieses Fenster schließen.</p></body></html>',
-                            headers: {'Content-Type': 'text/html'},
-                          );
-                        }
-                      }
-                      return shelf.Response.notFound('Not found');
-                    }
-
-                    // Port 0 → OS assigns a free port; read it back via server.port.
-                    final server = await shelf_io.serve(handler, 'localhost', 0);
-                    callbackUrl = 'http://localhost:${server.port}/callback';
-                    desktopCallbackCompleter.future.timeout(
-                      const Duration(minutes: 5),
-                      onTimeout: () => '',
-                    ).whenComplete(() => server.close());
-                  } else {
-                    // iOS/macOS: Use HTTPS callback like Android (WebView will intercept)
-                    callbackUrl = AppConfig.androidCallbackUrl;
-                  }
-                  
-                  // ✅ Starte OAuth-Flow via NeonAuthService
-                  final redirectUrl = await authService.startOAuthFlow(
-                    provider: 'google',
-                    callbackUrl: callbackUrl,
-                  );
-                  
-                  appLogger.d('🔗 OAuth URL: $redirectUrl');
-                  
-
-                  // Öffne OAuth-URL (plattformabhängig)
-                  if (platform.isAndroid()) {
-                    // Android: Chrome Custom Tab (CCT) öffnen, Callback via App Link
-                    // CCT schließt sich automatisch wenn das App Link Intent feuert
-                    // und die Activity resumes — kein Browser-Tab bleibt offen
-                    // (Challenge-Cookie wird von NeonAuthService verwaltet)
-
-                    if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.inAppBrowserView)) {
-                      throw Exception('Konnte Browser nicht öffnen');
-                    }
-                    
-                    if (context.mounted) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Bitte schließen Sie die Authentifizierung im Browser ab...'),
-                          duration: Duration(seconds: 5),
-                        ),
-                      );
-                    }
-                    return;
-                  } else if (platform.isLinux() || platform.isWindows()) {
-                    // Desktop: HTTP Server + Browser
-                    if (!await launchUrl(Uri.parse(redirectUrl), mode: LaunchMode.externalApplication)) {
-                      throw Exception('Konnte Browser nicht öffnen');
-                    }
-
-                    if (context.mounted) {
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Bitte schließen Sie die Authentifizierung im Browser ab...'),
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                    
-                    final verifier = await desktopCallbackCompleter!.future.timeout(
-                      const Duration(minutes: 5),
-                      onTimeout: () => throw Exception('Login-Timeout'),
-                    );
-                    
-                    if (verifier.isNotEmpty) {
-                      // ✅ Nutze NeonAuthService für Session-Exchange
-                      final success = await authService.getSessionWithVerifier(verifier);
-                      
-                      if (success && authService.jwt != null) {
-                        if (context.mounted) {
-                          // Setze JWT im GLOBALEN Database Service
-                          // Zugriff via findAncestorStateOfType
-                          final authAppState = context.findAncestorStateOfType<_AuthAppState>();
-                          if (authAppState != null) {
-                            await authAppState._dbService?.setJWT(authService.jwt!);
-                          }
-
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text('Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      } else {
-                        throw Exception('Session-Exchange fehlgeschlagen');
-                      }
-                    }
-                  } else {
-                    // iOS/macOS: WebView Dialog
-                    final session = await showDialog<Map<String, dynamic>>(
-                      // ignore: use_build_context_synchronously
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) => NeonAuthWebViewDialog(
-                        authUrl: redirectUrl,
-                        callbackUrl: callbackUrl,
+                    // Logo
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: Icon(
+                        Icons.restaurant_menu,
+                        size: 52,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
-                    );
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l.appTitle,
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l.appSubtitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.grey.shade600,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
 
-                    if (session?['success'] == true) {
-                      final verifier = session?['verifier'] as String?;
-                      if (verifier != null) {
-                        // ✅ Nutze NeonAuthService für Session-Exchange
-                        final success = await authService.getSessionWithVerifier(verifier);
+                    const SizedBox(height: 40),
 
-                        if (success && authService.jwt != null) {
-                          if (context.mounted) {
-                            // Setze JWT im GLOBALEN Database Service
-                            final authAppState = context.findAncestorStateOfType<_AuthAppState>();
-                            if (authAppState != null) {
-                              await authAppState._dbService?.setJWT(authService.jwt!);
+                    // Features
+                    _FeatureRow(
+                      icon: Icons.track_changes,
+                      title: l.featureTrackTitle,
+                      subtitle: l.featureTrackSubtitle,
+                    ),
+                    const SizedBox(height: 12),
+                    _FeatureRow(
+                      icon: Icons.search,
+                      title: l.featureDatabaseTitle,
+                      subtitle: l.featureDatabaseSubtitle,
+                    ),
+                    const SizedBox(height: 12),
+                    _FeatureRow(
+                      icon: Icons.directions_run,
+                      title: l.featureActivitiesTitle,
+                      subtitle: l.featureActivitiesSubtitle,
+                    ),
+                    const SizedBox(height: 12),
+                    _FeatureRow(
+                      icon: Icons.flag_outlined,
+                      title: l.featureGoalsTitle,
+                      subtitle: l.featureGoalsSubtitle,
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Login Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.login),
+                        label: Text(l.loginWithGoogle),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(fontSize: 16),
+                        ),
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final lErr = AppLocalizations.of(context)!;
+                          try {
+                            // WEB: Redirect zu auth_callback.html (übernimmt kompletten OAuth-Flow)
+                            if (kIsWeb) {
+                              html.browserRedirect('/auth_callback.html');
+                              return;
                             }
 
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
-                                backgroundColor: Colors.green,
-                              ),
+                            // NATIVE: Plattform-spezifischer OAuth-Flow
+                            String callbackUrl;
+                            Completer<String>? desktopCallbackCompleter;
+
+                            if (platform.isAndroid()) {
+                              callbackUrl = AppConfig.androidCallbackUrl;
+                            } else if (platform.isLinux() ||
+                                platform.isWindows()) {
+                              // Desktop: Lokaler HTTP-Server auf einem freien Port.
+                              // Port 0 lässt das OS einen freien Port wählen — kein Konflikt
+                              // mit anderen Diensten möglich.
+                              desktopCallbackCompleter = Completer<String>();
+
+                              FutureOr<shelf.Response> handler(
+                                  shelf.Request request) async {
+                                if (request.url.path == 'callback') {
+                                  final verifier = request.url.queryParameters[
+                                      'neon_auth_session_verifier'];
+                                  if (verifier != null &&
+                                      !desktopCallbackCompleter!.isCompleted) {
+                                    desktopCallbackCompleter.complete(verifier);
+                                    return shelf.Response.ok(
+                                      '<html lang="de"><body><h1>Login erfolgreich!</h1><p>Sie können dieses Fenster schließen.</p></body></html>',
+                                      headers: {'Content-Type': 'text/html'},
+                                    );
+                                  }
+                                }
+                                return shelf.Response.notFound('Not found');
+                              }
+
+                              // Port 0 → OS assigns a free port; read it back via server.port.
+                              final server =
+                                  await shelf_io.serve(handler, 'localhost', 0);
+                              callbackUrl =
+                                  'http://localhost:${server.port}/callback';
+                              desktopCallbackCompleter.future
+                                  .timeout(
+                                    const Duration(minutes: 5),
+                                    onTimeout: () => '',
+                                  )
+                                  .whenComplete(() => server.close());
+                            } else {
+                              // iOS/macOS: Use HTTPS callback like Android (WebView will intercept)
+                              callbackUrl = AppConfig.androidCallbackUrl;
+                            }
+
+                            // ✅ Starte OAuth-Flow via NeonAuthService
+                            final redirectUrl =
+                                await authService.startOAuthFlow(
+                              provider: 'google',
+                              callbackUrl: callbackUrl,
                             );
+
+                            appLogger.d('🔗 OAuth URL: $redirectUrl');
+
+                            // Öffne OAuth-URL (plattformabhängig)
+                            if (platform.isAndroid()) {
+                              // Android: Chrome Custom Tab (CCT) öffnen, Callback via App Link
+                              // CCT schließt sich automatisch wenn das App Link Intent feuert
+                              // und die Activity resumes — kein Browser-Tab bleibt offen
+                              // (Challenge-Cookie wird von NeonAuthService verwaltet)
+
+                              if (!await launchUrl(Uri.parse(redirectUrl),
+                                  mode: LaunchMode.inAppBrowserView)) {
+                                throw Exception('Konnte Browser nicht öffnen');
+                              }
+
+                              if (context.mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Bitte schließen Sie die Authentifizierung im Browser ab...'),
+                                    duration: Duration(seconds: 5),
+                                  ),
+                                );
+                              }
+                              return;
+                            } else if (platform.isLinux() ||
+                                platform.isWindows()) {
+                              // Desktop: HTTP Server + Browser
+                              if (!await launchUrl(Uri.parse(redirectUrl),
+                                  mode: LaunchMode.externalApplication)) {
+                                throw Exception('Konnte Browser nicht öffnen');
+                              }
+
+                              if (context.mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Bitte schließen Sie die Authentifizierung im Browser ab...'),
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+
+                              final verifier = await desktopCallbackCompleter!
+                                  .future
+                                  .timeout(
+                                const Duration(minutes: 5),
+                                onTimeout: () =>
+                                    throw Exception('Login-Timeout'),
+                              );
+
+                              if (verifier.isNotEmpty) {
+                                // ✅ Nutze NeonAuthService für Session-Exchange
+                                final success = await authService
+                                    .getSessionWithVerifier(verifier);
+
+                                if (success && authService.jwt != null) {
+                                  if (context.mounted) {
+                                    // Setze JWT im GLOBALEN Database Service
+                                    // Zugriff via findAncestorStateOfType
+                                    final authAppState =
+                                        context.findAncestorStateOfType<
+                                            _AuthAppState>();
+                                    if (authAppState != null) {
+                                      await authAppState._dbService
+                                          ?.setJWT(authService.jwt!);
+                                    }
+
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  throw Exception(
+                                      'Session-Exchange fehlgeschlagen');
+                                }
+                              }
+                            } else {
+                              // iOS/macOS: WebView Dialog
+                              final session =
+                                  await showDialog<Map<String, dynamic>>(
+                                // ignore: use_build_context_synchronously
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (ctx) => NeonAuthWebViewDialog(
+                                  authUrl: redirectUrl,
+                                  callbackUrl: callbackUrl,
+                                ),
+                              );
+
+                              if (session?['success'] == true) {
+                                final verifier =
+                                    session?['verifier'] as String?;
+                                if (verifier != null) {
+                                  // ✅ Nutze NeonAuthService für Session-Exchange
+                                  final success = await authService
+                                      .getSessionWithVerifier(verifier);
+
+                                  if (success && authService.jwt != null) {
+                                    if (context.mounted) {
+                                      // Setze JWT im GLOBALEN Database Service
+                                      final authAppState =
+                                          context.findAncestorStateOfType<
+                                              _AuthAppState>();
+                                      if (authAppState != null) {
+                                        await authAppState._dbService
+                                            ?.setJWT(authService.jwt!);
+                                      }
+
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    throw Exception(
+                                        'Session-Exchange fehlgeschlagen');
+                                  }
+                                }
+                              } else {
+                                throw Exception(
+                                    'Authentifizierung wurde abgebrochen');
+                              }
+                            }
+                          } catch (e) {
+                            appLogger.e('❌ Login fehlgeschlagen: $e');
+                            if (context.mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(lErr.loginFailed(e.toString())),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                            }
                           }
-                        } else {
-                          throw Exception('Session-Exchange fehlgeschlagen');
-                        }
-                      }
-                    } else {
-                      throw Exception('Authentifizierung wurde abgebrochen');
-                    }
-                  }
-                } catch (e) {
-                  appLogger.e('❌ Login fehlgeschlagen: $e');
-                  if (context.mounted) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(lErr.loginFailed(e.toString())),
-                        backgroundColor: Colors.red,
-                        duration: const Duration(seconds: 5),
+                        },
                       ),
-                    );
-                  }
-                }
-              },
-            ),
-            ),   // SizedBox
+                    ), // SizedBox
 
-            const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-            // Divider
-            Row(
-              children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    l.orContinueWith,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
-                ),
-                const Expanded(child: Divider()),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Email / Password login
-            _EmailLoginSection(
-              authService: authService,
-              dbService: dbService,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Guest mode button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.person_outline),
-                label: Text(l.continueAsGuest),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  textStyle: const TextStyle(fontSize: 16),
-                ),
-                onPressed: () async {
-                  try {
-                    appLogger.d('[GuestButton] enable() starting...');
-                    await GuestModeService.enable();
-                    appLogger.d('[GuestButton] enable() completed, isGuestMode=${GuestModeService.isGuestMode}');
-
-                    if (context.mounted) {
-                      appLogger.d('[GuestButton] navigating to AuthApp with guest mode enabled...');
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const AuthApp()),
-                        (route) => false,
-                      );
-                    }
-                  } catch (e) {
-                    appLogger.e('❌ Error enabling guest mode: $e');
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.guestModeError),
-                          backgroundColor: Colors.red,
+                    // Divider
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            l.orContinueWith,
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade500),
+                          ),
                         ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
 
-            const SizedBox(height: 8),
+                    const SizedBox(height: 12),
 
-            // Guest mode note
-            Text(
-              l.guestModeNote,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
+                    // Email / Password login
+                    _EmailLoginSection(
+                      authService: authService,
+                      dbService: dbService,
+                    ),
 
-            const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
-            // Datenschutz-Hinweis
-            Text(
-              l.privacyNote,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-            ),
+                    // Guest mode button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.person_outline),
+                        label: Text(l.continueAsGuest),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(fontSize: 16),
+                        ),
+                        onPressed: () async {
+                          try {
+                            appLogger.d('[GuestButton] enable() starting...');
+                            await GuestModeService.enable();
+                            appLogger.d(
+                                '[GuestButton] enable() completed, isGuestMode=${GuestModeService.isGuestMode}');
 
-            const SizedBox(height: 12),
+                            if (context.mounted) {
+                              appLogger.d(
+                                  '[GuestButton] navigating to AuthApp with guest mode enabled...');
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                    builder: (_) => const AuthApp()),
+                                (route) => false,
+                              );
+                            }
+                          } catch (e) {
+                            appLogger.e('❌ Error enabling guest mode: $e');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(l.guestModeError),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
 
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InfoScreen()),
-              ),
-              child: Text(l.impressumLink, style: const TextStyle(fontSize: 12)),
-            ),
+                    const SizedBox(height: 8),
 
-            // Self-hosted server config (CE only)
-            if (!AppConfig.isCloudEdition)
-              TextButton.icon(
-                icon: const Icon(Icons.dns_outlined, size: 16),
-                label: Text(l.serverConfigButton, style: const TextStyle(fontSize: 12)),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.grey.shade600,
+                    // Guest mode note
+                    Text(
+                      l.guestModeNote,
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Datenschutz-Hinweis
+                    Text(
+                      l.privacyNote,
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const InfoScreen()),
+                      ),
+                      child: Text(l.impressumLink,
+                          style: const TextStyle(fontSize: 12)),
+                    ),
+
+                    // Self-hosted server config (CE only)
+                    if (!AppConfig.isCloudEdition)
+                      TextButton.icon(
+                        icon: const Icon(Icons.dns_outlined, size: 16),
+                        label: Text(l.serverConfigButton,
+                            style: const TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade600,
+                        ),
+                        onPressed: () async {
+                          final changed = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => const _ServerConfigDialog(),
+                          );
+                          if (changed == true && context.mounted) {
+                            // Update the auth_callback.html localStorage entry on web
+                            if (kIsWeb) {
+                              html.setToLocalStorage(
+                                'dietry_auth_base_url',
+                                ServerConfigService.effectiveAuthBaseUrl,
+                              );
+                            }
+                          }
+                        },
+                      ),
+                  ],
                 ),
-                onPressed: () async {
-                  final changed = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => const _ServerConfigDialog(),
-                  );
-                  if (changed == true && context.mounted) {
-                    // Update the auth_callback.html localStorage entry on web
-                    if (kIsWeb) {
-                      html.setToLocalStorage(
-                        'dietry_auth_base_url',
-                        ServerConfigService.effectiveAuthBaseUrl,
-                      );
-                    }
-                  }
-                },
               ),
-          ],
-        ),
-      ),
             ),
           ],
         ),
@@ -665,7 +731,9 @@ class _FeatureRow extends StatelessWidget {
         CircleAvatar(
           radius: 22,
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onPrimaryContainer),
+          child: Icon(icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.onPrimaryContainer),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -673,7 +741,8 @@ class _FeatureRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              Text(subtitle,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             ],
           ),
         ),
@@ -746,6 +815,7 @@ class _ServerConfigDialogState extends State<_ServerConfigDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
+      scrollable: true,
       title: Row(
         children: [
           const Icon(Icons.dns_outlined),
@@ -754,49 +824,48 @@ class _ServerConfigDialogState extends State<_ServerConfigDialog> {
         ],
       ),
       content: _loading
-          ? const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()))
-          : SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          ? const SizedBox(
+              height: 80, child: Center(child: CircularProgressIndicator()))
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.serverConfigDescription,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _dataApiCtrl,
+                  decoration: InputDecoration(
+                    labelText: l.serverConfigDataApiUrl,
+                    hintText: AppConfig.dataApiUrl,
+                    border: const OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _authBaseCtrl,
+                  decoration: InputDecoration(
+                    labelText: l.serverConfigAuthBaseUrl,
+                    hintText: AppConfig.authBaseUrl,
+                    border: const OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                ),
+                if (_hasCustom) ...[
+                  const SizedBox(height: 8),
                   Text(
-                    l.serverConfigDescription,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    l.serverConfigCustomActive,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.orange.shade700,
+                        ),
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _dataApiCtrl,
-                    decoration: InputDecoration(
-                      labelText: l.serverConfigDataApiUrl,
-                      hintText: AppConfig.dataApiUrl,
-                      border: const OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _authBaseCtrl,
-                    decoration: InputDecoration(
-                      labelText: l.serverConfigAuthBaseUrl,
-                      hintText: AppConfig.authBaseUrl,
-                      border: const OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                  ),
-                  if (_hasCustom) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      l.serverConfigCustomActive,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.orange.shade700,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
       actions: _loading
           ? null
@@ -825,7 +894,8 @@ class _EmailLoginSection extends StatefulWidget {
   final NeonAuthService authService;
   final NeonDatabaseService dbService;
 
-  const _EmailLoginSection({required this.authService, required this.dbService});
+  const _EmailLoginSection(
+      {required this.authService, required this.dbService});
 
   @override
   State<_EmailLoginSection> createState() => _EmailLoginSectionState();
@@ -891,7 +961,8 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+                child:
+                    Text(MaterialLocalizations.of(context).cancelButtonLabel),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -947,7 +1018,8 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(AppLocalizations.of(context)!.loginFailed(e.toString())),
+          content:
+              Text(AppLocalizations.of(context)!.loginFailed(e.toString())),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 5),
         ));
@@ -964,7 +1036,8 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
     if (_pendingVerificationEmail != null) {
       return Column(
         children: [
-          const Icon(Icons.mark_email_unread_outlined, size: 48, color: Colors.green),
+          const Icon(Icons.mark_email_unread_outlined,
+              size: 48, color: Colors.green),
           const SizedBox(height: 16),
           Text(l.emailVerificationTitle,
               style: Theme.of(context).textTheme.titleMedium,
@@ -989,92 +1062,101 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
       key: _formKey,
       child: AutofillGroup(
         child: Column(
-        children: [
-          if (_isSignUp) ...[
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: InputDecoration(
-                labelText: l.nameOptionalLabel,
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.person_outline),
+          children: [
+            if (_isSignUp) ...[
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: l.nameOptionalLabel,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.person_outline),
+                ),
+                autofillHints: const [AutofillHints.name],
+                textInputAction: TextInputAction.next,
               ),
-              autofillHints: const [AutofillHints.name],
+              const SizedBox(height: 12),
+            ],
+            TextFormField(
+              controller: _emailCtrl,
+              decoration: InputDecoration(
+                labelText: l.emailLabel,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.email_outlined),
+              ),
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.next,
+              validator: (v) =>
+                  (v == null || !v.contains('@')) ? l.requiredField : null,
             ),
             const SizedBox(height: 12),
-          ],
-          TextFormField(
-            controller: _emailCtrl,
-            decoration: InputDecoration(
-              labelText: l.emailLabel,
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.email_outlined),
-            ),
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            textInputAction: TextInputAction.next,
-            validator: (v) => (v == null || !v.contains('@')) ? l.requiredField : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _passwordCtrl,
-            decoration: InputDecoration(
-              labelText: l.passwordLabel,
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            TextFormField(
+              controller: _passwordCtrl,
+              decoration: InputDecoration(
+                labelText: l.passwordLabel,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
               ),
-            ),
-            obscureText: _obscurePassword,
-            autofillHints: _isSignUp
-                ? const [AutofillHints.newPassword]
-                : const [AutofillHints.password],
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) {
-              TextInput.finishAutofillContext();
-              _submit();
-            },
-            validator: (v) {
-              if (v == null || v.isEmpty) return l.requiredField;
-              if (_isSignUp && v.length < 8) return l.passwordTooShort;
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : () {
+              obscureText: _obscurePassword,
+              autofillHints: _isSignUp
+                  ? const [AutofillHints.newPassword]
+                  : const [AutofillHints.password],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
                 TextInput.finishAutofillContext();
                 _submit();
               },
-              icon: _isLoading
-                  ? const SizedBox(width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(_isSignUp ? Icons.person_add : Icons.login),
-              label: Text(_isSignUp ? l.signUpWithEmail : l.loginWithEmail),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                textStyle: const TextStyle(fontSize: 16),
+              validator: (v) {
+                if (v == null || v.isEmpty) return l.requiredField;
+                if (_isSignUp && v.length < 8) return l.passwordTooShort;
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        TextInput.finishAutofillContext();
+                        _submit();
+                      },
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : Icon(_isSignUp ? Icons.person_add : Icons.login),
+                label: Text(_isSignUp ? l.signUpWithEmail : l.loginWithEmail),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 16),
+                ),
               ),
             ),
-          ),
-          if (!_isSignUp)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: _forgotPassword,
-                child: Text(l.forgotPassword, style: const TextStyle(fontSize: 13)),
+            if (!_isSignUp)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _forgotPassword,
+                  child: Text(l.forgotPassword,
+                      style: const TextStyle(fontSize: 13)),
+                ),
               ),
+            TextButton(
+              onPressed: () => setState(() => _isSignUp = !_isSignUp),
+              child: Text(_isSignUp ? l.alreadyHaveAccount : l.noAccount,
+                  style: const TextStyle(fontSize: 13)),
             ),
-          TextButton(
-            onPressed: () => setState(() => _isSignUp = !_isSignUp),
-            child: Text(_isSignUp ? l.alreadyHaveAccount : l.noAccount,
-                style: const TextStyle(fontSize: 13)),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -1098,16 +1180,19 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   static const _themeModeKey = 'theme_mode';
 
   static ThemeData get _lightTheme => ThemeData(
-    colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-    useMaterial3: true,
-    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-  );
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        snackBarTheme:
+            const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      );
 
   static ThemeData get _darkTheme => ThemeData(
-    colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
-    useMaterial3: true,
-    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-  );
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.deepPurple, brightness: Brightness.dark),
+        useMaterial3: true,
+        snackBarTheme:
+            const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      );
 
   Future<void> _loadThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
@@ -1123,11 +1208,13 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   Future<void> _onThemeModeChanged(ThemeMode mode) async {
     setState(() => _themeMode = mode);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeModeKey, switch (mode) {
-      ThemeMode.light => 'light',
-      ThemeMode.dark => 'dark',
-      ThemeMode.system => 'system',
-    });
+    await prefs.setString(
+        _themeModeKey,
+        switch (mode) {
+          ThemeMode.light => 'light',
+          ThemeMode.dark => 'dark',
+          ThemeMode.system => 'system',
+        });
   }
 
   @override
@@ -1173,7 +1260,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     _initGuestMode().then((_) {
       appLogger.d('[_initGuestModeAsync] ✅ _initGuestMode completed');
       _dbInitialized = true;
-      appLogger.d('[_initGuestModeAsync] set _dbInitialized=true, calling setState()');
+      appLogger.d(
+          '[_initGuestModeAsync] set _dbInitialized=true, calling setState()');
       if (mounted) setState(() {});
     }).catchError((e) {
       appLogger.e('[_initGuestModeAsync] ❌ Error: $e');
@@ -1208,7 +1296,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       rethrow;
     }
   }
-  
+
   Future<void> _initDatabaseService() async {
     final db = NeonDatabaseService();
     _dbService = db;
@@ -1224,7 +1312,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         appLogger.i('✅ Token erfolgreich refreshed via NeonAuthService');
         return _authService.jwt;
       } else {
-        appLogger.w('⚠️ Token-Refresh fehlgeschlagen — returning null (no sign-out here)');
+        appLogger.w(
+            '⚠️ Token-Refresh fehlgeschlagen — returning null (no sign-out here)');
         return null;
       }
     };
@@ -1244,7 +1333,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
 
     if (_authService.isLoading) {
-      appLogger.d('[_initDatabaseService] ⚠️ Auth service still loading after timeout — proceeding without JWT');
+      appLogger.d(
+          '[_initDatabaseService] ⚠️ Auth service still loading after timeout — proceeding without JWT');
     } else {
       appLogger.d('[_initDatabaseService] ✓ Auth service ready');
     }
@@ -1252,7 +1342,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     // Sync JWT to DB service (sets db.userId, enabling data queries).
     if (_authService.jwt != null) {
       try {
-        appLogger.i('🔑 Setze JWT im DB-Service nach Auth-Init: ${_authService.jwt!.substring(0, 20)}...');
+        appLogger.i(
+            '🔑 Setze JWT im DB-Service nach Auth-Init: ${_authService.jwt!.substring(0, 20)}...');
         await db.setJWT(_authService.jwt!);
         appLogger.d('[_initDatabaseService] ✓ JWT synced to DB service');
       } catch (e) {
@@ -1284,16 +1375,17 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       _fetchAndApplyRole(jwt: jwt, userId: userId);
     }
 
-    appLogger.d('[_initDatabaseService] ✅ Database service initialization complete');
+    appLogger
+        .d('[_initDatabaseService] ✅ Database service initialization complete');
   }
-  
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _authService.removeListener(_onAuthChanged);
     super.dispose();
   }
-  
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
@@ -1326,16 +1418,18 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
     // Wenn Token in weniger als 1 Stunde abläuft, refresh es jetzt
     if (timeLeft.inMinutes < 60) {
-      appLogger.d('⏰ Token expiring soon (${timeLeft.inMinutes} min) - refreshing on resume...');
+      appLogger.d(
+          '⏰ Token expiring soon (${timeLeft.inMinutes} min) - refreshing on resume...');
       final success = await _authService.refreshTokenWithRetry(maxAttempts: 2);
       if (success) {
         appLogger.d('✅ Token refreshed on resume');
       } else {
-        appLogger.d('⚠️ Token refresh on resume failed - will require re-login if session expired');
+        appLogger.d(
+            '⚠️ Token refresh on resume failed - will require re-login if session expired');
       }
     }
   }
-  
+
   Future<void> _checkWebJWT() async {
     try {
       // ✅ WICHTIG: Warte bis AuthService fertig geladen hat
@@ -1343,7 +1437,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       while (_authService.isLoading) {
         await Future.delayed(const Duration(milliseconds: 50));
       }
-      
+
       appLogger.d('🔍 AuthService initialisiert, prüfe Web-JWT...');
 
       final jwtFromStorage = html.getFromLocalStorage('neon_jwt');
@@ -1369,48 +1463,52 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
         // Prüfe ob JWT gültig ist BEVOR wir es verwenden
         final isValid = JwtHelper.decodeToken(jwtFromStorage) != null;
-        final isExpired = isValid ? JwtHelper.isTokenExpired(jwtFromStorage) : true;
+        final isExpired =
+            isValid ? JwtHelper.isTokenExpired(jwtFromStorage) : true;
 
         if (!isValid || isExpired) {
           appLogger.e('❌ JWT in localStorage ist ungültig oder abgelaufen');
           appLogger.i('   Cleane FlutterSecureStorage...');
 
           // localStorage already cleaned above (consume-on-read)
-          
+
           // ✅ Cleane FlutterSecureStorage MANUELL (nicht nur signOut)
           final storage = const FlutterSecureStorage();
           await storage.delete(key: 'neon_jwt');
           await storage.delete(key: 'neon_session');
           await storage.delete(key: 'neon_cookie');
-          
+
           // ✅ Logout im AuthService
           await _authService.signOut();
-          
+
           appLogger.i('✅ Alle Storages geleert - bereit für Neu-Login');
           return;
         }
-        
+
         appLogger.i('✅ JWT ist gültig, setze in AuthService UND DB-Service...');
-        
+
         // ✅ WICHTIG: Setze JWT im AuthService (für isLoggedIn)
         await _authService.setJWT(jwtFromStorage);
-        
+
         // ✅ Setze auch im DB-Service (für Datenbank-Zugriff)
         await _dbService?.setJWT(jwtFromStorage);
 
-        appLogger.i('✅ JWT in beiden Services gesetzt - User sollte eingeloggt sein');
+        appLogger.i(
+            '✅ JWT in beiden Services gesetzt - User sollte eingeloggt sein');
       } else {
         appLogger.i('ℹ️ Kein JWT in localStorage - prüfe SecureStorage...');
-        
+
         // Falls AuthService ein JWT aus SecureStorage geladen hat, validiere es
         if (_authService.jwt != null) {
           appLogger.d('🔍 JWT in SecureStorage gefunden, validiere...');
-          
+
           final isValid = JwtHelper.decodeToken(_authService.jwt!) != null;
-          final isExpired = isValid ? JwtHelper.isTokenExpired(_authService.jwt!) : true;
-          
+          final isExpired =
+              isValid ? JwtHelper.isTokenExpired(_authService.jwt!) : true;
+
           if (!isValid || isExpired) {
-            appLogger.e('❌ JWT in SecureStorage ist ungültig - cleane nur Auth-Keys');
+            appLogger.e(
+                '❌ JWT in SecureStorage ist ungültig - cleane nur Auth-Keys');
 
             final storage = const FlutterSecureStorage();
             // ✅ WICHTIG: Nur Auth-Keys löschen, nicht deleteAll() verwenden!
@@ -1422,7 +1520,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
             await _authService.signOut();
 
-            appLogger.i('✅ Auth-Keys gelöscht - Einstellungen bleiben erhalten');
+            appLogger
+                .i('✅ Auth-Keys gelöscht - Einstellungen bleiben erhalten');
           }
         }
       }
@@ -1445,17 +1544,19 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
       await _authService.signOut();
 
-      appLogger.i('✅ Auth-Daten nach Fehler gelöscht - Einstellungen bleiben erhalten');
+      appLogger.i(
+          '✅ Auth-Daten nach Fehler gelöscht - Einstellungen bleiben erhalten');
     }
   }
-  
+
   Future<void> _checkOAuthCallback() async {
     appLogger.d('🔍 _checkOAuthCallback called');
     if (platform.isAndroid()) {
       appLogger.d('📱 isAndroid=true, calling getInitialLink...');
       try {
         const platform = MethodChannel('com.sws.dietry/deeplink');
-        final String? initialLink = await platform.invokeMethod('getInitialLink');
+        final String? initialLink =
+            await platform.invokeMethod('getInitialLink');
         appLogger.d('📞 getInitialLink returned: $initialLink');
 
         if (initialLink == null || initialLink.isEmpty) {
@@ -1481,18 +1582,24 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 
           if (verifier != null && verifier.isNotEmpty) {
             // ✅ Nutze NeonAuthService für Session-Exchange (braucht DB nicht)
-            appLogger.d('🔐 OAuth Verifier empfangen, tausche gegen Session...');
+            appLogger
+                .d('🔐 OAuth Verifier empfangen, tausche gegen Session...');
             appLogger.d('⏳ Waiting for getSessionWithVerifier...');
             try {
-              final success = await _authService.getSessionWithVerifier(verifier);
-              appLogger.d('✓ getSessionWithVerifier returned: success=$success');
+              final success =
+                  await _authService.getSessionWithVerifier(verifier);
+              appLogger
+                  .d('✓ getSessionWithVerifier returned: success=$success');
 
               if (success && _authService.jwt != null) {
-                appLogger.d('✓ JWT is set: ${_authService.jwt!.substring(0, 20)}...');
-                appLogger.d('✅ Android Login erfolgreich: ${_authService.session?['user']?['email']}');
+                appLogger.d(
+                    '✓ JWT is set: ${_authService.jwt!.substring(0, 20)}...');
+                appLogger.d(
+                    '✅ Android Login erfolgreich: ${_authService.session?['user']?['email']}');
                 // JWT wird automatisch vom _onAuthChanged Listener in DB Service übernommen
               } else {
-                appLogger.d('❌ Session-Exchange fehlgeschlagen: success=$success, jwt=${_authService.jwt != null}');
+                appLogger.d(
+                    '❌ Session-Exchange fehlgeschlagen: success=$success, jwt=${_authService.jwt != null}');
               }
             } catch (e) {
               appLogger.d('❌ Exception in getSessionWithVerifier: $e');
@@ -1502,7 +1609,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           }
         } else {
           appLogger.d('❌ URL does not match callback pattern');
-          appLogger.d('   Expected: ${androidCbUri?.scheme}://${androidCbUri?.host}${androidCbUri?.path}');
+          appLogger.d(
+              '   Expected: ${androidCbUri?.scheme}://${androidCbUri?.host}${androidCbUri?.path}');
           appLogger.d('   Got:      ${uri.scheme}://${uri.host}${uri.path}');
         }
       } catch (e) {
@@ -1513,17 +1621,21 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
   }
 
-
-
   void _onAuthChanged() {
     appLogger.d('🔄 [_onAuthChanged] Listener fired');
-    appLogger.d('🔄 [_onAuthChanged] State: jwt=${_authService.jwt != null ? "SET (${_authService.jwt!.length} bytes)" : "NULL"}, isLoggedIn=${_authService.isLoggedIn}, db=${_dbService != null ? "SET" : "NULL"}, dbInit=$_dbInitialized');
+    appLogger.d(
+        '🔄 [_onAuthChanged] State: jwt=${_authService.jwt != null ? "SET (${_authService.jwt!.length} bytes)" : "NULL"}, isLoggedIn=${_authService.isLoggedIn}, db=${_dbService != null ? "SET" : "NULL"}, dbInit=$_dbInitialized');
     final jwt = _authService.jwt;
     final db = _dbService;
 
-    if (jwt != null && _authService.isLoggedIn && db != null && _dbInitialized) {
-      appLogger.d('[_onAuthChanged] ✓ All conditions met, syncing JWT to DB...');
-      appLogger.d('[_onAuthChanged] ✓ JWT: ${jwt.substring(0, min(30, jwt.length))}...');
+    if (jwt != null &&
+        _authService.isLoggedIn &&
+        db != null &&
+        _dbInitialized) {
+      appLogger
+          .d('[_onAuthChanged] ✓ All conditions met, syncing JWT to DB...');
+      appLogger.d(
+          '[_onAuthChanged] ✓ JWT: ${jwt.substring(0, min(30, jwt.length))}...');
       // Sync new JWT to DB service (e.g. after auto-refresh).
       // Only call if db.init() has completed (_dio is initialized)
       appLogger.d('[_onAuthChanged] Calling db.setJWT...');
@@ -1535,7 +1647,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         appLogger.d('[_onAuthChanged] ✓ setJWT completed successfully');
         // Check if user was in guest mode and has data to migrate
         if (mounted && GuestModeService.wasGuestMode) {
-          appLogger.i('👤 User was in guest mode, checking for data to migrate...');
+          appLogger
+              .i('👤 User was in guest mode, checking for data to migrate...');
           _showGuestMigrationDialog(db);
         }
         final userId = db.userId;
@@ -1561,12 +1674,14 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       }
     } else {
       appLogger.d('[_onAuthChanged] ⚠️ No action taken');
-      appLogger.d('[_onAuthChanged] ⚠️ jwt=${jwt != null ? "SET (${jwt.length} bytes)" : "NULL"}');
+      appLogger.d(
+          '[_onAuthChanged] ⚠️ jwt=${jwt != null ? "SET (${jwt.length} bytes)" : "NULL"}');
       appLogger.d('[_onAuthChanged] ⚠️ loggedIn=${_authService.isLoggedIn}');
       appLogger.d('[_onAuthChanged] ⚠️ db=${db != null ? "SET" : "NULL"}');
       appLogger.d('[_onAuthChanged] ⚠️ dbInit=$_dbInitialized');
       if (jwt != null && db != null && !_dbInitialized) {
-        appLogger.d('[_onAuthChanged] ℹ️ JWT is available but DB not yet initialized — will be synced when DB ready');
+        appLogger.d(
+            '[_onAuthChanged] ℹ️ JWT is available but DB not yet initialized — will be synced when DB ready');
       }
     }
     appLogger.d('[_onAuthChanged] Calling setState...');
@@ -1580,18 +1695,21 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   /// Called both from _onAuthChanged (resume/token-refresh) and _initDatabaseService
   /// (initial login), because the auth listener fires before DB is ready on startup
   /// and the role fetch would otherwise be silently skipped.
-  Future<void> _fetchAndApplyRole({required String jwt, required String userId}) async {
+  Future<void> _fetchAndApplyRole(
+      {required String jwt, required String userId}) async {
     final prefs = await SharedPreferences.getInstance();
     final cachedRole = prefs.getString('user_role_$userId');
     if (cachedRole != null && mounted) {
       AppFeatures.setRole(cachedRole);
       setState(() {});
     }
-    premiumFeatures.fetchUserRole(
+    premiumFeatures
+        .fetchUserRole(
       userId: userId,
       authToken: jwt,
       apiUrl: AppConfig.dataApiUrl,
-    ).then((role) {
+    )
+        .then((role) {
       prefs.setString('user_role_$userId', role);
       AppFeatures.setRole(role);
       if (mounted) setState(() {});
@@ -1712,14 +1830,16 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           if (mounted) {
             if (result.success) {
               appLogger.i('✅ Migration completed successfully');
-              final summary = result.summary.isNotEmpty ? result.summary : 'Daten';
+              final summary =
+                  result.summary.isNotEmpty ? result.summary : 'Daten';
               _showSnackBar('✅ $summary übertragen');
               // Only clear guest data after successful migration
               await local.clearAll();
               await GuestModeService.disable();
               appLogger.i('✅ Guest data cleared after successful migration');
             } else {
-              appLogger.w('⚠️ Migration completed with errors: ${result.errors.join(', ')}');
+              appLogger.w(
+                  '⚠️ Migration completed with errors: ${result.errors.join(', ')}');
               _showSnackBar(l.migrationError);
               // Do NOT clear guest data if migration had errors
               appLogger.w('⚠️ Guest data preserved due to migration errors');
@@ -1766,7 +1886,8 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           ],
           supportedLocales: AppLocalizations.supportedLocales,
           locale: _locale,
-          home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+          home:
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
         );
       }
       // Guest mode ready: show home screen without auth
@@ -1800,11 +1921,13 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     // When not logged in, show the login screen immediately — no DB needed.
     // Check if still loading (remote mode) or waiting for guest mode initialization
     final isGuestMode = GuestModeService.isGuestMode;
-    appLogger.d('[build] isGuestMode=$isGuestMode, _dbInitialized=$_dbInitialized, _guestModeInitStarted=$_guestModeInitStarted');
+    appLogger.d(
+        '[build] isGuestMode=$isGuestMode, _dbInitialized=$_dbInitialized, _guestModeInitStarted=$_guestModeInitStarted');
 
     // Initialize guest mode if just activated
     if (isGuestMode && !_guestModeInitStarted) {
-      appLogger.d('🔄 Guest mode detected in build(), starting initialization...');
+      appLogger
+          .d('🔄 Guest mode detected in build(), starting initialization...');
       _guestModeInitStarted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         appLogger.d('[addPostFrameCallback] calling _initGuestModeAsync()');
@@ -1813,9 +1936,11 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
 
     final authServiceLoading = _authService.isLoading;
-    final remoteNeedsDb = !isGuestMode && (db == null || (_authService.isLoggedIn && !_dbInitialized));
+    final remoteNeedsDb = !isGuestMode &&
+        (db == null || (_authService.isLoggedIn && !_dbInitialized));
     final guestNeedsDb = isGuestMode && !_dbInitialized;
-    final isWaitingForInit = authServiceLoading || remoteNeedsDb || guestNeedsDb;
+    final isWaitingForInit =
+        authServiceLoading || remoteNeedsDb || guestNeedsDb;
 
     appLogger.d('[build] isWaitingForInit=$isWaitingForInit: '
         'authServiceLoading=$authServiceLoading, remoteNeedsDb=$remoteNeedsDb, guestNeedsDb=$guestNeedsDb');
@@ -1980,7 +2105,8 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
         bottom: (AppConfig.showDeveloperBanner || widget.isGuestMode)
             ? PreferredSize(
                 preferredSize: Size.fromHeight(
-                  (AppConfig.showDeveloperBanner ? 24 : 0) + (widget.isGuestMode ? 24 : 0),
+                  (AppConfig.showDeveloperBanner ? 24 : 0) +
+                      (widget.isGuestMode ? 24 : 0),
                 ),
                 child: Column(
                   children: [
@@ -2053,10 +2179,28 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
             itemBuilder: (ctx) {
               final lm = AppLocalizations.of(ctx)!;
               return [
-                PopupMenuItem(value: ThemeMode.light, child: Row(children: [const Icon(Icons.light_mode, size: 20), const SizedBox(width: 8), Text(lm.themeLight)])),
-                PopupMenuItem(value: ThemeMode.dark, child: Row(children: [const Icon(Icons.dark_mode, size: 20), const SizedBox(width: 8), Text(lm.themeDark)])),
+                PopupMenuItem(
+                    value: ThemeMode.light,
+                    child: Row(children: [
+                      const Icon(Icons.light_mode, size: 20),
+                      const SizedBox(width: 8),
+                      Text(lm.themeLight)
+                    ])),
+                PopupMenuItem(
+                    value: ThemeMode.dark,
+                    child: Row(children: [
+                      const Icon(Icons.dark_mode, size: 20),
+                      const SizedBox(width: 8),
+                      Text(lm.themeDark)
+                    ])),
                 const PopupMenuDivider(),
-                PopupMenuItem(value: ThemeMode.system, child: Row(children: [const Icon(Icons.brightness_auto, size: 20), const SizedBox(width: 8), Text(lm.themeSystem)])),
+                PopupMenuItem(
+                    value: ThemeMode.system,
+                    child: Row(children: [
+                      const Icon(Icons.brightness_auto, size: 20),
+                      const SizedBox(width: 8),
+                      Text(lm.themeSystem)
+                    ])),
               ];
             },
           ),
@@ -2066,9 +2210,12 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
             tooltip: l.languageTooltip,
             onSelected: widget.onLocaleChanged,
             itemBuilder: (_) => [
-              const PopupMenuItem(value: Locale('de'), child: Text('🇩🇪  Deutsch')),
-              const PopupMenuItem(value: Locale('en'), child: Text('🇬🇧  English')),
-              const PopupMenuItem(value: Locale('es'), child: Text('🇪🇸  Español')),
+              const PopupMenuItem(
+                  value: Locale('de'), child: Text('🇩🇪  Deutsch')),
+              const PopupMenuItem(
+                  value: Locale('en'), child: Text('🇬🇧  English')),
+              const PopupMenuItem(
+                  value: Locale('es'), child: Text('🇪🇸  Español')),
               const PopupMenuDivider(),
               const PopupMenuItem(value: null, child: Text('⚙️  System')),
             ],
@@ -2257,10 +2404,13 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _store.addListener(_onStoreChanged);
     _initializeAndLoadData();
     // Refresh data every 60 s while the app is in the foreground.
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) => _silentRefresh());
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 60), (_) => _silentRefresh());
     WaterReminderService.onInAppReminder = _showWaterReminder;
-    WaterReminderService.getWaterStatus = () =>
-        (_store.waterIntakeMl + _store.liquidFoodIntakeMl, _store.goal?.waterGoalMl ?? 2000);
+    WaterReminderService.getWaterStatus = () => (
+          _store.waterIntakeMl + _store.liquidFoodIntakeMl,
+          _store.goal?.waterGoalMl ?? 2000
+        );
   }
 
   @override
@@ -2311,10 +2461,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ],
         ),
         duration: const Duration(seconds: 6),
-        action: SnackBarAction(label: '+200 ml', onPressed: () {
-          // Immer zum heutigen Tag hinzufügen, unabhängig vom angezeigten Tag.
-          _addWaterToday(200);
-        }),
+        action: SnackBarAction(
+            label: '+200 ml',
+            onPressed: () {
+              // Immer zum heutigen Tag hinzufügen, unabhängig vom angezeigten Tag.
+              _addWaterToday(200);
+            }),
       ),
     );
   }
@@ -2331,8 +2483,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
     // Anderer Tag ausgewählt → heutigen Stand aus der DB holen und aktualisieren.
     if (widget.dbService != null) {
-      final currentIntake = await WaterIntakeService(widget.dbService!)
-          .getIntakeForDate(today);
+      final currentIntake =
+          await WaterIntakeService(widget.dbService!).getIntakeForDate(today);
       final newAmount = (currentIntake + deltaMl).clamp(0, 9999);
       await WaterIntakeService(widget.dbService!)
           .setIntakeForDate(today, newAmount);
@@ -2374,41 +2526,57 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   Future<void> _importFromHealthConnect(BuildContext ctx) async {
     final l = AppLocalizations.of(ctx)!;
     if (!HealthConnectService.isSupported) {
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
+      ScaffoldMessenger.of(ctx)
+          .showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
       return;
     }
     final hc = HealthConnectService();
     final granted = await hc.requestPermissions();
     if (!granted) {
-      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
+      if (ctx.mounted)
+        ScaffoldMessenger.of(ctx)
+            .showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
       return;
     }
     if (!ctx.mounted) return;
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectImporting)));
+    ScaffoldMessenger.of(ctx)
+        .showSnackBar(SnackBar(content: Text(l.healthConnectImporting)));
     try {
       final d = _selectedDay;
       final start = DateTime(d.year, d.month, d.day);
       final end = DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
       final imported = await hc.importActivities(start: start, end: end);
       if (imported.isEmpty) {
-        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectNoResults)));
+        if (ctx.mounted)
+          ScaffoldMessenger.of(ctx)
+              .showSnackBar(SnackBar(content: Text(l.healthConnectNoResults)));
         return;
       }
       final db = widget.dbService;
       // Auto-link imported workouts to a row in activity_database (so the edit
       // screen's dropdown finds a match) and fill in calories via MET when
       // Health Connect didn't record any.
-      final enriched = db != null
-          ? await _enrichImportedActivities(db, imported)
-          : imported;
+      final enriched =
+          db != null ? await _enrichImportedActivities(db, imported) : imported;
       Set<String> existingHcIds = {};
       if (db != null) {
-        final existing = await PhysicalActivityService(db).getActivitiesInRange(start: start, end: end);
-        existingHcIds = existing.map((a) => a.healthConnectRecordId).whereType<String>().toSet();
+        final existing = await PhysicalActivityService(db)
+            .getActivitiesInRange(start: start, end: end);
+        existingHcIds = existing
+            .map((a) => a.healthConnectRecordId)
+            .whereType<String>()
+            .toSet();
       } else {
-        existingHcIds = _store.activities.map((a) => a.healthConnectRecordId).whereType<String>().toSet();
+        existingHcIds = _store.activities
+            .map((a) => a.healthConnectRecordId)
+            .whereType<String>()
+            .toSet();
       }
-      final toSave = enriched.where((a) => a.healthConnectRecordId == null || !existingHcIds.contains(a.healthConnectRecordId)).toList();
+      final toSave = enriched
+          .where((a) =>
+              a.healthConnectRecordId == null ||
+              !existingHcIds.contains(a.healthConnectRecordId))
+          .toList();
       for (final activity in toSave) {
         final saved = await _sync.saveActivity(activity);
         _store.addActivity(saved ?? activity);
@@ -2492,7 +2660,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         );
       }).toList();
     } catch (e) {
-      appLogger.w('⚠️ Failed to enrich imported activities, using raw HC data: $e');
+      appLogger
+          .w('⚠️ Failed to enrich imported activities, using raw HC data: $e');
       return imported;
     }
   }
@@ -2505,12 +2674,15 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     final hc = HealthConnectService();
     final granted = await hc.requestPermissions();
     if (!granted) {
-      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
+      if (ctx.mounted)
+        ScaffoldMessenger.of(ctx)
+            .showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
       return;
     }
     if (!ctx.mounted) return;
 
-    final earliestGoalDate = await NutritionGoalService(db).getEarliestGoalDate();
+    final earliestGoalDate =
+        await NutritionGoalService(db).getEarliestGoalDate();
     if (!ctx.mounted) return;
 
     final dateStr = earliestGoalDate != null
@@ -2539,15 +2711,20 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     );
     if (useAllData == null || !ctx.mounted) return;
 
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectImportingBody)));
+    ScaffoldMessenger.of(ctx)
+        .showSnackBar(SnackBar(content: Text(l.healthConnectImportingBody)));
 
     try {
       final end = DateTime.now();
-      final start = (useAllData || earliestGoalDate == null) ? DateTime(2000) : earliestGoalDate;
+      final start = (useAllData || earliestGoalDate == null)
+          ? DateTime(2000)
+          : earliestGoalDate;
       final imported = await hc.importBodyMeasurements(start: start, end: end);
 
       if (imported.isEmpty) {
-        if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(l.healthConnectNoResultsBody)));
+        if (ctx.mounted)
+          ScaffoldMessenger.of(ctx).showSnackBar(
+              SnackBar(content: Text(l.healthConnectNoResultsBody)));
         return;
       }
 
@@ -2698,9 +2875,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     final previousDay = _selectedDay.subtract(const Duration(days: 1));
     bool hasGoal;
     if (widget.dbService != null) {
-      hasGoal = await NutritionGoalService(widget.dbService!).hasGoalForDate(previousDay);
+      hasGoal = await NutritionGoalService(widget.dbService!)
+          .hasGoalForDate(previousDay);
     } else {
-      hasGoal = (await LocalDataService.instance.getGoalForDate(previousDay)) != null;
+      hasGoal =
+          (await LocalDataService.instance.getGoalForDate(previousDay)) != null;
     }
     if (!mounted) return;
     if (_canGoBack != hasGoal) {
@@ -2736,11 +2915,14 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
             ? l.cheatDayMonthlyNudge(monthCount)
             : l.cheatDayMarked;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+          SnackBar(
+              content: Text(message), duration: const Duration(seconds: 3)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.cheatDayRemoved), duration: const Duration(seconds: 2)),
+          SnackBar(
+              content: Text(l.cheatDayRemoved),
+              duration: const Duration(seconds: 2)),
         );
       }
     } catch (e) {
@@ -2750,16 +2932,20 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   }
 
   /// Opens the share progress sheet (cloud-only feature).
-  void _showShareSheet(BuildContext context, AppLocalizations l, int streak, int bestStreak) {
+  void _showShareSheet(
+      BuildContext context, AppLocalizations l, int streak, int bestStreak) {
     if (!AppFeatures.shareProgress) return;
 
     final store = DataStore.instance;
 
     // Calculate today's nutrition totals
-    final todayCalories = store.foodEntries.fold<double>(0, (sum, e) => sum + e.calories);
-    final todayProtein = store.foodEntries.fold<double>(0, (sum, e) => sum + e.protein);
+    final todayCalories =
+        store.foodEntries.fold<double>(0, (sum, e) => sum + e.calories);
+    final todayProtein =
+        store.foodEntries.fold<double>(0, (sum, e) => sum + e.protein);
     final todayFat = store.foodEntries.fold<double>(0, (sum, e) => sum + e.fat);
-    final todayCarbs = store.foodEntries.fold<double>(0, (sum, e) => sum + e.carbs);
+    final todayCarbs =
+        store.foodEntries.fold<double>(0, (sum, e) => sum + e.carbs);
 
     final goal = store.goal;
     final todayDate = _selectedDay;
@@ -2786,14 +2972,15 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   void _changeDay(int offset) async {
     final newDay = _selectedDay.add(Duration(days: offset));
     final today = DateTime.now();
-    
+
     // ✅ Normalisiere beide Daten auf 00:00:00 für korrekten Vergleich
     final newDayNormalized = DateTime(newDay.year, newDay.month, newDay.day);
     final todayNormalized = DateTime(today.year, today.month, today.day);
-    
+
     // ✅ Beschränkung 1: Nicht in die Zukunft blättern
     if (newDayNormalized.isAfter(todayNormalized)) {
-      appLogger.w('⚠️ Kann nicht in die Zukunft blättern (heute ist ${today.toIso8601String().split('T')[0]})');
+      appLogger.w(
+          '⚠️ Kann nicht in die Zukunft blättern (heute ist ${today.toIso8601String().split('T')[0]})');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.cannotNavigateToFuture),
@@ -2802,7 +2989,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       );
       return;
     }
-    
+
     // ✅ Beschränkung 2: Prüfe ob Goal für neuen Tag existiert (beim Zurückblättern)
     if (offset < 0) {
       bool hasGoal = false;
@@ -2813,19 +3000,22 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         hasGoal = await goalService.hasGoalForDate(newDay);
       } else {
         // Guest mode: check with LocalDataService
-        final localGoal = await LocalDataService.instance.getGoalForDate(newDay);
+        final localGoal =
+            await LocalDataService.instance.getGoalForDate(newDay);
         hasGoal = localGoal != null;
       }
 
-      if (!mounted) return;  // ✅ Prüfe nach async Operation
+      if (!mounted) return; // ✅ Prüfe nach async Operation
 
       if (!hasGoal) {
-        appLogger.w('⚠️ Kein Goal für ${newDay.toIso8601String().split('T')[0]} gefunden');
+        appLogger.w(
+            '⚠️ Kein Goal für ${newDay.toIso8601String().split('T')[0]} gefunden');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               AppLocalizations.of(context)!.noGoalForDate(
-                DateFormat.yMd(Localizations.localeOf(context).toString()).format(newDay),
+                DateFormat.yMd(Localizations.localeOf(context).toString())
+                    .format(newDay),
               ),
             ),
             duration: const Duration(seconds: 2),
@@ -2834,7 +3024,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         return;
       }
     }
-    
+
     if (!mounted) return;
 
     setState(() => _selectedDay = newDay);
@@ -2930,10 +3120,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         ),
       );
     }
-    
+
     // Build FAB based on selected tab
     Widget? fab;
-    if (_selectedIndex == 3 && HealthConnectService.isSupported && widget.dbService != null) {
+    if (_selectedIndex == 3 &&
+        HealthConnectService.isSupported &&
+        widget.dbService != null) {
       fab = FloatingActionButton(
         heroTag: 'fab_reports_health_connect',
         onPressed: () => _importBodyWeightsFromHealthConnect(context),
@@ -2978,7 +3170,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
             FloatingActionButton.extended(
               heroTag: 'fab_add_activity',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => AddActivityScreen(dbService: db, selectedDate: _selectedDay),
+                builder: (_) => AddActivityScreen(
+                    dbService: db, selectedDate: _selectedDay),
               )),
               icon: const Icon(Icons.add),
               label: Text(l.addActivity),
@@ -2987,7 +3180,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
             FloatingActionButton(
               heroTag: 'fab_add_activity',
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => AddActivityScreen(dbService: db, selectedDate: _selectedDay),
+                builder: (_) => AddActivityScreen(
+                    dbService: db, selectedDate: _selectedDay),
               )),
               tooltip: l.addActivity,
               child: const Icon(Icons.add),
@@ -3002,7 +3196,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       final isAuthenticated = !widget.isGuestMode && db != null;
 
       if (isAuthenticated) {
-        final hasMealTemplates = AppFeatures.mealTemplates && jwt != null && userId != null;
+        final hasMealTemplates =
+            AppFeatures.mealTemplates && jwt != null && userId != null;
         fab = Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -3015,7 +3210,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                     isScrollControlled: true,
                     useSafeArea: true,
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(16)),
                     ),
                     builder: (ctx) => FractionallySizedBox(
                       heightFactor: 0.85,
@@ -3047,7 +3243,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                             updatedAt: now,
                           );
                           await _sync.createFoodEntry(entry);
-                          await _store.loadDay(_selectedDay, silent: true, delta: true);
+                          await _store.loadDay(_selectedDay,
+                              silent: true, delta: true);
                         },
                       ),
                     ),
@@ -3066,7 +3263,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                   isScrollControlled: true,
                   useSafeArea: true,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                   builder: (ctx) => FractionallySizedBox(
                     heightFactor: 0.85,
@@ -3076,7 +3274,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                       initialMealType: _suggestMealType(),
                       onAdd: (entry) async {
                         await _sync.createFoodEntry(entry);
-                        await _store.loadDay(_selectedDay, silent: true, delta: true);
+                        await _store.loadDay(_selectedDay,
+                            silent: true, delta: true);
                       },
                     ),
                   ),
@@ -3145,7 +3344,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
                 canGoBack: _canGoBack,
-                canGoForward: !DateUtils.isSameDay(_selectedDay, DateTime.now()),
+                canGoForward:
+                    !DateUtils.isSameDay(_selectedDay, DateTime.now()),
                 onWaterChanged: _onWaterChanged,
                 dbService: widget.dbService,
                 isCheatDay: _store.isCheatDay,
@@ -3153,7 +3353,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 bestStreak: _store.bestStreak,
                 onToggleCheatDay: _toggleCheatDay,
                 onShareProgress: AppFeatures.shareProgress
-                    ? () => _showShareSheet(context, AppLocalizations.of(context)!, _store.streak, _store.bestStreak)
+                    ? () => _showShareSheet(
+                        context,
+                        AppLocalizations.of(context)!,
+                        _store.streak,
+                        _store.bestStreak)
                     : null,
               ),
               FoodEntriesListScreen(
@@ -3162,7 +3366,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
                 canGoBack: _canGoBack,
-                canGoForward: !DateUtils.isSameDay(_selectedDay, DateTime.now()),
+                canGoForward:
+                    !DateUtils.isSameDay(_selectedDay, DateTime.now()),
               ),
               ActivitiesListScreen(
                 dbService: widget.dbService,
@@ -3170,7 +3375,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 onChangeDay: _changeDay,
                 onJumpToToday: _jumpToToday,
                 canGoBack: _canGoBack,
-                canGoForward: !DateUtils.isSameDay(_selectedDay, DateTime.now()),
+                canGoForward:
+                    !DateUtils.isSameDay(_selectedDay, DateTime.now()),
               ),
               ReportsScreen(
                 dbService: widget.dbService,
@@ -3202,33 +3408,42 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ListenableBuilder(
             listenable: _sync,
             builder: (context, _) {
-              if (_sync.isOnline && _sync.pendingCount == 0) return const SizedBox.shrink();
+              if (_sync.isOnline && _sync.pendingCount == 0)
+                return const SizedBox.shrink();
               return Positioned(
-                top: 0, left: 0, right: 0,
+                top: 0,
+                left: 0,
+                right: 0,
                 child: Material(
-                  color: _sync.isOnline ? Colors.orange.shade700 : Colors.red.shade700,
+                  color: _sync.isOnline
+                      ? Colors.orange.shade700
+                      : Colors.red.shade700,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Row(
                       children: [
                         Icon(
                           _sync.isOnline ? Icons.sync : Icons.wifi_off,
-                          color: Colors.white, size: 16,
+                          color: Colors.white,
+                          size: 16,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _sync.isOnline
-                              ? '${_sync.pendingCount} ${l.pendingSyncCount}'
-                              : l.offlineMode,
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                                ? '${_sync.pendingCount} ${l.pendingSyncCount}'
+                                : l.offlineMode,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
                           ),
                         ),
                         if (_sync.isOnline && _sync.pendingCount > 0)
                           TextButton(
                             onPressed: _sync.processPendingQueue,
                             child: Text(l.syncNow,
-                              style: const TextStyle(color: Colors.white, fontSize: 12)),
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 12)),
                           ),
                       ],
                     ),
@@ -3271,7 +3486,6 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       ),
     );
   }
-
 }
 
 // Übersicht-Screen mit Nährwert-Tabelle, Kreisdiagramm und Tag-Wechsel
@@ -3322,7 +3536,8 @@ class OverviewScreen extends StatelessWidget {
   double get totalCarbs => entries.fold(0, (sum, e) => sum + e.carbs);
 
   // ✅ Berechne verbrannte Kalorien aus activities
-  double get totalCaloriesBurned => activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
+  double get totalCaloriesBurned =>
+      activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
 
   String _formatRemainingCalories(double remaining, AppLocalizations l) {
     final absValue = remaining.abs().toStringAsFixed(0);
@@ -3363,8 +3578,8 @@ class OverviewScreen extends StatelessWidget {
                 Text(
                   label,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ],
             ),
@@ -3376,7 +3591,11 @@ class OverviewScreen extends StatelessWidget {
                   (label: l.goal, value: goalValue, color: null),
                   (label: l.consumed, value: consumedValue, color: null),
                   if (burnedValue != '-')
-                    (label: l.caloriesBurned, value: burnedValue, color: Colors.green.shade700),
+                    (
+                      label: l.caloriesBurned,
+                      value: burnedValue,
+                      color: Colors.green.shade700
+                    ),
                 ];
 
                 // On narrow screens (typical Android phones with ellipsis-kicking-in
@@ -3396,18 +3615,24 @@ class OverviewScreen extends StatelessWidget {
                               child: Text(
                                 stats[i].label,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Colors.grey.shade600,
+                                    ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               stats[i].value,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: stats[i].color,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: stats[i].color,
+                                  ),
                             ),
                           ],
                         ),
@@ -3427,18 +3652,24 @@ class OverviewScreen extends StatelessWidget {
                             Text(
                               s.label,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
-                                fontSize: s.color != null ? 11 : null,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.grey.shade600,
+                                    fontSize: s.color != null ? 11 : null,
+                                  ),
                             ),
                             Text(
                               s.value,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: s.color,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: s.color,
+                                  ),
                             ),
                           ],
                         ),
@@ -3461,17 +3692,19 @@ class OverviewScreen extends StatelessWidget {
                   Text(
                     AppLocalizations.of(context)!.remaining,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
+                          color: Colors.grey.shade600,
+                        ),
                   ),
                   Text(
                     remainingValue,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: remainingValue.contains('too much') || remainingValue.contains('zu viel') || remainingValue.contains('demasiado')
-                          ? Colors.red
-                          : Colors.green,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: remainingValue.contains('too much') ||
+                                  remainingValue.contains('zu viel') ||
+                                  remainingValue.contains('demasiado')
+                              ? Colors.red
+                              : Colors.green,
+                        ),
                   ),
                 ],
               ),
@@ -3483,8 +3716,10 @@ class OverviewScreen extends StatelessWidget {
   }
 
   Widget _buildNutritionOverview(BuildContext context, AppLocalizations l) {
-    final remainingCalories = goal.calories - totalCalories + totalCaloriesBurned;
-    final remainingProtein = (goal.protein - totalProtein).clamp(0, goal.protein);
+    final remainingCalories =
+        goal.calories - totalCalories + totalCaloriesBurned;
+    final remainingProtein =
+        (goal.protein - totalProtein).clamp(0, goal.protein);
     final remainingFat = (goal.fat - totalFat).clamp(0, goal.fat);
     final remainingCarbs = (goal.carbs - totalCarbs).clamp(0, goal.carbs);
 
@@ -3500,7 +3735,9 @@ class OverviewScreen extends StatelessWidget {
               l.nutrientCalories,
               '${goal.calories.toStringAsFixed(0)} kcal',
               '${totalCalories.toStringAsFixed(0)} kcal',
-              totalCaloriesBurned > 0 ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal' : '-',
+              totalCaloriesBurned > 0
+                  ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal'
+                  : '-',
               _formatRemainingCalories(remainingCalories, l),
               Colors.deepPurple,
             ),
@@ -3542,15 +3779,19 @@ class OverviewScreen extends StatelessWidget {
           const DataColumn(label: Text('')),
           DataColumn(label: Text(l.goal, overflow: TextOverflow.ellipsis)),
           DataColumn(label: Text(l.consumed, overflow: TextOverflow.ellipsis)),
-          DataColumn(label: Text(l.caloriesBurned, overflow: TextOverflow.ellipsis)),
+          DataColumn(
+              label: Text(l.caloriesBurned, overflow: TextOverflow.ellipsis)),
           DataColumn(label: Text(l.remaining, overflow: TextOverflow.ellipsis)),
         ],
         rows: [
           if (!goal.macroOnly)
             DataRow(cells: [
-              DataCell(Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
-              DataCell(Text(goal.calories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
-              DataCell(Text(totalCalories.toStringAsFixed(0), overflow: TextOverflow.ellipsis)),
+              DataCell(
+                  Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
+              DataCell(Text(goal.calories.toStringAsFixed(0),
+                  overflow: TextOverflow.ellipsis)),
+              DataCell(Text(totalCalories.toStringAsFixed(0),
+                  overflow: TextOverflow.ellipsis)),
               DataCell(Text(
                 totalCaloriesBurned.toStringAsFixed(0),
                 overflow: TextOverflow.ellipsis,
@@ -3566,24 +3807,33 @@ class OverviewScreen extends StatelessWidget {
             ]),
           DataRow(cells: [
             DataCell(Text(l.nutrientProtein, overflow: TextOverflow.ellipsis)),
-            DataCell(Text(goal.protein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalProtein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.protein.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalProtein.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
             const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
-            DataCell(Text(remainingProtein.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingProtein.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
           ]),
           DataRow(cells: [
             DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
-            DataCell(Text(goal.fat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalFat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.fat.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalFat.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
             const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
-            DataCell(Text(remainingFat.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingFat.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
           ]),
           DataRow(cells: [
             DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
-            DataCell(Text(goal.carbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalCarbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(goal.carbs.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
+            DataCell(Text(totalCarbs.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
             const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
-            DataCell(Text(remainingCarbs.toStringAsFixed(1), overflow: TextOverflow.ellipsis)),
+            DataCell(Text(remainingCarbs.toStringAsFixed(1),
+                overflow: TextOverflow.ellipsis)),
           ]),
         ],
       );
@@ -3615,7 +3865,8 @@ class OverviewScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.water_drop, color: Colors.blue),
                 const SizedBox(width: 8),
-                Text(l.waterTitle, style: Theme.of(context).textTheme.titleMedium),
+                Text(l.waterTitle,
+                    style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 12),
@@ -3674,7 +3925,9 @@ class OverviewScreen extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
 
     // Lokalisierte Datumsanzeige
-    String formattedDate = DateFormat.yMMMMd(Localizations.localeOf(context).toString()).format(selectedDay);
+    String formattedDate =
+        DateFormat.yMMMMd(Localizations.localeOf(context).toString())
+            .format(selectedDay);
     final isToday = DateUtils.isSameDay(selectedDay, DateTime.now());
 
     return SingleChildScrollView(
@@ -3714,8 +3967,8 @@ class OverviewScreen extends StatelessWidget {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: Text(l.today,
-                          style: const TextStyle(fontSize: 12)),
+                      child:
+                          Text(l.today, style: const TextStyle(fontSize: 12)),
                     ),
                 ],
               ),
@@ -3743,7 +3996,8 @@ class OverviewScreen extends StatelessWidget {
                 GestureDetector(
                   onTap: onShareProgress,
                   child: Tooltip(
-                    message: bestStreak > 0 ? l.streakBestLabel(bestStreak) : '',
+                    message:
+                        bestStreak > 0 ? l.streakBestLabel(bestStreak) : '',
                     child: Chip(
                       avatar: Text(
                         streak >= 7 ? '🔥' : (streak > 0 ? '✨' : '💤'),
@@ -3787,7 +4041,9 @@ class OverviewScreen extends StatelessWidget {
                 selectedColor: Colors.orange.shade100,
                 checkmarkColor: Colors.orange.shade800,
                 side: BorderSide(
-                  color: isCheatDay ? Colors.orange.shade400 : Colors.grey.shade300,
+                  color: isCheatDay
+                      ? Colors.orange.shade400
+                      : Colors.grey.shade300,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 visualDensity: VisualDensity.compact,
@@ -3805,7 +4061,8 @@ class OverviewScreen extends StatelessWidget {
                 side: BorderSide(color: Colors.orange.shade200),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     const Text('🎉', style: TextStyle(fontSize: 24)),
@@ -3830,7 +4087,9 @@ class OverviewScreen extends StatelessWidget {
             // Kalorien-Fortschritt (mit verbrannten Kalorien)
             Text(l.nutrientCalories),
             LinearProgressIndicator(
-              value: goal.calories > 0 ? (totalCalories / goal.calories).clamp(0, 1) : 0,
+              value: goal.calories > 0
+                  ? (totalCalories / goal.calories).clamp(0, 1)
+                  : 0,
               minHeight: 12,
               backgroundColor: Colors.grey[300],
               color: Colors.deepPurple,
@@ -3838,10 +4097,22 @@ class OverviewScreen extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final stats = <({String label, String value, Color? color})>[
-                  (label: l.consumed, value: '${totalCalories.toStringAsFixed(0)} kcal', color: null),
+                  (
+                    label: l.consumed,
+                    value: '${totalCalories.toStringAsFixed(0)} kcal',
+                    color: null
+                  ),
                   if (totalCaloriesBurned > 0)
-                    (label: l.caloriesBurned, value: '${totalCaloriesBurned.toStringAsFixed(0)} kcal', color: Colors.green.shade700),
-                  (label: l.goal, value: '${goal.calories.toStringAsFixed(0)} kcal', color: null),
+                    (
+                      label: l.caloriesBurned,
+                      value: '${totalCaloriesBurned.toStringAsFixed(0)} kcal',
+                      color: Colors.green.shade700
+                    ),
+                  (
+                    label: l.goal,
+                    value: '${goal.calories.toStringAsFixed(0)} kcal',
+                    color: null
+                  ),
                 ];
 
                 // Narrow screens: stack label:value rows vertically so the
@@ -3889,7 +4160,9 @@ class OverviewScreen extends StatelessWidget {
                           '${stats[i].label}: ${stats[i].value}',
                           style: TextStyle(color: stats[i].color),
                           overflow: TextOverflow.ellipsis,
-                          textAlign: i == stats.length - 1 ? TextAlign.end : TextAlign.start,
+                          textAlign: i == stats.length - 1
+                              ? TextAlign.end
+                              : TextAlign.start,
                         ),
                       ),
                     ],
@@ -3901,9 +4174,10 @@ class OverviewScreen extends StatelessWidget {
               '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: (goal.calories - totalCalories + totalCaloriesBurned) >= 0
-                    ? Colors.green
-                    : Colors.red,
+                color:
+                    (goal.calories - totalCalories + totalCaloriesBurned) >= 0
+                        ? Colors.green
+                        : Colors.red,
               ),
             ),
           ],
@@ -4004,9 +4278,9 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
           Text(
             '200 ml',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Colors.blue,
-              fontWeight: FontWeight.bold,
-            ),
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(width: 16),
           IconButton.filled(
@@ -4089,7 +4363,9 @@ class AddFoodScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    String formattedDate = DateFormat.yMMMMd(Localizations.localeOf(context).toString()).format(selectedDay);
+    String formattedDate =
+        DateFormat.yMMMMd(Localizations.localeOf(context).toString())
+            .format(selectedDay);
     // Gruppiere Einträge nach MealType
     final Map<MealType, List<FoodEntry>> grouped = {
       for (var type in MealType.values) type: []
@@ -4136,14 +4412,16 @@ class AddFoodScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
                         child: Text(
                           type.localizedName(l),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
                       ...grouped[type]!.map((entry) => Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 4),
                             child: ListTile(
                               title: Text(entry.name),
                               subtitle: Text(
@@ -4151,7 +4429,8 @@ class AddFoodScreen extends StatelessWidget {
                                 'Kcal: ${entry.calories.toStringAsFixed(0)}',
                               ),
                               trailing: entry.isLiquid && entry.unit == 'ml'
-                                  ? const Icon(Icons.water_drop, color: Colors.lightBlue, size: 20)
+                                  ? const Icon(Icons.water_drop,
+                                      color: Colors.lightBlue, size: 20)
                                   : null,
                             ),
                           )),

@@ -39,7 +39,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Laden: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler beim Laden: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -62,7 +64,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
         if (mounted) {
           final l = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.entryUpdated), backgroundColor: Colors.green),
+            SnackBar(
+                content: Text(l.entryUpdated), backgroundColor: Colors.green),
           );
           _loadActivities();
         }
@@ -70,7 +73,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
         if (mounted) {
           final l = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
+            SnackBar(
+                content: Text(l.errorPrefix(e.toString())),
+                backgroundColor: Colors.red),
           );
         }
       }
@@ -148,7 +153,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.activityDeleted), backgroundColor: Colors.green),
+          SnackBar(
+              content: Text(l.activityDeleted), backgroundColor: Colors.green),
         );
         _loadActivities();
       }
@@ -156,7 +162,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -174,26 +182,29 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.fitness_center, size: 64, color: Colors.grey.shade400),
+                      Icon(Icons.fitness_center,
+                          size: 64, color: Colors.grey.shade400),
                       const SizedBox(height: 16),
                       Text(
                         l.activitiesEmpty,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.grey.shade600,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         l.activitiesEmptyHint,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade500,
-                        ),
+                              color: Colors.grey.shade500,
+                            ),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom),
+                  padding: EdgeInsets.only(
+                      bottom: 88 + MediaQuery.paddingOf(context).bottom),
                   itemCount: _activities.length,
                   itemBuilder: (context, index) {
                     final activity = _activities[index];
@@ -219,7 +230,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                               padding: const EdgeInsets.only(right: 8),
                               child: Chip(
                                 label: Text(
-                                  activity.isApproved ? l.statusPublic : l.statusPending,
+                                  activity.isApproved
+                                      ? l.statusPublic
+                                      : l.statusPending,
                                   style: const TextStyle(fontSize: 11),
                                 ),
                                 backgroundColor: activity.isApproved
@@ -255,10 +268,13 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                             itemBuilder: (context) {
                               final lp = AppLocalizations.of(context)!;
                               return [
-                                PopupMenuItem(value: 'edit', child: Text(lp.edit)),
+                                PopupMenuItem(
+                                    value: 'edit', child: Text(lp.edit)),
                                 PopupMenuItem(
                                   value: 'delete',
-                                  child: Text(lp.delete, style: const TextStyle(color: Colors.red)),
+                                  child: Text(lp.delete,
+                                      style:
+                                          const TextStyle(color: Colors.red)),
                                 ),
                               ];
                             },
@@ -296,7 +312,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
             } catch (e) {
               if (mounted) {
                 messenger.showSnackBar(
-                  SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
+                  SnackBar(
+                      content: Text(l.errorPrefix(e.toString())),
+                      backgroundColor: Colors.red),
                 );
               }
             }
@@ -370,14 +388,18 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
       userId: widget.activity?.userId,
       name: _nameController.text.trim(),
       metValue: parseDouble(_metValueController.text),
-      category: _categoryController.text.isNotEmpty ? _categoryController.text.trim() : null,
+      category: _categoryController.text.isNotEmpty
+          ? _categoryController.text.trim()
+          : null,
       intensity: _intensity,
-      description: _descriptionController.text.isNotEmpty ? _descriptionController.text.trim() : null,
+      description: _descriptionController.text.isNotEmpty
+          ? _descriptionController.text.trim()
+          : null,
       avgSpeedKmh: _avgSpeedController.text.isNotEmpty
           ? tryParseDouble(_avgSpeedController.text)
           : null,
       isPublic: _isPublic,
-      isApproved: false,  // Immer zurücksetzen beim Speichern
+      isApproved: false, // Immer zurücksetzen beim Speichern
       source: widget.activity?.source ?? 'Custom',
       createdAt: widget.activity?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
@@ -390,166 +412,171 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
+      scrollable: true,
       title: Text(widget.isEditing ? l.editMeasurementTitle : l.saveToDatabase),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Warnung bei Bearbeitung eines bereits freigegebenen Eintrags
-              if (widget.isEditing && widget.activity?.isApproved == true)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning_amber, color: Colors.orange.shade700, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Dieser Eintrag ist öffentlich freigegeben. Eine Bearbeitung setzt die Freigabe zurück.',
-                          style: TextStyle(fontSize: 12, color: Colors.orange.shade900),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Info MET
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Warnung bei Bearbeitung eines bereits freigegebenen Eintrags
+            if (widget.isEditing && widget.activity?.isApproved == true)
               Container(
                 padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    Icon(Icons.warning_amber,
+                        color: Colors.orange.shade700, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'MET = Vielfaches des Ruheenergieverbrauchs',
-                        style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                        'Dieser Eintrag ist öffentlich freigegeben. Eine Bearbeitung setzt die Freigabe zurück.',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.orange.shade900),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // Name
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? l.requiredField : null,
+            // Info MET
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
               ),
-
-              const SizedBox(height: 12),
-
-              // MET-Wert
-              TextFormField(
-                controller: _metValueController,
-                decoration: const InputDecoration(
-                  labelText: 'MET-Wert *',
-                  hintText: 'z.B. 3.5 für Gehen',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
-                ],
-                validator: (value) {
-                  if (value == null || value.isEmpty) return l.requiredField;
-                  final met = tryParseDouble(value);
-                  if (met == null || met <= 0) return l.weightInvalid;
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 12),
-
-              // Kategorie
-              TextFormField(
-                controller: _categoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Kategorie (optional)',
-                  hintText: 'z.B. Ausdauer, Kraft, Sport',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Intensität
-              DropdownButtonFormField<String>(
-                initialValue: _intensity,
-                decoration: const InputDecoration(
-                  labelText: 'Intensität',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'low', child: Text('Niedrig')),
-                  DropdownMenuItem(value: 'moderate', child: Text('Moderat')),
-                  DropdownMenuItem(value: 'high', child: Text('Hoch')),
-                  DropdownMenuItem(value: 'very_high', child: Text('Sehr Hoch')),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _intensity = value);
-                },
-              ),
-
-              const SizedBox(height: 12),
-
-              // Beschreibung
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Beschreibung (optional)',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-
-              const SizedBox(height: 12),
-
-              // Durchschn. Geschwindigkeit
-              TextFormField(
-                controller: _avgSpeedController,
-                decoration: const InputDecoration(
-                  labelText: 'Durchschn. Geschwindigkeit (optional)',
-                  suffixText: 'km/h',
-                  hintText: 'Für Distanz-Schätzung',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'MET = Vielfaches des Ruheenergieverbrauchs',
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                    ),
+                  ),
                 ],
               ),
+            ),
 
-              const SizedBox(height: 4),
-
-              // Öffentlich-Switch
-              SwitchListTile(
-                title: const Text('Für alle Nutzer sichtbar'),
-                subtitle: const Text('Erfordert Admin-Freigabe'),
-                value: _isPublic,
-                onChanged: (value) => setState(() => _isPublic = value),
-                contentPadding: EdgeInsets.zero,
+            // Name
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Name *',
+                border: OutlineInputBorder(),
               ),
-            ],
-          ),
+              validator: (value) =>
+                  (value == null || value.isEmpty) ? l.requiredField : null,
+            ),
+
+            const SizedBox(height: 12),
+
+            // MET-Wert
+            TextFormField(
+              controller: _metValueController,
+              decoration: const InputDecoration(
+                labelText: 'MET-Wert *',
+                hintText: 'z.B. 3.5 für Gehen',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+              ],
+              validator: (value) {
+                if (value == null || value.isEmpty) return l.requiredField;
+                final met = tryParseDouble(value);
+                if (met == null || met <= 0) return l.weightInvalid;
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            // Kategorie
+            TextFormField(
+              controller: _categoryController,
+              decoration: const InputDecoration(
+                labelText: 'Kategorie (optional)',
+                hintText: 'z.B. Ausdauer, Kraft, Sport',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Intensität
+            DropdownButtonFormField<String>(
+              initialValue: _intensity,
+              decoration: const InputDecoration(
+                labelText: 'Intensität',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'low', child: Text('Niedrig')),
+                DropdownMenuItem(value: 'moderate', child: Text('Moderat')),
+                DropdownMenuItem(value: 'high', child: Text('Hoch')),
+                DropdownMenuItem(value: 'very_high', child: Text('Sehr Hoch')),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => _intensity = value);
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            // Beschreibung
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Beschreibung (optional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+
+            const SizedBox(height: 12),
+
+            // Durchschn. Geschwindigkeit
+            TextFormField(
+              controller: _avgSpeedController,
+              decoration: const InputDecoration(
+                labelText: 'Durchschn. Geschwindigkeit (optional)',
+                suffixText: 'km/h',
+                hintText: 'Für Distanz-Schätzung',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+              ],
+            ),
+
+            const SizedBox(height: 4),
+
+            // Öffentlich-Switch
+            SwitchListTile(
+              title: const Text('Für alle Nutzer sichtbar'),
+              subtitle: const Text('Erfordert Admin-Freigabe'),
+              value: _isPublic,
+              onChanged: (value) => setState(() => _isPublic = value),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
         ),
       ),
       actions: [

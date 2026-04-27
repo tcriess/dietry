@@ -3,7 +3,8 @@ import '../utils/number_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart' if (dart.library.html) 'image_picker_web.dart';
+import 'package:image_picker/image_picker.dart'
+    if (dart.library.html) 'image_picker_web.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
@@ -62,20 +63,25 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
 
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      foods = foods.where((f) =>
-        f.name.toLowerCase().contains(q) ||
-        (f.brand?.toLowerCase().contains(q) ?? false) ||
-        (f.category?.toLowerCase().contains(q) ?? false)
-      ).toList();
+      foods = foods
+          .where((f) =>
+              f.name.toLowerCase().contains(q) ||
+              (f.brand?.toLowerCase().contains(q) ?? false) ||
+              (f.category?.toLowerCase().contains(q) ?? false))
+          .toList();
     }
 
     switch (_sortOrder) {
       case _SortOrder.alphabetical:
-        foods.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        foods.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       case _SortOrder.newest:
         foods.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       case _SortOrder.recentlyUsed:
-        final order = {for (var i = 0; i < _recentlyUsedFoodIds.length; i++) _recentlyUsedFoodIds[i]: i};
+        final order = {
+          for (var i = 0; i < _recentlyUsedFoodIds.length; i++)
+            _recentlyUsedFoodIds[i]: i
+        };
         foods.sort((a, b) {
           final ai = order[a.id] ?? _recentlyUsedFoodIds.length;
           final bi = order[b.id] ?? _recentlyUsedFoodIds.length;
@@ -99,7 +105,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
 
   Future<void> _loadRecentlyUsedFoodIds() async {
     try {
-      final ids = await FoodDatabaseService(widget.dbService).getRecentlyUsedFoodIds();
+      final ids =
+          await FoodDatabaseService(widget.dbService).getRecentlyUsedFoodIds();
       if (mounted) setState(() => _recentlyUsedFoodIds = ids);
     } catch (e) {
       appLogger.w('_loadRecentlyUsedFoodIds: $e');
@@ -149,7 +156,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       appLogger.e('_loadFoods: Error loading foods: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Laden: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler beim Laden: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -158,17 +167,20 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   }
 
   Future<void> _editFood(FoodItem food) async {
-    appLogger.d('_editFood: Opening dialog for ${food.name}, hasImage=${food.hasImage}');
+    appLogger.d(
+        '_editFood: Opening dialog for ${food.name}, hasImage=${food.hasImage}');
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => FoodEditDialog(food: food, dbService: widget.dbService),
+      builder: (context) =>
+          FoodEditDialog(food: food, dbService: widget.dbService),
     );
     if (result == null) {
       appLogger.d('_editFood: Dialog cancelled');
       return;
     }
 
-    appLogger.d('_editFood: Dialog returned food ${result.name}, hasImage=${result.hasImage}');
+    appLogger.d(
+        '_editFood: Dialog returned food ${result.name}, hasImage=${result.hasImage}');
 
     try {
       final service = FoodDatabaseService(widget.dbService);
@@ -190,7 +202,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -214,8 +228,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -259,7 +272,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -268,7 +283,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   Future<void> _addFood() async {
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => FoodEditDialog(food: null, dbService: widget.dbService),
+      builder: (context) =>
+          FoodEditDialog(food: null, dbService: widget.dbService),
     );
     if (result == null) return;
 
@@ -289,7 +305,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.errorPrefix(e.toString())), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -311,7 +329,11 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
               PopupMenuItem(
                 value: _SortOrder.newest,
                 child: Row(children: [
-                  Icon(_sortOrder == _SortOrder.newest ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  Icon(
+                      _sortOrder == _SortOrder.newest
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 18),
                   const SizedBox(width: 8),
                   Text(l.sortNewest),
                 ]),
@@ -319,7 +341,11 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
               PopupMenuItem(
                 value: _SortOrder.alphabetical,
                 child: Row(children: [
-                  Icon(_sortOrder == _SortOrder.alphabetical ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  Icon(
+                      _sortOrder == _SortOrder.alphabetical
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 18),
                   const SizedBox(width: 8),
                   Text(l.sortAlphabetical),
                 ]),
@@ -327,7 +353,11 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
               PopupMenuItem(
                 value: _SortOrder.recentlyUsed,
                 child: Row(children: [
-                  Icon(_sortOrder == _SortOrder.recentlyUsed ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                  Icon(
+                      _sortOrder == _SortOrder.recentlyUsed
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 18),
                   const SizedBox(width: 8),
                   Text(l.sortRecentlyUsed),
                 ]),
@@ -369,7 +399,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                               },
                             )
                           : null,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24)),
                       contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       isDense: true,
                     ),
@@ -381,11 +412,13 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 8),
+                      padding: const EdgeInsets.only(
+                          left: 8, right: 8, top: 8, bottom: 8),
                       child: Wrap(
                         spacing: 8,
                         children: _availableTags.map((tag) {
-                          final isSelected = _selectedTagSlugs.contains(tag.slug);
+                          final isSelected =
+                              _selectedTagSlugs.contains(tag.slug);
                           return FilterChip(
                             label: Text(tag.name),
                             selected: isSelected,
@@ -416,11 +449,16 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.no_food, size: 64, color: Colors.grey.shade400),
+                            Icon(Icons.no_food,
+                                size: 64, color: Colors.grey.shade400),
                             const SizedBox(height: 16),
-                            Text(l.entriesEmpty, style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                            Text(l.entriesEmpty,
+                                style: TextStyle(
+                                    color: Colors.grey.shade600, fontSize: 16)),
                             const SizedBox(height: 8),
-                            Text(l.foodDatabaseEmpty, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                            Text(l.foodDatabaseEmpty,
+                                style: TextStyle(
+                                    color: Colors.grey.shade500, fontSize: 13)),
                           ],
                         ),
                       );
@@ -434,314 +472,377 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                       );
                     }
                     return ListView.builder(
-                          padding: EdgeInsets.only(bottom: 88 + MediaQuery.paddingOf(context).bottom, top: 8, left: 4, right: 4),
-                          itemCount: displayed.length,
-                          itemBuilder: (context, index) {
-                    final food = displayed[index];
-                    final isSmallScreen = MediaQuery.of(context).size.width < 500;
+                      padding: EdgeInsets.only(
+                          bottom: 88 + MediaQuery.paddingOf(context).bottom,
+                          top: 8,
+                          left: 4,
+                          right: 4),
+                      itemCount: displayed.length,
+                      itemBuilder: (context, index) {
+                        final food = displayed[index];
+                        final isSmallScreen =
+                            MediaQuery.of(context).size.width < 500;
 
-                    return GestureDetector(
-                      onTap: () => _editFood(food),
-                      child: Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Thumbnail
-                              FoodThumbnailWidget(
-                                food: food,
-                                imageService: _imageService,
-                                imageCache: _imageCache,
-                              ),
-                              const SizedBox(width: 12),
+                        return GestureDetector(
+                          onTap: () => _editFood(food),
+                          child: Card(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Thumbnail
+                                  FoodThumbnailWidget(
+                                    food: food,
+                                    imageService: _imageService,
+                                    imageCache: _imageCache,
+                                  ),
+                                  const SizedBox(width: 12),
 
-                              // Content
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Name + Status badge
-                                    Row(
+                                  // Content
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            food.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
+                                        // Name + Status badge
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                food.name,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                                            if (food.isPublic && !isSmallScreen)
+                                              Container(
+                                                margin: const EdgeInsets.only(
+                                                    left: 8),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: food.isApproved
+                                                      ? Colors.green.shade100
+                                                      : Colors.orange.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      food.isApproved
+                                                          ? Icons.public
+                                                          : Icons
+                                                              .pending_outlined,
+                                                      size: 12,
+                                                      color: food.isApproved
+                                                          ? Colors
+                                                              .green.shade700
+                                                          : Colors
+                                                              .orange.shade700,
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      food.isApproved
+                                                          ? l.statusPublic
+                                                          : l.statusPending,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: food.isApproved
+                                                            ? Colors
+                                                                .green.shade700
+                                                            : Colors.orange
+                                                                .shade700,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
                                         ),
-                                        if (food.isPublic && !isSmallScreen)
+                                        const SizedBox(height: 4),
+
+                                        // Nutrition info
+                                        Text(
+                                          '${food.calories.toInt()} kcal • '
+                                          'P ${food.protein.toStringAsFixed(0)}g • '
+                                          'F ${food.fat.toStringAsFixed(0)}g • '
+                                          'C ${food.carbs.toStringAsFixed(0)}g'
+                                          '${food.category != null ? ' • ${food.category}' : ''}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+
+                                        // Tags display
+                                        if (food.tags.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Wrap(
+                                            spacing: 4,
+                                            children:
+                                                food.tags.take(3).map((tag) {
+                                              return Chip(
+                                                label: Text(
+                                                  tag.name,
+                                                  style: const TextStyle(
+                                                      fontSize: 10),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                materialTapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
+                                                backgroundColor:
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .secondaryContainer,
+                                                labelStyle: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSecondaryContainer,
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                          if (food.tags.length > 3)
+                                            Text(
+                                              '+${food.tags.length - 3} mehr',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                        ],
+
+                                        // Public status badge on small screens
+                                        if (food.isPublic && isSmallScreen) ...[
+                                          const SizedBox(height: 4),
                                           Container(
-                                            margin: const EdgeInsets.only(left: 8),
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
                                               color: food.isApproved
                                                   ? Colors.green.shade100
                                                   : Colors.orange.shade100,
-                                              borderRadius: BorderRadius.circular(10),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Icon(
-                                                  food.isApproved ? Icons.public : Icons.pending_outlined,
-                                                  size: 12,
+                                                  food.isApproved
+                                                      ? Icons.public
+                                                      : Icons.pending_outlined,
+                                                  size: 10,
                                                   color: food.isApproved
                                                       ? Colors.green.shade700
                                                       : Colors.orange.shade700,
                                                 ),
-                                                const SizedBox(width: 3),
+                                                const SizedBox(width: 2),
                                                 Text(
-                                                  food.isApproved ? l.statusPublic : l.statusPending,
+                                                  food.isApproved
+                                                      ? l.statusPublic
+                                                      : l.statusPending,
                                                   style: TextStyle(
-                                                    fontSize: 10,
+                                                    fontSize: 9,
                                                     fontWeight: FontWeight.bold,
                                                     color: food.isApproved
                                                         ? Colors.green.shade700
-                                                        : Colors.orange.shade700,
+                                                        : Colors
+                                                            .orange.shade700,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
+                                        ],
                                       ],
                                     ),
-                                    const SizedBox(height: 4),
+                                  ),
+                                  const SizedBox(width: 12),
 
-                                    // Nutrition info
-                                    Text(
-                                      '${food.calories.toInt()} kcal • '
-                                      'P ${food.protein.toStringAsFixed(0)}g • '
-                                      'F ${food.fat.toStringAsFixed(0)}g • '
-                                      'C ${food.carbs.toStringAsFixed(0)}g'
-                                      '${food.category != null ? ' • ${food.category}' : ''}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-
-                                    // Tags display
-                                    if (food.tags.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Wrap(
-                                        spacing: 4,
-                                        children: food.tags.take(3).map((tag) {
-                                          return Chip(
-                                            label: Text(
-                                              tag.name,
-                                              style: const TextStyle(fontSize: 10),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                                            labelStyle: TextStyle(
-                                              fontSize: 10,
-                                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                      if (food.tags.length > 3)
-                                        Text(
-                                          '+${food.tags.length - 3} mehr',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                    ],
-
-                                    // Public status badge on small screens
-                                    if (food.isPublic && isSmallScreen) ...[
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: food.isApproved
-                                              ? Colors.green.shade100
-                                              : Colors.orange.shade100,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              food.isApproved ? Icons.public : Icons.pending_outlined,
-                                              size: 10,
-                                              color: food.isApproved
-                                                  ? Colors.green.shade700
-                                                  : Colors.orange.shade700,
-                                            ),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              food.isApproved ? l.statusPublic : l.statusPending,
-                                              style: TextStyle(
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                                color: food.isApproved
-                                                    ? Colors.green.shade700
-                                                    : Colors.orange.shade700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-
-                              // Actions
-                              if (!isSmallScreen)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        food.isFavourite ? Icons.star : Icons.star_border,
-                                        size: 20,
-                                        color: food.isFavourite
-                                            ? Colors.amber.shade600
-                                            : Colors.grey.shade400,
-                                      ),
-                                      tooltip: food.isFavourite
-                                          ? 'Aus Favoriten entfernen'
-                                          : 'Als Favorit markieren',
-                                      onPressed: () => _toggleFavourite(food),
-                                      padding: EdgeInsets.zero,
-                                      constraints:
-                                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                                    ),
-                                    if (AppFeatures.microNutrients)
-                                      IconButton(
-                                        icon: const Icon(Icons.science_outlined, size: 20),
-                                        tooltip: 'Mikronährstoffe',
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                        onPressed: () {
-                                          final jwt = widget.dbService.jwt;
-                                          final userId = widget.dbService.userId;
-                                          if (jwt == null || userId == null) return;
-                                          premiumFeatures.showFoodDatabaseMicrosSheet(
-                                            context: context,
-                                            foodId: food.id,
-                                            foodName: food.name,
-                                            userId: userId,
-                                            authToken: jwt,
-                                            apiUrl: NeonDatabaseService.dataApiUrl,
-                                          );
-                                        },
-                                      ),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit_outlined, size: 20),
-                                      tooltip: l.edit,
-                                      onPressed: () => _editFood(food),
-                                      padding: EdgeInsets.zero,
-                                      constraints:
-                                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                      tooltip: l.delete,
-                                      onPressed: () => _deleteFood(food),
-                                      padding: EdgeInsets.zero,
-                                      constraints:
-                                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                                    ),
-                                  ],
-                                )
-                              else
-                                PopupMenuButton<String>(
-                                  onSelected: (value) {
-                                    switch (value) {
-                                      case 'favourite':
-                                        _toggleFavourite(food);
-                                      case 'micros':
-                                        final jwt = widget.dbService.jwt;
-                                        final userId = widget.dbService.userId;
-                                        if (jwt == null || userId == null) return;
-                                        premiumFeatures.showFoodDatabaseMicrosSheet(
-                                          context: context,
-                                          foodId: food.id,
-                                          foodName: food.name,
-                                          userId: userId,
-                                          authToken: jwt,
-                                          apiUrl: NeonDatabaseService.dataApiUrl,
-                                        );
-                                      case 'edit':
-                                        _editFood(food);
-                                      case 'delete':
-                                        _deleteFood(food);
-                                    }
-                                  },
-                                  itemBuilder: (BuildContext context) => [
-                                    PopupMenuItem(
-                                      value: 'favourite',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            food.isFavourite ? Icons.star : Icons.star_border,
+                                  // Actions
+                                  if (!isSmallScreen)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            food.isFavourite
+                                                ? Icons.star
+                                                : Icons.star_border,
+                                            size: 20,
                                             color: food.isFavourite
                                                 ? Colors.amber.shade600
-                                                : Colors.grey.shade600,
+                                                : Colors.grey.shade400,
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(food.isFavourite
+                                          tooltip: food.isFavourite
                                               ? 'Aus Favoriten entfernen'
-                                              : 'Als Favorit markieren'),
-                                        ],
-                                      ),
-                                    ),
-                                    if (AppFeatures.microNutrients)
-                                      PopupMenuItem(
-                                        value: 'micros',
-                                        child: Row(
-                                          children: const [
-                                            Icon(Icons.science_outlined),
-                                            SizedBox(width: 8),
-                                            Text('Mikronährstoffe'),
-                                          ],
+                                              : 'Als Favorit markieren',
+                                          onPressed: () =>
+                                              _toggleFavourite(food),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                              minWidth: 32, minHeight: 32),
                                         ),
-                                      ),
-                                    PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: const [
-                                          Icon(Icons.edit_outlined),
-                                          SizedBox(width: 8),
-                                          Text('Bearbeiten'),
-                                        ],
-                                      ),
+                                        if (AppFeatures.microNutrients)
+                                          IconButton(
+                                            icon: const Icon(
+                                                Icons.science_outlined,
+                                                size: 20),
+                                            tooltip: 'Mikronährstoffe',
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(
+                                                minWidth: 32, minHeight: 32),
+                                            onPressed: () {
+                                              final jwt = widget.dbService.jwt;
+                                              final userId =
+                                                  widget.dbService.userId;
+                                              if (jwt == null || userId == null)
+                                                return;
+                                              premiumFeatures
+                                                  .showFoodDatabaseMicrosSheet(
+                                                context: context,
+                                                foodId: food.id,
+                                                foodName: food.name,
+                                                userId: userId,
+                                                authToken: jwt,
+                                                apiUrl: NeonDatabaseService
+                                                    .dataApiUrl,
+                                              );
+                                            },
+                                          ),
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined,
+                                              size: 20),
+                                          tooltip: l.edit,
+                                          onPressed: () => _editFood(food),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                              minWidth: 32, minHeight: 32),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline,
+                                              size: 20, color: Colors.red),
+                                          tooltip: l.delete,
+                                          onPressed: () => _deleteFood(food),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                              minWidth: 32, minHeight: 32),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    PopupMenuButton<String>(
+                                      onSelected: (value) {
+                                        switch (value) {
+                                          case 'favourite':
+                                            _toggleFavourite(food);
+                                          case 'micros':
+                                            final jwt = widget.dbService.jwt;
+                                            final userId =
+                                                widget.dbService.userId;
+                                            if (jwt == null || userId == null)
+                                              return;
+                                            premiumFeatures
+                                                .showFoodDatabaseMicrosSheet(
+                                              context: context,
+                                              foodId: food.id,
+                                              foodName: food.name,
+                                              userId: userId,
+                                              authToken: jwt,
+                                              apiUrl: NeonDatabaseService
+                                                  .dataApiUrl,
+                                            );
+                                          case 'edit':
+                                            _editFood(food);
+                                          case 'delete':
+                                            _deleteFood(food);
+                                        }
+                                      },
+                                      itemBuilder: (BuildContext context) => [
+                                        PopupMenuItem(
+                                          value: 'favourite',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                food.isFavourite
+                                                    ? Icons.star
+                                                    : Icons.star_border,
+                                                color: food.isFavourite
+                                                    ? Colors.amber.shade600
+                                                    : Colors.grey.shade600,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(food.isFavourite
+                                                  ? 'Aus Favoriten entfernen'
+                                                  : 'Als Favorit markieren'),
+                                            ],
+                                          ),
+                                        ),
+                                        if (AppFeatures.microNutrients)
+                                          PopupMenuItem(
+                                            value: 'micros',
+                                            child: Row(
+                                              children: const [
+                                                Icon(Icons.science_outlined),
+                                                SizedBox(width: 8),
+                                                Text('Mikronährstoffe'),
+                                              ],
+                                            ),
+                                          ),
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: const [
+                                              Icon(Icons.edit_outlined),
+                                              SizedBox(width: 8),
+                                              Text('Bearbeiten'),
+                                            ],
+                                          ),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: const [
+                                              Icon(Icons.delete_outline,
+                                                  color: Colors.red),
+                                              SizedBox(width: 8),
+                                              Text('Löschen',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: const [
-                                          Icon(Icons.delete_outline, color: Colors.red),
-                                          SizedBox(width: 8),
-                                          Text('Löschen', style: TextStyle(color: Colors.red)),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
-                  },
-                );
                   }),
                 ),
               ],
@@ -762,7 +863,8 @@ class FoodEditDialog extends StatefulWidget {
   final FoodItem? food;
   final NeonDatabaseService dbService;
 
-  const FoodEditDialog({super.key, required this.food, required this.dbService});
+  const FoodEditDialog(
+      {super.key, required this.food, required this.dbService});
 
   @override
   State<FoodEditDialog> createState() => FoodEditDialogState();
@@ -782,7 +884,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   late final TextEditingController _sodiumController;
   late final TextEditingController _saturatedFatController;
   late final TextEditingController _barcodeController;
-  final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
+  final List<({TextEditingController name, TextEditingController amount})>
+      _portionRows = [];
   late bool _isPublic;
   late bool _isLiquid;
 
@@ -804,7 +907,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   void initState() {
     super.initState();
     final f = widget.food;
-    appLogger.d('FoodEditDialogState.initState: food=${f?.name}, hasImage=${f?.hasImage}');
+    appLogger.d(
+        'FoodEditDialogState.initState: food=${f?.name}, hasImage=${f?.hasImage}');
     _nameController = TextEditingController(text: f?.name ?? '');
     _caloriesController = TextEditingController(
         text: f != null ? f.calories.toStringAsFixed(0) : '');
@@ -823,13 +927,16 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     _sodiumController = TextEditingController(
         text: f?.sodium != null ? f!.sodium!.toStringAsFixed(1) : '');
     _saturatedFatController = TextEditingController(
-        text: f?.saturatedFat != null ? f!.saturatedFat!.toStringAsFixed(1) : '');
+        text:
+            f?.saturatedFat != null ? f!.saturatedFat!.toStringAsFixed(1) : '');
     _barcodeController = TextEditingController(text: f?.barcode ?? '');
     for (final p in (widget.food?.portions ?? [])) {
       _portionRows.add((
         name: TextEditingController(text: p.name),
         amount: TextEditingController(
-            text: p.amountG % 1 == 0 ? p.amountG.toInt().toString() : p.amountG.toString()),
+            text: p.amountG % 1 == 0
+                ? p.amountG.toInt().toString()
+                : p.amountG.toString()),
       ));
     }
     _isPublic = f?.isPublic ?? false;
@@ -838,10 +945,12 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     // Initialize image service and load existing image if editing
     _imageService = FoodImageService(widget.dbService);
     if (_isEdit && f!.hasImage) {
-      appLogger.d('FoodEditDialogState.initState: Starting image load, hasImage=true');
+      appLogger.d(
+          'FoodEditDialogState.initState: Starting image load, hasImage=true');
       _loadExistingImage();
     } else {
-      appLogger.d('FoodEditDialogState.initState: Skipping image load (isEdit=$_isEdit, hasImage=${f?.hasImage})');
+      appLogger.d(
+          'FoodEditDialogState.initState: Skipping image load (isEdit=$_isEdit, hasImage=${f?.hasImage})');
     }
 
     // Initialize tag service and load existing tags if editing
@@ -863,18 +972,21 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       }
       appLogger.d('_loadExistingTags: ${tags.length} tags loaded');
     } catch (e, stackTrace) {
-      appLogger.w('_loadExistingTags: Failed to load tags: $e', error: e, stackTrace: stackTrace);
+      appLogger.w('_loadExistingTags: Failed to load tags: $e',
+          error: e, stackTrace: stackTrace);
     }
   }
 
   Future<void> _loadExistingImage() async {
     if (!mounted) return;
-    appLogger.d('_loadExistingImage: Loading existing image for food ${widget.food!.id}');
+    appLogger.d(
+        '_loadExistingImage: Loading existing image for food ${widget.food!.id}');
     setState(() => _isLoadingImage = true);
     try {
       final image = await _imageService.fetchImage(widget.food!.id);
       if (image != null) {
-        appLogger.d('_loadExistingImage: Image loaded successfully, size: ${image.length} bytes');
+        appLogger.d(
+            '_loadExistingImage: Image loaded successfully, size: ${image.length} bytes');
       } else {
         appLogger.d('_loadExistingImage: No image found');
       }
@@ -882,7 +994,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         setState(() => _existingImageBase64 = image);
       }
     } catch (e, stackTrace) {
-      appLogger.w('_loadExistingImage: Failed to load image: $e', error: e, stackTrace: stackTrace);
+      appLogger.w('_loadExistingImage: Failed to load image: $e',
+          error: e, stackTrace: stackTrace);
       // Silently fail — image load is not critical
     } finally {
       if (mounted) {
@@ -899,7 +1012,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
       if (pickedFile != null) {
-        appLogger.d('_pickImage: File selected: ${pickedFile.path}, mimeType: ${pickedFile.mimeType}');
+        appLogger.d(
+            '_pickImage: File selected: ${pickedFile.path}, mimeType: ${pickedFile.mimeType}');
         try {
           final bytes = await pickedFile.readAsBytes();
           appLogger.d('_pickImage: Successfully read ${bytes.length} bytes');
@@ -909,7 +1023,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
           });
           appLogger.d('_pickImage: Image state updated successfully');
         } catch (readError) {
-          appLogger.e('_pickImage: Error reading file bytes: $readError', error: readError);
+          appLogger.e('_pickImage: Error reading file bytes: $readError',
+              error: readError);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -923,7 +1038,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         appLogger.d('_pickImage: No file selected (user cancelled)');
       }
     } on PlatformException catch (e, stackTrace) {
-      appLogger.e('_pickImage: Platform error during image selection: ${e.code} - ${e.message}', error: e, stackTrace: stackTrace);
+      appLogger.e(
+          '_pickImage: Platform error during image selection: ${e.code} - ${e.message}',
+          error: e,
+          stackTrace: stackTrace);
 
       // Check if this is the Linux file chooser issue
       final isLinuxFileChooserError = e.code == 'channel-error' &&
@@ -945,7 +1063,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         );
       }
     } catch (e, stackTrace) {
-      appLogger.e('_pickImage: Error during image selection: $e', error: e, stackTrace: stackTrace);
+      appLogger.e('_pickImage: Error during image selection: $e',
+          error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -972,14 +1091,18 @@ class FoodEditDialogState extends State<FoodEditDialog> {
           _selectedImageBytes = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bild gelöscht'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Bild gelöscht'), backgroundColor: Colors.green),
         );
       }
     } catch (e, stackTrace) {
-      appLogger.e('_deleteImage: Failed to delete image: $e', error: e, stackTrace: stackTrace);
+      appLogger.e('_deleteImage: Failed to delete image: $e',
+          error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Löschen: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler beim Löschen: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -991,11 +1114,13 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       return;
     }
     if (!mounted) {
-      appLogger.d('_uploadImageIfSelected: Widget not mounted, skipping upload');
+      appLogger
+          .d('_uploadImageIfSelected: Widget not mounted, skipping upload');
       return;
     }
 
-    appLogger.d('_uploadImageIfSelected: Starting upload for food $foodId, image size: ${_selectedImageBytes!.length} bytes');
+    appLogger.d(
+        '_uploadImageIfSelected: Starting upload for food $foodId, image size: ${_selectedImageBytes!.length} bytes');
     setState(() => _isUploadingImage = true);
     try {
       await _imageService.saveImage(foodId, _selectedImageBytes!);
@@ -1003,15 +1128,19 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       appLogger.i('_uploadImageIfSelected: Image uploaded successfully');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bild hochgeladen'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Bild hochgeladen'), backgroundColor: Colors.green),
         );
       }
     } catch (e, stackTrace) {
       _imageUploadSuccess = false;
-      appLogger.e('_uploadImageIfSelected: Upload failed: $e', error: e, stackTrace: stackTrace);
+      appLogger.e('_uploadImageIfSelected: Upload failed: $e',
+          error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler beim Hochladen: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler beim Hochladen: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -1102,7 +1231,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       _carbsController.text = f.carbs.toStringAsFixed(1);
       if (f.fiber != null) _fiberController.text = f.fiber!.toStringAsFixed(1);
       if (f.sugar != null) _sugarController.text = f.sugar!.toStringAsFixed(1);
-      if (f.sodium != null) _sodiumController.text = f.sodium!.toStringAsFixed(1);
+      if (f.sodium != null)
+        _sodiumController.text = f.sodium!.toStringAsFixed(1);
       if (f.saturatedFat != null) {
         _saturatedFatController.text = f.saturatedFat!.toStringAsFixed(1);
       }
@@ -1133,7 +1263,9 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     }
 
     // If deleting an image, hasImage should be false
-    if (_existingImageBase64 == null && widget.food?.hasImage == true && _selectedImageBytes == null) {
+    if (_existingImageBase64 == null &&
+        widget.food?.hasImage == true &&
+        _selectedImageBytes == null) {
       hasImage = false;
     }
 
@@ -1152,19 +1284,25 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       servingSize: null,
       servingUnit: null,
       portions: _portionRows
-          .where((r) => r.name.text.trim().isNotEmpty && r.amount.text.isNotEmpty)
+          .where(
+              (r) => r.name.text.trim().isNotEmpty && r.amount.text.isNotEmpty)
           .map((r) => FoodPortion(
                 name: r.name.text.trim(),
                 amountG: tryParseDouble(r.amount.text) ?? 0,
               ))
           .where((p) => p.amountG > 0)
           .toList(),
-      category:
-          _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : null,
-      brand: _brandController.text.trim().isNotEmpty ? _brandController.text.trim() : null,
-      barcode: _barcodeController.text.trim().isNotEmpty ? _barcodeController.text.trim() : null,
+      category: _categoryController.text.trim().isNotEmpty
+          ? _categoryController.text.trim()
+          : null,
+      brand: _brandController.text.trim().isNotEmpty
+          ? _brandController.text.trim()
+          : null,
+      barcode: _barcodeController.text.trim().isNotEmpty
+          ? _barcodeController.text.trim()
+          : null,
       isPublic: _isPublic,
-      isApproved: false,  // Immer zurücksetzen – Admin muss erneut freigeben
+      isApproved: false, // Immer zurücksetzen – Admin muss erneut freigeben
       isFavourite: widget.food?.isFavourite ?? false,
       isLiquid: _isLiquid,
       hasImage: hasImage,
@@ -1175,12 +1313,14 @@ class FoodEditDialogState extends State<FoodEditDialog> {
 
     // Save tags if editing and tags were modified
     if (_isEdit) {
-      appLogger.d('_save: Saving ${_editingTags.length} tags for food ${food.id}');
+      appLogger
+          .d('_save: Saving ${_editingTags.length} tags for food ${food.id}');
       await _tagService.setFoodTags(food.id, _editingTags);
     }
 
     if (mounted) {
-      appLogger.d('_save: Closing dialog with food: ${food.name}, hasImage: ${food.hasImage}');
+      appLogger.d(
+          '_save: Closing dialog with food: ${food.name}, hasImage: ${food.hasImage}');
       Navigator.of(context).pop(food);
     }
   }
@@ -1200,9 +1340,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         isDense: true,
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
-      validator: (v) =>
-          (v == null || v.isEmpty) ? requiredMsg : null,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
+      ],
+      validator: (v) => (v == null || v.isEmpty) ? requiredMsg : null,
     );
   }
 
@@ -1214,398 +1355,416 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
+      scrollable: true,
       title: Text(_isEdit ? l.editEntryTitle : l.newFood),
       content: SizedBox(
         width: 400,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_isEdit && widget.food!.isApproved) ...[
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade300),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 16, color: Colors.amber.shade800),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Dieser Eintrag ist öffentlich freigegeben. '
-                            'Nach dem Speichern muss er erneut von einem Admin bestätigt werden.',
-                            style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_isEdit && widget.food!.isApproved) ...[
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade300),
                   ),
-                  child: Text(
-                    'Nährwerte pro 100 g bzw. 100 ml angeben',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade900,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Name
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: l.foodName,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? l.requiredField : null,
-                ),
-                const SizedBox(height: 12),
-
-                // Image picker section
-                if (_isLoadingImage)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  Column(
+                  child: Row(
                     children: [
-                      // Image preview or placeholder
-                      Container(
-                        width: double.infinity,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey.shade100,
+                      Icon(Icons.info_outline,
+                          size: 16, color: Colors.amber.shade800),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Dieser Eintrag ist öffentlich freigegeben. '
+                          'Nach dem Speichern muss er erneut von einem Admin bestätigt werden.',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.amber.shade900),
                         ),
-                        child: _selectedImageBytes != null
-                            ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
-                            : _existingImageBase64 != null
-                                ? Image.memory(
-                                    _decodeBase64(_existingImageBase64!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.image_not_supported,
-                                          size: 48, color: Colors.grey.shade400),
-                                      const SizedBox(height: 8),
-                                      Text('Kein Bild',
-                                          style: TextStyle(color: Colors.grey.shade600)),
-                                    ],
-                                  ),
                       ),
-                      const SizedBox(height: 10),
-
-                      // Image action buttons
-                      Row(
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _isUploadingImage ? null : _pickImage,
-                            icon: const Icon(Icons.photo_camera),
-                            label: const Text('Bild wählen'),
-                          ),
-                          const SizedBox(width: 8),
-                          if (_existingImageBase64 != null || _selectedImageBytes != null)
-                            ElevatedButton.icon(
-                              onPressed: _isUploadingImage ? null : _deleteImage,
-                              icon: const Icon(Icons.delete),
-                              label: const Text('Löschen'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade100,
-                                foregroundColor: Colors.red.shade900,
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
                     ],
                   ),
-
-                // Kalorien & Protein
-                Row(
-                  children: [
-                    Expanded(
-                        child: _numField(
-                            controller: _caloriesController,
-                            label: l.foodCaloriesPer100,
-                            suffix: 'kcal',
-                            requiredMsg: l.requiredField)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: _numField(
-                            controller: _proteinController,
-                            label: l.foodProteinPer100,
-                            suffix: 'g',
-                            requiredMsg: l.requiredField)),
-                  ],
                 ),
                 const SizedBox(height: 10),
-
-                // Fett & KH
-                Row(
-                  children: [
-                    Expanded(
-                        child: _numField(
-                            controller: _fatController,
-                            label: l.foodFatPer100,
-                            suffix: 'g',
-                            requiredMsg: l.requiredField)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: _numField(
-                            controller: _carbsController,
-                            label: l.foodCarbsPer100,
-                            suffix: 'g',
-                            requiredMsg: l.requiredField)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Optional: Saturated Fat & Sugar
-                Row(
-                  children: [
-                    Expanded(
-                        child: TextFormField(
-                          controller: _saturatedFatController,
-                          decoration: InputDecoration(
-                            labelText: l.nutrientSaturatedFat,
-                            suffixText: 'g',
-                            helperText: l.ofWhichFat,
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
-                        )),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: TextFormField(
-                          controller: _sugarController,
-                          decoration: InputDecoration(
-                            labelText: l.nutrientSugar,
-                            suffixText: 'g',
-                            helperText: l.ofWhichCarbs,
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
-                        )),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Optional: Fiber & Salt
-                Row(
-                  children: [
-                    Expanded(
-                        child: TextFormField(
-                          controller: _fiberController,
-                          decoration: InputDecoration(
-                            labelText: l.nutrientFiber,
-                            suffixText: 'g',
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
-                        )),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: TextFormField(
-                          controller: _sodiumController,
-                          decoration: InputDecoration(
-                            labelText: l.nutrientSalt,
-                            suffixText: 'g',
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))],
-                        )),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Kategorie
-                TextFormField(
-                  controller: _categoryController,
-                  decoration: InputDecoration(
-                    labelText: l.foodCategory,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Marke
-                TextFormField(
-                  controller: _brandController,
-                  decoration: InputDecoration(
-                    labelText: l.foodBrand,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Barcode
-                TextFormField(
-                  controller: _barcodeController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: l.barcodeField,
-                    hintText: l.barcodeHint,
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.qr_code_scanner),
-                      tooltip: l.barcodeScanTitle,
-                      onPressed: _scanBarcodeForField,
-                    ),
-                  ),
-                ),
-                // Portionsgrößen
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text(
-                      l.foodPortionsTitle,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _portionRows.add((
-                            name: TextEditingController(),
-                            amount: TextEditingController(),
-                          ));
-                        });
-                      },
-                      icon: const Icon(Icons.add, size: 18),
-                      label: Text(l.add),
-                    ),
-                  ],
-                ),
-                if (_portionRows.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      l.foodPortionsEmpty,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
-                    ),
-                  )
-                else
-                  ...List.generate(_portionRows.length, (i) {
-                    final row = _portionRows[i];
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: TextFormField(
-                              controller: row.name,
-                              decoration: const InputDecoration(
-                                labelText: 'Bezeichnung',
-                                hintText: 'z.B. 1 Scheibe',
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: TextFormField(
-                              controller: row.amount,
-                              decoration: const InputDecoration(
-                                labelText: 'Gramm',
-                                suffixText: 'g',
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                            onPressed: () {
-                              setState(() {
-                                row.name.dispose();
-                                row.amount.dispose();
-                                _portionRows.removeAt(i);
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                const SizedBox(height: 4),
-
-                // Öffentlich / Privat
-                SwitchListTile(
-                  value: _isPublic,
-                  onChanged: (v) => setState(() => _isPublic = v),
-                  title: Text(l.foodPublic),
-                  subtitle: Text(
-                    _isPublic ? l.foodPublicOn : l.foodPublicOff,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                  secondary: Icon(
-                    _isPublic ? Icons.public : Icons.lock_outline,
-                    color: _isPublic ? Colors.green : Colors.grey,
-                  ),
-                ),
-
-                // Flüssigkeit
-                SwitchListTile(
-                  value: _isLiquid,
-                  onChanged: (v) => setState(() => _isLiquid = v),
-                  title: Text(l.foodIsLiquid),
-                  subtitle: Text(l.foodIsLiquidHint),
-                  contentPadding: EdgeInsets.zero,
-                  secondary: Icon(
-                    _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                    color: _isLiquid ? Colors.lightBlue : Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Tags (public tags, only for owner)
-                Text(
-                  l.tags,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                TagEditor(
-                  tags: _editingTags,
-                  onChanged: (tags) => setState(() => _editingTags = tags),
-                  tagService: _tagService,
-                  readOnly: false,
-                ),
               ],
-            ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Nährwerte pro 100 g bzw. 100 ml angeben',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade900,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Name
+              TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: l.foodName,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? l.requiredField : null,
+              ),
+              const SizedBox(height: 12),
+
+              // Image picker section
+              if (_isLoadingImage)
+                const Center(child: CircularProgressIndicator())
+              else
+                Column(
+                  children: [
+                    // Image preview or placeholder
+                    Container(
+                      width: double.infinity,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey.shade100,
+                      ),
+                      child: _selectedImageBytes != null
+                          ? Image.memory(_selectedImageBytes!,
+                              fit: BoxFit.cover)
+                          : _existingImageBase64 != null
+                              ? Image.memory(
+                                  _decodeBase64(_existingImageBase64!),
+                                  fit: BoxFit.cover,
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.image_not_supported,
+                                        size: 48, color: Colors.grey.shade400),
+                                    const SizedBox(height: 8),
+                                    Text('Kein Bild',
+                                        style: TextStyle(
+                                            color: Colors.grey.shade600)),
+                                  ],
+                                ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Image action buttons
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _isUploadingImage ? null : _pickImage,
+                          icon: const Icon(Icons.photo_camera),
+                          label: const Text('Bild wählen'),
+                        ),
+                        const SizedBox(width: 8),
+                        if (_existingImageBase64 != null ||
+                            _selectedImageBytes != null)
+                          ElevatedButton.icon(
+                            onPressed: _isUploadingImage ? null : _deleteImage,
+                            icon: const Icon(Icons.delete),
+                            label: const Text('Löschen'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade100,
+                              foregroundColor: Colors.red.shade900,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+
+              // Kalorien & Protein
+              Row(
+                children: [
+                  Expanded(
+                      child: _numField(
+                          controller: _caloriesController,
+                          label: l.foodCaloriesPer100,
+                          suffix: 'kcal',
+                          requiredMsg: l.requiredField)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _numField(
+                          controller: _proteinController,
+                          label: l.foodProteinPer100,
+                          suffix: 'g',
+                          requiredMsg: l.requiredField)),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Fett & KH
+              Row(
+                children: [
+                  Expanded(
+                      child: _numField(
+                          controller: _fatController,
+                          label: l.foodFatPer100,
+                          suffix: 'g',
+                          requiredMsg: l.requiredField)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _numField(
+                          controller: _carbsController,
+                          label: l.foodCarbsPer100,
+                          suffix: 'g',
+                          requiredMsg: l.requiredField)),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Optional: Saturated Fat & Sugar
+              Row(
+                children: [
+                  Expanded(
+                      child: TextFormField(
+                    controller: _saturatedFatController,
+                    decoration: InputDecoration(
+                      labelText: l.nutrientSaturatedFat,
+                      suffixText: 'g',
+                      helperText: l.ofWhichFat,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
+                    ],
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: TextFormField(
+                    controller: _sugarController,
+                    decoration: InputDecoration(
+                      labelText: l.nutrientSugar,
+                      suffixText: 'g',
+                      helperText: l.ofWhichCarbs,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
+                    ],
+                  )),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Optional: Fiber & Salt
+              Row(
+                children: [
+                  Expanded(
+                      child: TextFormField(
+                    controller: _fiberController,
+                    decoration: InputDecoration(
+                      labelText: l.nutrientFiber,
+                      suffixText: 'g',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
+                    ],
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: TextFormField(
+                    controller: _sodiumController,
+                    decoration: InputDecoration(
+                      labelText: l.nutrientSalt,
+                      suffixText: 'g',
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
+                    ],
+                  )),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Kategorie
+              TextFormField(
+                controller: _categoryController,
+                decoration: InputDecoration(
+                  labelText: l.foodCategory,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Marke
+              TextFormField(
+                controller: _brandController,
+                decoration: InputDecoration(
+                  labelText: l.foodBrand,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Barcode
+              TextFormField(
+                controller: _barcodeController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: l.barcodeField,
+                  hintText: l.barcodeHint,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.qr_code_scanner),
+                    tooltip: l.barcodeScanTitle,
+                    onPressed: _scanBarcodeForField,
+                  ),
+                ),
+              ),
+              // Portionsgrößen
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(
+                    l.foodPortionsTitle,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _portionRows.add((
+                          name: TextEditingController(),
+                          amount: TextEditingController(),
+                        ));
+                      });
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l.add),
+                  ),
+                ],
+              ),
+              if (_portionRows.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    l.foodPortionsEmpty,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                  ),
+                )
+              else
+                ...List.generate(_portionRows.length, (i) {
+                  final row = _portionRows[i];
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextFormField(
+                            controller: row.name,
+                            decoration: const InputDecoration(
+                              labelText: 'Bezeichnung',
+                              hintText: 'z.B. 1 Scheibe',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: row.amount,
+                            decoration: const InputDecoration(
+                              labelText: 'Gramm',
+                              suffixText: 'g',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline,
+                              color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              row.name.dispose();
+                              row.amount.dispose();
+                              _portionRows.removeAt(i);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              const SizedBox(height: 4),
+
+              // Öffentlich / Privat
+              SwitchListTile(
+                value: _isPublic,
+                onChanged: (v) => setState(() => _isPublic = v),
+                title: Text(l.foodPublic),
+                subtitle: Text(
+                  _isPublic ? l.foodPublicOn : l.foodPublicOff,
+                ),
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  _isPublic ? Icons.public : Icons.lock_outline,
+                  color: _isPublic ? Colors.green : Colors.grey,
+                ),
+              ),
+
+              // Flüssigkeit
+              SwitchListTile(
+                value: _isLiquid,
+                onChanged: (v) => setState(() => _isLiquid = v),
+                title: Text(l.foodIsLiquid),
+                subtitle: Text(l.foodIsLiquidHint),
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
+                  color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Tags (public tags, only for owner)
+              Text(
+                l.tags,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              TagEditor(
+                tags: _editingTags,
+                onChanged: (tags) => setState(() => _editingTags = tags),
+                tagService: _tagService,
+                readOnly: false,
+              ),
+            ],
           ),
         ),
       ),

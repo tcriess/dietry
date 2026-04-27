@@ -37,7 +37,8 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
   Future<void> _submit() async {
     final message = _messageController.text.trim();
     if (message.length < 10) {
-      setState(() => _errorText = AppLocalizations.of(context)!.feedbackMessageTooShort);
+      setState(() =>
+          _errorText = AppLocalizations.of(context)!.feedbackMessageTooShort);
       return;
     }
 
@@ -83,6 +84,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
     final theme = Theme.of(context);
 
     return AlertDialog(
+      scrollable: true,
       title: Row(
         children: [
           const Icon(Icons.feedback_outlined),
@@ -92,91 +94,90 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
       ),
       content: SizedBox(
         width: 400,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l.feedbackEarlyAccessNote,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.secondary,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.feedbackEarlyAccessNote,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Type chips
+            Text(l.feedbackTypeLabel, style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                _TypeChip(
+                  label: l.feedbackTypeBug,
+                  icon: Icons.bug_report_outlined,
+                  value: FeedbackType.bug,
+                  selected: _type,
+                  onSelected: (t) => setState(() => _type = t),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Type chips
-              Text(l.feedbackTypeLabel, style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _TypeChip(
-                    label: l.feedbackTypeBug,
-                    icon: Icons.bug_report_outlined,
-                    value: FeedbackType.bug,
-                    selected: _type,
-                    onSelected: (t) => setState(() => _type = t),
-                  ),
-                  _TypeChip(
-                    label: l.feedbackTypeFeature,
-                    icon: Icons.lightbulb_outlined,
-                    value: FeedbackType.feature,
-                    selected: _type,
-                    onSelected: (t) => setState(() => _type = t),
-                  ),
-                  _TypeChip(
-                    label: l.feedbackTypeGeneral,
-                    icon: Icons.chat_bubble_outline,
-                    value: FeedbackType.general,
-                    selected: _type,
-                    onSelected: (t) => setState(() => _type = t),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Star rating
-              Text(l.feedbackRatingLabel, style: theme.textTheme.labelLarge),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(5, (i) {
-                  final star = i + 1;
-                  return IconButton(
-                    icon: Icon(
-                      star <= (_rating ?? 0) ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                    ),
-                    onPressed: () => setState(
-                      () => _rating = _rating == star ? null : star,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  );
-                }),
-              ),
-              const SizedBox(height: 16),
-
-              // Message
-              TextField(
-                controller: _messageController,
-                minLines: 3,
-                maxLines: 6,
-                maxLength: 1000,
-                decoration: InputDecoration(
-                  labelText: l.feedbackMessageLabel,
-                  hintText: l.feedbackMessageHint,
-                  border: const OutlineInputBorder(),
-                  errorText: _errorText,
+                _TypeChip(
+                  label: l.feedbackTypeFeature,
+                  icon: Icons.lightbulb_outlined,
+                  value: FeedbackType.feature,
+                  selected: _type,
+                  onSelected: (t) => setState(() => _type = t),
                 ),
-                onChanged: (_) {
-                  if (_errorText != null) setState(() => _errorText = null);
-                },
+                _TypeChip(
+                  label: l.feedbackTypeGeneral,
+                  icon: Icons.chat_bubble_outline,
+                  value: FeedbackType.general,
+                  selected: _type,
+                  onSelected: (t) => setState(() => _type = t),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Star rating
+            Text(l.feedbackRatingLabel, style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(5, (i) {
+                final star = i + 1;
+                return IconButton(
+                  icon: Icon(
+                    star <= (_rating ?? 0) ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                  ),
+                  onPressed: () => setState(
+                    () => _rating = _rating == star ? null : star,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                );
+              }),
+            ),
+            const SizedBox(height: 16),
+
+            // Message
+            TextField(
+              controller: _messageController,
+              minLines: 3,
+              maxLines: 6,
+              maxLength: 1000,
+              decoration: InputDecoration(
+                labelText: l.feedbackMessageLabel,
+                hintText: l.feedbackMessageHint,
+                border: const OutlineInputBorder(),
+                errorText: _errorText,
               ),
-            ],
-          ),
+              onChanged: (_) {
+                if (_errorText != null) setState(() => _errorText = null);
+              },
+            ),
+          ],
         ),
       ),
       actions: [
@@ -189,7 +190,8 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
                 )
               : const Icon(Icons.send),
           label: Text(l.feedbackSubmit),

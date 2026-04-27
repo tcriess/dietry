@@ -48,17 +48,17 @@ class AddFoodEntryScreen extends StatefulWidget {
     this.initialMealType,
     this.preselectedFood,
   });
-  
+
   @override
   State<AddFoodEntryScreen> createState() => _AddFoodEntryScreenState();
 }
 
 MealType _mealTypeForCurrentTime() {
   final hour = DateTime.now().hour;
-  if (hour >= 5 && hour < 10) return MealType.breakfast;   // 05–10 Uhr
-  if (hour >= 10 && hour < 14) return MealType.lunch;      // 10–14 Uhr
-  if (hour >= 14 && hour < 18) return MealType.snack;      // 14–18 Uhr
-  return MealType.dinner;                                   // 18–05 Uhr
+  if (hour >= 5 && hour < 10) return MealType.breakfast; // 05–10 Uhr
+  if (hour >= 10 && hour < 14) return MealType.lunch; // 10–14 Uhr
+  if (hour >= 14 && hour < 18) return MealType.snack; // 14–18 Uhr
+  return MealType.dinner; // 18–05 Uhr
 }
 
 class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
@@ -82,8 +82,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   bool _isSearching = false;
   bool _showManualEntry = false;
   MealType _selectedMealType = _mealTypeForCurrentTime();
-  FoodPortion? _selectedPortion;  // null = custom g/ml Eingabe
-  String _customUnit = 'g';       // 'g' oder 'ml' wenn _selectedPortion == null
+  FoodPortion? _selectedPortion; // null = custom g/ml Eingabe
+  String _customUnit = 'g'; // 'g' oder 'ml' wenn _selectedPortion == null
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
@@ -96,7 +96,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   // Tag filtering
   late TagService _tagService;
   List<Tag> _availableTags = [];
-  final Set<String> _selectedTagSlugs = {};  // tag slugs selected for filtering
+  final Set<String> _selectedTagSlugs = {}; // tag slugs selected for filtering
   bool _tagsLoading = true;
 
   // Own foods preloaded list (authenticated mode)
@@ -117,20 +117,25 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
     final q = _searchController.text.toLowerCase().trim();
     if (q.isNotEmpty) {
-      foods = foods.where((f) =>
-        f.name.toLowerCase().contains(q) ||
-        (f.brand?.toLowerCase().contains(q) ?? false) ||
-        (f.category?.toLowerCase().contains(q) ?? false)
-      ).toList();
+      foods = foods
+          .where((f) =>
+              f.name.toLowerCase().contains(q) ||
+              (f.brand?.toLowerCase().contains(q) ?? false) ||
+              (f.category?.toLowerCase().contains(q) ?? false))
+          .toList();
     }
 
     switch (_sortOrder) {
       case _FoodSortOrder.alphabetical:
-        foods.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        foods.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       case _FoodSortOrder.newest:
         foods.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       case _FoodSortOrder.recentlyUsed:
-        final order = {for (var i = 0; i < _recentlyUsedFoodIds.length; i++) _recentlyUsedFoodIds[i]: i};
+        final order = {
+          for (var i = 0; i < _recentlyUsedFoodIds.length; i++)
+            _recentlyUsedFoodIds[i]: i
+        };
         foods.sort((a, b) {
           final ai = order[a.id] ?? _recentlyUsedFoodIds.length;
           final bi = order[b.id] ?? _recentlyUsedFoodIds.length;
@@ -146,7 +151,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (widget.dbService == null) return;
     setState(() => _isLoadingMyFoods = true);
     try {
-      final foods = await FoodDatabaseService(widget.dbService!).getVisibleFoods();
+      final foods =
+          await FoodDatabaseService(widget.dbService!).getVisibleFoods();
       if (mounted) setState(() => _myFoods = foods);
     } catch (e) {
       appLogger.w('⚠️ Foods konnten nicht geladen werden: $e');
@@ -158,7 +164,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   Future<void> _loadRecentlyUsedFoodIds() async {
     if (widget.dbService == null) return;
     try {
-      final ids = await FoodDatabaseService(widget.dbService!).getRecentlyUsedFoodIds();
+      final ids =
+          await FoodDatabaseService(widget.dbService!).getRecentlyUsedFoodIds();
       if (mounted) setState(() => _recentlyUsedFoodIds = ids);
     } catch (e) {
       appLogger.w('⚠️ MRU Foods konnten nicht geladen werden: $e');
@@ -217,7 +224,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         // Continue without anonymous access — external APIs (USDA, OFF) still work
       }
     } catch (e) {
-      appLogger.w('⚠️ Guest mode: failed to initialize anonymous DB access: $e');
+      appLogger
+          .w('⚠️ Guest mode: failed to initialize anonymous DB access: $e');
       // Continue without anonymous access — external APIs (USDA, OFF) still work
     }
   }
@@ -236,7 +244,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       setState(() => _tagsLoading = false);
     }
   }
-  
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -252,7 +260,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     _saturatedFatController.dispose();
     super.dispose();
   }
-  
+
   /// Suche Foods: entweder in Datenbank ("own db") ODER externe APIs
   Future<void> _searchFoods(String query) async {
     if (query.trim().isEmpty) {
@@ -287,7 +295,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         // User selected "own db" - search database only (no API calls)
         if (widget.dbService != null) {
           // Authenticated mode: search own + public foods in database
-          final items = await FoodDatabaseService(widget.dbService!).searchFoods(
+          final items =
+              await FoodDatabaseService(widget.dbService!).searchFoods(
             query,
             limit: 20,
             filterTags: _selectedTagSlugs.toList(),
@@ -298,12 +307,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           // Search public foods database if anonymous JWT available
           if (_anonDbService != null) {
             try {
-              final items = await FoodDatabaseService(_anonDbService!).searchFoods(
+              final items =
+                  await FoodDatabaseService(_anonDbService!).searchFoods(
                 query,
                 limit: 20,
               );
               results.addAll(items.map((f) => FoodSearchResult(food: f)));
-              appLogger.d('🔍 Found ${items.length} public foods from anonymous DB');
+              appLogger
+                  .d('🔍 Found ${items.length} public foods from anonymous DB');
             } catch (e) {
               appLogger.w('⚠️ Anonymous food search failed: $e');
             }
@@ -311,9 +322,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
           // Search locally stored guest foods
           try {
-            final guestFoods = await LocalDataService.instance.searchGuestFoods(query);
+            final guestFoods =
+                await LocalDataService.instance.searchGuestFoods(query);
             results.addAll(guestFoods.map((f) => FoodSearchResult(food: f)));
-            appLogger.d('🔍 Found ${guestFoods.length} guest foods from local storage');
+            appLogger.d(
+                '🔍 Found ${guestFoods.length} guest foods from local storage');
           } catch (e) {
             appLogger.w('⚠️ Guest food search failed: $e');
           }
@@ -344,7 +357,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       }
     }
   }
-  
+
   /// Wähle Food aus Suchergebnissen.
   ///
   /// Befüllt die Nährwert-Controller immer mit den per-100g-Werten des Foods
@@ -405,8 +418,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         } else {
           _selectedPortion = null;
           final unit = food.servingUnit ?? 'g';
-          _customUnit =
-              (unit.startsWith('ml') || food.isLiquid) ? 'ml' : 'g';
+          _customUnit = (unit.startsWith('ml') || food.isLiquid) ? 'ml' : 'g';
           _amountController.text = food.servingSize != null
               ? food.servingSize!.toInt().toString()
               : '100';
@@ -418,7 +430,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       _showManualEntry = false;
     });
   }
-  
+
   /// Öffnet den OCR-Scan-Flow (Premium, mobile) und prefillt die
   /// manuelle Eingabemaske mit den erkannten Werten.
   Future<void> _scanNutritionLabel() async {
@@ -439,7 +451,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       _searchResults = [];
       _amountController.text = '100';
       _customUnit = 'g';
-      if (result.productName != null) _nameController.text = result.productName!;
+      if (result.productName != null)
+        _nameController.text = result.productName!;
       _caloriesController.text = fmt(result.caloriesPer100g, digits: 0);
       _proteinController.text = fmt(result.proteinPer100g);
       _fatController.text = fmt(result.fatPer100g);
@@ -494,7 +507,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (result.fromOff) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${l?.barcodeFoundOff ?? 'Open Food Facts'}: ${result.food.name}'),
+          content: Text(
+              '${l?.barcodeFoundOff ?? 'Open Food Facts'}: ${result.food.name}'),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -591,7 +605,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     for (final p in portions) {
       items.add(DropdownMenuItem(
         value: 'p:${p.name}',
-        child: Text('${p.name} (${p.amountG % 1 == 0 ? p.amountG.toInt() : p.amountG}g)'),
+        child: Text(
+            '${p.name} (${p.amountG % 1 == 0 ? p.amountG.toInt() : p.amountG}g)'),
       ));
     }
 
@@ -611,8 +626,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         setState(() {
           if (value.startsWith('p:')) {
             final name = value.substring(2);
-            _selectedPortion =
-                food?.portions.firstWhere((p) => p.name == name);
+            _selectedPortion = food?.portions.firstWhere((p) => p.name == name);
             _amountController.text = '1';
           } else {
             _selectedPortion = null;
@@ -632,14 +646,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     setState(() {
       _isSaving = true;
     });
-    
+
     try {
       final dbService = widget.dbService;
-      final userId = dbService?.userId ?? '';  // Guest mode: empty userId
+      final userId = dbService?.userId ?? ''; // Guest mode: empty userId
 
       final rawAmount = parseDouble(_amountController.text);
 
@@ -664,22 +678,31 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       final scale = grams / 100.0;
 
       final entry = FoodEntry(
-        id: '',  // Wird von DB generiert
+        id: '', // Wird von DB generiert
         userId: userId,
-        foodId: (_selectedFood?.id.isNotEmpty == true) ? _selectedFood!.id : null,
+        foodId:
+            (_selectedFood?.id.isNotEmpty == true) ? _selectedFood!.id : null,
         entryDate: widget.selectedDate ?? DateTime.now(),
         mealType: _selectedMealType,
         name: _nameController.text,
         amount: rawAmount,
         unit: _selectedPortion?.name ?? _customUnit,
         calories: parseDouble(_caloriesController.text) * scale,
-        protein: parseDouble(_proteinController.text)  * scale,
-        fat:     parseDouble(_fatController.text)       * scale,
-        carbs:   parseDouble(_carbsController.text)     * scale,
-        fiber:   tryParseDouble(_fiberController.text) != null ? parseDouble(_fiberController.text) * scale : null,
-        sugar:   tryParseDouble(_sugarController.text) != null ? parseDouble(_sugarController.text) * scale : null,
-        sodium:  tryParseDouble(_sodiumController.text) != null ? parseDouble(_sodiumController.text) * scale : null,
-        saturatedFat: tryParseDouble(_saturatedFatController.text) != null ? parseDouble(_saturatedFatController.text) * scale : null,
+        protein: parseDouble(_proteinController.text) * scale,
+        fat: parseDouble(_fatController.text) * scale,
+        carbs: parseDouble(_carbsController.text) * scale,
+        fiber: tryParseDouble(_fiberController.text) != null
+            ? parseDouble(_fiberController.text) * scale
+            : null,
+        sugar: tryParseDouble(_sugarController.text) != null
+            ? parseDouble(_sugarController.text) * scale
+            : null,
+        sodium: tryParseDouble(_sodiumController.text) != null
+            ? parseDouble(_sodiumController.text) * scale
+            : null,
+        saturatedFat: tryParseDouble(_saturatedFatController.text) != null
+            ? parseDouble(_saturatedFatController.text) * scale
+            : null,
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: false,
@@ -755,7 +778,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       }
     }
   }
-  
+
   /// Speichere aktuelles Food zur Datenbank (remote) oder lokal (guest mode)
   Future<void> _saveFoodToDatabase() async {
     // In guest mode: save locally instead of to remote database
@@ -805,7 +828,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
         // Save tags if any were added
         if (result.tags.isNotEmpty) {
-          appLogger.d('💾 Saving ${result.tags.length} tags for newly created food');
+          appLogger
+              .d('💾 Saving ${result.tags.length} tags for newly created food');
           final tagService = TagService(widget.dbService!);
           await tagService.setFoodTags(created.id, result.tags);
         }
@@ -861,7 +885,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         initialCategory: _selectedFood?.category,
         initialBrand: _selectedFood?.brand,
         initialPortions: _selectedFood?.portions ?? [],
-        dbService: null,  // No DB service in guest mode
+        dbService: null, // No DB service in guest mode
       ),
     );
 
@@ -908,7 +932,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
     final result = await showDialog<FoodItem>(
       context: context,
-      builder: (context) => FoodEditDialog(food: food, dbService: widget.dbService!),
+      builder: (context) =>
+          FoodEditDialog(food: food, dbService: widget.dbService!),
     );
     if (result == null) return;
 
@@ -1042,7 +1067,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         title: Text(l.addFoodScreenTitle),
         actions: [
           // Sort order (only in My DB authenticated mode)
-          if (widget.dbService != null && !_showManualEntry && !_useOpenFoodFacts)
+          if (widget.dbService != null &&
+              !_showManualEntry &&
+              !_useOpenFoodFacts)
             PopupMenuButton<_FoodSortOrder>(
               icon: const Icon(Icons.sort),
               tooltip: AppLocalizations.of(context)?.sortBy ?? 'Sortieren',
@@ -1052,23 +1079,37 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 PopupMenuItem(
                   value: _FoodSortOrder.recentlyUsed,
                   child: Row(children: [
-                    Icon(_sortOrder == _FoodSortOrder.recentlyUsed ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                    Icon(
+                        _sortOrder == _FoodSortOrder.recentlyUsed
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        size: 18),
                     const SizedBox(width: 8),
-                    Text(AppLocalizations.of(context)?.sortRecentlyUsed ?? 'Zuletzt verwendet'),
+                    Text(AppLocalizations.of(context)?.sortRecentlyUsed ??
+                        'Zuletzt verwendet'),
                   ]),
                 ),
                 PopupMenuItem(
                   value: _FoodSortOrder.alphabetical,
                   child: Row(children: [
-                    Icon(_sortOrder == _FoodSortOrder.alphabetical ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                    Icon(
+                        _sortOrder == _FoodSortOrder.alphabetical
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        size: 18),
                     const SizedBox(width: 8),
-                    Text(AppLocalizations.of(context)?.sortAlphabetical ?? 'Alphabetisch'),
+                    Text(AppLocalizations.of(context)?.sortAlphabetical ??
+                        'Alphabetisch'),
                   ]),
                 ),
                 PopupMenuItem(
                   value: _FoodSortOrder.newest,
                   child: Row(children: [
-                    Icon(_sortOrder == _FoodSortOrder.newest ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+                    Icon(
+                        _sortOrder == _FoodSortOrder.newest
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        size: 18),
                     const SizedBox(width: 8),
                     Text(AppLocalizations.of(context)?.sortNewest ?? 'Neueste'),
                   ]),
@@ -1094,7 +1135,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           if (!_showManualEntry)
             IconButton(
               icon: const Icon(Icons.qr_code_scanner),
-              tooltip: AppLocalizations.of(context)?.barcodeScanTitle ?? 'Barcode scannen',
+              tooltip: AppLocalizations.of(context)?.barcodeScanTitle ??
+                  'Barcode scannen',
               onPressed: _scanBarcode,
             ),
           if (!_showManualEntry && AppFeatures.nutritionLabelScan)
@@ -1125,822 +1167,920 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-            // Food-Suche (nur wenn nicht manuell)
-            if (!_showManualEntry) ...[
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  labelText: 'Lebensmittel suchen',
-                  hintText: 'z.B. Apfel, Reis, Hähnchen...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchResults = [];
-                            });
-                          },
-                        )
-                      : null,
-                  border: const OutlineInputBorder(),
-                  // Bei OFF: Suche erst bei Enter, nicht beim Tippen
-                  helperText: _useOpenFoodFacts ? 'Enter drücken zum Suchen' : null,
-                ),
-                textInputAction: TextInputAction.search,
-                onChanged: (value) {
-                  if (!_useOpenFoodFacts && widget.dbService != null) {
-                    // Authenticated My DB: _displayedMyFoods reacts to controller text
-                    setState(() {});
-                  } else if (!_useOpenFoodFacts) {
-                    // Guest mode: search public/local foods
-                    _searchFoods(value);
-                  } else {
-                    setState(() {}); // Online: update suffixIcon, search on Enter
-                  }
-                },
-                onSubmitted: (value) {
-                  if (_useOpenFoodFacts || widget.dbService == null) {
-                    _searchFoods(value);
-                  }
-                },
-              ),
-
-              const SizedBox(height: 8),
-
-              // Datenquelle-Toggle
-              Row(
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Eigene DB'),
-                      selected: !_useOpenFoodFacts,
-                      onSelected: (_) => setState(() {
-                        _useOpenFoodFacts = false;
-                        _searchResults = [];
-                      }),
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      avatar: const Text('🌐'),
-                      label: const Text('Online-Suche'),
-                      selected: _useOpenFoodFacts,
-                      onSelected: (_) => setState(() {
-                        _useOpenFoodFacts = true;
-                        _searchResults = [];
-                      }),
-                    ),
-                  ],
-                ),
-
-              const SizedBox(height: 16),
-
-              // Tag filter chips
-              if (!_useOpenFoodFacts && !_tagsLoading && _availableTags.isNotEmpty) ...[
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
-                    child: Wrap(
-                      spacing: 8,
-                      children: _availableTags.map((tag) {
-                        final isSelected = _selectedTagSlugs.contains(tag.slug);
-                        return FilterChip(
-                          label: Text(tag.name),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedTagSlugs.add(tag.slug);
-                              } else {
-                                _selectedTagSlugs.remove(tag.slug);
-                              }
-                            });
-                            // Online mode: re-search; My DB mode: _displayedMyFoods reacts
-                            if (_useOpenFoodFacts) _searchFoods(_searchController.text);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ],
-
-              // My DB preloaded list (authenticated) or online/guest search results
-              if ((_isLoadingMyFoods && !_useOpenFoodFacts && widget.dbService != null) ||
-                  (_isSearching && (_useOpenFoodFacts || widget.dbService == null)))
-                const Center(child: CircularProgressIndicator())
-              else if (!_useOpenFoodFacts && widget.dbService != null) ...[
-                if (_myFoods.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(Icons.no_food, size: 48, color: Colors.grey.shade400),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Noch keine Lebensmittel in der Datenbank',
-                            style: TextStyle(color: Colors.grey.shade600),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                  // Food-Suche (nur wenn nicht manuell)
+                  if (!_showManualEntry) ...[
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Lebensmittel suchen',
+                        hintText: 'z.B. Apfel, Reis, Hähnchen...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchResults = [];
+                                  });
+                                },
+                              )
+                            : null,
+                        border: const OutlineInputBorder(),
+                        // Bei OFF: Suche erst bei Enter, nicht beim Tippen
+                        helperText: _useOpenFoodFacts
+                            ? 'Enter drücken zum Suchen'
+                            : null,
                       ),
-                    ),
-                  )
-                else if (_displayedMyFoods.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        'Keine Ergebnisse',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                    ),
-                  )
-                else
-                  Card(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _displayedMyFoods.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final food = _displayedMyFoods[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            child: Text(
-                              food.isPublic && food.isApproved ? '🌍' : food.isPublic ? '🕐' : '👤',
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                          ),
-                          title: Text(food.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
-                                '${food.brand != null ? ' • ${food.brand}' : ''}'
-                                '${food.category != null ? ' • ${food.category}' : ''}',
-                              ),
-                              if (food.tags.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 4,
-                                  children: food.tags.map((tag) {
-                                    return Chip(
-                                      label: Text(tag.name, style: const TextStyle(fontSize: 11)),
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                                      labelStyle: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ],
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.label_outline),
-                                tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
-                                onPressed: () => _editFoodTagsInline(food),
-                              ),
-                              if (food.isPublic)
-                                const Icon(Icons.chevron_right)
-                              else
-                                PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert),
-                                  tooltip: 'Optionen',
-                                  onSelected: (action) async {
-                                    if (action == 'use') {
-                                      _selectFood(food);
-                                    } else if (action == 'edit') {
-                                      await _editFoodInSearch(food);
-                                    } else if (action == 'delete') {
-                                      await _deleteFoodInSearch(food);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'use',
-                                      child: ListTile(
-                                        leading: Icon(Icons.check_circle_outline),
-                                        title: Text('Verwenden'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: ListTile(
-                                        leading: Icon(Icons.edit_outlined),
-                                        title: Text('Bearbeiten'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: ListTile(
-                                        leading: Icon(Icons.delete_outline, color: Colors.red),
-                                        title: Text('Löschen', style: TextStyle(color: Colors.red)),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                          onTap: () => _selectFood(food),
-                        );
+                      textInputAction: TextInputAction.search,
+                      onChanged: (value) {
+                        if (!_useOpenFoodFacts && widget.dbService != null) {
+                          // Authenticated My DB: _displayedMyFoods reacts to controller text
+                          setState(() {});
+                        } else if (!_useOpenFoodFacts) {
+                          // Guest mode: search public/local foods
+                          _searchFoods(value);
+                        } else {
+                          setState(
+                              () {}); // Online: update suffixIcon, search on Enter
+                        }
+                      },
+                      onSubmitted: (value) {
+                        if (_useOpenFoodFacts || widget.dbService == null) {
+                          _searchFoods(value);
+                        }
                       },
                     ),
-                  ),
-                const SizedBox(height: 16),
-              ]
-              // Online search or guest mode results
-              else if (_searchResults.isNotEmpty) ...[
-                Card(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          '${_searchResults.length} Ergebnisse',
-                          style: Theme.of(context).textTheme.titleSmall,
+
+                    const SizedBox(height: 8),
+
+                    // Datenquelle-Toggle
+                    Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Eigene DB'),
+                          selected: !_useOpenFoodFacts,
+                          onSelected: (_) => setState(() {
+                            _useOpenFoodFacts = false;
+                            _searchResults = [];
+                          }),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          avatar: const Text('🌐'),
+                          label: const Text('Online-Suche'),
+                          selected: _useOpenFoodFacts,
+                          onSelected: (_) => setState(() {
+                            _useOpenFoodFacts = true;
+                            _searchResults = [];
+                          }),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Tag filter chips
+                    if (!_useOpenFoodFacts &&
+                        !_tagsLoading &&
+                        _availableTags.isNotEmpty) ...[
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                              left: 8, right: 8, bottom: 8),
+                          child: Wrap(
+                            spacing: 8,
+                            children: _availableTags.map((tag) {
+                              final isSelected =
+                                  _selectedTagSlugs.contains(tag.slug);
+                              return FilterChip(
+                                label: Text(tag.name),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      _selectedTagSlugs.add(tag.slug);
+                                    } else {
+                                      _selectedTagSlugs.remove(tag.slug);
+                                    }
+                                  });
+                                  // Online mode: re-search; My DB mode: _displayedMyFoods reacts
+                                  if (_useOpenFoodFacts)
+                                    _searchFoods(_searchController.text);
+                                },
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
-                      const Divider(height: 1),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final result = _searchResults[index];
-                          final food = result.food;
-                          final isOFF = food.source == 'OpenFoodFacts';
-                          return ListTile(
-                            leading: CircleAvatar(
-                              child: Text(
-                                isOFF
-                                    ? '🌐'
-                                    : food.isPublic && food.isApproved
+                    ],
+
+                    // My DB preloaded list (authenticated) or online/guest search results
+                    if ((_isLoadingMyFoods &&
+                            !_useOpenFoodFacts &&
+                            widget.dbService != null) ||
+                        (_isSearching &&
+                            (_useOpenFoodFacts || widget.dbService == null)))
+                      const Center(child: CircularProgressIndicator())
+                    else if (!_useOpenFoodFacts &&
+                        widget.dbService != null) ...[
+                      if (_myFoods.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.no_food,
+                                    size: 48, color: Colors.grey.shade400),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Noch keine Lebensmittel in der Datenbank',
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_displayedMyFoods.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: Text(
+                              'Keine Ergebnisse',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ),
+                        )
+                      else
+                        Card(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _displayedMyFoods.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final food = _displayedMyFoods[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  child: Text(
+                                    food.isPublic && food.isApproved
                                         ? '🌍'
                                         : food.isPublic
                                             ? '🕐'
                                             : '👤',
-                                style: const TextStyle(fontSize: 20),
-                              ),
-                            ),
-                            title: Text(food.name),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
-                                  '${food.brand != null ? ' • ${food.brand}' : ''}'
-                                  '${food.category != null ? ' • ${food.category}' : ''}'
-                                  '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
                                 ),
-                                if (food.tags.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Wrap(
-                                    spacing: 4,
-                                    children: food.tags.map((tag) {
-                                      return Chip(
-                                        label: Text(tag.name, style: const TextStyle(fontSize: 11)),
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                                        labelStyle: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (widget.dbService != null)
-                                  IconButton(
-                                    icon: const Icon(Icons.label_outline),
-                                    tooltip: AppLocalizations.of(context)?.tags ?? 'Tags',
-                                    onPressed: () => _editFoodTagsInline(food),
-                                  ),
-                                if (isOFF || food.isPublic || widget.dbService == null)
-                                  const Icon(Icons.chevron_right)
-                                else
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert),
-                                    tooltip: 'Optionen',
-                                    onSelected: (action) async {
-                                      if (action == 'use') {
-                                        _selectFood(food, micros: result.micros);
-                                      } else if (action == 'edit') {
-                                        await _editFoodInSearch(food);
-                                      } else if (action == 'delete') {
-                                        await _deleteFoodInSearch(food);
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'use',
-                                        child: ListTile(
-                                          leading: Icon(Icons.check_circle_outline),
-                                          title: Text('Verwenden'),
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: ListTile(
-                                          leading: Icon(Icons.edit_outlined),
-                                          title: Text('Bearbeiten'),
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: ListTile(
-                                          leading: Icon(Icons.delete_outline, color: Colors.red),
-                                          title: Text('Löschen', style: TextStyle(color: Colors.red)),
-                                          contentPadding: EdgeInsets.zero,
-                                        ),
+                                title: Text(food.name),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
+                                      '${food.brand != null ? ' • ${food.brand}' : ''}'
+                                      '${food.category != null ? ' • ${food.category}' : ''}',
+                                    ),
+                                    if (food.tags.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 4,
+                                        children: food.tags.map((tag) {
+                                          return Chip(
+                                            label: Text(tag.name,
+                                                style: const TextStyle(
+                                                    fontSize: 11)),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
+                                            backgroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .secondaryContainer,
+                                            labelStyle: TextStyle(
+                                                fontSize: 11,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSecondaryContainer),
+                                          );
+                                        }).toList(),
                                       ),
                                     ],
-                                  ),
-                              ],
-                            ),
-                            onTap: () => _selectFood(food, micros: result.micros),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ],
-            
-            // Gewähltes Food oder manuelle Eingabe
-            if (_selectedFood != null || _showManualEntry) ...[
-              // Info für manuelle Eingabe
-              if (_showManualEntry)
-                Card(
-                  color: Colors.blue.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue.shade700),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Tipp: Zur Datenbank hinzufügen',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade900,
+                                  ],
                                 ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.label_outline),
+                                      tooltip:
+                                          AppLocalizations.of(context)?.tags ??
+                                              'Tags',
+                                      onPressed: () =>
+                                          _editFoodTagsInline(food),
+                                    ),
+                                    if (food.isPublic)
+                                      const Icon(Icons.chevron_right)
+                                    else
+                                      PopupMenuButton<String>(
+                                        icon: const Icon(Icons.more_vert),
+                                        tooltip: 'Optionen',
+                                        onSelected: (action) async {
+                                          if (action == 'use') {
+                                            _selectFood(food);
+                                          } else if (action == 'edit') {
+                                            await _editFoodInSearch(food);
+                                          } else if (action == 'delete') {
+                                            await _deleteFoodInSearch(food);
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(
+                                            value: 'use',
+                                            child: ListTile(
+                                              leading: Icon(
+                                                  Icons.check_circle_outline),
+                                              title: Text('Verwenden'),
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 'edit',
+                                            child: ListTile(
+                                              leading:
+                                                  Icon(Icons.edit_outlined),
+                                              title: Text('Bearbeiten'),
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: ListTile(
+                                              leading: Icon(
+                                                  Icons.delete_outline,
+                                                  color: Colors.red),
+                                              title: Text('Löschen',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                                onTap: () => _selectFood(food),
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                    ]
+                    // Online search or guest mode results
+                    else if (_searchResults.isNotEmpty) ...[
+                      Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                '${_searchResults.length} Ergebnisse',
+                                style: Theme.of(context).textTheme.titleSmall,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Nach dem Ausfüllen kannst du dieses Lebensmittel für die Zukunft speichern!',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.blue.shade800,
+                            ),
+                            const Divider(height: 1),
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _searchResults.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final result = _searchResults[index];
+                                final food = result.food;
+                                final isOFF = food.source == 'OpenFoodFacts';
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    child: Text(
+                                      isOFF
+                                          ? '🌐'
+                                          : food.isPublic && food.isApproved
+                                              ? '🌍'
+                                              : food.isPublic
+                                                  ? '🕐'
+                                                  : '👤',
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                  title: Text(food.name),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${food.calories.toInt()} kcal / 100${food.servingUnit ?? 'g'}'
+                                        '${food.brand != null ? ' • ${food.brand}' : ''}'
+                                        '${food.category != null ? ' • ${food.category}' : ''}'
+                                        '${food.source != null && !food.source!.contains('Custom') ? ' • ${food.source}' : ''}',
+                                      ),
+                                      if (food.tags.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 4,
+                                          children: food.tags.map((tag) {
+                                            return Chip(
+                                              label: Text(tag.name,
+                                                  style: const TextStyle(
+                                                      fontSize: 11)),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              backgroundColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .secondaryContainer,
+                                              labelStyle: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSecondaryContainer),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (widget.dbService != null)
+                                        IconButton(
+                                          icon: const Icon(Icons.label_outline),
+                                          tooltip: AppLocalizations.of(context)
+                                                  ?.tags ??
+                                              'Tags',
+                                          onPressed: () =>
+                                              _editFoodTagsInline(food),
+                                        ),
+                                      if (isOFF ||
+                                          food.isPublic ||
+                                          widget.dbService == null)
+                                        const Icon(Icons.chevron_right)
+                                      else
+                                        PopupMenuButton<String>(
+                                          icon: const Icon(Icons.more_vert),
+                                          tooltip: 'Optionen',
+                                          onSelected: (action) async {
+                                            if (action == 'use') {
+                                              _selectFood(food,
+                                                  micros: result.micros);
+                                            } else if (action == 'edit') {
+                                              await _editFoodInSearch(food);
+                                            } else if (action == 'delete') {
+                                              await _deleteFoodInSearch(food);
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            const PopupMenuItem(
+                                              value: 'use',
+                                              child: ListTile(
+                                                leading: Icon(
+                                                    Icons.check_circle_outline),
+                                                title: Text('Verwenden'),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                            const PopupMenuItem(
+                                              value: 'edit',
+                                              child: ListTile(
+                                                leading:
+                                                    Icon(Icons.edit_outlined),
+                                                title: Text('Bearbeiten'),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: ListTile(
+                                                leading: Icon(
+                                                    Icons.delete_outline,
+                                                    color: Colors.red),
+                                                title: Text('Löschen',
+                                                    style: TextStyle(
+                                                        color: Colors.red)),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                  onTap: () =>
+                                      _selectFood(food, micros: result.micros),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ],
+
+                  // Gewähltes Food oder manuelle Eingabe
+                  if (_selectedFood != null || _showManualEntry) ...[
+                    // Info für manuelle Eingabe
+                    if (_showManualEntry)
+                      Card(
+                        color: Colors.blue.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  color: Colors.blue.shade700),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Tipp: Zur Datenbank hinzufügen',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Nach dem Ausfüllen kannst du dieses Lebensmittel für die Zukunft speichern!',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.blue.shade800,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              
-              if (_selectedFood != null)
-                Card(
-                  color: Colors.green.shade50,
-                  child: ListTile(
-                    leading: _selectedFood!.hasImage
-                        ? SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: FoodThumbnailWidget(
-                              food: _selectedFood!,
-                              imageService: _imageService,
-                              imageCache: _imageCache,
-                            ),
-                          )
-                        : const Icon(Icons.check_circle, color: Colors.green),
-                    title: Text(_selectedFood!.name),
-                    subtitle: Text(
-                      '${_selectedFood!.calories.toInt()} kcal / 100${_selectedFood!.servingUnit ?? 'g'}',
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () {
-                        setState(() {
-                          _selectedFood = null;
-                          _nameController.clear();
-                          _amountController.clear();
-                          _caloriesController.clear();
-                          _proteinController.clear();
-                          _fatController.clear();
-                          _carbsController.clear();
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              
-              const SizedBox(height: 16),
-              
-              // Name (nur bei manueller Eingabe editierbar)
-              if (_showManualEntry)
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Bitte Name eingeben';
-                    }
-                    return null;
-                  },
-                ),
-              
-              if (_showManualEntry) const SizedBox(height: 16),
-              
-              // Menge & Einheit
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _amountController,
-                      decoration: const InputDecoration(
-                        labelText: 'Menge',
-                        border: OutlineInputBorder(),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
-                      ],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Bitte Menge eingeben';
-                        }
-                        final amount = tryParseDouble(value);
-                        if (amount == null || amount <= 0) {
-                          return 'Ungültige Menge';
-                        }
-                        return null;
-                      },
-                      onChanged: (_) {
-                        // Rebuild so the totals preview reflects the new amount.
-                        setState(() {});
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildPortionSelector(),
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 12),
-
-              // Totals preview: shows scaled nutrition so the user sees the
-              // effect of the current amount on the per-100g values below.
-              _buildTotalsPreview(),
-
-              const SizedBox(height: 16),
-
-              // Meal Type
-              DropdownButtonFormField<MealType>(
-                initialValue: _selectedMealType,
-                decoration: const InputDecoration(
-                  labelText: 'Mahlzeit',
-                  border: OutlineInputBorder(),
-                ),
-                items: MealType.values.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Row(
-                      children: [
-                        Text(type.icon, style: const TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        Text(type.displayName),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedMealType = value;
-                    });
-                  }
-                },
-              ),
-              
-              if (_showManualEntry) ...[
-                const SizedBox(height: 16),
-
-                // Flüssigkeit (nur bei manuellen Einträgen)
-                SwitchListTile(
-                  value: _isLiquid,
-                  onChanged: (v) => setState(() => _isLiquid = v),
-                  title: Text(l.foodIsLiquid),
-                  subtitle: Text(l.foodIsLiquidHint),
-                  contentPadding: EdgeInsets.zero,
-                  secondary: Icon(
-                    _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                    color: _isLiquid ? Colors.lightBlue : Colors.grey,
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 24),
-              ],
-
-              // Hinweis: Nährwerte pro 100g/ml
-              if (_showManualEntry)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    border: Border.all(color: Colors.orange.shade200),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Alle Nährwerte pro 100g bzw. 100ml angeben',
-                          style: TextStyle(
-                            color: Colors.orange.shade900,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                    if (_selectedFood != null)
+                      Card(
+                        color: Colors.green.shade50,
+                        child: ListTile(
+                          leading: _selectedFood!.hasImage
+                              ? SizedBox(
+                                  width: 40,
+                                  height: 40,
+                                  child: FoodThumbnailWidget(
+                                    food: _selectedFood!,
+                                    imageService: _imageService,
+                                    imageCache: _imageCache,
+                                  ),
+                                )
+                              : const Icon(Icons.check_circle,
+                                  color: Colors.green),
+                          title: Text(_selectedFood!.name),
+                          subtitle: Text(
+                            '${_selectedFood!.calories.toInt()} kcal / 100${_selectedFood!.servingUnit ?? 'g'}',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              setState(() {
+                                _selectedFood = null;
+                                _nameController.clear();
+                                _amountController.clear();
+                                _caloriesController.clear();
+                                _proteinController.clear();
+                                _fatController.clear();
+                                _carbsController.clear();
+                              });
+                            },
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              
-              if (_showManualEntry) const SizedBox(height: 16),
-              
-              // Nährwerte
-              Text(
-                'Nährwerte',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _caloriesController,
+
+                    const SizedBox(height: 16),
+
+                    // Name (nur bei manueller Eingabe editierbar)
+                    if (_showManualEntry)
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Name',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Bitte Name eingeben';
+                          }
+                          return null;
+                        },
+                      ),
+
+                    if (_showManualEntry) const SizedBox(height: 16),
+
+                    // Menge & Einheit
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: _amountController,
+                            decoration: const InputDecoration(
+                              labelText: 'Menge',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*[.,]?\d*')),
+                            ],
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Bitte Menge eingeben';
+                              }
+                              final amount = tryParseDouble(value);
+                              if (amount == null || amount <= 0) {
+                                return 'Ungültige Menge';
+                              }
+                              return null;
+                            },
+                            onChanged: (_) {
+                              // Rebuild so the totals preview reflects the new amount.
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildPortionSelector(),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Totals preview: shows scaled nutrition so the user sees the
+                    // effect of the current amount on the per-100g values below.
+                    _buildTotalsPreview(),
+
+                    const SizedBox(height: 16),
+
+                    // Meal Type
+                    DropdownButtonFormField<MealType>(
+                      initialValue: _selectedMealType,
                       decoration: const InputDecoration(
-                        labelText: 'Kalorien',
-                        suffixText: 'kcal',
+                        labelText: 'Mahlzeit',
                         border: OutlineInputBorder(),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Erforderlich';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _proteinController,
-                      decoration: const InputDecoration(
-                        labelText: 'Protein',
-                        suffixText: 'g',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Erforderlich';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _fatController,
-                      decoration: const InputDecoration(
-                        labelText: 'Fett',
-                        suffixText: 'g',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Erforderlich';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _carbsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Kohlenhydrate',
-                        suffixText: 'g',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Erforderlich';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Optional: Saturated Fat, Sugar, Fiber, Salt
-              Text('Optional', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _saturatedFatController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientSaturatedFat,
-                        helperText: l.ofWhichFat,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _sugarController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientSugar,
-                        helperText: l.ofWhichCarbs,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _fiberController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientFiber,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _sodiumController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientSalt,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      readOnly: _selectedFood != null,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Zur Datenbank hinzufügen (manuell oder externes Ergebnis)
-              if (_showManualEntry || (_selectedFood != null && _selectedFood!.id.isEmpty)) ...[
-                ValueListenableBuilder(
-                  valueListenable: _nameController,
-                  builder: (context, nameValue, child) {
-                    return ValueListenableBuilder(
-                      valueListenable: _caloriesController,
-                      builder: (context, caloriesValue, child) {
-                        return ValueListenableBuilder(
-                          valueListenable: _proteinController,
-                          builder: (context, proteinValue, child) {
-                            return ValueListenableBuilder(
-                              valueListenable: _fatController,
-                              builder: (context, fatValue, child) {
-                                return ValueListenableBuilder(
-                                  valueListenable: _carbsController,
-                                  builder: (context, carbsValue, child) {
-                                    final isEnabled =
-                                        (_selectedFood != null && _selectedFood!.id.isEmpty) ||
-                                        (nameValue.text.isNotEmpty &&
-                                            caloriesValue.text.isNotEmpty &&
-                                            proteinValue.text.isNotEmpty &&
-                                            fatValue.text.isNotEmpty &&
-                                            carbsValue.text.isNotEmpty);
-                                    
-                                    return Column(
-                                      children: [
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: OutlinedButton.icon(
-                                            onPressed: isEnabled ? _saveFoodToDatabase : null,
-                                            icon: const Icon(Icons.add_circle_outline),
-                                            label: const Text('Zur Datenbank hinzufügen'),
-                                            style: OutlinedButton.styleFrom(
-                                              padding: const EdgeInsets.all(16),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Speichere dieses Lebensmittel für zukünftige Verwendung',
-                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            color: Colors.grey.shade600,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            );
-                          },
+                      items: MealType.values.map((type) {
+                        return DropdownMenuItem(
+                          value: type,
+                          child: Row(
+                            children: [
+                              Text(type.icon,
+                                  style: const TextStyle(fontSize: 20)),
+                              const SizedBox(width: 8),
+                              Text(type.displayName),
+                            ],
+                          ),
                         );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedMealType = value;
+                          });
+                        }
                       },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
-              
-            ],
-          ],
-        ),
-      ),
-      AnimatedSize(
+                    ),
+
+                    if (_showManualEntry) ...[
+                      const SizedBox(height: 16),
+
+                      // Flüssigkeit (nur bei manuellen Einträgen)
+                      SwitchListTile(
+                        value: _isLiquid,
+                        onChanged: (v) => setState(() => _isLiquid = v),
+                        title: Text(l.foodIsLiquid),
+                        subtitle: Text(l.foodIsLiquidHint),
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Icon(
+                          _isLiquid
+                              ? Icons.water_drop
+                              : Icons.water_drop_outlined,
+                          color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 24),
+                    ],
+
+                    // Hinweis: Nährwerte pro 100g/ml
+                    if (_showManualEntry)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          border: Border.all(color: Colors.orange.shade200),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                color: Colors.orange.shade700, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Alle Nährwerte pro 100g bzw. 100ml angeben',
+                                style: TextStyle(
+                                  color: Colors.orange.shade900,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    if (_showManualEntry) const SizedBox(height: 16),
+
+                    // Nährwerte
+                    Text(
+                      'Nährwerte',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _caloriesController,
+                            decoration: const InputDecoration(
+                              labelText: 'Kalorien',
+                              suffixText: 'kcal',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Erforderlich';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _proteinController,
+                            decoration: const InputDecoration(
+                              labelText: 'Protein',
+                              suffixText: 'g',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Erforderlich';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _fatController,
+                            decoration: const InputDecoration(
+                              labelText: 'Fett',
+                              suffixText: 'g',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Erforderlich';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _carbsController,
+                            decoration: const InputDecoration(
+                              labelText: 'Kohlenhydrate',
+                              suffixText: 'g',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Erforderlich';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Optional: Saturated Fat, Sugar, Fiber, Salt
+                    Text('Optional',
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _saturatedFatController,
+                            decoration: InputDecoration(
+                              labelText: l.nutrientSaturatedFat,
+                              helperText: l.ofWhichFat,
+                              suffixText: 'g',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _sugarController,
+                            decoration: InputDecoration(
+                              labelText: l.nutrientSugar,
+                              helperText: l.ofWhichCarbs,
+                              suffixText: 'g',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _fiberController,
+                            decoration: InputDecoration(
+                              labelText: l.nutrientFiber,
+                              suffixText: 'g',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _sodiumController,
+                            decoration: InputDecoration(
+                              labelText: l.nutrientSalt,
+                              suffixText: 'g',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            readOnly: _selectedFood != null,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Zur Datenbank hinzufügen (manuell oder externes Ergebnis)
+                    if (_showManualEntry ||
+                        (_selectedFood != null &&
+                            _selectedFood!.id.isEmpty)) ...[
+                      ValueListenableBuilder(
+                        valueListenable: _nameController,
+                        builder: (context, nameValue, child) {
+                          return ValueListenableBuilder(
+                            valueListenable: _caloriesController,
+                            builder: (context, caloriesValue, child) {
+                              return ValueListenableBuilder(
+                                valueListenable: _proteinController,
+                                builder: (context, proteinValue, child) {
+                                  return ValueListenableBuilder(
+                                    valueListenable: _fatController,
+                                    builder: (context, fatValue, child) {
+                                      return ValueListenableBuilder(
+                                        valueListenable: _carbsController,
+                                        builder: (context, carbsValue, child) {
+                                          final isEnabled = (_selectedFood !=
+                                                      null &&
+                                                  _selectedFood!.id.isEmpty) ||
+                                              (nameValue.text.isNotEmpty &&
+                                                  caloriesValue
+                                                      .text.isNotEmpty &&
+                                                  proteinValue
+                                                      .text.isNotEmpty &&
+                                                  fatValue.text.isNotEmpty &&
+                                                  carbsValue.text.isNotEmpty);
+
+                                          return Column(
+                                            children: [
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: OutlinedButton.icon(
+                                                  onPressed: isEnabled
+                                                      ? _saveFoodToDatabase
+                                                      : null,
+                                                  icon: const Icon(
+                                                      Icons.add_circle_outline),
+                                                  label: const Text(
+                                                      'Zur Datenbank hinzufügen'),
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            16),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Speichere dieses Lebensmittel für zukünftige Verwendung',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          Colors.grey.shade600,
+                                                    ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+            AnimatedSize(
               duration: const Duration(milliseconds: 200),
               child: (_selectedFood != null || _showManualEntry)
                   ? SafeArea(
@@ -1955,10 +2095,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                 ? const SizedBox(
                                     width: 18,
                                     height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Icon(Icons.check),
-                            label: Text(_isSaving ? 'Speichere...' : 'Speichern'),
+                            label:
+                                Text(_isSaving ? 'Speichere...' : 'Speichern'),
                             style: FilledButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
@@ -1987,7 +2129,7 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
   final String? initialCategory;
   final String? initialBrand;
   final List<FoodPortion> initialPortions;
-  final NeonDatabaseService? dbService;  // Nullable for guest mode
+  final NeonDatabaseService? dbService; // Nullable for guest mode
 
   const _AddFoodToDatabaseDialog({
     required this.initialName,
@@ -2000,9 +2142,10 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
     this.initialPortions = const [],
     required this.dbService,
   });
-  
+
   @override
-  State<_AddFoodToDatabaseDialog> createState() => _AddFoodToDatabaseDialogState();
+  State<_AddFoodToDatabaseDialog> createState() =>
+      _AddFoodToDatabaseDialogState();
 }
 
 class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
@@ -2018,34 +2161,42 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   late final TextEditingController _saturatedFatController;
   late final TextEditingController _categoryController;
   late final TextEditingController _brandController;
-  final List<({TextEditingController name, TextEditingController amount})> _portionRows = [];
+  final List<({TextEditingController name, TextEditingController amount})>
+      _portionRows = [];
   bool _isPublic = false;
   bool _isLiquid = false;
 
   // Tags handling
   late List<Tag> _editingTags;
   late TagService _tagService;
-  
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialName);
-    _caloriesController = TextEditingController(text: widget.initialCalories.toStringAsFixed(0));
-    _proteinController = TextEditingController(text: widget.initialProtein.toStringAsFixed(1));
-    _fatController = TextEditingController(text: widget.initialFat.toStringAsFixed(1));
-    _carbsController = TextEditingController(text: widget.initialCarbs.toStringAsFixed(1));
+    _caloriesController =
+        TextEditingController(text: widget.initialCalories.toStringAsFixed(0));
+    _proteinController =
+        TextEditingController(text: widget.initialProtein.toStringAsFixed(1));
+    _fatController =
+        TextEditingController(text: widget.initialFat.toStringAsFixed(1));
+    _carbsController =
+        TextEditingController(text: widget.initialCarbs.toStringAsFixed(1));
     _fiberController = TextEditingController();
     _sugarController = TextEditingController();
     _sodiumController = TextEditingController();
     _saturatedFatController = TextEditingController();
-    _categoryController = TextEditingController(text: widget.initialCategory ?? '');
+    _categoryController =
+        TextEditingController(text: widget.initialCategory ?? '');
     _brandController = TextEditingController(text: widget.initialBrand ?? '');
     // Portionszeilen aus initialPortions übernehmen
     for (final p in widget.initialPortions) {
       _portionRows.add((
         name: TextEditingController(text: p.name),
         amount: TextEditingController(
-            text: p.amountG % 1 == 0 ? p.amountG.toInt().toString() : p.amountG.toString()),
+            text: p.amountG % 1 == 0
+                ? p.amountG.toInt().toString()
+                : p.amountG.toString()),
       ));
     }
 
@@ -2055,7 +2206,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     }
     _editingTags = [];
   }
-  
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -2095,7 +2246,8 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     final uniqueNames = portionNames.toSet();
     if (portionNames.length != uniqueNames.length) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Portionen dürfen keine doppelten Namen haben')),
+        const SnackBar(
+            content: Text('⚠️ Portionen dürfen keine doppelten Namen haben')),
       );
       return;
     }
@@ -2115,13 +2267,14 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       servingSize: null,
       servingUnit: null,
       portions: portions,
-      category: _categoryController.text.isNotEmpty ? _categoryController.text : null,
+      category:
+          _categoryController.text.isNotEmpty ? _categoryController.text : null,
       brand: _brandController.text.isNotEmpty ? _brandController.text : null,
       barcode: null,
       isPublic: _isPublic,
       isLiquid: _isLiquid,
       isApproved: false,
-      tags: _editingTags,  // Pass tags back via FoodItem
+      tags: _editingTags, // Pass tags back via FoodItem
       source: 'Custom',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -2129,211 +2282,213 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
 
     Navigator.of(context).pop(food);
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
+      scrollable: true,
       title: const Text('Zur Datenbank hinzufügen'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Info
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Alle Werte sind pro 100g bzw. 100ml',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue.shade900,
-                        ),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Alle Werte sind pro 100g bzw. 100ml',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue.shade900,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Name
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Erforderlich';
-                  }
-                  return null;
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Kategorie
-              TextFormField(
-                controller: _categoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Kategorie (optional)',
-                  hintText: 'z.B. Obst, Gemüse, Fleisch',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Marke
-              TextFormField(
-                controller: _brandController,
-                decoration: const InputDecoration(
-                  labelText: 'Marke (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Flüssigkeit
-              SwitchListTile(
-                value: _isLiquid,
-                onChanged: (v) => setState(() => _isLiquid = v),
-                title: const Text('Flüssigkeit'),
-                subtitle: const Text('Wird in ml statt g eingegeben'),
-                contentPadding: EdgeInsets.zero,
-                secondary: Icon(
-                  _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                  color: _isLiquid ? Colors.lightBlue : Colors.grey,
-                ),
-              ),
-
-              // Portionsgrößen
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Text(
-                    'Portionsgrößen',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _portionRows.add((
-                          name: TextEditingController(),
-                          amount: TextEditingController(),
-                        ));
-                      });
-                    },
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Hinzufügen'),
                   ),
                 ],
               ),
-              if (_portionRows.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'Keine Portionen definiert – Eingabe immer in g/ml',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Name
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Name *',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Erforderlich';
+                }
+                return null;
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            // Kategorie
+            TextFormField(
+              controller: _categoryController,
+              decoration: const InputDecoration(
+                labelText: 'Kategorie (optional)',
+                hintText: 'z.B. Obst, Gemüse, Fleisch',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Marke
+            TextFormField(
+              controller: _brandController,
+              decoration: const InputDecoration(
+                labelText: 'Marke (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Flüssigkeit
+            SwitchListTile(
+              value: _isLiquid,
+              onChanged: (v) => setState(() => _isLiquid = v),
+              title: const Text('Flüssigkeit'),
+              subtitle: const Text('Wird in ml statt g eingegeben'),
+              contentPadding: EdgeInsets.zero,
+              secondary: Icon(
+                _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
+                color: _isLiquid ? Colors.lightBlue : Colors.grey,
+              ),
+            ),
+
+            // Portionsgrößen
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  'Portionsgrößen',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _portionRows.add((
+                        name: TextEditingController(),
+                        amount: TextEditingController(),
+                      ));
+                    });
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Hinzufügen'),
+                ),
+              ],
+            ),
+            if (_portionRows.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Keine Portionen definiert – Eingabe immer in g/ml',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                ),
+              )
+            else
+              ...List.generate(_portionRows.length, (i) {
+                final row = _portionRows[i];
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: row.name,
+                          decoration: const InputDecoration(
+                            labelText: 'Bezeichnung',
+                            hintText: 'z.B. 1 Scheibe',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: TextFormField(
+                          controller: row.amount,
+                          decoration: const InputDecoration(
+                            labelText: 'Gramm',
+                            suffixText: 'g',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline,
+                            color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            row.name.dispose();
+                            row.amount.dispose();
+                            _portionRows.removeAt(i);
+                          });
+                        },
+                      ),
+                    ],
                   ),
-                )
-              else
-                ...List.generate(_portionRows.length, (i) {
-                  final row = _portionRows[i];
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextFormField(
-                            controller: row.name,
-                            decoration: const InputDecoration(
-                              labelText: 'Bezeichnung',
-                              hintText: 'z.B. 1 Scheibe',
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 2,
-                          child: TextFormField(
-                            controller: row.amount,
-                            decoration: const InputDecoration(
-                              labelText: 'Gramm',
-                              suffixText: 'g',
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                            ),
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              row.name.dispose();
-                              row.amount.dispose();
-                              _portionRows.removeAt(i);
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                );
+              }),
 
-              // Öffentlich / Privat
-              SwitchListTile(
-                value: _isPublic,
-                onChanged: (v) => setState(() => _isPublic = v),
-                title: const Text('Für alle Nutzer sichtbar'),
-                subtitle: Text(
-                  _isPublic
-                      ? 'Jeder kann dieses Lebensmittel in der Suche finden'
-                      : 'Nur du siehst diesen Eintrag',
-                ),
-                contentPadding: EdgeInsets.zero,
-                secondary: Icon(
-                  _isPublic ? Icons.public : Icons.lock_outline,
-                  color: _isPublic ? Colors.green : Colors.grey,
-                ),
+            // Öffentlich / Privat
+            SwitchListTile(
+              value: _isPublic,
+              onChanged: (v) => setState(() => _isPublic = v),
+              title: const Text('Für alle Nutzer sichtbar'),
+              subtitle: Text(
+                _isPublic
+                    ? 'Jeder kann dieses Lebensmittel in der Suche finden'
+                    : 'Nur du siehst diesen Eintrag',
               ),
+              contentPadding: EdgeInsets.zero,
+              secondary: Icon(
+                _isPublic ? Icons.public : Icons.lock_outline,
+                color: _isPublic ? Colors.green : Colors.grey,
+              ),
+            ),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              // Tags
-              Text(
-                l.tags,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TagEditor(
-                tags: _editingTags,
-                onChanged: (tags) => setState(() => _editingTags = tags),
-                tagService: _tagService,
-                readOnly: false,
-              ),
-            ],
-          ),
+            // Tags
+            Text(
+              l.tags,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            TagEditor(
+              tags: _editingTags,
+              onChanged: (tags) => setState(() => _editingTags = tags),
+              tagService: _tagService,
+              readOnly: false,
+            ),
+          ],
         ),
       ),
       actions: [
