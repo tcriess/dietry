@@ -2093,13 +2093,11 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return Scaffold(
-      body: DietryHome(
-        key: _dietryHomeKey,
-        dbService: widget.dbService,
-        authService: widget.authService,
-        isGuestMode: widget.isGuestMode,
-      ),
+    return DietryHome(
+      key: _dietryHomeKey,
+      dbService: widget.dbService,
+      authService: widget.authService,
+      isGuestMode: widget.isGuestMode,
       appBar: AppBar(
         title: Text(l.appBarTitle),
         bottom: (AppConfig.showDeveloperBanner || widget.isGuestMode)
@@ -2357,12 +2355,14 @@ class DietryHome extends StatefulWidget {
   final NeonDatabaseService? dbService;
   final NeonAuthService authService;
   final bool isGuestMode;
+  final PreferredSizeWidget? appBar;
 
   const DietryHome({
     super.key,
     this.dbService,
     required this.authService,
     this.isGuestMode = false,
+    this.appBar,
   });
 
   @override
@@ -3038,6 +3038,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
     if (_store.isInitialLoading) {
       return Scaffold(
+        appBar: widget.appBar,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -3053,6 +3054,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
     if (_store.goal == null) {
       return Scaffold(
+        appBar: widget.appBar,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -3328,6 +3330,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
 
     return Scaffold(
+      appBar: widget.appBar,
       floatingActionButton: fab,
       body: Stack(
         children: [
