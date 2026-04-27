@@ -572,7 +572,7 @@ class _StatsSummaryCard extends StatelessWidget {
         .toList();
     final n = completed.length;
     final avgCal =
-        n == 0 ? 0.0 : completed.fold(0.0, (s, d) => s + d.calories) / n;
+        n == 0 ? 0.0 : completed.fold(0.0, (s, d) => s + d.netCalories) / n;
     final completedWater = water
         .where((d) => d.date.toIso8601String().split('T')[0] != todayStr)
         .toList();
@@ -736,7 +736,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pts = _bucket(
-      nutrition.map((d) => (date: d.date, value: d.calories)).toList(),
+      nutrition.map((d) => (date: d.date, value: d.netCalories)).toList(),
       range,
     );
 
@@ -754,13 +754,16 @@ class _CalorieTrendLineChart extends StatelessWidget {
             1.1)
         .ceilToDouble();
 
+    final minVal = pts.map((p) => p.value).reduce((a, b) => a < b ? a : b);
+    final minY = minVal < 0 ? (minVal * 1.1).floorToDouble() : 0.0;
+
     final every = _labelEvery(pts.length);
 
     return SizedBox(
       height: 180,
       child: LineChart(
         LineChartData(
-          minY: 0,
+          minY: minY,
           maxY: maxY,
           gridData: FlGridData(
             drawHorizontalLine: true,
@@ -854,7 +857,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pts = _bucket(
-      nutrition.map((d) => (date: d.date, value: d.calories)).toList(),
+      nutrition.map((d) => (date: d.date, value: d.netCalories)).toList(),
       range,
     );
 
@@ -869,6 +872,9 @@ class _CalorieTrendBarChart extends StatelessWidget {
             1.1)
         .ceilToDouble();
 
+    final minVal = pts.map((p) => p.value).reduce((a, b) => a < b ? a : b);
+    final minY = minVal < 0 ? (minVal * 1.1).floorToDouble() : 0.0;
+
     final every = _labelEvery(pts.length);
     final barWidth = (280 / pts.length).clamp(4.0, 18.0);
 
@@ -876,6 +882,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
       height: 180,
       child: BarChart(
         BarChartData(
+          minY: minY,
           maxY: maxY,
           gridData: FlGridData(
             drawHorizontalLine: true,

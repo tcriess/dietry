@@ -24,6 +24,7 @@ class DailyNutritionData {
   final double protein;
   final double fat;
   final double carbs;
+  final double caloriesBurned;
 
   const DailyNutritionData({
     required this.date,
@@ -31,7 +32,10 @@ class DailyNutritionData {
     required this.protein,
     required this.fat,
     required this.carbs,
+    this.caloriesBurned = 0,
   });
+
+  double get netCalories => calories - caloriesBurned;
 }
 
 class DailyWaterData {
@@ -68,24 +72,40 @@ class ReportsService {
     final uid = _uid;
     if (uid == null) return [];
 
-    var q = _db.client
+    var qN = _db.client
         .from('daily_nutrition_summary')
         .select('entry_date,total_calories,total_protein,total_fat,total_carbs')
         .eq('user_id', uid)
         .lte('entry_date', _ds(to));
-    if (from != null) q = q.gte('entry_date', _ds(from));
-    final qSorted = q.order('entry_date', ascending: true);
+    if (from != null) qN = qN.gte('entry_date', _ds(from));
+    final rN = await qN.order('entry_date', ascending: true);
 
-    final r = await qSorted;
-    return (r as List)
-        .map((row) => DailyNutritionData(
-              date: DateTime.parse(row['entry_date'] as String),
-              calories: (row['total_calories'] as num?)?.toDouble() ?? 0,
-              protein: (row['total_protein'] as num?)?.toDouble() ?? 0,
-              fat: (row['total_fat'] as num?)?.toDouble() ?? 0,
-              carbs: (row['total_carbs'] as num?)?.toDouble() ?? 0,
-            ))
-        .toList();
+    var qA = _db.client
+        .from('daily_activity_summary')
+        .select('activity_date,total_calories')
+        .eq('user_id', uid)
+        .lte('activity_date', _ds(to));
+    if (from != null) qA = qA.gte('activity_date', _ds(from));
+    final rA = await qA;
+
+    final burnedByDate = <String, double>{};
+    for (final row in rA as List) {
+      final ds = (row['activity_date'] as String).split('T')[0];
+      burnedByDate[ds] =
+          (row['total_calories'] as num?)?.toDouble() ?? 0;
+    }
+
+    return (rN as List).map((row) {
+      final ds = (row['entry_date'] as String).split('T')[0];
+      return DailyNutritionData(
+        date: DateTime.parse(row['entry_date'] as String),
+        calories: (row['total_calories'] as num?)?.toDouble() ?? 0,
+        protein: (row['total_protein'] as num?)?.toDouble() ?? 0,
+        fat: (row['total_fat'] as num?)?.toDouble() ?? 0,
+        carbs: (row['total_carbs'] as num?)?.toDouble() ?? 0,
+        caloriesBurned: burnedByDate[ds] ?? 0,
+      );
+    }).toList();
   }
 
   // ── Water (CE) ─────────────────────────────────────────────────────────────
