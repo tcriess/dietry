@@ -70,6 +70,29 @@ class DataStore extends ChangeNotifier {
     _local = local;
   }
 
+  /// Clear all in-memory state and arm the initial-loading flag.
+  ///
+  /// The store is a singleton, so without an explicit reset a previous
+  /// session's `_isInitialLoading == false` and stale `_goal == null` would
+  /// briefly leak into a fresh login — flashing the "no goal" screen before
+  /// `loadDay()` finishes. Call this synchronously when a new session starts
+  /// so the UI shows the loading indicator until real data arrives.
+  void resetForNewSession() {
+    _isInitialLoading = true;
+    _isLoading = false;
+    _goal = null;
+    _foodEntries = [];
+    _activities = [];
+    _waterIntakeMl = 0;
+    _isCheatDay = false;
+    _streak = 0;
+    _bestStreak = 0;
+    _pendingMilestones = [];
+    _lastEntriesSync = null;
+    _lastActivitiesSync = null;
+    notifyListeners();
+  }
+
   // ── Remote load ───────────────────────────────────────────────────────────
 
   /// Fetch data for [date] from the server or local database.
@@ -180,6 +203,15 @@ class DataStore extends ChangeNotifier {
 
   void setGoal(NutritionGoal? goal) {
     _goal = goal;
+    notifyListeners();
+  }
+
+  /// Mark the initial load as finished without going through loadDay() —
+  /// used by give-up paths (e.g. userId never resolved) so the UI can leave
+  /// the loading screen and render whatever state it has.
+  void finishInitialLoading() {
+    if (!_isInitialLoading) return;
+    _isInitialLoading = false;
     notifyListeners();
   }
 

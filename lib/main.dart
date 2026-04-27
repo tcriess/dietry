@@ -2401,6 +2401,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
     // Guest mode: services already initialized in _initGuestMode()
 
+    // Reset singleton state synchronously so the build sees isInitialLoading
+    // == true until loadDay() completes — prevents a brief "no goal" flash on
+    // re-login when a previous session left the store with isInitialLoading
+    // == false and a stale (now-null) goal.
+    _store.resetForNewSession();
+
     _store.addListener(_onStoreChanged);
     _initializeAndLoadData();
     // Refresh data every 60 s while the app is in the foreground.
@@ -2832,7 +2838,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       attempts++;
     }
     if (widget.dbService!.userId == null) {
-      _store.setGoal(null); // triggers isInitialLoading = false via loadDay
+      _store.setGoal(null);
+      _store.finishInitialLoading();
       return;
     }
     await _store.loadDay(_selectedDay);
