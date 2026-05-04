@@ -292,6 +292,24 @@ abstract class PremiumFeatures {
     required String apiUrl,
   });
 
+  /// Inline-Editor für Mikronährstoffe (pro 100 g) eines Lebensmittels.
+  /// Zur Einbettung in den "Lebensmittel zur Datenbank hinzufügen"-Dialog.
+  /// CE-Stub: gibt [SizedBox.shrink()] zurück.
+  Widget buildFoodMicrosInlineEditor({
+    Map<String, double>? initialMicros,
+    required ValueChanged<Map<String, double>> onChanged,
+  });
+
+  /// Speichert Mikronährstoffe eines Lebensmittels (food_database_micros).
+  /// CE-Stub: No-Op.
+  Future<void> saveFoodDatabaseMicrosFromMap({
+    required String foodId,
+    required String userId,
+    required Map<String, double> micros100g,
+    required String authToken,
+    required String apiUrl,
+  });
+
   // ── Social Sharing ────────────────────────────────────────────────────────
 
   bool get hasShareProgress;
@@ -528,6 +546,22 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String userId,
     required Map<String, double> micros100g,
     required double amountG,
+    required String authToken,
+    required String apiUrl,
+  }) async {}
+
+  @override
+  Widget buildFoodMicrosInlineEditor({
+    Map<String, double>? initialMicros,
+    required ValueChanged<Map<String, double>> onChanged,
+  }) =>
+      const SizedBox.shrink();
+
+  @override
+  Future<void> saveFoodDatabaseMicrosFromMap({
+    required String foodId,
+    required String userId,
+    required Map<String, double> micros100g,
     required String authToken,
     required String apiUrl,
   }) async {}

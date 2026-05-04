@@ -799,11 +799,23 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final initialCarbs = isExternal
         ? _selectedFood!.carbs
         : (tryParseDouble(_carbsController.text) ?? 0);
+    final initialFiber = isExternal
+        ? _selectedFood!.fiber
+        : tryParseDouble(_fiberController.text);
+    final initialSugar = isExternal
+        ? _selectedFood!.sugar
+        : tryParseDouble(_sugarController.text);
+    final initialSodium = isExternal
+        ? _selectedFood!.sodium
+        : tryParseDouble(_sodiumController.text);
+    final initialSaturatedFat = isExternal
+        ? _selectedFood!.saturatedFat
+        : tryParseDouble(_saturatedFatController.text);
 
     if (!isExternal && !_formKey.currentState!.validate()) return;
 
     // Zeige Dialog mit erweiterten Optionen
-    final result = await showDialog<FoodItem>(
+    final result = await showDialog<AddFoodDialogResult>(
       context: context,
       builder: (context) => _AddFoodToDatabaseDialog(
         initialName: _nameController.text,
@@ -811,9 +823,15 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         initialProtein: initialProtein,
         initialFat: initialFat,
         initialCarbs: initialCarbs,
+        initialFiber: initialFiber,
+        initialSugar: initialSugar,
+        initialSodium: initialSodium,
+        initialSaturatedFat: initialSaturatedFat,
         initialCategory: _selectedFood?.category,
         initialBrand: _selectedFood?.brand,
         initialPortions: _selectedFood?.portions ?? [],
+        initialMicros: _selectedMicros,
+        initialIsLiquid: _selectedFood?.isLiquid ?? _isLiquid,
         dbService: widget.dbService!,
       ),
     );
@@ -821,20 +839,36 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (result != null) {
       try {
         final service = FoodDatabaseService(widget.dbService!);
-        final created = await service.createFood(result);
+        final created = await service.createFood(result.food);
 
         // Save tags if any were added
-        if (result.tags.isNotEmpty) {
-          appLogger
-              .d('💾 Saving ${result.tags.length} tags for newly created food');
+        if (result.food.tags.isNotEmpty) {
+          appLogger.d(
+              '💾 Saving ${result.food.tags.length} tags for newly created food');
           final tagService = TagService(widget.dbService!);
-          await tagService.setFoodTags(created.id, result.tags);
+          await tagService.setFoodTags(created.id, result.food.tags);
+        }
+
+        // Persist micronutrients (cloud) so the subsequent food entry can copy them.
+        if (result.micros.isNotEmpty) {
+          final userId = widget.dbService!.userId;
+          final jwt = widget.dbService!.jwt;
+          if (userId != null && jwt != null) {
+            await premiumFeatures.saveFoodDatabaseMicrosFromMap(
+              foodId: created.id,
+              userId: userId,
+              micros100g: result.micros,
+              authToken: jwt,
+              apiUrl: NeonDatabaseService.dataApiUrl,
+            );
+          }
         }
 
         if (mounted) {
           final prevGrams = _currentGrams();
           _selectFood(
             created,
+            micros: result.micros,
             preservedAmountG: prevGrams > 0 ? prevGrams : null,
           );
           await _saveEntry();
@@ -867,11 +901,23 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final initialCarbs = isExternal
         ? _selectedFood!.carbs
         : (tryParseDouble(_carbsController.text) ?? 0);
+    final initialFiber = isExternal
+        ? _selectedFood!.fiber
+        : tryParseDouble(_fiberController.text);
+    final initialSugar = isExternal
+        ? _selectedFood!.sugar
+        : tryParseDouble(_sugarController.text);
+    final initialSodium = isExternal
+        ? _selectedFood!.sodium
+        : tryParseDouble(_sodiumController.text);
+    final initialSaturatedFat = isExternal
+        ? _selectedFood!.saturatedFat
+        : tryParseDouble(_saturatedFatController.text);
 
     if (!isExternal && !_formKey.currentState!.validate()) return;
 
     // Show dialog to create food
-    final result = await showDialog<FoodItem>(
+    final result = await showDialog<AddFoodDialogResult>(
       context: context,
       builder: (context) => _AddFoodToDatabaseDialog(
         initialName: _nameController.text,
@@ -879,9 +925,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         initialProtein: initialProtein,
         initialFat: initialFat,
         initialCarbs: initialCarbs,
+        initialFiber: initialFiber,
+        initialSugar: initialSugar,
+        initialSodium: initialSodium,
+        initialSaturatedFat: initialSaturatedFat,
         initialCategory: _selectedFood?.category,
         initialBrand: _selectedFood?.brand,
         initialPortions: _selectedFood?.portions ?? [],
+        initialIsLiquid: _selectedFood?.isLiquid ?? _isLiquid,
         dbService: null, // No DB service in guest mode
       ),
     );
@@ -889,7 +940,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (result != null) {
       try {
         // Save locally
-        final saved = await LocalDataService.instance.saveGuestFood(result);
+        final saved = await LocalDataService.instance.saveGuestFood(result.food);
         final prevGrams = _currentGrams();
         _selectFood(
           saved,
@@ -2143,6 +2194,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   }
 }
 
+/// Rückgabe-Typ des Add-Food-Dialogs: das neue Lebensmittel plus
+/// optional erfasste Mikronährstoffe (pro 100 g, DB-Spaltennamen als Schlüssel).
+typedef AddFoodDialogResult = ({
+  FoodItem food,
+  Map<String, double> micros,
+});
+
 /// Dialog zum Hinzufügen eines neuen Foods zur Datenbank
 class _AddFoodToDatabaseDialog extends StatefulWidget {
   final String initialName;
@@ -2150,9 +2208,15 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
   final double initialProtein;
   final double initialFat;
   final double initialCarbs;
+  final double? initialFiber;
+  final double? initialSugar;
+  final double? initialSodium;
+  final double? initialSaturatedFat;
   final String? initialCategory;
   final String? initialBrand;
   final List<FoodPortion> initialPortions;
+  final Map<String, double> initialMicros;
+  final bool initialIsLiquid;
   final NeonDatabaseService? dbService; // Nullable for guest mode
 
   const _AddFoodToDatabaseDialog({
@@ -2161,9 +2225,15 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
     required this.initialProtein,
     required this.initialFat,
     required this.initialCarbs,
+    this.initialFiber,
+    this.initialSugar,
+    this.initialSodium,
+    this.initialSaturatedFat,
     this.initialCategory,
     this.initialBrand,
     this.initialPortions = const [],
+    this.initialMicros = const {},
+    this.initialIsLiquid = false,
     required this.dbService,
   });
 
@@ -2190,13 +2260,21 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   bool _isPublic = false;
   bool _isLiquid = false;
 
+  // Micronutrients (per 100 g) — keys = DB column names. Cloud-only.
+  late Map<String, double> _micros;
+
   // Tags handling
   late List<Tag> _editingTags;
   late TagService _tagService;
 
+  static String _fmt(double v) =>
+      v == v.truncateToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
   @override
   void initState() {
     super.initState();
+    _isLiquid = widget.initialIsLiquid;
+    _micros = Map<String, double>.from(widget.initialMicros);
     _nameController = TextEditingController(text: widget.initialName);
     _caloriesController =
         TextEditingController(text: widget.initialCalories.toStringAsFixed(0));
@@ -2206,10 +2284,16 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
         TextEditingController(text: widget.initialFat.toStringAsFixed(1));
     _carbsController =
         TextEditingController(text: widget.initialCarbs.toStringAsFixed(1));
-    _fiberController = TextEditingController();
-    _sugarController = TextEditingController();
-    _sodiumController = TextEditingController();
-    _saturatedFatController = TextEditingController();
+    _fiberController = TextEditingController(
+        text: widget.initialFiber != null ? _fmt(widget.initialFiber!) : '');
+    _sugarController = TextEditingController(
+        text: widget.initialSugar != null ? _fmt(widget.initialSugar!) : '');
+    _sodiumController = TextEditingController(
+        text: widget.initialSodium != null ? _fmt(widget.initialSodium!) : '');
+    _saturatedFatController = TextEditingController(
+        text: widget.initialSaturatedFat != null
+            ? _fmt(widget.initialSaturatedFat!)
+            : '');
     _categoryController =
         TextEditingController(text: widget.initialCategory ?? '');
     _brandController = TextEditingController(text: widget.initialBrand ?? '');
@@ -2249,6 +2333,40 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       row.amount.dispose();
     }
     super.dispose();
+  }
+
+  Widget _nutrientField({
+    required TextEditingController controller,
+    required String label,
+    required String unit,
+    bool isRequired = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+      ],
+      decoration: InputDecoration(
+        labelText: isRequired ? '$label *' : label,
+        suffixText: unit,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      ),
+      validator: isRequired
+          ? (v) {
+              if (v == null || v.trim().isEmpty) return 'Pflichtfeld';
+              if (tryParseDouble(v) == null) return 'Ungültig';
+              return null;
+            }
+          : (v) {
+              if (v == null || v.trim().isEmpty) return null;
+              if (tryParseDouble(v) == null) return 'Ungültig';
+              return null;
+            },
+    );
   }
 
   void _save() {
@@ -2304,7 +2422,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       updatedAt: DateTime.now(),
     );
 
-    Navigator.of(context).pop(food);
+    Navigator.of(context).pop<AddFoodDialogResult>((food: food, micros: _micros));
   }
 
   @override
@@ -2480,6 +2598,102 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                   ),
                 );
               }),
+
+            // ── Nährwerte (pro 100 g/ml) ─────────────────────────────────
+            const SizedBox(height: 16),
+            Text(
+              'Nährwerte (pro 100 ${_isLiquid ? 'ml' : 'g'})',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: _nutrientField(
+                  controller: _caloriesController,
+                  label: 'Kalorien',
+                  unit: 'kcal',
+                  isRequired: true,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _nutrientField(
+                  controller: _proteinController,
+                  label: 'Protein',
+                  unit: 'g',
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: _nutrientField(
+                  controller: _fatController,
+                  label: 'Fett',
+                  unit: 'g',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _nutrientField(
+                  controller: _saturatedFatController,
+                  label: 'davon ges. Fett',
+                  unit: 'g',
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: _nutrientField(
+                  controller: _carbsController,
+                  label: 'Kohlenhydrate',
+                  unit: 'g',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _nutrientField(
+                  controller: _sugarController,
+                  label: 'davon Zucker',
+                  unit: 'g',
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: _nutrientField(
+                  controller: _fiberController,
+                  label: 'Ballaststoffe',
+                  unit: 'g',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _nutrientField(
+                  controller: _sodiumController,
+                  label: 'Salz',
+                  unit: 'g',
+                ),
+              ),
+            ]),
+
+            // ── Mikronährstoffe (Cloud, pro 100 g) ──────────────────────
+            if (AppFeatures.microNutrients) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Mikronährstoffe (pro 100 ${_isLiquid ? 'ml' : 'g'})',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 4),
+              premiumFeatures.buildFoodMicrosInlineEditor(
+                initialMicros: widget.initialMicros,
+                onChanged: (m) => _micros = m,
+              ),
+            ],
+
+            const SizedBox(height: 12),
 
             // Öffentlich / Privat
             SwitchListTile(
