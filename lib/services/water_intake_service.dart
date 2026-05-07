@@ -28,7 +28,7 @@ class WaterIntakeService {
       return (response['amount_ml'] as num).toInt();
     } catch (e) {
       appLogger.e('❌ WaterIntakeService.getIntakeForDate: $e');
-      return 0;
+      rethrow;
     }
   }
 

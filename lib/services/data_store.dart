@@ -121,7 +121,26 @@ class DataStore extends ChangeNotifier {
         _loadCheatDayLocal(date),
       ]);
     } else if (_db != null) {
-      // Remote mode: existing behavior
+      // Preflight: ohne userId und gültiges Token können wir keinen
+      // authoritativen Fetch machen. In dem Fall lieber gar nichts ändern als
+      // den im Speicher gehaltenen Zustand mit leeren Fallbacks zu überschreiben.
+      // Sonst flackert beim Resume / nach Speichern eines Eintrags / während
+      // einem Token-Refresh kurz der "kein Ziel konfiguriert"-Screen.
+      final canFetch = _db!.userId != null &&
+          await _db!.ensureValidToken(minMinutesValid: 5);
+
+      if (!canFetch) {
+        // Silent refresh (Resume, periodischer Refresh, nach-Speichern):
+        // State unangetastet lassen, _isInitialLoading nicht umschalten.
+        if (silent) return;
+        // Initialer/expliziter Load: Loading-Flag freigeben, damit der Spinner
+        // verschwindet — aber den restlichen State nicht clobbern.
+        _isLoading = false;
+        _isInitialLoading = false;
+        notifyListeners();
+        return;
+      }
+
       if (delta) {
         // Delta: nur Entries + Activities delta-fetchen.
         // Goal + Water sind single-row und trivial leicht → immer full.
@@ -255,10 +274,17 @@ class DataStore extends ChangeNotifier {
 
   // ── Private loaders (Full) ────────────────────────────────────────────────
 
+  // Hinweis zu allen Loadern unten: Bei einer Exception NICHT den im Speicher
+  // gehaltenen Wert überschreiben. Sonst clobbert ein transienter Fehler
+  // (Token-Race, Netzwerk-Hiccup) sichtbaren State — z.B. flackert der
+  // "kein Ziel konfiguriert"-Screen, oder Wasserstand fällt kurz auf 0.
+
   Future<void> _loadGoal(DateTime date) async {
     try {
-      _goal = await NutritionGoalService(_db!).getGoalForDate(date);
-    } catch (_) {}
+      _goal = await NutritionGoalService(_db!).getGoalForDateStrict(date);
+    } catch (_) {
+      // Fetch fehlgeschlagen → bestehendes Goal beibehalten.
+    }
   }
 
   Future<void> _loadEntries(DateTime date) async {
@@ -266,7 +292,7 @@ class DataStore extends ChangeNotifier {
       _foodEntries = await FoodEntryService(_db!).getFoodEntriesForDate(date);
       _lastEntriesSync = DateTime.now().toUtc();
     } catch (_) {
-      _foodEntries = [];
+      // Bestehende Einträge beibehalten — nicht auf [] setzen.
     }
   }
 
@@ -275,7 +301,7 @@ class DataStore extends ChangeNotifier {
       _activities = await PhysicalActivityService(_db!).getActivitiesForDate(date);
       _lastActivitiesSync = DateTime.now().toUtc();
     } catch (_) {
-      _activities = [];
+      // Bestehende Aktivitäten beibehalten.
     }
   }
 
@@ -283,7 +309,7 @@ class DataStore extends ChangeNotifier {
     try {
       _waterIntakeMl = await WaterIntakeService(_db!).getIntakeForDate(date);
     } catch (_) {
-      _waterIntakeMl = 0;
+      // Bestehenden Wasserstand beibehalten.
     }
   }
 
@@ -291,7 +317,7 @@ class DataStore extends ChangeNotifier {
     try {
       _isCheatDay = await CheatDayService(_db!).isCheatDay(date);
     } catch (_) {
-      _isCheatDay = false;
+      // Bestehenden Cheat-Day-Status beibehalten.
     }
   }
 
@@ -307,7 +333,7 @@ class DataStore extends ChangeNotifier {
         _streak = 0;
       }
     } catch (_) {
-      _streak = 0;
+      // Bestehenden Streak beibehalten.
     }
   }
 

@@ -43,7 +43,7 @@ class PhysicalActivityService {
           .toList();
     } catch (e) {
       appLogger.e('❌ Fehler beim Laden der Aktivitäten: $e');
-      return [];
+      rethrow;
     }
   }
 

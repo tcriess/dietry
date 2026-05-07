@@ -90,11 +90,41 @@ class NutritionGoalService {
   }
   
   /// Prüft ob ein Goal für ein bestimmtes Datum existiert
-  /// 
+  ///
   /// Returns true wenn mindestens ein Goal mit valid_from <= targetDate existiert
   Future<bool> hasGoalForDate(DateTime date) async {
     final goal = await getGoalForDate(date);
     return goal != null;
+  }
+
+  /// Wie [getGoalForDate], aber wirft bei Auth-/Netzwerkfehlern statt `null` zurückzugeben.
+  /// `null` bedeutet hier authoritativ: Query erfolgreich, keine Zeile vorhanden.
+  ///
+  /// Wird vom DataStore verwendet, um zu unterscheiden zwischen "kein Goal vorhanden"
+  /// und "Fetch fehlgeschlagen" — sonst würde ein transientes Problem das im Speicher
+  /// gehaltene Goal überschreiben und kurz den "kein Ziel konfiguriert"-Screen einblenden.
+  Future<NutritionGoal?> getGoalForDateStrict(DateTime date) async {
+    final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+    if (!tokenValid) {
+      throw StateError('Token ungültig');
+    }
+    final userId = _userId;
+    if (userId == null) {
+      throw StateError('Keine User-ID verfügbar');
+    }
+
+    final dateString = date.toIso8601String().split('T')[0];
+    final response = await _db.client
+        .from('nutrition_goals')
+        .select()
+        .eq('user_id', userId)
+        .lte('valid_from', dateString)
+        .order('valid_from', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return NutritionGoal.fromJson(response);
   }
   
   /// Erstelle oder aktualisiere ein Nutrition Goal
