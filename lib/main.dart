@@ -1717,7 +1717,10 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       appLogger.w('⚠️ Rolle konnte nicht abgerufen werden: $e');
     });
 
-    // Initialise Play Store subscriptions (Android + Cloud only)
+    // Initialise Play Store subscriptions (Android + Cloud only).
+    // Fire-and-forget — IAP/Play-Services kann transient ausfallen; hängen wir
+    // einen catchError dran, damit ein Init-Fehler nicht als unhandled future
+    // hochpoltert und die Activity reißt.
     if (AppConfig.isCloudEdition && AppConfig.playSubscriptionSku.isNotEmpty) {
       premiumFeatures.initSubscriptions(
         userId: userId,
@@ -1729,7 +1732,9 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
           AppFeatures.setRole(role);
           if (mounted) setState(() {});
         },
-      );
+      ).catchError((e) {
+        appLogger.w('⚠️ Subscription init error (ignored): $e');
+      });
     }
   }
 
