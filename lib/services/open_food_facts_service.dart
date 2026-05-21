@@ -139,7 +139,8 @@ class OpenFoodFactsService {
         carbs: carbs,
         fiber: _num(n, 'fiber_100g'),
         sugar: _num(n, 'sugars_100g'),
-        sodium: _num(n, 'sodium_100g'),
+        sodium: _saltPer100g(n),
+        saturatedFat: _num(n, 'saturated-fat_100g'),
         category: category,
         brand: brand?.isNotEmpty == true ? brand : null,
         barcode: barcode?.isNotEmpty == true ? barcode : null,
@@ -195,8 +196,8 @@ class OpenFoodFactsService {
       ('iodine',             'iodine_mcg',              'mcg'),
       ('manganese',          'manganese_mg',            'mg'),
       ('copper',             'copper_mg',               'mg'),
-      // Fettsäuren
-      ('saturated-fat',      'saturated_fat_g',         'g'),
+      // Fettsäuren — gesättigtes Fett ist ein Kern-Feld (FoodItem.saturatedFat),
+      // wird daher NICHT als Mikronährstoff dupliziert.
       ('monounsaturated-fat','monounsaturated_fat_g',   'g'),
       ('polyunsaturated-fat','polyunsaturated_fat_g',   'g'),
       ('trans-fat',          'trans_fat_g',             'g'),
@@ -244,6 +245,16 @@ class OpenFoodFactsService {
     // mcg → mg
     if (from == 'mcg' && to == 'mg') return value / 1000;
     return null; // unbekannte Konvertierung
+  }
+
+  /// Salt per 100 g/ml. The app's `sodium` column stores SALT — OFF provides
+  /// `salt_100g` directly (in grams); when only `sodium_100g` is present we
+  /// derive salt as sodium × 2.5.
+  double? _saltPer100g(Map<String, dynamic> n) {
+    final salt = _num(n, 'salt_100g');
+    if (salt != null) return salt;
+    final sodium = _num(n, 'sodium_100g');
+    return sodium != null ? sodium * 2.5 : null;
   }
 
   double? _num(Map<String, dynamic> map, String key) {

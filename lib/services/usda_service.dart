@@ -105,10 +105,12 @@ class UsdaService {
         carbs: nutrients['Carbohydrate, by difference'] ?? 0.0,
         fiber: nutrients['Fiber, total dietary'],
         sugar: nutrients['Sugars, total including NLEA'] ?? nutrients['Sugars, Total'],
-        // USDA gibt Natrium in mg, FoodItem erwartet g
+        // USDA liefert Natrium in mg. Die `sodium`-Spalte speichert SALZ in g:
+        // Salz = Natrium × 2.5, plus mg → g (÷1000).
         sodium: nutrients['Sodium, Na'] != null
-            ? nutrients['Sodium, Na']! / 1000
+            ? nutrients['Sodium, Na']! * 2.5 / 1000
             : null,
+        saturatedFat: nutrients['Fatty acids, total saturated'],
         category: category?.isNotEmpty == true ? category : null,
         brand: brand?.isNotEmpty == true ? brand : null,
         barcode: null,
@@ -167,8 +169,8 @@ class UsdaService {
       ('Iodine, I',                         'iodine_mcg',            'UG'),
       ('Manganese, Mn',                     'manganese_mg',          'MG'),
       ('Copper, Cu',                        'copper_mg',             'MG'),
-      // Fettsäuren
-      ('Fatty acids, total saturated',      'saturated_fat_g',       'G'),
+      // Fettsäuren — gesättigtes Fett ist ein Kern-Feld (FoodItem.saturatedFat),
+      // wird daher NICHT als Mikronährstoff dupliziert.
       ('Fatty acids, total monounsaturated','monounsaturated_fat_g', 'G'),
       ('Fatty acids, total polyunsaturated','polyunsaturated_fat_g', 'G'),
       ('Fatty acids, total trans',          'trans_fat_g',           'G'),

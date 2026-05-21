@@ -2018,6 +2018,17 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
                             readOnly: _selectedFood != null,
+                            validator: (value) {
+                              // Only enforced for manually entered values;
+                              // a selected DB food is trusted as-is.
+                              if (_selectedFood != null) return null;
+                              final sat = tryParseDouble(value);
+                              final fat = tryParseDouble(_fatController.text);
+                              if (sat != null && fat != null && sat > fat) {
+                                return l.satFatExceedsFat;
+                              }
+                              return null;
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -2340,6 +2351,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     required String label,
     required String unit,
     bool isRequired = false,
+    String? Function(String?)? extraValidator,
   }) {
     return TextFormField(
       controller: controller,
@@ -2355,17 +2367,17 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       ),
-      validator: isRequired
-          ? (v) {
-              if (v == null || v.trim().isEmpty) return 'Pflichtfeld';
-              if (tryParseDouble(v) == null) return 'Ungültig';
-              return null;
-            }
-          : (v) {
-              if (v == null || v.trim().isEmpty) return null;
-              if (tryParseDouble(v) == null) return 'Ungültig';
-              return null;
-            },
+      validator: (v) {
+        if (isRequired) {
+          if (v == null || v.trim().isEmpty) return 'Pflichtfeld';
+          if (tryParseDouble(v) == null) return 'Ungültig';
+        } else if (v != null &&
+            v.trim().isNotEmpty &&
+            tryParseDouble(v) == null) {
+          return 'Ungültig';
+        }
+        return extraValidator?.call(v);
+      },
     );
   }
 
@@ -2639,6 +2651,14 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                   controller: _saturatedFatController,
                   label: 'davon ges. Fett',
                   unit: 'g',
+                  extraValidator: (v) {
+                    final sat = tryParseDouble(v);
+                    final fat = tryParseDouble(_fatController.text);
+                    if (sat != null && fat != null && sat > fat) {
+                      return l.satFatExceedsFat;
+                    }
+                    return null;
+                  },
                 ),
               ),
             ]),

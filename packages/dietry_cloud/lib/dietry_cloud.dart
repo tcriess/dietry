@@ -269,6 +269,15 @@ abstract class PremiumFeatures {
     required String apiUrl,
   });
 
+  /// Rescales an existing food-entry micronutrient row by [ratio] — used when
+  /// the entry's amount changes. Best-effort. CE-Stub: No-Op.
+  Future<void> rescaleEntryMicros({
+    required String entryId,
+    required double ratio,
+    required String authToken,
+    required String apiUrl,
+  });
+
   void showActivityQuickAddSheet({
     required BuildContext context,
     required String userId,
@@ -508,6 +517,14 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String entryId,
     required String userId,
     required double amountG,
+    required String authToken,
+    required String apiUrl,
+  }) async {}
+
+  @override
+  Future<void> rescaleEntryMicros({
+    required String entryId,
+    required double ratio,
     required String authToken,
     required String apiUrl,
   }) async {}

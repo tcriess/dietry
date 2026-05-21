@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
@@ -148,11 +149,32 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
 
   // ── add helpers ──────────────────────────────────────────────────────────────
 
-  Future<void> _addEntry(FoodEntry entry) async {
+  Future<void> _addEntry(FoodEntry entry, double? amountG) async {
     if (_addingId != null) return;
     setState(() => _addingId = entry.id);
     try {
       await widget.onAdd(entry);
+
+      // Copy cloud micronutrients for database-backed foods (best-effort).
+      // Needs the grams the entry represents; skipped when unknown.
+      if (amountG != null &&
+          !entry.isMeal &&
+          entry.foodId != null &&
+          entry.foodId!.isNotEmpty) {
+        final jwt = widget.dbService.jwt;
+        final userId = widget.dbService.userId;
+        if (jwt != null && userId != null) {
+          premiumFeatures.copyFoodMicrosToEntry(
+            foodId: entry.foodId!,
+            entryId: entry.id,
+            userId: userId,
+            amountG: amountG,
+            authToken: jwt,
+            apiUrl: NeonDatabaseService.dataApiUrl,
+          );
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('${entry.name} hinzugefügt'),
@@ -194,8 +216,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
 
   // ── confirm dialog ────────────────────────────────────────────────────────────
 
-  /// Returns a confirmed FoodEntry (amount may have been edited), or null if cancelled.
-  Future<FoodEntry?> _confirm({
+  /// Returns the confirmed entry plus the grams it represents (null when the
+  /// unit is an unresolvable portion), or null if cancelled.
+  Future<({FoodEntry entry, double? amountG})?> _confirm({
     required String name,
     required double amount,
     required String unit,
@@ -215,7 +238,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     double? amountMl,
     bool isMeal = false,
   }) {
-    return showDialog<FoodEntry>(
+    return showDialog<({FoodEntry entry, double? amountG})>(
       context: context,
       builder: (ctx) => _ConfirmDialog(
         name: name,
@@ -395,7 +418,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                           isMeal: entry.isMeal,
                           recentEntry: entry,
                         );
-                        if (confirmed != null) await _addEntry(confirmed);
+                        if (confirmed != null) {
+                          await _addEntry(confirmed.entry, confirmed.amountG);
+                        }
                       },
                     ),
                     _FavouritesTab(
@@ -431,7 +456,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                           isMeal: false,  // Foods are never meals in quick add
                           food: food,
                         );
-                        if (confirmed != null) await _addEntry(confirmed);
+                        if (confirmed != null) {
+                          await _addEntry(confirmed.entry, confirmed.amountG);
+                        }
                       },
                     ),
                     _ShortcutsTab(
@@ -439,7 +466,12 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                       addingId: _addingId,
                       onTap: (sc) async {
                         final entry = _entryFromShortcut(sc);
-                        await _addEntry(entry);
+                        // Grams known only for g/ml shortcuts; portion
+                        // shortcuts don't store the portion weight.
+                        final amountG = (sc.unit == 'g' || sc.unit == 'ml')
+                            ? sc.amount
+                            : null;
+                        await _addEntry(entry, amountG);
                       },
                       onDelete: (sc) async {
                         await FoodShortcutsService.removeShortcut(sc.id);
@@ -758,6 +790,17 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   double get _currentAmount =>
       tryParseDouble(_amountCtrl.text) ?? widget.initialAmount;
 
+  bool get _isGramMl => _selectedUnit == 'g' || _selectedUnit == 'ml';
+
+  /// Grams the current selection represents — null when the unit is a
+  /// portion that can't be resolved to a gram weight.
+  double? _currentAmountG() {
+    final amount = _currentAmount;
+    if (_isGramMl) return amount;
+    if (_selectedPortion != null) return amount * _selectedPortion!.amountG;
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -791,6 +834,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     if (food.isLiquid || widget.unit == 'ml') {
       units.add('ml');
     }
+    // The stored unit may no longer match a portion (renamed/removed) — keep
+    // it selectable so the DropdownButton always has a valid current value.
+    if (!units.contains(_selectedUnit)) {
+      units.insert(0, _selectedUnit);
+    }
     return units;
   }
 
@@ -814,7 +862,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
 
   FoodEntry _buildEntry() {
     final amount = _currentAmount;
-    final scale = amount / widget.initialAmount;
+    final scale =
+        widget.initialAmount != 0 ? amount / widget.initialAmount : 1.0;
     final food = widget.food;
     final re = widget.recentEntry;
 
@@ -822,7 +871,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     double? fiber, sugar, sodium, saturatedFat, scaledAmountMl;
     String unitToStore = _selectedUnit;
 
-    if (food != null) {
+    // Per-100g scaling only when grams are known: g/ml unit, or a portion
+    // that resolved against the food. Otherwise fall through to ratio scaling
+    // so a "2 pieces" entry is never mistaken for "2 grams".
+    if (food != null && (_selectedPortion != null || _isGramMl)) {
       // Calculate grams from selected unit
       final grams = _selectedPortion != null
           ? amount * _selectedPortion!.amountG // named portion → grams
@@ -994,6 +1046,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                     fiber: entry.fiber,
                     sugar: entry.sugar,
                     sodium: entry.sodium,
+                    saturatedFat: entry.saturatedFat,
                     isLiquid: entry.isLiquid,
                     amountMl: entry.amountMl,
                     isMeal: entry.isMeal,
@@ -1006,7 +1059,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
           child: Text(l.cancel),
         ),
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(_buildEntry()),
+          onPressed: () => Navigator.of(context)
+              .pop((entry: _buildEntry(), amountG: _currentAmountG())),
           child: const Text('Hinzufügen'),
         ),
       ],

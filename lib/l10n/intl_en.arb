@@ -12,6 +12,7 @@
   "nutrientSaturatedFat": "Saturated Fat",
   "ofWhichCarbs": "of which sugar",
   "ofWhichFat": "of which saturated",
+  "satFatExceedsFat": "Can't exceed total fat",
   "goal": "Goal",
   "consumed": "Consumed",
   "remaining": "Remaining",

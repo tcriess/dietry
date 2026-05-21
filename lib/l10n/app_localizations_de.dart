@@ -48,6 +48,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ofWhichFat => 'davon gesättigt';
 
   @override
+  String get satFatExceedsFat => 'Darf das Gesamtfett nicht übersteigen';
+
+  @override
   String get goal => 'Ziel';
 
   @override

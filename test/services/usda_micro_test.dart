@@ -130,7 +130,8 @@ void main() {
       'Iodine, I': 'iodine_mcg',
       'Manganese, Mn': 'manganese_mg',
       'Copper, Cu': 'copper_mg',
-      'Fatty acids, total saturated': 'saturated_fat_g',
+      // Gesättigtes Fett ist ein Kern-Feld (FoodItem.saturatedFat),
+      // kein Mikronährstoff — daher nicht in _extractMicros.
       'Fatty acids, total monounsaturated': 'monounsaturated_fat_g',
       'Fatty acids, total polyunsaturated': 'polyunsaturated_fat_g',
       'Fatty acids, total trans': 'trans_fat_g',

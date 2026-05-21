@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
+import 'package:dietry_cloud/dietry_cloud.dart';
+import '../utils/number_utils.dart';
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
@@ -10,7 +11,19 @@ import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../l10n/app_localizations.dart';
 
-/// Screen zum Bearbeiten eines Food-Entries
+/// Screen zum Bearbeiten eines Food-Entries.
+///
+/// Zwei Bearbeitungsmodi (für Food-Einträge, `isMeal == false`):
+///
+///  • **per-100g-Modus** — wenn die Einheit g/ml ist ODER eine benannte Portion,
+///    deren Grammgewicht aus dem zugehörigen Lebensmittel ermittelt werden kann.
+///    Die Nährwertfelder enthalten Werte pro 100 g/ml und werden beim Speichern
+///    über die tatsächlichen Gramm auf Totals skaliert.
+///
+///  • **Totals-Modus** — für Mahlzeiten-Einträge (`isMeal == true`) sowie für
+///    Portions-Einträge, deren Lebensmittel/Portion nicht aufgelöst werden kann
+///    (gelöscht, umbenannt, Gast-Modus). Die gespeicherten Totals werden über
+///    das Mengenverhältnis skaliert — kein per-100g-Roundtrip nötig.
 class EditFoodEntryScreen extends StatefulWidget {
   final NeonDatabaseService? dbService;
   final FoodEntry entry;
@@ -39,140 +52,140 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   late TextEditingController _saturatedFatController;
 
   late MealType _selectedMealType;
+  late bool _isLiquid;
+
+  FoodItem? _foodItem;
   FoodPortion? _selectedPortion;
   String _customUnit = 'g';
-  FoodItem? _foodItem;
+
+  /// true → nutrition fields hold per-100g values (editable, round-tripped).
+  /// false → totals mode: stored totals scaled by the amount ratio.
+  bool _per100gMode = false;
+
+  /// true while the food behind a portion-unit entry is being looked up.
+  bool _resolvingFood = false;
+
+  /// Grams the entry originally represented — fixed reference for scaling the
+  /// micronutrient row when the amount changes. Only set in per-100g mode.
+  double? _originalGrams;
+
   bool _isSaving = false;
-  late bool _isLiquid;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.entry.name);
-    _amountController = TextEditingController(text: widget.entry.amount.toStringAsFixed(0));
+    final e = widget.entry;
+    _nameController = TextEditingController(text: e.name);
+    _amountController = TextEditingController(text: formatAmount(e.amount));
+    _caloriesController = TextEditingController();
+    _proteinController = TextEditingController();
+    _fatController = TextEditingController();
+    _carbsController = TextEditingController();
+    _fiberController = TextEditingController();
+    _sugarController = TextEditingController();
+    _sodiumController = TextEditingController();
+    _saturatedFatController = TextEditingController();
+    _selectedMealType = e.mealType;
+    _isLiquid = e.isLiquid;
+    _customUnit = e.unit;
 
-    // For meal entries (isMeal=true), show totals directly
-    // For food entries (isMeal=false), convert totals to per-100g
-    final isMealEntry = widget.entry.isMeal;
-
-    if (isMealEntry) {
-      // Meal entries: show total nutrition values for the current portion count
-      _caloriesController = TextEditingController(text: widget.entry.calories.toStringAsFixed(0));
-      _proteinController = TextEditingController(text: widget.entry.protein.toStringAsFixed(1));
-      _fatController = TextEditingController(text: widget.entry.fat.toStringAsFixed(1));
-      _carbsController = TextEditingController(text: widget.entry.carbs.toStringAsFixed(1));
+    final unit = e.unit;
+    if (e.isMeal) {
+      // Meal entry: totals mode, scaled by portion count.
+      _per100gMode = false;
+      _applyTotalsFromEntry();
+    } else if (unit == 'g' || unit == 'ml') {
+      // Weight/volume entry: per-100g mode, grams == amount.
+      _per100gMode = true;
+      _originalGrams = e.amount;
+      _applyPer100gFromEntry(e.amount);
+      // Load the food (if any) so the unit selector can offer named portions.
+      if (e.foodId != null) _resolveFood(e.foodId!);
     } else {
-      // Food entries: calculate per-100g values from stored totals
-      final per100gNutrition = _calculatePer100g(
-        widget.entry.amount,
-        widget.entry.unit,
-        widget.entry.calories,
-        widget.entry.protein,
-        widget.entry.fat,
-        widget.entry.carbs,
-      );
-
-      _caloriesController = TextEditingController(text: per100gNutrition['calories']!.toStringAsFixed(0));
-      _proteinController = TextEditingController(text: per100gNutrition['protein']!.toStringAsFixed(1));
-      _fatController = TextEditingController(text: per100gNutrition['fat']!.toStringAsFixed(1));
-      _carbsController = TextEditingController(text: per100gNutrition['carbs']!.toStringAsFixed(1));
-    }
-
-    _selectedMealType = widget.entry.mealType;
-    _isLiquid = widget.entry.isLiquid;
-
-    // Optional nutrition fields
-    _fiberController = TextEditingController(text: widget.entry.fiber?.toStringAsFixed(1) ?? '');
-    _sugarController = TextEditingController(text: widget.entry.sugar?.toStringAsFixed(1) ?? '');
-    _sodiumController = TextEditingController(text: widget.entry.sodium?.toStringAsFixed(1) ?? '');
-    _saturatedFatController = TextEditingController(text: widget.entry.saturatedFat?.toStringAsFixed(1) ?? '');
-
-    _customUnit = widget.entry.unit;
-
-    if (widget.entry.foodId != null) {
-      _loadFoodItem(widget.entry.foodId!);
-    }
-  }
-
-  /// Calculate per-100g nutrition from stored totals and amount
-  Map<String, double> _calculatePer100g(
-    double amount,
-    String unit,
-    double totalCalories,
-    double totalProtein,
-    double totalFat,
-    double totalCarbs,
-  ) {
-    if (amount <= 0) {
-      return {
-        'calories': 0,
-        'protein': 0,
-        'fat': 0,
-        'carbs': 0,
-      };
-    }
-
-    // For g and ml, direct conversion: per_100 = total * 100 / amount
-    if (unit == 'g' || unit == 'ml') {
-      final factor = 100.0 / amount;
-      return {
-        'calories': totalCalories * factor,
-        'protein': totalProtein * factor,
-        'fat': totalFat * factor,
-        'carbs': totalCarbs * factor,
-      };
-    }
-
-    // For portion units (e.g., "1 Scheibe"), we'd need the foodItem to look up grams.
-    // For now, return totals as fallback (will be corrected when _foodItem loads).
-    return {
-      'calories': totalCalories,
-      'protein': totalProtein,
-      'fat': totalFat,
-      'carbs': totalCarbs,
-    };
-  }
-
-  Future<void> _loadFoodItem(String foodId) async {
-    try {
-      // In guest mode, dbService is null, so skip loading food item details
-      if (widget.dbService == null) {
-        return;
+      // Named-portion entry: mode depends on whether the portion resolves.
+      if (e.foodId != null) {
+        _resolvingFood = true;
+        _applyTotalsFromEntry(); // placeholder while the food loads
+        _resolveFood(e.foodId!);
+      } else {
+        // No food reference → cannot resolve grams → totals mode.
+        _per100gMode = false;
+        _applyTotalsFromEntry();
       }
+    }
+  }
 
-      final service = FoodDatabaseService(widget.dbService!);
-      final food = await service.getFoodById(foodId);
-      if (food != null && mounted) {
-        setState(() {
-          _foodItem = food;
-          // Gespeicherte Einheit auf Portion matchen
-          final storedUnit = widget.entry.unit;
-          _selectedPortion = food.portions
-              .where((p) => p.name == storedUnit)
-              .firstOrNull;
+  /// Fills the nutrition controllers with the entry's stored totals.
+  void _applyTotalsFromEntry() {
+    final e = widget.entry;
+    _caloriesController.text = e.calories.toStringAsFixed(0);
+    _proteinController.text = e.protein.toStringAsFixed(1);
+    _fatController.text = e.fat.toStringAsFixed(1);
+    _carbsController.text = e.carbs.toStringAsFixed(1);
+    _fiberController.text = e.fiber?.toStringAsFixed(1) ?? '';
+    _sugarController.text = e.sugar?.toStringAsFixed(1) ?? '';
+    _sodiumController.text = e.sodium?.toStringAsFixed(1) ?? '';
+    _saturatedFatController.text = e.saturatedFat?.toStringAsFixed(1) ?? '';
+  }
 
-          if (_selectedPortion != null) {
-            // Portion was found: recalculate per-100g using grams
-            // amount = portion count, _selectedPortion.amountG = grams per portion
-            final totalGrams = widget.entry.amount * _selectedPortion!.amountG;
-            final factor = 100.0 / totalGrams;
-            _caloriesController.text = (widget.entry.calories * factor).toStringAsFixed(0);
-            _proteinController.text = (widget.entry.protein * factor).toStringAsFixed(1);
-            _fatController.text = (widget.entry.fat * factor).toStringAsFixed(1);
-            _carbsController.text = (widget.entry.carbs * factor).toStringAsFixed(1);
+  /// Fills the nutrition controllers with per-100g values derived from the
+  /// entry's stored totals and the [grams] those totals correspond to.
+  /// Converts ALL eight nutrients (macros + optional) consistently.
+  void _applyPer100gFromEntry(double grams) {
+    final e = widget.entry;
+    _caloriesController.text = toPer100g(e.calories, grams).toStringAsFixed(0);
+    _proteinController.text = toPer100g(e.protein, grams).toStringAsFixed(1);
+    _fatController.text = toPer100g(e.fat, grams).toStringAsFixed(1);
+    _carbsController.text = toPer100g(e.carbs, grams).toStringAsFixed(1);
+    _fiberController.text =
+        e.fiber != null ? toPer100g(e.fiber!, grams).toStringAsFixed(1) : '';
+    _sugarController.text =
+        e.sugar != null ? toPer100g(e.sugar!, grams).toStringAsFixed(1) : '';
+    _sodiumController.text =
+        e.sodium != null ? toPer100g(e.sodium!, grams).toStringAsFixed(1) : '';
+    _saturatedFatController.text = e.saturatedFat != null
+        ? toPer100g(e.saturatedFat!, grams).toStringAsFixed(1)
+        : '';
+  }
 
-            // amount is stored as portion count — display directly
-            final count = widget.entry.amount;
-            _amountController.text = count % 1 == 0
-                ? count.toStringAsFixed(0)
-                : count.toStringAsFixed(1);
-          }
-          // _customUnit stays as widget.entry.unit (set in initState)
-        });
+  /// Loads the food behind the entry. For a portion-unit entry this also
+  /// decides the edit mode: per-100g if the portion resolves, totals otherwise.
+  Future<void> _resolveFood(String foodId) async {
+    FoodItem? food;
+    try {
+      if (widget.dbService != null) {
+        food = await FoodDatabaseService(widget.dbService!).getFoodById(foodId);
       }
     } catch (_) {
-      // Ohne FoodItem: Textfeld als Fallback
+      // Network/lookup failure — fall back to whatever mode applies below.
     }
+    if (!mounted) return;
+
+    setState(() {
+      _foodItem = food;
+      if (!_resolvingFood) {
+        // g/ml entry — food is only needed to populate the unit selector.
+        return;
+      }
+      FoodPortion? portion;
+      for (final p in food?.portions ?? const <FoodPortion>[]) {
+        if (p.name == widget.entry.unit) {
+          portion = p;
+          break;
+        }
+      }
+      if (portion != null) {
+        _selectedPortion = portion;
+        _originalGrams = widget.entry.amount * portion.amountG;
+        _per100gMode = true;
+        _applyPer100gFromEntry(_originalGrams!);
+      } else {
+        // Food deleted or portion renamed → keep totals, scale by count.
+        _per100gMode = false;
+        _applyTotalsFromEntry();
+      }
+      _resolvingFood = false;
+    });
   }
 
   @override
@@ -190,131 +203,105 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     super.dispose();
   }
 
-  void _recalculate() {
-    // When editing, we show per-100g values, not totals.
-    // The per-100g values are the "recipe" — they don't change when amount changes.
-    // So _recalculate doesn't actually need to do anything here.
-    // Amount changes don't affect the displayed per-100g nutrition.
+  /// Grams represented by the current amount + unit. Only valid in per-100g mode.
+  double _currentGrams() {
+    final amount = tryParseDouble(_amountController.text) ?? 0;
+    if (amount <= 0) return 0;
+    return _selectedPortion != null
+        ? amount * _selectedPortion!.amountG
+        : amount; // g or ml
   }
 
-  /// Compute total nutrition for the current amount and per-100g values.
-  /// For food entries: scales per-100g values by grams.
-  /// For meal entries: scales stored totals by portion ratio.
+  /// Total nutrition for the current amount — used by the preview card.
   Map<String, double> _computeTotals() {
     final amount = tryParseDouble(_amountController.text) ?? 0;
     if (amount <= 0) {
-      return {
-        'calories': 0,
-        'protein': 0,
-        'fat': 0,
-        'carbs': 0,
-      };
+      return {'calories': 0, 'protein': 0, 'fat': 0, 'carbs': 0};
     }
 
-    if (widget.entry.isMeal) {
-      // Meal entries: scale stored totals by portion ratio
+    if (!_per100gMode) {
+      // Totals mode: scale stored totals by the amount ratio.
       if (widget.entry.amount <= 0) return {};
       final scale = amount / widget.entry.amount;
       return {
         'calories': widget.entry.calories * scale,
-        'protein':  widget.entry.protein  * scale,
-        'fat':      widget.entry.fat      * scale,
-        'carbs':    widget.entry.carbs    * scale,
+        'protein': widget.entry.protein * scale,
+        'fat': widget.entry.fat * scale,
+        'carbs': widget.entry.carbs * scale,
       };
     }
 
-    // Food entries: scale per-100g values by grams
-    final grams = _selectedPortion != null
-        ? amount * _selectedPortion!.amountG
-        : amount;  // g or ml
-    final factor = grams / 100.0;
-
+    // Per-100g mode: scale per-100g values by grams.
+    final grams = _currentGrams();
     return {
-      'calories': (tryParseDouble(_caloriesController.text) ?? 0) * factor,
-      'protein':  (tryParseDouble(_proteinController.text)  ?? 0) * factor,
-      'fat':      (tryParseDouble(_fatController.text)      ?? 0) * factor,
-      'carbs':    (tryParseDouble(_carbsController.text)    ?? 0) * factor,
+      'calories': scaleToTotal(tryParseDouble(_caloriesController.text) ?? 0, grams),
+      'protein': scaleToTotal(tryParseDouble(_proteinController.text) ?? 0, grams),
+      'fat': scaleToTotal(tryParseDouble(_fatController.text) ?? 0, grams),
+      'carbs': scaleToTotal(tryParseDouble(_carbsController.text) ?? 0, grams),
     };
   }
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() { _isSaving = true; });
+    setState(() => _isSaving = true);
 
     try {
       final rawAmount = parseDouble(_amountController.text);
       final displayUnit = _selectedPortion?.name ?? _customUnit;
-      final isMealEntry = widget.entry.isMeal;
 
-      double totalCalories;
-      double totalProtein;
-      double totalFat;
-      double totalCarbs;
-      double? totalFiber;
-      double? totalSugar;
-      double? totalSodium;
-      double? totalSaturatedFat;
-      double? amountMl;
+      double totalCalories, totalProtein, totalFat, totalCarbs;
+      double? totalFiber, totalSugar, totalSodium, totalSaturatedFat, amountMl;
+      double? microRatio; // factor to rescale the food_entry_micros row by
 
-      if (isMealEntry) {
-        // For meal entries: scale the original stored totals by the new portion count
-        // The fields are read-only, so we read directly from entry, not controllers
-        final scaleFactor = rawAmount / widget.entry.amount;
-        totalCalories = widget.entry.calories * scaleFactor;
-        totalProtein = widget.entry.protein * scaleFactor;
-        totalFat = widget.entry.fat * scaleFactor;
-        totalCarbs = widget.entry.carbs * scaleFactor;
-        totalFiber = widget.entry.fiber != null ? widget.entry.fiber! * scaleFactor : null;
-        totalSugar = widget.entry.sugar != null ? widget.entry.sugar! * scaleFactor : null;
-        totalSodium = widget.entry.sodium != null ? widget.entry.sodium! * scaleFactor : null;
-        totalSaturatedFat = widget.entry.saturatedFat != null ? widget.entry.saturatedFat! * scaleFactor : null;
-
-        // Scale liquid ml contribution proportionally
-        if (widget.entry.amountMl != null) {
-          amountMl = widget.entry.amountMl! * scaleFactor;
-        }
+      if (!_per100gMode) {
+        // Totals mode (meal entry or unresolved portion): scale stored totals.
+        final e = widget.entry;
+        final scale = e.amount > 0 ? rawAmount / e.amount : 1.0;
+        totalCalories = e.calories * scale;
+        totalProtein = e.protein * scale;
+        totalFat = e.fat * scale;
+        totalCarbs = e.carbs * scale;
+        totalFiber = e.fiber != null ? e.fiber! * scale : null;
+        totalSugar = e.sugar != null ? e.sugar! * scale : null;
+        totalSodium = e.sodium != null ? e.sodium! * scale : null;
+        totalSaturatedFat =
+            e.saturatedFat != null ? e.saturatedFat! * scale : null;
+        if (e.amountMl != null) amountMl = e.amountMl! * scale;
+        microRatio = scale;
       } else {
-        // For food entries: convert per-100g values back to totals
-        final per100gCalories = parseDouble(_caloriesController.text);
-        final per100gProtein = parseDouble(_proteinController.text);
-        final per100gFat = parseDouble(_fatController.text);
-        final per100gCarbs = parseDouble(_carbsController.text);
-
-        // Calculate grams for the current unit/amount
+        // Per-100g mode: scale per-100g controller values by grams.
         final grams = _selectedPortion != null
             ? rawAmount * _selectedPortion!.amountG
-            : (displayUnit == 'g' || displayUnit == 'ml' ? rawAmount : rawAmount);
+            : rawAmount; // g or ml
 
-        // Convert back to totals
-        totalCalories = per100gCalories * grams / 100.0;
-        totalProtein = per100gProtein * grams / 100.0;
-        totalFat = per100gFat * grams / 100.0;
-        totalCarbs = per100gCarbs * grams / 100.0;
-
-        // Optional fields: convert per-100g to totals
+        totalCalories = scaleToTotal(parseDouble(_caloriesController.text), grams);
+        totalProtein = scaleToTotal(parseDouble(_proteinController.text), grams);
+        totalFat = scaleToTotal(parseDouble(_fatController.text), grams);
+        totalCarbs = scaleToTotal(parseDouble(_carbsController.text), grams);
         totalFiber = tryParseDouble(_fiberController.text) != null
-            ? parseDouble(_fiberController.text) * grams / 100.0
+            ? scaleToTotal(parseDouble(_fiberController.text), grams)
             : null;
         totalSugar = tryParseDouble(_sugarController.text) != null
-            ? parseDouble(_sugarController.text) * grams / 100.0
+            ? scaleToTotal(parseDouble(_sugarController.text), grams)
             : null;
         totalSodium = tryParseDouble(_sodiumController.text) != null
-            ? parseDouble(_sodiumController.text) * grams / 100.0
+            ? scaleToTotal(parseDouble(_sodiumController.text), grams)
             : null;
         totalSaturatedFat = tryParseDouble(_saturatedFatController.text) != null
-            ? parseDouble(_saturatedFatController.text) * grams / 100.0
+            ? scaleToTotal(parseDouble(_saturatedFatController.text), grams)
             : null;
 
-        // Calculate amountMl for liquid foods
         if (_isLiquid) {
           if (_selectedPortion != null) {
-            // Portion: amount * portion.amountG (treating G as ml for liquid foods)
-            amountMl = rawAmount * _selectedPortion!.amountG;
+            amountMl = grams; // grams ≈ ml for liquids
           } else if (_customUnit == 'ml') {
-            // Direct ml entry
             amountMl = rawAmount;
           }
+        }
+
+        if (_originalGrams != null && _originalGrams! > 0) {
+          microRatio = grams / _originalGrams!;
         }
       }
 
@@ -343,6 +330,22 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       final saved = await SyncService.instance.updateFoodEntry(updatedEntry);
       if (saved != null) DataStore.instance.replaceFoodEntry(saved);
 
+      // Keep cloud micronutrients in sync with the new amount (best-effort).
+      final db = widget.dbService;
+      if (db != null &&
+          microRatio != null &&
+          (microRatio - 1.0).abs() > 1e-9) {
+        final jwt = db.jwt;
+        if (jwt != null) {
+          premiumFeatures.rescaleEntryMicros(
+            entryId: widget.entry.id,
+            ratio: microRatio,
+            authToken: jwt,
+            apiUrl: NeonDatabaseService.dataApiUrl,
+          );
+        }
+      }
+
       if (mounted) {
         final lCtx = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -357,40 +360,37 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       if (mounted) {
         final lCtx = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(lCtx.errorPrefix(e.toString())), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(lCtx.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) setState(() { _isSaving = false; });
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
+  /// Unit selector — only shown in per-100g mode.
   Widget _buildUnitSelector() {
-    final food = _foodItem;
-    final portions = food?.portions ?? [];
+    final portions = <FoodPortion>[];
+    final seenNames = <String>{};
+    for (final p in _foodItem?.portions ?? const <FoodPortion>[]) {
+      if (seenNames.add(p.name)) portions.add(p);
+    }
 
     final currentKey = _selectedPortion != null
         ? 'p:${_selectedPortion!.name}'
         : _customUnit;
 
-    final items = <DropdownMenuItem<String>>[];
-    for (final p in portions) {
-      items.add(DropdownMenuItem(
-        value: 'p:${p.name}',
-        child: Text(
-            '${p.name} (${p.amountG % 1 == 0 ? p.amountG.toInt() : p.amountG}g)'),
-      ));
-    }
-    items.add(const DropdownMenuItem(value: 'g', child: Text('g')));
-    items.add(const DropdownMenuItem(value: 'ml', child: Text('ml')));
-
-    // Wenn Portion nicht gefunden und Unit kein g/ml: als zusätzliche Option zeigen
-    if (_selectedPortion == null && _customUnit != 'g' && _customUnit != 'ml') {
-      items.insert(0, DropdownMenuItem(
-        value: _customUnit,
-        child: Text(_customUnit),
-      ));
-    }
+    final items = <DropdownMenuItem<String>>[
+      for (final p in portions)
+        DropdownMenuItem(
+          value: 'p:${p.name}',
+          child: Text('${p.name} (${formatAmount(p.amountG)}g)'),
+        ),
+      const DropdownMenuItem(value: 'g', child: Text('g')),
+      const DropdownMenuItem(value: 'ml', child: Text('ml')),
+    ];
 
     final l = AppLocalizations.of(context)!;
     return DropdownButtonFormField<String>(
@@ -405,33 +405,54 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         setState(() {
           if (value.startsWith('p:')) {
             final name = value.substring(2);
-            _selectedPortion = food?.portions.firstWhere((p) => p.name == name);
+            _selectedPortion =
+                _foodItem?.portions.firstWhere((p) => p.name == name);
             _amountController.text = '1';
           } else {
+            // Switching to g/ml — keep grams stable when leaving a portion.
+            final wasPortion = _selectedPortion != null;
             _selectedPortion = null;
             _customUnit = value;
+            if (wasPortion && _originalGrams != null) {
+              _amountController.text = formatAmount(_originalGrams!);
+            }
           }
-          _recalculate();
         });
       },
     );
   }
 
-  /// Build a card showing total nutrition for the current amount.
-  /// Shown for both food entries and meal entries (as read-only preview for meals).
+  /// Read-only unit label — shown in totals mode (meal / unresolved portion).
+  Widget _buildUnitLabel() {
+    final l = AppLocalizations.of(context)!;
+    final text = widget.entry.isMeal ? 'Portion' : widget.entry.unit;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(text,
+          style: const TextStyle(fontSize: 16),
+          // Tooltip via Semantics label keeps the field name accessible.
+          semanticsLabel: '${l.unit}: $text'),
+    );
+  }
+
+  /// Card showing total nutrition for the current amount.
   Widget _buildTotalsPreview() {
     final totals = _computeTotals();
     if (totals.isEmpty) return const SizedBox.shrink();
 
     final amount = tryParseDouble(_amountController.text) ?? 0;
-    final amountStr = amount == amount.truncateToDouble()
-        ? amount.toInt().toString()
-        : amount.toStringAsFixed(1);
+    final amountStr = formatAmount(amount);
+    final unitLabel = _per100gMode
+        ? (_selectedPortion?.name ?? _customUnit)
+        : widget.entry.unit;
 
-    // Label differs for meals vs foods
     final label = widget.entry.isMeal
         ? 'Nährwerte für $amountStr Portion${amount != 1.0 ? 'en' : ''}:'
-        : 'Gesamt für $amountStr${_selectedPortion?.name ?? _customUnit}:';
+        : 'Gesamt für $amountStr$unitLabel:';
 
     return Card(
       color: Colors.blue.shade50,
@@ -440,10 +461,8 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            Text(label,
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -460,18 +479,182 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     );
   }
 
+  /// Editable per-100g nutrition fields.
+  Widget _buildPer100gFields(AppLocalizations l) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.nutritionPer100,
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _caloriesController,
+                decoration: InputDecoration(
+                  labelText: l.caloriesLabel,
+                  suffixText: 'kcal',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                validator: (value) =>
+                    (value == null || value.isEmpty) ? l.requiredField : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _proteinController,
+                decoration: InputDecoration(
+                  labelText: l.proteinLabel,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                validator: (value) =>
+                    (value == null || value.isEmpty) ? l.requiredField : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _fatController,
+                decoration: InputDecoration(
+                  labelText: l.fatLabel,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                validator: (value) =>
+                    (value == null || value.isEmpty) ? l.requiredField : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _carbsController,
+                decoration: InputDecoration(
+                  labelText: l.carbsLabel,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                validator: (value) =>
+                    (value == null || value.isEmpty) ? l.requiredField : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Text('Optional', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _saturatedFatController,
+                decoration: InputDecoration(
+                  labelText: l.nutrientSaturatedFat,
+                  helperText: l.ofWhichFat,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+                validator: (value) {
+                  final sat = tryParseDouble(value);
+                  final fat = tryParseDouble(_fatController.text);
+                  if (sat != null && fat != null && sat > fat) {
+                    return l.satFatExceedsFat;
+                  }
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _sugarController,
+                decoration: InputDecoration(
+                  labelText: l.nutrientSugar,
+                  helperText: l.ofWhichCarbs,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _fiberController,
+                decoration: InputDecoration(
+                  labelText: l.nutrientFiber,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _sodiumController,
+                decoration: InputDecoration(
+                  labelText: l.nutrientSalt,
+                  suffixText: 'g',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildTotalsPreview(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l.editEntryTitle),
-      ),
+      appBar: AppBar(title: Text(l.editEntryTitle)),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+              16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom),
           children: [
             // Name
             TextFormField(
@@ -480,17 +663,14 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                 labelText: l.foodName,
                 border: const OutlineInputBorder(),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return l.requiredField;
-                }
-                return null;
-              },
+              validator: (value) =>
+                  (value == null || value.trim().isEmpty)
+                      ? l.requiredField
+                      : null,
             ),
-
             const SizedBox(height: 16),
 
-            // Menge & Einheit
+            // Amount & unit
             Row(
               children: [
                 Expanded(
@@ -501,225 +681,80 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                       labelText: l.amount,
                       border: const OutlineInputBorder(),
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*[.,]?\d*')),
                     ],
-                    onChanged: (_) {
-                      _recalculate();
-                      setState(() {});  // Update preview
-                    },
+                    onChanged: (_) => setState(() {}),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return l.requiredField;
+                      if (value == null || value.isEmpty) {
+                        return l.requiredField;
+                      }
                       final amount = tryParseDouble(value);
-                      if (amount == null || amount <= 0) return l.weightInvalid;
+                      if (amount == null || amount <= 0) {
+                        return l.weightInvalid;
+                      }
                       return null;
                     },
                   ),
                 ),
                 const SizedBox(width: 12),
-                // For meal entries, show read-only unit label; for foods, show selector
                 Expanded(
-                  child: widget.entry.isMeal
-                      ? Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('Portion', style: TextStyle(fontSize: 16)),
-                        )
-                      : _buildUnitSelector(),
+                  child: _per100gMode ? _buildUnitSelector() : _buildUnitLabel(),
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
 
-            // Meal Type
+            // Meal type
             DropdownButtonFormField<MealType>(
               initialValue: _selectedMealType,
               decoration: InputDecoration(
                 labelText: l.mealType,
                 border: const OutlineInputBorder(),
               ),
-              items: MealType.values.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Row(
-                    children: [
-                      Text(type.icon, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(width: 8),
-                      Text(type.localizedName(l)),
-                    ],
-                  ),
-                );
-              }).toList(),
+              items: MealType.values
+                  .map((type) => DropdownMenuItem(
+                        value: type,
+                        child: Row(
+                          children: [
+                            Text(type.icon,
+                                style: const TextStyle(fontSize: 20)),
+                            const SizedBox(width: 8),
+                            Text(type.localizedName(l)),
+                          ],
+                        ),
+                      ))
+                  .toList(),
               onChanged: (value) {
-                if (value != null) setState(() { _selectedMealType = value; });
+                if (value != null) {
+                  setState(() => _selectedMealType = value);
+                }
               },
             ),
-
             const SizedBox(height: 24),
 
-            // Nährwerte section
-            if (widget.entry.isMeal) ...[
-              // Meal entries: show read-only preview only
+            // Nutrition section
+            if (_resolvingFood)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_per100gMode)
+              _buildPer100gFields(l)
+            else
+              // Totals mode (meal / unresolved portion): read-only preview.
               _buildTotalsPreview(),
-            ] else ...[
-              // Food entries: show editable per-100g fields + preview
-              Text(
-                l.nutritionPer100,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _caloriesController,
-                      decoration: InputDecoration(
-                        labelText: l.caloriesLabel,
-                        suffixText: 'kcal',
-                        border: const OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),  // Update preview
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? l.requiredField : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _proteinController,
-                      decoration: InputDecoration(
-                        labelText: l.proteinLabel,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),  // Update preview
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? l.requiredField : null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _fatController,
-                      decoration: InputDecoration(
-                        labelText: l.fatLabel,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),  // Update preview
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? l.requiredField : null,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _carbsController,
-                      decoration: InputDecoration(
-                        labelText: l.carbsLabel,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),  // Update preview
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? l.requiredField : null,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              Text('Optional', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _saturatedFatController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientSaturatedFat,
-                        helperText: l.ofWhichFat,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _sugarController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientSugar,
-                        helperText: l.ofWhichCarbs,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _fiberController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientFiber,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _sodiumController,
-                      decoration: InputDecoration(
-                        labelText: l.nutrientSalt,
-                        suffixText: 'g',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              _buildTotalsPreview(),
-            ],
 
             const SizedBox(height: 24),
 
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveChanges,
+                onPressed:
+                    (_isSaving || _resolvingFood) ? null : _saveChanges,
                 icon: _isSaving
                     ? const SizedBox(
                         width: 20,
@@ -742,7 +777,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   }
 }
 
-/// Simple widget for displaying a macro in the totals preview
+/// Simple widget for displaying a macro in the totals preview.
 class _PreviewMacro extends StatelessWidget {
   final String label;
   final String value;
@@ -758,8 +793,7 @@ class _PreviewMacro extends StatelessWidget {
             style: const TextStyle(
                 fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
         Text(label,
-            style:
-                const TextStyle(fontSize: 10, color: Colors.grey)),
+            style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
     );
   }

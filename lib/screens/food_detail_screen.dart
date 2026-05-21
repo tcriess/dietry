@@ -232,9 +232,10 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
       ('Carbs', '${widget.food.carbs.toStringAsFixed(1)}g'),
       if (widget.food.fiber != null) ('Fiber', '${widget.food.fiber!.toStringAsFixed(1)}g'),
       if (widget.food.sugar != null) ('Sugar', '${widget.food.sugar!.toStringAsFixed(1)}g'),
-      if (widget.food.sodium != null) ('Sodium', '${widget.food.sodium!.toStringAsFixed(1)}mg'),
       if (widget.food.saturatedFat != null)
         ('Saturated Fat', '${widget.food.saturatedFat!.toStringAsFixed(1)}g'),
+      // `sodium` column holds SALT in grams.
+      if (widget.food.sodium != null) ('Salt', '${widget.food.sodium!.toStringAsFixed(1)}g'),
     ];
 
     return Table(

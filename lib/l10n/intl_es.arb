@@ -12,6 +12,7 @@
   "nutrientSaturatedFat": "Grasas saturadas",
   "ofWhichCarbs": "de los cuales azúcares",
   "ofWhichFat": "de los cuales saturadas",
+  "satFatExceedsFat": "No puede superar la grasa total",
   "goal": "Meta",
   "consumed": "Consumido",
   "remaining": "Restante",

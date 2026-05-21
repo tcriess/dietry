@@ -12,6 +12,7 @@
   "nutrientSaturatedFat": "Gesättigte Fettsäuren",
   "ofWhichCarbs": "davon Zucker",
   "ofWhichFat": "davon gesättigt",
+  "satFatExceedsFat": "Darf das Gesamtfett nicht übersteigen",
   "goal": "Ziel",
   "consumed": "Verbraucht",
   "remaining": "Verbleibend",

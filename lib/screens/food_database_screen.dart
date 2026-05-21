@@ -1541,6 +1541,14 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*'))
                     ],
+                    validator: (v) {
+                      final sat = tryParseDouble(v);
+                      final fat = tryParseDouble(_fatController.text);
+                      if (sat != null && fat != null && sat > fat) {
+                        return l.satFatExceedsFat;
+                      }
+                      return null;
+                    },
                   )),
                   const SizedBox(width: 8),
                   Expanded(

@@ -16,12 +16,14 @@ class FoodItem {
   final double fat;
   final double carbs;
   
-  // Optional
+  // Optional — alle pro 100g/100ml.
   final double? fiber;
   final double? sugar;
+  // `sodium` ist der DB-Spaltenname; gespeichert wird SALZ in Gramm (NaCl),
+  // nicht Natrium. UI-Label überall "Salz". Salz = Natrium × 2.5.
   final double? sodium;
   final double? saturatedFat;
-  
+
   // Portionsgröße (Vorschlag)
   final double? servingSize;
   final String? servingUnit;

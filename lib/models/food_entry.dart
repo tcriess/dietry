@@ -25,6 +25,7 @@ class FoodEntry {
   // Optional
   final double? fiber;
   final double? sugar;
+  // `sodium` ist der DB-Spaltenname; gespeichert wird SALZ in Gramm (NaCl).
   final double? sodium;
   final double? saturatedFat;
 

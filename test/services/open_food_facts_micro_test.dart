@@ -123,8 +123,8 @@ void main() {
         expect(convert(55.0, 'mcg', 'mcg'), 55.0);
       });
 
-      // Gesättigte Fettsäuren: g → g
-      test('Gesättigte Fettsäuren: g → g', () {
+      // Fettsäuren (z.B. einfach ungesättigte): g → g
+      test('Fettsäuren: g → g', () {
         expect(convert(3.5, 'g', 'g'), 3.5);
       });
     });

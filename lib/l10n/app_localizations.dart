@@ -178,6 +178,12 @@ abstract class AppLocalizations {
   /// **'davon gesättigt'**
   String get ofWhichFat;
 
+  /// No description provided for @satFatExceedsFat.
+  ///
+  /// In de, this message translates to:
+  /// **'Darf das Gesamtfett nicht übersteigen'**
+  String get satFatExceedsFat;
+
   /// No description provided for @goal.
   ///
   /// In de, this message translates to:
