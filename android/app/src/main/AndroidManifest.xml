@@ -50,6 +50,15 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Opt out of Flutter's built-in deep-link handler (on by default
+                 since Flutter 3.24). Deep links are handled by MainActivity's
+                 com.sws.dietry/deeplink method channel; without this, the
+                 framework also tries to push the callback URL as a named route
+                 and throws in _onUnknownRoute. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
