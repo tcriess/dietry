@@ -284,10 +284,24 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     if (!mounted) return;
 
     if (result == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(AppLocalizations.of(context)?.barcodeNotFound ??
-            'Produkt nicht gefunden'),
-      ));
+      // A dialog, not a SnackBar: a SnackBar renders at the bottom of the
+      // screen, hidden behind this 85%-height bottom sheet.
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) {
+          final ld = AppLocalizations.of(ctx)!;
+          return AlertDialog(
+            title: Text(ld.barcodeNotFound),
+            content: Text(ld.barcodeNotFoundHint),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
       return;
     }
     await _pickFood(result.food);
