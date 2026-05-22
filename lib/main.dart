@@ -2830,24 +2830,38 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   Future<void> _initializeAndLoadData() async {
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // In guest mode, dbService is null; proceed directly to loading
+    // In guest mode, dbService is null; proceed directly to loading.
+    // Local SQLite is always reachable, so a single load is authoritative.
     if (widget.isGuestMode || widget.dbService == null) {
       await _store.loadDay(_selectedDay);
       await _refreshCanGoBack();
       return;
     }
 
+    // Wait for the user id to resolve from the restored/refreshed JWT.
     int attempts = 0;
     while (widget.dbService!.userId == null && attempts < 20) {
       await Future.delayed(const Duration(milliseconds: 100));
       attempts++;
     }
-    if (widget.dbService!.userId == null) {
-      _store.setGoal(null);
-      _store.finishInitialLoading();
-      return;
-    }
+
     await _store.loadDay(_selectedDay);
+
+    // The very first query often races a cold database (Neon compute
+    // resuming) or an in-flight token refresh, so loadDay() can return
+    // without an authoritative goal result. Keep retrying — quietly, with
+    // backoff — until the goal state is confirmed. Until then build() keeps
+    // the loading spinner up instead of flashing the "no goal" empty state.
+    // (If all retries are exhausted the 60 s periodic refresh keeps trying.)
+    int retry = 0;
+    while (!_store.goalConfirmed && mounted && retry < 12) {
+      final step = retry < 4 ? retry : 4; // cap backoff at ~6.4 s
+      await Future.delayed(Duration(milliseconds: 400 * (1 << step)));
+      if (!mounted) return;
+      await _store.loadDay(_selectedDay, silent: true);
+      retry++;
+    }
+
     await _refreshCanGoBack();
     // Try flushing any queued operations now that we're online.
     _sync.processPendingQueue();
@@ -3048,7 +3062,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    if (_store.isInitialLoading) {
+    // Keep the loading screen up until the goal state is authoritative.
+    // `goal == null` on its own is ambiguous — it also means "not loaded yet"
+    // or "the fetch failed while the database was waking up". Only a confirmed
+    // query result may promote us to the real screen or the "no goal" state.
+    if (_store.isInitialLoading ||
+        (_store.goal == null && !_store.goalConfirmed)) {
       return Scaffold(
         appBar: widget.appBar,
         body: Center(
@@ -3212,119 +3231,108 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       if (isAuthenticated) {
         final hasMealTemplates =
             AppFeatures.mealTemplates && jwt != null && userId != null;
-        fab = Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            if (hasMealTemplates) ...[
-              FloatingActionButton(
-                heroTag: 'fab_meal_templates',
-                onPressed: () async {
-                  await showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    useSafeArea: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(16)),
-                    ),
-                    builder: (ctx) => FractionallySizedBox(
-                      heightFactor: 0.85,
-                      child: premiumFeatures.buildMealTemplatesSheet(
-                        userId: userId,
-                        date: _selectedDay,
-                        authToken: jwt,
-                        dataApiUrl: NeonDatabaseService.dataApiUrl,
-                        onLog: (data) async {
-                          final now = DateTime.now();
-                          final entry = FoodEntry(
-                            id: '',
-                            userId: userId,
-                            mealTemplateId: data.id,
-                            entryDate: _selectedDay,
-                            mealType: MealType.fromJson(data.mealType),
-                            name: data.name,
-                            amount: data.amount,
-                            unit: data.unit,
-                            calories: data.calories,
-                            protein: data.protein,
-                            fat: data.fat,
-                            carbs: data.carbs,
-                            fiber: data.fiber,
-                            sugar: data.sugar,
-                            sodium: data.sodium,
-                            isMeal: true,
-                            createdAt: now,
-                            updatedAt: now,
-                          );
-                          await _sync.createFoodEntry(entry);
-                          await _store.loadDay(_selectedDay,
-                              silent: true, delta: true);
-                        },
-                      ),
-                    ),
-                  );
-                },
-                tooltip: l.mealTemplates,
-                child: const Icon(Icons.restaurant_menu),
-              ),
-              const SizedBox(width: 12),
-            ],
-            FloatingActionButton(
-              heroTag: 'fab_quick_entry',
-              onPressed: () async {
-                await showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  useSafeArea: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
-                  builder: (ctx) => FractionallySizedBox(
-                    heightFactor: 0.85,
-                    child: QuickFoodEntrySheet(
-                      dbService: db,
-                      date: _selectedDay,
-                      initialMealType: _suggestMealType(),
-                      onAdd: (entry) async {
-                        await _sync.createFoodEntry(entry);
-                        await _store.loadDay(_selectedDay,
-                            silent: true, delta: true);
-                      },
-                    ),
-                  ),
-                );
-              },
-              tooltip: l.addEntry,
-              child: const Icon(Icons.bolt),
+
+        // Opens the Cloud meal-templates sheet. Only ever wired up when
+        // [hasMealTemplates] is true; the guard keeps it null-safe regardless.
+        void openTemplates() {
+          final uid = userId;
+          final tok = jwt;
+          if (uid == null || tok == null) return;
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            const SizedBox(width: 12),
-            if (MediaQuery.of(context).size.width >= 550)
-              FloatingActionButton.extended(
+            builder: (ctx) => FractionallySizedBox(
+              heightFactor: 0.85,
+              child: premiumFeatures.buildMealTemplatesSheet(
+                userId: uid,
+                date: _selectedDay,
+                authToken: tok,
+                dataApiUrl: NeonDatabaseService.dataApiUrl,
+                onLog: (data) async {
+                  final now = DateTime.now();
+                  final entry = FoodEntry(
+                    id: '',
+                    userId: uid,
+                    mealTemplateId: data.id,
+                    entryDate: _selectedDay,
+                    mealType: MealType.fromJson(data.mealType),
+                    name: data.name,
+                    amount: data.amount,
+                    unit: data.unit,
+                    calories: data.calories,
+                    protein: data.protein,
+                    fat: data.fat,
+                    carbs: data.carbs,
+                    fiber: data.fiber,
+                    sugar: data.sugar,
+                    sodium: data.sodium,
+                    isMeal: true,
+                    createdAt: now,
+                    updatedAt: now,
+                  );
+                  await _sync.createFoodEntry(entry);
+                  await _store.loadDay(_selectedDay,
+                      silent: true, delta: true);
+                },
+              ),
+            ),
+          );
+        }
+
+        // Pushes the full manual-entry form.
+        void openManualEntry() {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => AddFoodEntryScreen(
+              dbService: db,
+              selectedDate: _selectedDay,
+            ),
+          ));
+        }
+
+        // The single entry point: one unified add sheet.
+        void openAddSheet() {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (ctx) => FractionallySizedBox(
+              heightFactor: 0.85,
+              child: QuickFoodEntrySheet(
+                dbService: db,
+                date: _selectedDay,
+                initialMealType: _suggestMealType(),
+                onOpenTemplates: hasMealTemplates ? openTemplates : null,
+                onManualEntry: openManualEntry,
+                onAdd: (entry) async {
+                  await _sync.createFoodEntry(entry);
+                  await _store.loadDay(_selectedDay,
+                      silent: true, delta: true);
+                },
+              ),
+            ),
+          );
+        }
+
+        fab = MediaQuery.of(context).size.width >= 550
+            ? FloatingActionButton.extended(
                 heroTag: 'fab_add_entry',
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => AddFoodEntryScreen(
-                    dbService: db,
-                    selectedDate: _selectedDay,
-                  ),
-                )),
+                onPressed: openAddSheet,
                 icon: const Icon(Icons.add),
                 label: Text(l.addEntry),
               )
-            else
-              FloatingActionButton(
+            : FloatingActionButton(
                 heroTag: 'fab_add_entry',
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => AddFoodEntryScreen(
-                    dbService: db,
-                    selectedDate: _selectedDay,
-                  ),
-                )),
+                onPressed: openAddSheet,
                 tooltip: l.addEntry,
                 child: const Icon(Icons.add),
-              ),
-          ],
-        );
+              );
       } else {
         // Guest mode: single FAB → full entry form
         fab = FloatingActionButton(

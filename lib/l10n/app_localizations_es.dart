@@ -1528,4 +1528,60 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get barcodeImport => 'Importar';
+
+  @override
+  String get searchFoodHint => 'Buscar alimentos…';
+
+  @override
+  String get clearSearch => 'Borrar búsqueda';
+
+  @override
+  String get templates => 'Plantillas';
+
+  @override
+  String get tabRecent => 'Recientes';
+
+  @override
+  String get tabFavorites => 'Favoritos';
+
+  @override
+  String get tabShortcuts => 'Atajos';
+
+  @override
+  String get noRecentEntries => 'Aún no hay entradas.';
+
+  @override
+  String get recentTapHint =>
+      'Tocar = registrar al instante · Mantener pulsado = ajustar cantidad';
+
+  @override
+  String get noFavorites =>
+      'Aún no hay favoritos.\nMarca alimentos en la base de datos con el icono de estrella.';
+
+  @override
+  String get noShortcuts =>
+      'Aún no hay atajos.\nToca un elemento en «Recientes» o «Favoritos» y elige «Guardar como atajo».';
+
+  @override
+  String shortcutSaved(String label) {
+    return 'Atajo «$label» guardado';
+  }
+
+  @override
+  String get shortcut => 'Atajo';
+
+  @override
+  String get macroProteinShort => 'P';
+
+  @override
+  String get macroFatShort => 'G';
+
+  @override
+  String get macroCarbsShort => 'C';
+
+  @override
+  String get portion => 'porción';
+
+  @override
+  String get portions => 'porciones';
 }

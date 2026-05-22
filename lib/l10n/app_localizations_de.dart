@@ -1516,4 +1516,60 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get barcodeImport => 'Importieren';
+
+  @override
+  String get searchFoodHint => 'Lebensmittel suchen…';
+
+  @override
+  String get clearSearch => 'Suche löschen';
+
+  @override
+  String get templates => 'Vorlagen';
+
+  @override
+  String get tabRecent => 'Zuletzt';
+
+  @override
+  String get tabFavorites => 'Favoriten';
+
+  @override
+  String get tabShortcuts => 'Kurzbefehle';
+
+  @override
+  String get noRecentEntries => 'Noch keine Einträge vorhanden.';
+
+  @override
+  String get recentTapHint =>
+      'Tippen = sofort eintragen · Gedrückt halten = Menge anpassen';
+
+  @override
+  String get noFavorites =>
+      'Noch keine Favoriten.\nMarkiere Lebensmittel in der Lebensmittel-Datenbank mit dem Stern-Symbol.';
+
+  @override
+  String get noShortcuts =>
+      'Noch keine Kurzbefehle.\nTippe auf einen Eintrag unter „Zuletzt“ oder „Favoriten“ und wähle „Als Kurzbefehl speichern“.';
+
+  @override
+  String shortcutSaved(String label) {
+    return 'Kurzbefehl „$label“ gespeichert';
+  }
+
+  @override
+  String get shortcut => 'Kurzbefehl';
+
+  @override
+  String get macroProteinShort => 'P';
+
+  @override
+  String get macroFatShort => 'F';
+
+  @override
+  String get macroCarbsShort => 'K';
+
+  @override
+  String get portion => 'Portion';
+
+  @override
+  String get portions => 'Portionen';
 }

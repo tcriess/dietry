@@ -32,6 +32,13 @@ class DataStore extends ChangeNotifier {
   bool _isLoading = false;
   bool _isInitialLoading = true;
 
+  /// True once a goal query has *authoritatively* completed — i.e. it either
+  /// returned a row or confirmed there is none. The "no goal" empty state may
+  /// only ever be shown when this is true. `_goal == null` on its own is
+  /// ambiguous: it also means "not loaded yet" or "the fetch failed while the
+  /// database was waking up", and must not trigger the empty state.
+  bool _goalConfirmed = false;
+
   NeonDatabaseService? _db;
   LocalDataService? _local;
 
@@ -61,6 +68,10 @@ class DataStore extends ChangeNotifier {
   /// True until the very first loadDay() call completes.
   bool get isInitialLoading => _isInitialLoading;
 
+  /// Whether the goal state is authoritative — see [_goalConfirmed].
+  /// The UI must gate the "no goal" empty state on this, never on `goal == null`.
+  bool get goalConfirmed => _goalConfirmed;
+
   void init(NeonDatabaseService db) {
     _db = db;
   }
@@ -81,6 +92,7 @@ class DataStore extends ChangeNotifier {
     _isInitialLoading = true;
     _isLoading = false;
     _goal = null;
+    _goalConfirmed = false;
     _foodEntries = [];
     _activities = [];
     _waterIntakeMl = 0;
@@ -222,15 +234,10 @@ class DataStore extends ChangeNotifier {
 
   void setGoal(NutritionGoal? goal) {
     _goal = goal;
-    notifyListeners();
-  }
-
-  /// Mark the initial load as finished without going through loadDay() —
-  /// used by give-up paths (e.g. userId never resolved) so the UI can leave
-  /// the loading screen and render whatever state it has.
-  void finishInitialLoading() {
-    if (!_isInitialLoading) return;
-    _isInitialLoading = false;
+    // A directly supplied goal (e.g. just saved on the profile screen) is an
+    // authoritative result. A null clear is not — leave _goalConfirmed alone
+    // so a give-up path can't promote the "no goal" screen.
+    if (goal != null) _goalConfirmed = true;
     notifyListeners();
   }
 
@@ -282,8 +289,13 @@ class DataStore extends ChangeNotifier {
   Future<void> _loadGoal(DateTime date) async {
     try {
       _goal = await NutritionGoalService(_db!).getGoalForDateStrict(date);
+      // Query erfolgreich (Zeile ODER authoritativ keine) → Zustand ist sicher.
+      _goalConfirmed = true;
     } catch (_) {
-      // Fetch fehlgeschlagen → bestehendes Goal beibehalten.
+      // Fetch fehlgeschlagen → bestehendes Goal beibehalten und NICHT als
+      // bestätigt markieren. Sonst erschiene der "kein Ziel"-Screen, obwohl
+      // wir den echten Zustand (noch) nicht kennen — z.B. während die DB
+      // aufwacht oder ein Token-Refresh läuft.
     }
   }
 
@@ -451,6 +463,8 @@ class DataStore extends ChangeNotifier {
   Future<void> _loadGoalLocal(DateTime date) async {
     try {
       _goal = await _local!.getGoalForDate(date);
+      // Local SQLite is always reachable → this result is authoritative.
+      _goalConfirmed = true;
     } catch (e) {
       appLogger.e('❌ Error loading goal locally: $e');
       _goal = null;

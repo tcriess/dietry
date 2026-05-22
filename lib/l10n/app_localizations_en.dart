@@ -1510,4 +1510,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get barcodeImport => 'Import';
+
+  @override
+  String get searchFoodHint => 'Search foods…';
+
+  @override
+  String get clearSearch => 'Clear search';
+
+  @override
+  String get templates => 'Templates';
+
+  @override
+  String get tabRecent => 'Recent';
+
+  @override
+  String get tabFavorites => 'Favorites';
+
+  @override
+  String get tabShortcuts => 'Shortcuts';
+
+  @override
+  String get noRecentEntries => 'No entries yet.';
+
+  @override
+  String get recentTapHint =>
+      'Tap = log instantly · Long-press = adjust amount';
+
+  @override
+  String get noFavorites =>
+      'No favorites yet.\nMark foods in the food database with the star icon.';
+
+  @override
+  String get noShortcuts =>
+      'No shortcuts yet.\nTap an item under “Recent” or “Favorites” and choose “Save as shortcut”.';
+
+  @override
+  String shortcutSaved(String label) {
+    return 'Shortcut “$label” saved';
+  }
+
+  @override
+  String get shortcut => 'Shortcut';
+
+  @override
+  String get macroProteinShort => 'P';
+
+  @override
+  String get macroFatShort => 'F';
+
+  @override
+  String get macroCarbsShort => 'C';
+
+  @override
+  String get portion => 'portion';
+
+  @override
+  String get portions => 'portions';
 }

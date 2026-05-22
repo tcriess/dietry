@@ -694,5 +694,22 @@
   "barcodeNotFoundHint": "No product matched this barcode.",
   "barcodeFoundOff": "Found on Open Food Facts",
   "barcodeImportOff": "Import nutrition data from Open Food Facts?",
-  "barcodeImport": "Import"
+  "barcodeImport": "Import",
+  "searchFoodHint": "Search foods…",
+  "clearSearch": "Clear search",
+  "templates": "Templates",
+  "tabRecent": "Recent",
+  "tabFavorites": "Favorites",
+  "tabShortcuts": "Shortcuts",
+  "noRecentEntries": "No entries yet.",
+  "recentTapHint": "Tap = log instantly · Long-press = adjust amount",
+  "noFavorites": "No favorites yet.\nMark foods in the food database with the star icon.",
+  "noShortcuts": "No shortcuts yet.\nTap an item under “Recent” or “Favorites” and choose “Save as shortcut”.",
+  "shortcutSaved": "Shortcut “{label}” saved",
+  "shortcut": "Shortcut",
+  "macroProteinShort": "P",
+  "macroFatShort": "F",
+  "macroCarbsShort": "C",
+  "portion": "portion",
+  "portions": "portions"
 }

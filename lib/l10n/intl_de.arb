@@ -694,5 +694,27 @@
   "barcodeNotFoundHint": "Kein Produkt zu diesem Barcode gefunden.",
   "barcodeFoundOff": "Bei Open Food Facts gefunden",
   "barcodeImportOff": "Nährwerte von Open Food Facts importieren?",
-  "barcodeImport": "Importieren"
+  "barcodeImport": "Importieren",
+  "searchFoodHint": "Lebensmittel suchen…",
+  "clearSearch": "Suche löschen",
+  "templates": "Vorlagen",
+  "tabRecent": "Zuletzt",
+  "tabFavorites": "Favoriten",
+  "tabShortcuts": "Kurzbefehle",
+  "noRecentEntries": "Noch keine Einträge vorhanden.",
+  "recentTapHint": "Tippen = sofort eintragen · Gedrückt halten = Menge anpassen",
+  "noFavorites": "Noch keine Favoriten.\nMarkiere Lebensmittel in der Lebensmittel-Datenbank mit dem Stern-Symbol.",
+  "noShortcuts": "Noch keine Kurzbefehle.\nTippe auf einen Eintrag unter „Zuletzt“ oder „Favoriten“ und wähle „Als Kurzbefehl speichern“.",
+  "shortcutSaved": "Kurzbefehl „{label}“ gespeichert",
+  "@shortcutSaved": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "shortcut": "Kurzbefehl",
+  "macroProteinShort": "P",
+  "macroFatShort": "F",
+  "macroCarbsShort": "K",
+  "portion": "Portion",
+  "portions": "Portionen"
 }

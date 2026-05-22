@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
@@ -9,18 +10,21 @@ import '../models/food_portion.dart';
 import '../models/food_shortcut.dart';
 import '../services/food_database_service.dart';
 import '../services/food_shortcuts_service.dart';
+import '../services/barcode_lookup_service.dart';
 import '../services/neon_database_service.dart';
 import '../l10n/app_localizations.dart';
+import 'barcode_scanner_sheet.dart';
 
-/// Bottom-Sheet für schnellen Mahlzeiten-Eintrag.
+/// Vereinheitlichtes Bottom-Sheet zum Hinzufügen von Einträgen — der einzige
+/// Einstiegspunkt auf dem Einträge-Tab.
 ///
-/// Drei Tabs:
-///   • Zuletzt    – kürzlich eingetragene Lebensmittel (letzte 30 Tage, dedup.)
+/// Enthält:
+///   • Suchfeld   – Live-Suche in der Lebensmittel-Datenbank
+///   • Barcode    – Scan-Button im Suchfeld
+///   • Zuletzt    – kürzlich eingetragene Lebensmittel (1 Tipp = sofort loggen)
 ///   • Favoriten  – Lebensmittel mit is_favourite=true aus food_database
 ///   • Kurzbefehle– nutzerkonfigurierte Einzel-Einträge (SharedPreferences)
-///
-/// Jeder Eintrag kann mit einem Tipp direkt hinzugefügt oder per Langtipp
-/// als Kurzbefehl gespeichert werden.
+///   • Buttons    – Mahlzeiten-Vorlagen (Cloud) und manuelle Eingabe
 class QuickFoodEntrySheet extends StatefulWidget {
   final NeonDatabaseService dbService;
   final DateTime date;
@@ -30,12 +34,21 @@ class QuickFoodEntrySheet extends StatefulWidget {
   /// Der Aufrufer ist für Persistenz + DataStore-Update zuständig.
   final Future<void> Function(FoodEntry) onAdd;
 
+  /// Öffnet die Mahlzeiten-Vorlagen (Cloud-Edition). Null = nicht verfügbar;
+  /// dann wird der Vorlagen-Button ausgeblendet.
+  final VoidCallback? onOpenTemplates;
+
+  /// Öffnet das vollständige Eingabe-Formular für die manuelle Erfassung.
+  final VoidCallback onManualEntry;
+
   const QuickFoodEntrySheet({
     super.key,
     required this.dbService,
     required this.date,
     required this.initialMealType,
     required this.onAdd,
+    required this.onManualEntry,
+    this.onOpenTemplates,
   });
 
   @override
@@ -54,6 +67,13 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   bool _loading = true;
   String? _addingId;
 
+  // ── Live-Suche ───────────────────────────────────────────────────────────────
+  final _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
+  List<FoodItem> _searchResults = [];
+  bool _searching = false;
+  String _query = '';
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +85,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchCtrl.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -177,13 +199,191 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('${entry.name} hinzugefügt'),
+          content: Text(AppLocalizations.of(context)!.foodAdded(entry.name)),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 1),
         ));
       }
     } finally {
       if (mounted) setState(() => _addingId = null);
+    }
+  }
+
+  // ── Suche ────────────────────────────────────────────────────────────────────
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    final q = value.trim();
+    if (q.isEmpty) {
+      setState(() {
+        _query = '';
+        _searchResults = [];
+        _searching = false;
+      });
+      return;
+    }
+    setState(() {
+      _query = q;
+      _searching = true;
+    });
+    _searchDebounce = Timer(const Duration(milliseconds: 350), _runSearch);
+  }
+
+  Future<void> _runSearch() async {
+    final q = _query;
+    if (q.isEmpty) return;
+    try {
+      final results =
+          await FoodDatabaseService(widget.dbService).searchFoods(q, limit: 40);
+      // Ignore stale responses — the query moved on while we were waiting.
+      if (!mounted || q != _query) return;
+      setState(() {
+        _searchResults = results;
+        _searching = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _searchCtrl.clear();
+    setState(() {
+      _query = '';
+      _searchResults = [];
+      _searching = false;
+    });
+  }
+
+  // ── Barcode ──────────────────────────────────────────────────────────────────
+
+  Future<void> _scan() async {
+    final barcode = await showBarcodeScannerSheet(context);
+    if (barcode == null || !mounted) return;
+
+    final locale = Localizations.localeOf(context).languageCode;
+
+    // Blocking loader — the lookup hits the local DB and then Open Food Facts,
+    // which can take a moment, especially on a cold connection.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    BarcodeLookupResult? result;
+    try {
+      result = await BarcodeLookupService.lookup(
+        barcode,
+        dbService: FoodDatabaseService(widget.dbService),
+        locale: locale,
+      );
+    } finally {
+      if (mounted) Navigator.of(context).pop(); // dismiss the loader
+    }
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context)?.barcodeNotFound ??
+            'Produkt nicht gefunden'),
+      ));
+      return;
+    }
+    await _pickFood(result.food);
+  }
+
+  // ── Auswahl eines Datenbank-Lebensmittels (Favoriten, Suche, Scan) ───────────
+
+  /// Opens the confirm dialog for a [food] from food_database (per-100g values),
+  /// then logs it on confirm.
+  Future<void> _pickFood(FoodItem food) async {
+    final defaultAmount = food.servingSize ?? 100.0;
+    final f = defaultAmount / 100;
+    final confirmed = await _confirm(
+      name: food.name,
+      amount: defaultAmount,
+      unit: food.servingUnit ?? 'g',
+      calories: food.calories * f,
+      protein: food.protein * f,
+      fat: food.fat * f,
+      carbs: food.carbs * f,
+      fiber: food.fiber != null ? food.fiber! * f : null,
+      sugar: food.sugar != null ? food.sugar! * f : null,
+      sodium: food.sodium != null ? food.sodium! * f : null,
+      saturatedFat: food.saturatedFat != null ? food.saturatedFat! * f : null,
+      foodId: food.id,
+      scaleByAmount: true,
+      isLiquid: food.isLiquid,
+      amountMl: food.isLiquid ? defaultAmount : null,
+      isMeal: false,
+      food: food,
+    );
+    if (confirmed != null) {
+      await _addEntry(confirmed.entry, confirmed.amountG);
+    }
+  }
+
+  // ── Zuletzt-Eintrag: 1 Tipp = sofort loggen, Langtipp = anpassen ─────────────
+
+  /// Re-logs [recent] immediately with its stored amount/nutrition, using the
+  /// meal type currently selected in the sheet.
+  Future<void> _instantAddRecent(FoodEntry recent) async {
+    final entry = FoodEntry(
+      id: const Uuid().v4(),
+      userId: widget.dbService.userId!,
+      foodId: recent.foodId,
+      mealTemplateId: recent.mealTemplateId,
+      entryDate: widget.date,
+      mealType: _mealType,
+      name: recent.name,
+      amount: recent.amount,
+      unit: recent.unit,
+      calories: recent.calories,
+      protein: recent.protein,
+      fat: recent.fat,
+      carbs: recent.carbs,
+      fiber: recent.fiber,
+      sugar: recent.sugar,
+      sodium: recent.sodium,
+      saturatedFat: recent.saturatedFat,
+      isLiquid: recent.isLiquid,
+      amountMl: recent.amountMl,
+      isMeal: recent.isMeal,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    final amountG =
+        (recent.unit == 'g' || recent.unit == 'ml') ? recent.amount : null;
+    await _addEntry(entry, amountG);
+  }
+
+  /// Opens the confirm dialog pre-filled from [entry] so the amount/meal can be
+  /// tweaked before logging — the long-press path on a Recent item.
+  Future<void> _adjustRecent(FoodEntry entry) async {
+    final food = entry.foodId != null ? _recentFoods[entry.foodId] : null;
+    final confirmed = await _confirm(
+      name: entry.name,
+      amount: entry.amount,
+      unit: entry.unit,
+      calories: entry.calories,
+      protein: entry.protein,
+      fat: entry.fat,
+      carbs: entry.carbs,
+      fiber: entry.fiber,
+      sugar: entry.sugar,
+      sodium: entry.sodium,
+      saturatedFat: entry.saturatedFat,
+      foodId: entry.foodId,
+      scaleByAmount: food != null,
+      food: food,
+      isLiquid: entry.isLiquid,
+      amountMl: entry.amountMl,
+      isMeal: entry.isMeal,
+      recentEntry: entry,
+    );
+    if (confirmed != null) {
+      await _addEntry(confirmed.entry, confirmed.amountG);
     }
   }
 
@@ -309,7 +509,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     await _loadShortcuts();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Kurzbefehl "$label" gespeichert'),
+        content: Text(AppLocalizations.of(context)!.shortcutSaved(label)),
         backgroundColor: Colors.teal,
         duration: const Duration(seconds: 2),
       ));
@@ -340,12 +540,12 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
           child: Row(
             children: [
-              const Icon(Icons.bolt, color: Colors.orange),
+              const Icon(Icons.add_circle, color: Colors.teal),
               const SizedBox(width: 8),
-              const Expanded(
-                child: Text('Schnelleintrag',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text(l.add,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -375,163 +575,164 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                 .toList(),
           ),
         ),
-        const SizedBox(height: 4),
-        // Tabs
-        TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Zuletzt'),
-            Tab(text: 'Favoriten'),
-            Tab(text: 'Kurzbefehle'),
-          ],
+        // Search field with an inline barcode-scan button
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: TextField(
+            controller: _searchCtrl,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: l.searchFoodHint,
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_query.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: l.clearSearch,
+                      onPressed: _clearSearch,
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_scanner),
+                    tooltip: l.barcodeScanTitle,
+                    onPressed: _scan,
+                  ),
+                ],
+              ),
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: _onSearchChanged,
+          ),
         ),
-        // Content
+        // Content: live search results while a query is entered,
+        // browse tabs (Recent / Favourites / Shortcuts) otherwise.
         Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _RecentTab(
-                      entries: _recentEntries,
-                      addingId: _addingId,
-                      onTap: (entry) async {
-                        final food =
-                            entry.foodId != null ? _recentFoods[entry.foodId] : null;
-                        final confirmed = await _confirm(
-                          name: entry.name,
-                          amount: entry.amount,
-                          unit: entry.unit,
-                          calories: entry.calories,
-                          protein: entry.protein,
-                          fat: entry.fat,
-                          carbs: entry.carbs,
-                          fiber: entry.fiber,
-                          sugar: entry.sugar,
-                          sodium: entry.sodium,
-                          saturatedFat: entry.saturatedFat,
-                          foodId: entry.foodId,
-                          scaleByAmount: food != null,
-                          food: food,
-                          isLiquid: entry.isLiquid,
-                          amountMl: entry.amountMl,
-                          isMeal: entry.isMeal,
-                          recentEntry: entry,
-                        );
-                        if (confirmed != null) {
-                          await _addEntry(confirmed.entry, confirmed.amountG);
-                        }
-                      },
-                    ),
-                    _FavouritesTab(
-                      foods: _favouriteFoods,
-                      addingId: _addingId,
-                      onTap: (food) async {
-                        final defaultAmount = food.servingSize ?? 100.0;
-                        final amountMlValue = food.isLiquid ? defaultAmount : null;
-                        final confirmed = await _confirm(
-                          name: food.name,
-                          amount: defaultAmount,
-                          unit: food.servingUnit ?? 'g',
-                          calories: food.calories * defaultAmount / 100,
-                          protein: food.protein * defaultAmount / 100,
-                          fat: food.fat * defaultAmount / 100,
-                          carbs: food.carbs * defaultAmount / 100,
-                          fiber: food.fiber != null
-                              ? food.fiber! * defaultAmount / 100
-                              : null,
-                          sugar: food.sugar != null
-                              ? food.sugar! * defaultAmount / 100
-                              : null,
-                          sodium: food.sodium != null
-                              ? food.sodium! * defaultAmount / 100
-                              : null,
-                          saturatedFat: food.saturatedFat != null
-                              ? food.saturatedFat! * defaultAmount / 100
-                              : null,
-                          foodId: food.id,
-                          scaleByAmount: true,
-                          isLiquid: food.isLiquid,
-                          amountMl: amountMlValue,
-                          isMeal: false,  // Foods are never meals in quick add
-                          food: food,
-                        );
-                        if (confirmed != null) {
-                          await _addEntry(confirmed.entry, confirmed.amountG);
-                        }
-                      },
-                    ),
-                    _ShortcutsTab(
-                      shortcuts: _shortcuts,
-                      addingId: _addingId,
-                      onTap: (sc) async {
-                        final entry = _entryFromShortcut(sc);
-                        // Grams known only for g/ml shortcuts; portion
-                        // shortcuts don't store the portion weight.
-                        final amountG = (sc.unit == 'g' || sc.unit == 'ml')
-                            ? sc.amount
-                            : null;
-                        await _addEntry(entry, amountG);
-                      },
-                      onDelete: (sc) async {
-                        await FoodShortcutsService.removeShortcut(sc.id);
-                        await _loadShortcuts();
-                      },
-                    ),
-                  ],
-                ),
+          child: _query.isEmpty ? _buildBrowse() : _buildSearchResults(),
         ),
       ],
     );
   }
-}
 
-// ── Recent tab ────────────────────────────────────────────────────────────────
+  Widget _buildBrowse() {
+    final l = AppLocalizations.of(context)!;
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      children: [
+        // Quick links: meal templates (Cloud) + manual entry form
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+          child: Row(
+            children: [
+              if (widget.onOpenTemplates != null) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.restaurant_menu, size: 18),
+                    label: Text(l.templates,
+                        style: const TextStyle(fontSize: 13)),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      widget.onOpenTemplates!();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  label: Text(l.manualEntry,
+                      style: const TextStyle(fontSize: 13)),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onManualEntry();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: l.tabRecent),
+            Tab(text: l.tabFavorites),
+            Tab(text: l.tabShortcuts),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _RecentTab(
+                entries: _recentEntries,
+                addingId: _addingId,
+                onTap: _instantAddRecent,
+                onLongPress: _adjustRecent,
+              ),
+              _FavouritesTab(
+                foods: _favouriteFoods,
+                addingId: _addingId,
+                onTap: _pickFood,
+              ),
+              _ShortcutsTab(
+                shortcuts: _shortcuts,
+                addingId: _addingId,
+                onTap: (sc) async {
+                  final entry = _entryFromShortcut(sc);
+                  // Grams known only for g/ml shortcuts; portion
+                  // shortcuts don't store the portion weight.
+                  final amountG = (sc.unit == 'g' || sc.unit == 'ml')
+                      ? sc.amount
+                      : null;
+                  await _addEntry(entry, amountG);
+                },
+                onDelete: (sc) async {
+                  await FoodShortcutsService.removeShortcut(sc.id);
+                  await _loadShortcuts();
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-class _RecentTab extends StatelessWidget {
-  final List<FoodEntry> entries;
-  final String? addingId;
-  final void Function(FoodEntry) onTap;
-
-  const _RecentTab({
-    required this.entries,
-    required this.addingId,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (entries.isEmpty) {
-      return const Center(
-        child: Text('Noch keine Einträge vorhanden.',
-            style: TextStyle(color: Colors.grey)),
+  Widget _buildSearchResults() {
+    final l = AppLocalizations.of(context)!;
+    if (_searching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(l.noSearchResults(_query),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey)),
+        ),
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 16),
-      itemCount: entries.length,
+      itemCount: _searchResults.length,
       itemBuilder: (ctx, i) {
-        final e = entries[i];
-        final isAdding = addingId == e.id;
-        final eCount = e.amount;
-        final eCountStr = eCount == eCount.truncateToDouble()
-            ? eCount.toInt().toString()
-            : eCount.toStringAsFixed(1);
-        final amountStr = e.unit == 'g' || e.unit == 'ml'
-            ? '${e.amount.toStringAsFixed(0)}${e.unit}'
-            : e.unit == 'Portion'
-                ? '$eCountStr Portion${eCount != 1.0 ? 'en' : ''}'
-                : '$eCountStr × ${e.unit}';
+        final food = _searchResults[i];
+        final isAdding = _addingId == food.id;
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.orange.shade50,
+            backgroundColor: Colors.blue.shade50,
             child:
-                const Icon(Icons.history, color: Colors.orange, size: 20),
+                const Icon(Icons.restaurant, color: Colors.blue, size: 20),
           ),
-          title: Text(e.name, style: const TextStyle(fontSize: 14)),
+          title: Text(food.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
-            '$amountStr · ${e.calories.toStringAsFixed(0)} kcal  '
-            'P${e.protein.toStringAsFixed(0)} F${e.fat.toStringAsFixed(0)} K${e.carbs.toStringAsFixed(0)}',
+            _macroSummary(l, l.per100g, food.calories, food.protein,
+                food.fat, food.carbs),
             style: const TextStyle(fontSize: 11),
           ),
           trailing: isAdding
@@ -540,9 +741,104 @@ class _RecentTab extends StatelessWidget {
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.add_circle_outline, color: Colors.teal),
-          onTap: isAdding ? null : () => onTap(e),
+          onTap: isAdding ? null : () => _pickFood(food),
         );
       },
+    );
+  }
+}
+
+/// Compact one-line macro summary, e.g. "100 g · 250 kcal · P12 F8 K30".
+/// [base] is an already-formatted prefix — a serving size or "per 100 g".
+String _macroSummary(AppLocalizations l, String base, double kcal,
+    double protein, double fat, double carbs) {
+  return '$base · ${kcal.toStringAsFixed(0)} kcal · '
+      '${l.macroProteinShort}${protein.toStringAsFixed(0)} '
+      '${l.macroFatShort}${fat.toStringAsFixed(0)} '
+      '${l.macroCarbsShort}${carbs.toStringAsFixed(0)}';
+}
+
+// ── Recent tab ────────────────────────────────────────────────────────────────
+
+class _RecentTab extends StatelessWidget {
+  final List<FoodEntry> entries;
+  final String? addingId;
+
+  /// One tap → log immediately with the stored amount.
+  final void Function(FoodEntry) onTap;
+
+  /// Long press → open the confirm dialog to adjust amount/meal first.
+  final void Function(FoodEntry) onLongPress;
+
+  const _RecentTab({
+    required this.entries,
+    required this.addingId,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    if (entries.isEmpty) {
+      return Center(
+        child: Text(l.noRecentEntries,
+            style: const TextStyle(color: Colors.grey)),
+      );
+    }
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          color: Colors.orange.shade50,
+          child: Text(
+            l.recentTapHint,
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.only(bottom: 16),
+            itemCount: entries.length,
+            itemBuilder: (ctx, i) {
+              final e = entries[i];
+              final isAdding = addingId == e.id;
+              final eCount = e.amount;
+              final eCountStr = eCount == eCount.truncateToDouble()
+                  ? eCount.toInt().toString()
+                  : eCount.toStringAsFixed(1);
+              final amountStr = e.unit == 'g' || e.unit == 'ml'
+                  ? '${e.amount.toStringAsFixed(0)}${e.unit}'
+                  : e.unit == 'Portion'
+                      ? '$eCountStr ${eCount == 1.0 ? l.portion : l.portions}'
+                      : '$eCountStr × ${e.unit}';
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.orange.shade50,
+                  child: const Icon(Icons.history,
+                      color: Colors.orange, size: 20),
+                ),
+                title: Text(e.name, style: const TextStyle(fontSize: 14)),
+                subtitle: Text(
+                  _macroSummary(l, amountStr, e.calories, e.protein,
+                      e.fat, e.carbs),
+                  style: const TextStyle(fontSize: 11),
+                ),
+                trailing: isAdding
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.add_circle_outline,
+                        color: Colors.teal),
+                onTap: isAdding ? null : () => onTap(e),
+                onLongPress: isAdding ? null : () => onLongPress(e),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -562,16 +858,15 @@ class _FavouritesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     if (foods.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
-            'Noch keine Favoriten.\n'
-            'Markiere Lebensmittel in der Lebensmittel-Datenbank '
-            'mit dem Stern-Symbol.',
+            l.noFavorites,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: const TextStyle(color: Colors.grey),
           ),
         ),
       );
@@ -589,8 +884,8 @@ class _FavouritesTab extends StatelessWidget {
           ),
           title: Text(food.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
-            'pro 100g · ${food.calories.toStringAsFixed(0)} kcal  '
-            'P${food.protein.toStringAsFixed(0)} F${food.fat.toStringAsFixed(0)} K${food.carbs.toStringAsFixed(0)}',
+            _macroSummary(l, l.per100g, food.calories, food.protein,
+                food.fat, food.carbs),
             style: const TextStyle(fontSize: 11),
           ),
           trailing: isAdding
@@ -623,16 +918,15 @@ class _ShortcutsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     if (shortcuts.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
-            'Noch keine Kurzbefehle.\n'
-            'Tippe auf einen Eintrag unter „Zuletzt" oder „Favoriten" '
-            'und wähle „Als Kurzbefehl speichern".',
+            l.noShortcuts,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: const TextStyle(color: Colors.grey),
           ),
         ),
       );
@@ -661,9 +955,8 @@ class _ShortcutsTab extends StatelessWidget {
             ),
             title: Text(sc.label, style: const TextStyle(fontSize: 14)),
             subtitle: Text(
-              '${sc.amount.toStringAsFixed(0)} ${sc.unit} · '
-              '${sc.calories.toStringAsFixed(0)} kcal  '
-              'P${sc.protein.toStringAsFixed(0)} F${sc.fat.toStringAsFixed(0)} K${sc.carbs.toStringAsFixed(0)}',
+              _macroSummary(l, '${sc.amount.toStringAsFixed(0)} ${sc.unit}',
+                  sc.calories, sc.protein, sc.fat, sc.carbs),
               style: const TextStyle(fontSize: 11),
             ),
             trailing: isAdding
@@ -961,7 +1254,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 child: TextFormField(
                   controller: _amountCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Menge',
+                    labelText: l.amount,
                     border: const OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -1027,7 +1320,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   height: 14,
                   child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.push_pin_outlined, size: 16),
-          label: const Text('Kurzbefehl'),
+          label: Text(l.shortcut),
           onPressed: _savingShortcut
               ? null
               : () async {
@@ -1061,7 +1354,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         FilledButton(
           onPressed: () => Navigator.of(context)
               .pop((entry: _buildEntry(), amountG: _currentAmountG())),
-          child: const Text('Hinzufügen'),
+          child: Text(l.add),
         ),
       ],
     );
@@ -1077,6 +1370,7 @@ class _NutritionPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -1088,11 +1382,11 @@ class _NutritionPreview extends StatelessWidget {
         children: [
           _MacroChip(label: 'kcal',
               value: entry.calories.toStringAsFixed(0)),
-          _MacroChip(label: 'P',
+          _MacroChip(label: l.macroProteinShort,
               value: '${entry.protein.toStringAsFixed(1)}g'),
-          _MacroChip(label: 'F',
+          _MacroChip(label: l.macroFatShort,
               value: '${entry.fat.toStringAsFixed(1)}g'),
-          _MacroChip(label: 'KH',
+          _MacroChip(label: l.macroCarbsShort,
               value: '${entry.carbs.toStringAsFixed(1)}g'),
         ],
       ),

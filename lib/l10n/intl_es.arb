@@ -694,5 +694,22 @@
   "barcodeNotFoundHint": "No se encontró ningún producto con este código.",
   "barcodeFoundOff": "Encontrado en Open Food Facts",
   "barcodeImportOff": "¿Importar datos nutricionales de Open Food Facts?",
-  "barcodeImport": "Importar"
+  "barcodeImport": "Importar",
+  "searchFoodHint": "Buscar alimentos…",
+  "clearSearch": "Borrar búsqueda",
+  "templates": "Plantillas",
+  "tabRecent": "Recientes",
+  "tabFavorites": "Favoritos",
+  "tabShortcuts": "Atajos",
+  "noRecentEntries": "Aún no hay entradas.",
+  "recentTapHint": "Tocar = registrar al instante · Mantener pulsado = ajustar cantidad",
+  "noFavorites": "Aún no hay favoritos.\nMarca alimentos en la base de datos con el icono de estrella.",
+  "noShortcuts": "Aún no hay atajos.\nToca un elemento en «Recientes» o «Favoritos» y elige «Guardar como atajo».",
+  "shortcutSaved": "Atajo «{label}» guardado",
+  "shortcut": "Atajo",
+  "macroProteinShort": "P",
+  "macroFatShort": "G",
+  "macroCarbsShort": "C",
+  "portion": "porción",
+  "portions": "porciones"
 }

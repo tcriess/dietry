@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/app_localizations.dart';
 import '../services/app_logger.dart';
@@ -75,7 +76,17 @@ class _BarcodeScannerPage extends StatefulWidget {
 }
 
 class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
-  final MobileScannerController _controller = MobileScannerController();
+  // Restrict to retail product barcodes — QR / Data-Matrix and other codes are
+  // ignored, so the scanner locks onto the EAN/UPC on a package faster and
+  // never misfires on an unrelated code printed elsewhere on the packaging.
+  final MobileScannerController _controller = MobileScannerController(
+    formats: const [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+    ],
+  );
   bool _scanned = false;
   bool _torchEnabled = false;
 
@@ -91,6 +102,9 @@ class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
     final value = barcode?.displayValue ?? barcode?.rawValue;
     if (value == null || value.isEmpty) return;
     _scanned = true;
+    // Tactile confirmation that a code locked in — the user can look away
+    // from the screen and still know the scan succeeded.
+    HapticFeedback.mediumImpact();
     appLogger.i('📷 Barcode gescannt: $value');
     Navigator.of(context).pop(value);
   }

@@ -2865,6 +2865,108 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Importieren'**
   String get barcodeImport;
+
+  /// No description provided for @searchFoodHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Lebensmittel suchen…'**
+  String get searchFoodHint;
+
+  /// No description provided for @clearSearch.
+  ///
+  /// In de, this message translates to:
+  /// **'Suche löschen'**
+  String get clearSearch;
+
+  /// No description provided for @templates.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorlagen'**
+  String get templates;
+
+  /// No description provided for @tabRecent.
+  ///
+  /// In de, this message translates to:
+  /// **'Zuletzt'**
+  String get tabRecent;
+
+  /// No description provided for @tabFavorites.
+  ///
+  /// In de, this message translates to:
+  /// **'Favoriten'**
+  String get tabFavorites;
+
+  /// No description provided for @tabShortcuts.
+  ///
+  /// In de, this message translates to:
+  /// **'Kurzbefehle'**
+  String get tabShortcuts;
+
+  /// No description provided for @noRecentEntries.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Einträge vorhanden.'**
+  String get noRecentEntries;
+
+  /// No description provided for @recentTapHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Tippen = sofort eintragen · Gedrückt halten = Menge anpassen'**
+  String get recentTapHint;
+
+  /// No description provided for @noFavorites.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Favoriten.\nMarkiere Lebensmittel in der Lebensmittel-Datenbank mit dem Stern-Symbol.'**
+  String get noFavorites;
+
+  /// No description provided for @noShortcuts.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Kurzbefehle.\nTippe auf einen Eintrag unter „Zuletzt“ oder „Favoriten“ und wähle „Als Kurzbefehl speichern“.'**
+  String get noShortcuts;
+
+  /// No description provided for @shortcutSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Kurzbefehl „{label}“ gespeichert'**
+  String shortcutSaved(String label);
+
+  /// No description provided for @shortcut.
+  ///
+  /// In de, this message translates to:
+  /// **'Kurzbefehl'**
+  String get shortcut;
+
+  /// No description provided for @macroProteinShort.
+  ///
+  /// In de, this message translates to:
+  /// **'P'**
+  String get macroProteinShort;
+
+  /// No description provided for @macroFatShort.
+  ///
+  /// In de, this message translates to:
+  /// **'F'**
+  String get macroFatShort;
+
+  /// No description provided for @macroCarbsShort.
+  ///
+  /// In de, this message translates to:
+  /// **'K'**
+  String get macroCarbsShort;
+
+  /// No description provided for @portion.
+  ///
+  /// In de, this message translates to:
+  /// **'Portion'**
+  String get portion;
+
+  /// No description provided for @portions.
+  ///
+  /// In de, this message translates to:
+  /// **'Portionen'**
+  String get portions;
 }
 
 class _AppLocalizationsDelegate
