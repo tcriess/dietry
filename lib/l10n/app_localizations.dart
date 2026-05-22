@@ -2967,6 +2967,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Portionen'**
   String get portions;
+
+  /// No description provided for @scanNutritionLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Nährwertetikett scannen'**
+  String get scanNutritionLabel;
 }
 
 class _AppLocalizationsDelegate

@@ -1566,4 +1566,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get portions => 'portions';
+
+  @override
+  String get scanNutritionLabel => 'Scan nutrition label';
 }

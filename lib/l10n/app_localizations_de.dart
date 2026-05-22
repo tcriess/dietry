@@ -1572,4 +1572,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get portions => 'Portionen';
+
+  @override
+  String get scanNutritionLabel => 'Nährwertetikett scannen';
 }

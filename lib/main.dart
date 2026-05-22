@@ -3293,6 +3293,17 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ));
         }
 
+        // Pushes the full entry form with the label-scan OCR launched on open.
+        void openScanLabel() {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => AddFoodEntryScreen(
+              dbService: db,
+              selectedDate: _selectedDay,
+              autoScanLabel: true,
+            ),
+          ));
+        }
+
         // The single entry point: one unified add sheet.
         void openAddSheet() {
           showModalBottomSheet(
@@ -3310,6 +3321,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 initialMealType: _suggestMealType(),
                 onOpenTemplates: hasMealTemplates ? openTemplates : null,
                 onManualEntry: openManualEntry,
+                onScanLabel:
+                    AppFeatures.nutritionLabelScan ? openScanLabel : null,
                 onAdd: (entry) async {
                   await _sync.createFoodEntry(entry);
                   await _store.loadDay(_selectedDay,

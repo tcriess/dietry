@@ -41,6 +41,10 @@ class QuickFoodEntrySheet extends StatefulWidget {
   /// Öffnet das vollständige Eingabe-Formular für die manuelle Erfassung.
   final VoidCallback onManualEntry;
 
+  /// Startet den Nährwertetikett-Scan (Cloud-Edition, mobil). Null = nicht
+  /// verfügbar; dann wird der Etikett-Scan-Button ausgeblendet.
+  final VoidCallback? onScanLabel;
+
   const QuickFoodEntrySheet({
     super.key,
     required this.dbService,
@@ -49,6 +53,7 @@ class QuickFoodEntrySheet extends StatefulWidget {
     required this.onAdd,
     required this.onManualEntry,
     this.onOpenTemplates,
+    this.onScanLabel,
   });
 
   @override
@@ -606,11 +611,23 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                     IconButton(
                       icon: const Icon(Icons.clear),
                       tooltip: l.clearSearch,
+                      visualDensity: VisualDensity.compact,
                       onPressed: _clearSearch,
+                    ),
+                  if (widget.onScanLabel != null)
+                    IconButton(
+                      icon: const Icon(Icons.document_scanner),
+                      tooltip: l.scanNutritionLabel,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onScanLabel!();
+                      },
                     ),
                   IconButton(
                     icon: const Icon(Icons.qr_code_scanner),
                     tooltip: l.barcodeScanTitle,
+                    visualDensity: VisualDensity.compact,
                     onPressed: _scan,
                   ),
                 ],

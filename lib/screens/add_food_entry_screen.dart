@@ -43,12 +43,17 @@ class AddFoodEntryScreen extends StatefulWidget {
   final MealType? initialMealType;
   final FoodItem? preselectedFood;
 
+  /// When true, the nutrition-label OCR scan is launched automatically on
+  /// open — used by the add sheet's 1-tap label-scan shortcut.
+  final bool autoScanLabel;
+
   const AddFoodEntryScreen({
     super.key,
     this.dbService,
     this.selectedDate,
     this.initialMealType,
     this.preselectedFood,
+    this.autoScanLabel = false,
   });
 
   @override
@@ -198,6 +203,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     // Pre-select food if provided from FoodDetailScreen
     if (widget.preselectedFood != null) {
       _selectFood(widget.preselectedFood!);
+    }
+    // Launched via the add sheet's label-scan shortcut → go straight to OCR.
+    if (widget.autoScanLabel) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scanNutritionLabel();
+      });
     }
   }
 
