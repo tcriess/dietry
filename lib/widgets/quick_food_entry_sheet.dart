@@ -85,6 +85,11 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   /// initial fetch completes.
   _CooccurrenceIndex? _cooccurrence;
 
+  /// Distinct-date counts per `(name, mealType, weekday)`. Drives the
+  /// "you always log this on Mondays at breakfast" promotion in
+  /// [_rankAndDedupRecent].
+  _RecurrenceIndex? _recurrence;
+
   /// Current suggestion chip row contents. Refreshed after every successful
   /// add (keyed off the just-added entry) and cleared on context changes
   /// (meal-type chip, search start).
@@ -175,12 +180,14 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       }
 
       final index = _CooccurrenceIndex.build(entries);
+      final recurrence = _RecurrenceIndex.build(entries);
 
       if (mounted) {
         setState(() {
           _rawRecent = entries;
           _recentFoods = recentFoods;
           _cooccurrence = index;
+          _recurrence = recurrence;
         });
       }
     } catch (_) {}
@@ -213,8 +220,16 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   /// Sorts [_rawRecent] by relevance to the current meal context, then
   /// dedupes by lowercase name. Recomputed on every rebuild so changing
   /// the meal-type chip immediately re-ranks the list.
-  List<FoodEntry> _displayRecent() =>
-      _rankAndDedupRecent(_rawRecent, _mealType, DateTime.now().hour);
+  ///
+  /// Uses `widget.date.weekday` (not "today") so back-filling a past meal
+  /// still benefits from that weekday's recurrence pattern.
+  List<FoodEntry> _displayRecent() => _rankAndDedupRecent(
+        _rawRecent,
+        _mealType,
+        DateTime.now().hour,
+        _recurrence,
+        widget.date.weekday,
+      );
 
   Future<void> _loadFavourites() async {
     try {
@@ -898,16 +913,45 @@ String _macroSummary(AppLocalizations l, String base, double kcal,
 
 // ── Recent ranking ────────────────────────────────────────────────────────────
 
+/// Minimum distinct-date count for a `(name, mealType, weekday)` slot to
+/// count as a recurring habit. With a 90-day window each weekday occurs
+/// ~13 times, so 4 hits = ≥30% of matching slots — conservative enough to
+/// avoid false positives from a brief streak.
+const int _recurrenceThreshold = 4;
+
 /// Circular hour distance, 0–12. e.g. distance(23, 1) == 2.
 int _hourDistance(int a, int b) {
   final d = (a - b).abs();
   return d > 12 ? 24 - d : d;
 }
 
-/// Lower is better: (0=meal-type match, 1=other), then hour-of-day distance,
-/// then negative recency. Keeps "breakfast banana" at the top in the morning
-/// even if the most recently logged banana was at dinner last night.
-int _compareRecent(FoodEntry a, FoodEntry b, MealType mealType, int hour) {
+/// Lower is better. Sort order:
+///   1. Recurrent items (`(name, mealType, weekday)` count ≥ threshold)
+///      win, with higher counts beating lower counts within the group.
+///   2. Items whose stored `mealType` matches the active selection win.
+///   3. Hour-of-day distance to "now".
+///   4. Recency.
+///
+/// The recurrence boost is what lifts a "every Monday-breakfast oatmeal"
+/// to the top even on weeks where the user happened to log other things
+/// more recently.
+int _compareRecent(
+  FoodEntry a,
+  FoodEntry b,
+  MealType mealType,
+  int hour,
+  _RecurrenceIndex? recurrence,
+  int weekday,
+) {
+  if (recurrence != null) {
+    final aRec = recurrence.count(a.name, mealType, weekday);
+    final bRec = recurrence.count(b.name, mealType, weekday);
+    final aIsRec = aRec >= _recurrenceThreshold;
+    final bIsRec = bRec >= _recurrenceThreshold;
+    if (aIsRec != bIsRec) return aIsRec ? -1 : 1;
+    if (aIsRec && bIsRec && aRec != bRec) return bRec - aRec;
+  }
+
   final aMatch = a.mealType == mealType ? 0 : 1;
   final bMatch = b.mealType == mealType ? 0 : 1;
   if (aMatch != bMatch) return aMatch - bMatch;
@@ -919,12 +963,21 @@ int _compareRecent(FoodEntry a, FoodEntry b, MealType mealType, int hour) {
   return b.createdAt.compareTo(a.createdAt);
 }
 
-/// Sorts [entries] by relevance to the current ([mealType], [hour]) context,
-/// then dedupes by lowercase name, keeping the best-ranked entry per name.
+/// Sorts [entries] by relevance to the current ([mealType], [hour], [weekday])
+/// context, then dedupes by lowercase name, keeping the best-ranked entry
+/// per name. [recurrence] is optional — when null, ranking falls through
+/// to the phase-1 heuristic.
 List<FoodEntry> _rankAndDedupRecent(
-    List<FoodEntry> entries, MealType mealType, int hour) {
+  List<FoodEntry> entries,
+  MealType mealType,
+  int hour, [
+  _RecurrenceIndex? recurrence,
+  int weekday = 0,
+]) {
   final sorted = entries.toList()
-    ..sort((a, b) => _compareRecent(a, b, mealType, hour));
+    ..sort(
+      (a, b) => _compareRecent(a, b, mealType, hour, recurrence, weekday),
+    );
   final seen = <String>{};
   final result = <FoodEntry>[];
   for (final e in sorted) {
@@ -933,6 +986,48 @@ List<FoodEntry> _rankAndDedupRecent(
     }
   }
   return result;
+}
+
+// ── Recurrence index ──────────────────────────────────────────────────────────
+
+/// Counts how many distinct dates a food appears in for each
+/// `(name, mealType, weekday)` slot, over the same 90-day fetch as
+/// [_CooccurrenceIndex].
+///
+/// Drives the "every Monday-breakfast oatmeal" promotion in
+/// [_compareRecent]. Distinct-date counting (rather than raw entry count)
+/// prevents a single date with duplicate entries from inflating the
+/// score.
+class _RecurrenceIndex {
+  /// Composite key `"$name|$mealType|$weekday"` → distinct entry-dates.
+  final Map<String, int> _counts;
+
+  _RecurrenceIndex._(this._counts);
+
+  factory _RecurrenceIndex.build(List<FoodEntry> entries) {
+    // Track which (date, mealType, name) triples we've already counted so
+    // a duplicate within the same meal doesn't double-count the day.
+    final seenTriple = <String>{};
+    final counts = <String, int>{};
+    for (final e in entries) {
+      final name = e.name.toLowerCase().trim();
+      if (name.isEmpty) continue;
+      final dateStr = e.entryDate.toIso8601String().split('T')[0];
+      final mt = e.mealType.toJson();
+      final tripleKey = '$dateStr|$mt|$name';
+      if (!seenTriple.add(tripleKey)) continue;
+      final slotKey = '$name|$mt|${e.entryDate.weekday}';
+      counts[slotKey] = (counts[slotKey] ?? 0) + 1;
+    }
+    return _RecurrenceIndex._(counts);
+  }
+
+  /// Distinct-date count for [name] in the `(mealType, weekday)` slot.
+  int count(String name, MealType mealType, int weekday) {
+    final key =
+        '${name.toLowerCase().trim()}|${mealType.toJson()}|$weekday';
+    return _counts[key] ?? 0;
+  }
 }
 
 // ── Co-occurrence index ───────────────────────────────────────────────────────
