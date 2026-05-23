@@ -65,10 +65,10 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   late TabController _tabController;
   late MealType _mealType;
 
-  /// Raw recent fetch (last 30 days, ordered by created_at desc) before
+  /// Raw recent fetch (last 90 days, ordered by created_at desc) before
   /// dedup. Kept raw so the time-of-day re-ranking in [_displayRecent] can
   /// re-evaluate when the user picks a different meal-type chip without
-  /// re-hitting the network.
+  /// re-hitting the network. Also drives the co-occurrence index.
   List<FoodEntry> _rawRecent = [];
   List<FoodItem> _favouriteFoods = [];
   List<FoodShortcut> _shortcuts = [];
@@ -80,6 +80,19 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   /// toast. Null while no toast is showing.
   String? _lastAddedName;
   Timer? _toastTimer;
+
+  /// Built once per [_loadRecent] over the 90-day window. Null until the
+  /// initial fetch completes.
+  _CooccurrenceIndex? _cooccurrence;
+
+  /// Current suggestion chip row contents. Refreshed after every successful
+  /// add (keyed off the just-added entry) and cleared on context changes
+  /// (meal-type chip, search start).
+  List<FoodEntry> _suggestions = const [];
+
+  /// Names logged since the sheet opened — excluded from suggestions so we
+  /// never recommend something the user already added in this session.
+  final Set<String> _loggedThisSession = <String>{};
 
   // ── Live-Suche ───────────────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
@@ -119,7 +132,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     if (userId == null) return;
 
     final end = DateTime.now();
-    final start = end.subtract(const Duration(days: 30));
+    // 90 days gives the co-occurrence index enough signal to fire
+    // minSupport ≥ 2 pairs without re-fetching at suggestion time.
+    final start = end.subtract(const Duration(days: 90));
     final endStr = end.toIso8601String().split('T')[0];
     final startStr = start.toIso8601String().split('T')[0];
 
@@ -131,7 +146,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           .gte('entry_date', startStr)
           .lte('entry_date', endStr)
           .order('created_at', ascending: false)
-          .limit(200);
+          .limit(1000);
 
       final entries = (response as List)
           .map((json) => FoodEntry.fromJson(json as Map<String, dynamic>))
@@ -159,13 +174,40 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         }
       }
 
+      final index = _CooccurrenceIndex.build(entries);
+
       if (mounted) {
         setState(() {
           _rawRecent = entries;
           _recentFoods = recentFoods;
+          _cooccurrence = index;
         });
       }
     } catch (_) {}
+  }
+
+  /// Returns up to 3 [FoodEntry] templates the user often logs alongside
+  /// [seedName] in the same meal session. Excludes the seed and anything
+  /// already logged during this sheet session. Empty when the index hasn't
+  /// loaded or no pair clears the minSupport threshold.
+  List<FoodEntry> _computeSuggestions(String seedName) {
+    final idx = _cooccurrence;
+    if (idx == null) return const [];
+    final exclude = <String>{
+      ..._loggedThisSession,
+      seedName.toLowerCase().trim(),
+    };
+    final names = idx.suggest(seedName, k: 3, exclude: exclude);
+    final result = <FoodEntry>[];
+    for (final name in names) {
+      FoodEntry? best;
+      for (final e in _rawRecent) {
+        if (e.name.toLowerCase().trim() != name) continue;
+        if (best == null || e.createdAt.isAfter(best.createdAt)) best = e;
+      }
+      if (best != null) result.add(best);
+    }
+    return result;
   }
 
   /// Sorts [_rawRecent] by relevance to the current meal context, then
@@ -218,7 +260,12 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       if (mounted) {
         HapticFeedback.lightImpact();
         _toastTimer?.cancel();
-        setState(() => _lastAddedName = entry.name);
+        _loggedThisSession.add(entry.name.toLowerCase().trim());
+        final nextSuggestions = _computeSuggestions(entry.name);
+        setState(() {
+          _lastAddedName = entry.name;
+          _suggestions = nextSuggestions;
+        });
         _toastTimer = Timer(const Duration(milliseconds: 1800), () {
           if (mounted) setState(() => _lastAddedName = null);
         });
@@ -252,6 +299,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     setState(() {
       _query = q;
       _searching = true;
+      // Search takes focus; the suggestion strip would be hidden behind
+      // the results anyway.
+      _suggestions = const [];
     });
     _searchDebounce = Timer(const Duration(milliseconds: 350), _runSearch);
   }
@@ -622,7 +672,14 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                             style: const TextStyle(fontSize: 12)),
                         selected: _mealType == mt,
                         onSelected: (v) {
-                          if (v) setState(() => _mealType = mt);
+                          if (v) {
+                            setState(() {
+                              _mealType = mt;
+                              // Meal context changed; suggestions tied to
+                              // the previous bucket no longer apply.
+                              _suggestions = const [];
+                            });
+                          }
                         },
                       ),
                     ))
@@ -720,6 +777,21 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
               ),
             ],
           ),
+        ),
+        // Co-occurrence suggestion strip — populated after a successful add
+        // from foods the user often logs alongside the just-added item in
+        // the same meal session.
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _suggestions.isEmpty
+              ? const SizedBox(width: double.infinity)
+              : _SuggestionsRow(
+                  suggestions: _suggestions,
+                  addingId: _addingId,
+                  onTap: _instantAddRecent,
+                ),
         ),
         TabBar(
           controller: _tabController,
@@ -861,6 +933,137 @@ List<FoodEntry> _rankAndDedupRecent(
     }
   }
   return result;
+}
+
+// ── Co-occurrence index ───────────────────────────────────────────────────────
+
+/// Counts how often pairs of distinct food names appear in the same
+/// `(entry_date, mealType)` meal session, then ranks neighbours of a given
+/// name by conditional probability `P(B|A) = co[A][B] / occ[A]`.
+///
+/// Built once per [_QuickFoodEntrySheetState._loadRecent] over the 90-day
+/// fetch — cheap enough to live entirely in memory.
+class _CooccurrenceIndex {
+  /// Lowercased name → number of meal buckets the name appeared in.
+  final Map<String, int> _occ;
+
+  /// Lowercased name A → lowercased name B → number of meal buckets in
+  /// which both A and B appeared. Symmetric: `_co[A][B] == _co[B][A]`.
+  final Map<String, Map<String, int>> _co;
+
+  _CooccurrenceIndex._(this._occ, this._co);
+
+  factory _CooccurrenceIndex.build(List<FoodEntry> entries) {
+    final buckets = <String, Set<String>>{};
+    for (final e in entries) {
+      final dateStr = e.entryDate.toIso8601String().split('T')[0];
+      final key = '$dateStr|${e.mealType.toJson()}';
+      final name = e.name.toLowerCase().trim();
+      if (name.isEmpty) continue;
+      (buckets[key] ??= <String>{}).add(name);
+    }
+    final occ = <String, int>{};
+    final co = <String, Map<String, int>>{};
+    for (final names in buckets.values) {
+      for (final n in names) {
+        occ[n] = (occ[n] ?? 0) + 1;
+      }
+      final list = names.toList();
+      for (var i = 0; i < list.length; i++) {
+        for (var j = i + 1; j < list.length; j++) {
+          final a = list[i];
+          final b = list[j];
+          (co[a] ??= <String, int>{})[b] = (co[a]![b] ?? 0) + 1;
+          (co[b] ??= <String, int>{})[a] = (co[b]![a] ?? 0) + 1;
+        }
+      }
+    }
+    return _CooccurrenceIndex._(occ, co);
+  }
+
+  /// Top-[k] lowercased names that co-occur with [name], ranked by
+  /// `P(B|A) = co[A][B] / occ[A]` with at least [minSupport] joint
+  /// observations. Names in [exclude] are skipped.
+  List<String> suggest(String name,
+      {int k = 3, int minSupport = 2, Set<String> exclude = const {}}) {
+    final a = name.toLowerCase().trim();
+    final occA = _occ[a] ?? 0;
+    if (occA == 0) return const [];
+    final neighbours = _co[a];
+    if (neighbours == null) return const [];
+    final scored = <MapEntry<String, double>>[];
+    for (final entry in neighbours.entries) {
+      if (entry.value < minSupport) continue;
+      if (exclude.contains(entry.key)) continue;
+      scored.add(MapEntry(entry.key, entry.value / occA));
+    }
+    scored.sort((a, b) => b.value.compareTo(a.value));
+    return scored.take(k).map((e) => e.key).toList();
+  }
+}
+
+// ── Suggestion chip row ───────────────────────────────────────────────────────
+
+class _SuggestionsRow extends StatelessWidget {
+  final List<FoodEntry> suggestions;
+  final String? addingId;
+  final void Function(FoodEntry) onTap;
+
+  const _SuggestionsRow({
+    required this.suggestions,
+    required this.addingId,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: Colors.deepPurple.shade50,
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome,
+              size: 14, color: Colors.deepPurple),
+          const SizedBox(width: 6),
+          Text(
+            l.suggestionsHint,
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final e in suggestions) ...[
+                    ActionChip(
+                      avatar: addingId == e.id
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add, size: 16),
+                      label: Text(e.name,
+                          style: const TextStyle(fontSize: 12)),
+                      onPressed:
+                          addingId == e.id ? null : () => onTap(e),
+                      backgroundColor: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Added toast ───────────────────────────────────────────────────────────────

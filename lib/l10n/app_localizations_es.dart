@@ -1587,4 +1587,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get scanNutritionLabel => 'Escanear etiqueta nutricional';
+
+  @override
+  String get suggestionsHint => 'También sueles:';
 }

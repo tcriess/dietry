@@ -2973,6 +2973,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Nährwertetikett scannen'**
   String get scanNutritionLabel;
+
+  /// No description provided for @suggestionsHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Häufig auch:'**
+  String get suggestionsHint;
 }
 
 class _AppLocalizationsDelegate

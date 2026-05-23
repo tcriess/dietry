@@ -717,5 +717,6 @@
   "macroCarbsShort": "K",
   "portion": "Portion",
   "portions": "Portionen",
-  "scanNutritionLabel": "Nährwertetikett scannen"
+  "scanNutritionLabel": "Nährwertetikett scannen",
+  "suggestionsHint": "Häufig auch:"
 }

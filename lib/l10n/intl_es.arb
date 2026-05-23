@@ -712,5 +712,6 @@
   "macroCarbsShort": "C",
   "portion": "porción",
   "portions": "porciones",
-  "scanNutritionLabel": "Escanear etiqueta nutricional"
+  "scanNutritionLabel": "Escanear etiqueta nutricional",
+  "suggestionsHint": "También sueles:"
 }

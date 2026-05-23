@@ -1575,4 +1575,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get scanNutritionLabel => 'Nährwertetikett scannen';
+
+  @override
+  String get suggestionsHint => 'Häufig auch:';
 }
