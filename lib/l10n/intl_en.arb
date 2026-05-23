@@ -713,5 +713,8 @@
   "portion": "portion",
   "portions": "portions",
   "scanNutritionLabel": "Scan nutrition label",
-  "suggestionsHint": "Often also:"
+  "suggestionsHint": "Often also:",
+  "shortOnProtein": "Short on protein:",
+  "shortOnCarbs": "Short on carbs:",
+  "shortOnFat": "Short on fat:"
 }

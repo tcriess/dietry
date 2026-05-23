@@ -3313,23 +3313,39 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
             shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            builder: (ctx) => FractionallySizedBox(
-              heightFactor: 0.85,
-              child: QuickFoodEntrySheet(
-                dbService: db,
-                date: _selectedDay,
-                initialMealType: _suggestMealType(),
-                onOpenTemplates: hasMealTemplates ? openTemplates : null,
-                onManualEntry: openManualEntry,
-                onScanLabel:
-                    AppFeatures.nutritionLabelScan ? openScanLabel : null,
-                onAdd: (entry) async {
-                  await _sync.createFoodEntry(entry);
-                  await _store.loadDay(_selectedDay,
-                      silent: true, delta: true);
-                },
-              ),
-            ),
+            builder: (ctx) {
+              // Snapshot today's totals for the macro-gap suggestion.
+              // The sheet tracks its own running delta from this baseline.
+              double cal = 0, p = 0, f = 0, c = 0;
+              for (final e in _store.foodEntries) {
+                cal += e.calories;
+                p += e.protein;
+                f += e.fat;
+                c += e.carbs;
+              }
+              return FractionallySizedBox(
+                heightFactor: 0.85,
+                child: QuickFoodEntrySheet(
+                  dbService: db,
+                  date: _selectedDay,
+                  initialMealType: _suggestMealType(),
+                  onOpenTemplates: hasMealTemplates ? openTemplates : null,
+                  onManualEntry: openManualEntry,
+                  onScanLabel:
+                      AppFeatures.nutritionLabelScan ? openScanLabel : null,
+                  dailyGoal: _store.goal,
+                  initialConsumedCalories: cal,
+                  initialConsumedProtein: p,
+                  initialConsumedFat: f,
+                  initialConsumedCarbs: c,
+                  onAdd: (entry) async {
+                    await _sync.createFoodEntry(entry);
+                    await _store.loadDay(_selectedDay,
+                        silent: true, delta: true);
+                  },
+                ),
+              );
+            },
           );
         }
 

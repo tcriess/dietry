@@ -1590,4 +1590,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get suggestionsHint => 'También sueles:';
+
+  @override
+  String get shortOnProtein => 'Falta proteína:';
+
+  @override
+  String get shortOnCarbs => 'Faltan carbohidratos:';
+
+  @override
+  String get shortOnFat => 'Falta grasa:';
 }

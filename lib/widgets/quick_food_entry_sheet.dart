@@ -8,6 +8,7 @@ import '../models/food_entry.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
 import '../models/food_shortcut.dart';
+import '../models/models.dart' show NutritionGoal;
 import '../services/food_database_service.dart';
 import '../services/food_shortcuts_service.dart';
 import '../services/barcode_lookup_service.dart';
@@ -45,6 +46,19 @@ class QuickFoodEntrySheet extends StatefulWidget {
   /// verfügbar; dann wird der Etikett-Scan-Button ausgeblendet.
   final VoidCallback? onScanLabel;
 
+  /// Daily macro goal active for [date], used to drive macro-gap
+  /// suggestions. When null the sheet falls back to phase-1/2/3 ranking
+  /// only — no gap hint is rendered.
+  final NutritionGoal? dailyGoal;
+
+  /// Macros already logged for [date] at the moment the sheet opens. The
+  /// sheet tracks deltas internally for each add, so callers don't need
+  /// to push updates while it's open.
+  final double initialConsumedCalories;
+  final double initialConsumedProtein;
+  final double initialConsumedFat;
+  final double initialConsumedCarbs;
+
   const QuickFoodEntrySheet({
     super.key,
     required this.dbService,
@@ -54,6 +68,11 @@ class QuickFoodEntrySheet extends StatefulWidget {
     required this.onManualEntry,
     this.onOpenTemplates,
     this.onScanLabel,
+    this.dailyGoal,
+    this.initialConsumedCalories = 0,
+    this.initialConsumedProtein = 0,
+    this.initialConsumedFat = 0,
+    this.initialConsumedCarbs = 0,
   });
 
   @override
@@ -99,6 +118,24 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   /// never recommend something the user already added in this session.
   final Set<String> _loggedThisSession = <String>{};
 
+  /// Running totals for the active day. Initialized from
+  /// [QuickFoodEntrySheet.initialConsumed*] and incremented on each add
+  /// so phase-4 macro-gap suggestions stay accurate without the parent
+  /// having to push updates.
+  late double _consumedCalories;
+  late double _consumedProtein;
+  late double _consumedFat;
+  late double _consumedCarbs;
+
+  /// Phase-4 macro-gap suggestions — recomputed when the index loads and
+  /// after each successful add. Renders in the shared chip slot only
+  /// when [_suggestions] (Phase 2) is empty.
+  List<FoodEntry> _macroGapSuggestions = const [];
+
+  /// Macro the [_macroGapSuggestions] are filling. Drives the chip-row
+  /// header text ("Short on protein"). Null when no gap is active.
+  _MacroKind? _macroGapKind;
+
   // ── Live-Suche ───────────────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
   Timer? _searchDebounce;
@@ -111,6 +148,10 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _mealType = widget.initialMealType;
+    _consumedCalories = widget.initialConsumedCalories;
+    _consumedProtein = widget.initialConsumedProtein;
+    _consumedFat = widget.initialConsumedFat;
+    _consumedCarbs = widget.initialConsumedCarbs;
     _loadAll();
   }
 
@@ -188,9 +229,79 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           _recentFoods = recentFoods;
           _cooccurrence = index;
           _recurrence = recurrence;
+          _refreshMacroGapSuggestions();
         });
       }
     } catch (_) {}
+  }
+
+  /// Picks the macro whose remaining fraction-of-goal is largest. Returns
+  /// null when no macro is short by more than [_macroGapMinFraction], the
+  /// daily goal isn't available, or the user hasn't eaten enough today
+  /// yet (the "of course you're short, you just woke up" silencer).
+  _MacroKind? _dominantGap() {
+    final goal = widget.dailyGoal;
+    if (goal == null) return null;
+    // Calorie-based "have you started eating yet" gate. Skipped for
+    // macro-only goals where calories aren't tracked.
+    if (goal.calories > 0 &&
+        _consumedCalories < goal.calories * _macroGapMinDayProgress) {
+      return null;
+    }
+
+    double frac(double goalVal, double consumed) {
+      if (goalVal <= 0) return 0;
+      final remaining = goalVal - consumed;
+      return remaining <= 0 ? 0 : remaining / goalVal;
+    }
+
+    final pP = frac(goal.protein, _consumedProtein);
+    final pF = frac(goal.fat, _consumedFat);
+    final pC = frac(goal.carbs, _consumedCarbs);
+    final best = [
+      (_MacroKind.protein, pP),
+      (_MacroKind.fat, pF),
+      (_MacroKind.carbs, pC),
+    ].reduce((a, b) => a.$2 >= b.$2 ? a : b);
+    return best.$2 >= _macroGapMinFraction ? best.$1 : null;
+  }
+
+  /// Recomputes [_macroGapSuggestions] for the current consumption state.
+  /// Caller is responsible for wrapping in setState.
+  void _refreshMacroGapSuggestions() {
+    final kind = _dominantGap();
+    if (kind == null) {
+      _macroGapKind = null;
+      _macroGapSuggestions = const [];
+      return;
+    }
+
+    double macroOf(FoodEntry e) {
+      switch (kind) {
+        case _MacroKind.protein:
+          return e.protein;
+        case _MacroKind.fat:
+          return e.fat;
+        case _MacroKind.carbs:
+          return e.carbs;
+      }
+    }
+
+    final seen = <String>{};
+    final candidates = <FoodEntry>[];
+    // _rawRecent is ordered by created_at desc, so within the same name
+    // the first hit is the most recent — a fine template for re-logging.
+    for (final e in _rawRecent) {
+      final name = e.name.toLowerCase().trim();
+      if (name.isEmpty) continue;
+      if (_loggedThisSession.contains(name)) continue;
+      if (macroOf(e) < _macroGapMinGrams) continue;
+      if (!seen.add(name)) continue;
+      candidates.add(e);
+    }
+    candidates.sort((a, b) => macroOf(b).compareTo(macroOf(a)));
+    _macroGapKind = kind;
+    _macroGapSuggestions = candidates.take(3).toList();
   }
 
   /// Returns up to 3 [FoodEntry] templates the user often logs alongside
@@ -276,10 +387,15 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         HapticFeedback.lightImpact();
         _toastTimer?.cancel();
         _loggedThisSession.add(entry.name.toLowerCase().trim());
+        _consumedCalories += entry.calories;
+        _consumedProtein += entry.protein;
+        _consumedFat += entry.fat;
+        _consumedCarbs += entry.carbs;
         final nextSuggestions = _computeSuggestions(entry.name);
         setState(() {
           _lastAddedName = entry.name;
           _suggestions = nextSuggestions;
+          _refreshMacroGapSuggestions();
         });
         _toastTimer = Timer(const Duration(milliseconds: 1800), () {
           if (mounted) setState(() => _lastAddedName = null);
@@ -793,20 +909,26 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
             ],
           ),
         ),
-        // Co-occurrence suggestion strip — populated after a successful add
-        // from foods the user often logs alongside the just-added item in
-        // the same meal session.
+        // Shared suggestion strip. Phase 2 (co-occurrence after add) wins;
+        // Phase 4 (macro-gap) fills the slot when Phase 2 is empty.
         AnimatedSize(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
           alignment: Alignment.topCenter,
-          child: _suggestions.isEmpty
-              ? const SizedBox(width: double.infinity)
-              : _SuggestionsRow(
+          child: _suggestions.isNotEmpty
+              ? _SuggestionsRow(
                   suggestions: _suggestions,
                   addingId: _addingId,
                   onTap: _instantAddRecent,
-                ),
+                )
+              : (_macroGapSuggestions.isNotEmpty && _macroGapKind != null
+                  ? _MacroGapRow(
+                      suggestions: _macroGapSuggestions,
+                      kind: _macroGapKind!,
+                      addingId: _addingId,
+                      onTap: _instantAddRecent,
+                    )
+                  : const SizedBox(width: double.infinity)),
         ),
         TabBar(
           controller: _tabController,
@@ -988,6 +1110,29 @@ List<FoodEntry> _rankAndDedupRecent(
   return result;
 }
 
+// ── Macro-gap awareness ───────────────────────────────────────────────────────
+
+/// Macros tracked for gap detection. Calories are intentionally excluded —
+/// they're a derived total, not an independent macro to "fill".
+enum _MacroKind { protein, fat, carbs }
+
+/// Don't suggest macro fills unless the dominant macro is still short by
+/// at least this fraction of its daily goal. Keeps the strip silent in
+/// the morning (everything is "missing" then) and at end-of-day (when
+/// the user has already hit their numbers).
+const double _macroGapMinFraction = 0.30;
+
+/// Don't surface a candidate that contributes less than this many grams
+/// of the deficit macro — sub-gram amounts feel noisy and would push
+/// out genuinely useful items.
+const double _macroGapMinGrams = 5.0;
+
+/// Don't fire macro-gap suggestions until the user has consumed at least
+/// this fraction of their daily calorie target. Silences the "of course
+/// I'm short, I just woke up" case at the first meal. Bypassed for
+/// macro-only goals where calories aren't tracked.
+const double _macroGapMinDayProgress = 0.25;
+
 // ── Recurrence index ──────────────────────────────────────────────────────────
 
 /// Counts how many distinct dates a food appears in for each
@@ -1144,6 +1289,95 @@ class _SuggestionsRow extends StatelessWidget {
                           : const Icon(Icons.add, size: 16),
                       label: Text(e.name,
                           style: const TextStyle(fontSize: 12)),
+                      onPressed:
+                          addingId == e.id ? null : () => onTap(e),
+                      backgroundColor: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Macro-gap chip row ────────────────────────────────────────────────────────
+
+class _MacroGapRow extends StatelessWidget {
+  final List<FoodEntry> suggestions;
+  final _MacroKind kind;
+  final String? addingId;
+  final void Function(FoodEntry) onTap;
+
+  const _MacroGapRow({
+    required this.suggestions,
+    required this.kind,
+    required this.addingId,
+    required this.onTap,
+  });
+
+  String _headerText(AppLocalizations l) {
+    switch (kind) {
+      case _MacroKind.protein:
+        return l.shortOnProtein;
+      case _MacroKind.fat:
+        return l.shortOnFat;
+      case _MacroKind.carbs:
+        return l.shortOnCarbs;
+    }
+  }
+
+  double _macroOf(FoodEntry e) {
+    switch (kind) {
+      case _MacroKind.protein:
+        return e.protein;
+      case _MacroKind.fat:
+        return e.fat;
+      case _MacroKind.carbs:
+        return e.carbs;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: Colors.orange.shade50,
+      child: Row(
+        children: [
+          const Icon(Icons.flag, size: 14, color: Colors.deepOrange),
+          const SizedBox(width: 6),
+          Text(
+            _headerText(l),
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final e in suggestions) ...[
+                    ActionChip(
+                      avatar: addingId == e.id
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            )
+                          : const Icon(Icons.add, size: 16),
+                      label: Text(
+                        '${e.name} · ${_macroOf(e).toStringAsFixed(0)}g',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                       onPressed:
                           addingId == e.id ? null : () => onTap(e),
                       backgroundColor: Colors.white,

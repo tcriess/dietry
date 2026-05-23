@@ -2979,6 +2979,24 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Häufig auch:'**
   String get suggestionsHint;
+
+  /// No description provided for @shortOnProtein.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu wenig Eiweiß:'**
+  String get shortOnProtein;
+
+  /// No description provided for @shortOnCarbs.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu wenig Kohlenhydrate:'**
+  String get shortOnCarbs;
+
+  /// No description provided for @shortOnFat.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu wenig Fett:'**
+  String get shortOnFat;
 }
 
 class _AppLocalizationsDelegate

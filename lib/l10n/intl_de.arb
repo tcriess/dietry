@@ -718,5 +718,8 @@
   "portion": "Portion",
   "portions": "Portionen",
   "scanNutritionLabel": "Nährwertetikett scannen",
-  "suggestionsHint": "Häufig auch:"
+  "suggestionsHint": "Häufig auch:",
+  "shortOnProtein": "Zu wenig Eiweiß:",
+  "shortOnCarbs": "Zu wenig Kohlenhydrate:",
+  "shortOnFat": "Zu wenig Fett:"
 }

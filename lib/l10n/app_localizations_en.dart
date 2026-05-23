@@ -1572,4 +1572,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get suggestionsHint => 'Often also:';
+
+  @override
+  String get shortOnProtein => 'Short on protein:';
+
+  @override
+  String get shortOnCarbs => 'Short on carbs:';
+
+  @override
+  String get shortOnFat => 'Short on fat:';
 }

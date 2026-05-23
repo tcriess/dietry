@@ -713,5 +713,8 @@
   "portion": "porción",
   "portions": "porciones",
   "scanNutritionLabel": "Escanear etiqueta nutricional",
-  "suggestionsHint": "También sueles:"
+  "suggestionsHint": "También sueles:",
+  "shortOnProtein": "Falta proteína:",
+  "shortOnCarbs": "Faltan carbohidratos:",
+  "shortOnFat": "Falta grasa:"
 }

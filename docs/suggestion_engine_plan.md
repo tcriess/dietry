@@ -31,13 +31,27 @@ Distinguishes "every Friday pizza" from "I once ate pizza on a Friday".
 Uses `widget.date.weekday` so back-filling a past day still benefits from
 that weekday's pattern.
 
-## Phase 4 — Macro-gap awareness
+## Phase 4 — Macro-gap awareness (shipped)
 
-Late in the day, compare `goal − consumed` per macro and boost foods that
-would close the largest remaining gap (short on protein → boost
-chicken/quark/protein bar). The goal + day's entries are already in memory.
+When the dominant macro is still short by ≥30% of its daily goal, the
+shared chip strip surfaces the top 3 candidates from the 90-day fetch
+ranked by absolute grams of the deficit macro (≥5 g minimum). Phase 2
+(co-occurrence after add) wins for the same screen real estate; Phase 4
+fills the slot when Phase 2 is empty.
 
-Combine with phase 3 by multiplying scores rather than picking one.
+A calorie-progress gate (≥25% of the day's calorie goal consumed, or
+bypassed entirely for macro-only goals) silences the "of course I'm
+short, I just woke up" case at the first meal of the day.
+
+Plumbing: `QuickFoodEntrySheet` now takes `dailyGoal` +
+`initialConsumed{Calories,Protein,Fat,Carbs}` constructor params. The
+sheet tracks running deltas internally on each add so suggestions
+refresh live without the parent re-pushing state.
+
+Implementation note: the original roadmap suggested re-ranking the
+Recent list itself. A separate chip strip won out because explaining
+*why* a food is suggested ("Short on protein") is more useful than
+silently shuffling the list.
 
 ## Phase 5 — Server-side aggregation (only if needed)
 
