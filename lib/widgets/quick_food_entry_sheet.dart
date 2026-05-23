@@ -16,6 +16,18 @@ import '../services/neon_database_service.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 
+/// Postgres rejects an empty string as a `uuid`, and PostgREST surfaces
+/// that as a 400 which [SyncService.createFoodEntry] misreads as
+/// "offline" — so the entry gets queued, the red bar latches on, and
+/// every replay hits the same error.
+///
+/// In particular [OpenFoodFactsService] constructs barcode-lookup
+/// [FoodItem]s with `id: ''` because OFF results aren't persisted to
+/// our food_database until later. Normalize blank ids to null so the
+/// JSON serializer drops the `food_id` field entirely.
+String? _nonEmptyFoodId(String? raw) =>
+    (raw == null || raw.trim().isEmpty) ? null : raw;
+
 /// Vereinheitlichtes Bottom-Sheet zum Hinzufügen von Einträgen — der einzige
 /// Einstiegspunkt auf dem Einträge-Tab.
 ///
@@ -534,7 +546,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       sugar: food.sugar != null ? food.sugar! * f : null,
       sodium: food.sodium != null ? food.sodium! * f : null,
       saturatedFat: food.saturatedFat != null ? food.saturatedFat! * f : null,
-      foodId: food.id,
+      foodId: _nonEmptyFoodId(food.id),
       scaleByAmount: true,
       isLiquid: food.isLiquid,
       amountMl: food.isLiquid ? defaultAmount : null,
@@ -554,7 +566,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     final entry = FoodEntry(
       id: const Uuid().v4(),
       userId: widget.dbService.userId!,
-      foodId: recent.foodId,
+      foodId: _nonEmptyFoodId(recent.foodId),
       mealTemplateId: recent.mealTemplateId,
       entryDate: widget.date,
       mealType: _mealType,
@@ -596,7 +608,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       sugar: entry.sugar,
       sodium: entry.sodium,
       saturatedFat: entry.saturatedFat,
-      foodId: entry.foodId,
+      foodId: _nonEmptyFoodId(entry.foodId),
       scaleByAmount: food != null,
       food: food,
       isLiquid: entry.isLiquid,
@@ -614,7 +626,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     return FoodEntry(
       id: const Uuid().v4(),
       userId: userId,
-      foodId: sc.foodId,
+      foodId: _nonEmptyFoodId(sc.foodId),
       entryDate: widget.date,
       mealType: MealType.fromJson(sc.mealType),
       name: sc.label,
@@ -1889,7 +1901,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     return FoodEntry(
       id: const Uuid().v4(),
       userId: widget.userId,
-      foodId: widget.foodId,
+      foodId: _nonEmptyFoodId(widget.foodId),
       entryDate: widget.date,
       mealType: _mealType,
       name: widget.name,
@@ -2002,7 +2014,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   final entry = _buildEntry();
                   await widget.onSaveAsShortcut(
                     label: widget.name,
-                    foodId: widget.foodId,
+                    foodId: _nonEmptyFoodId(widget.foodId),
                     mealType: _mealType.toJson(),
                     amount: entry.amount,
                     unit: entry.unit,

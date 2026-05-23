@@ -263,9 +263,11 @@ class SyncService extends ChangeNotifier {
         final svc = FoodEntryService(_db!);
         switch (op.operation) {
           case QueueOperation.create:
-            await svc.createFoodEntry(FoodEntry.fromJson(op.payload));
+            await svc.createFoodEntry(
+                FoodEntry.fromJson(_scrubBlankFoodId(op.payload)));
           case QueueOperation.update:
-            await svc.updateFoodEntry(FoodEntry.fromJson(op.payload));
+            await svc.updateFoodEntry(
+                FoodEntry.fromJson(_scrubBlankFoodId(op.payload)));
           case QueueOperation.delete:
             await svc.deleteFoodEntry(op.payload['id'] as String);
         }
@@ -286,6 +288,21 @@ class SyncService extends ChangeNotifier {
       _markOffline();
       return false;
     }
+  }
+
+  /// Removes `food_id` from [payload] when it's a blank string. Postgres
+  /// rejects empty strings as `uuid`, and historical OFF-barcode bugs
+  /// queued create-ops with this shape — without scrubbing, the bad op
+  /// would block every later sync (the replay loop breaks on first
+  /// failure). Returns the same map when nothing needs changing so we
+  /// don't allocate on the happy path.
+  Map<String, dynamic> _scrubBlankFoodId(Map<String, dynamic> payload) {
+    final fid = payload['food_id'];
+    if (fid is String && fid.trim().isEmpty) {
+      final scrubbed = Map<String, dynamic>.from(payload)..remove('food_id');
+      return scrubbed;
+    }
+    return payload;
   }
 
   // ── State helpers ─────────────────────────────────────────────────────────
