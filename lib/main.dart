@@ -54,9 +54,11 @@ import 'screens/goal_recommendation_screen.dart';
 import 'screens/food_entries_list_screen.dart';
 import 'screens/add_food_entry_screen.dart';
 import 'widgets/quick_food_entry_sheet.dart';
+import 'widgets/quick_activity_entry_sheet.dart';
+import 'screens/activity_database_screen.dart';
+import 'screens/food_database_screen.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
-import 'screens/activity_database_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/health_connect_service.dart';
 import 'screens/info_screen.dart';
@@ -2502,38 +2504,6 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _showActivityQuickAdd() async {
-    final db = widget.dbService;
-    final jwt = db?.jwt;
-    final userId = db?.userId;
-    if (jwt == null || userId == null) return;
-    premiumFeatures.showActivityQuickAddSheet(
-      context: context,
-      userId: userId,
-      authToken: jwt,
-      apiUrl: NeonDatabaseService.dataApiUrl,
-      date: _selectedDay,
-      onAdd: (data) async {
-        final activity = PhysicalActivity(
-          activityType: ActivityType.values.firstWhere(
-            (t) => t.name == data.activityType,
-            orElse: () => ActivityType.other,
-          ),
-          activityId: data.activityId,
-          activityName: data.activityName,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          durationMinutes: data.durationMinutes,
-          caloriesBurned: data.caloriesBurned,
-          distanceKm: data.distanceKm,
-          source: DataSource.manual,
-        );
-        final saved = await _sync.saveActivity(activity);
-        _store.addActivity(saved ?? activity);
-      },
-    );
-  }
-
   Future<void> _importFromHealthConnect(BuildContext ctx) async {
     final l = AppLocalizations.of(ctx)!;
     if (!HealthConnectService.isSupported) {
@@ -3167,60 +3137,65 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       );
     } else if (_selectedIndex == 2) {
       final db = widget.dbService;
-      fab = Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (HealthConnectService.isSupported) ...[
-            FloatingActionButton(
-              heroTag: 'fab_health_connect',
-              onPressed: () => _importFromHealthConnect(context),
-              tooltip: l.importHealthConnect,
-              child: const Icon(Icons.health_and_safety_outlined),
+
+      // Single entry point: one unified add sheet, parallel to the food
+      // tab. Activity-database management is reachable from inside the
+      // manual entry form, the same way food-database management is.
+      void openManualActivity() {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) =>
+              AddActivityScreen(dbService: db, selectedDate: _selectedDay),
+        ));
+      }
+
+      void openActivitySheet() {
+        if (db == null) {
+          openManualActivity();
+          return;
+        }
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          builder: (ctx) => FractionallySizedBox(
+            heightFactor: 0.85,
+            child: QuickActivityEntrySheet(
+              dbService: db,
+              date: _selectedDay,
+              onManualEntry: openManualActivity,
+              onImportHealthConnect: HealthConnectService.isSupported
+                  ? () => _importFromHealthConnect(context)
+                  : null,
+              onManageDatabase: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ActivityDatabaseScreen(dbService: db),
+                ),
+              ),
+              onAdd: (activity) async {
+                final saved = await _sync.saveActivity(activity);
+                _store.addActivity(saved ?? activity);
+              },
             ),
-            const SizedBox(width: 12),
-          ],
-          if (db != null) ...[
-            FloatingActionButton(
-              heroTag: 'fab_activity_database',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ActivityDatabaseScreen(dbService: db),
-              )),
-              tooltip: l.myActivities,
-              child: const Icon(Icons.storage_outlined),
-            ),
-            const SizedBox(width: 12),
-          ],
-          if (AppFeatures.activityQuickAdd && db != null) ...[
-            FloatingActionButton(
-              heroTag: 'fab_activity_quick_add',
-              onPressed: _showActivityQuickAdd,
-              tooltip: l.activityQuickAdd,
-              child: const Icon(Icons.bolt),
-            ),
-            const SizedBox(width: 12),
-          ],
-          if (MediaQuery.of(context).size.width >= 550)
-            FloatingActionButton.extended(
+          ),
+        );
+      }
+
+      fab = MediaQuery.of(context).size.width >= 550
+          ? FloatingActionButton.extended(
               heroTag: 'fab_add_activity',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => AddActivityScreen(
-                    dbService: db, selectedDate: _selectedDay),
-              )),
+              onPressed: openActivitySheet,
               icon: const Icon(Icons.add),
               label: Text(l.addActivity),
             )
-          else
-            FloatingActionButton(
+          : FloatingActionButton(
               heroTag: 'fab_add_activity',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => AddActivityScreen(
-                    dbService: db, selectedDate: _selectedDay),
-              )),
+              onPressed: openActivitySheet,
               tooltip: l.addActivity,
               child: const Icon(Icons.add),
-            ),
-        ],
-      );
+            );
     } else if (_selectedIndex == 1) {
       // Food Entries tab
       final db = widget.dbService;
@@ -3333,6 +3308,12 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                   onManualEntry: openManualEntry,
                   onScanLabel:
                       AppFeatures.nutritionLabelScan ? openScanLabel : null,
+                  onManageDatabase: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          FoodDatabaseScreen(dbService: db),
+                    ),
+                  ),
                   dailyGoal: _store.goal,
                   initialConsumedCalories: cal,
                   initialConsumedProtein: p,

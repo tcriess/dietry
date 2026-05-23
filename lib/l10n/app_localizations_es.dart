@@ -1599,4 +1599,29 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shortOnFat => 'Falta grasa:';
+
+  @override
+  String get searchActivityHint => 'Buscar actividades…';
+
+  @override
+  String get noRecentActivities => 'Aún no hay actividades.';
+
+  @override
+  String get noFavoriteActivities =>
+      'Aún no hay actividades favoritas.\nMarca actividades en la base de datos con el icono de estrella.';
+
+  @override
+  String get noActivityShortcuts =>
+      'Aún no hay atajos.\nToca un elemento en «Recientes» o «Favoritos» y elige «Guardar como atajo».';
+
+  @override
+  String activityAdded(String name) {
+    return '«$name» añadida';
+  }
+
+  @override
+  String get durationMinutes => 'Duración (min)';
+
+  @override
+  String get noKcalEstimate => 'Define tu peso para estimar kcal';
 }

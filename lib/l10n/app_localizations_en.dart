@@ -1581,4 +1581,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shortOnFat => 'Short on fat:';
+
+  @override
+  String get searchActivityHint => 'Search activities…';
+
+  @override
+  String get noRecentActivities => 'No activities yet.';
+
+  @override
+  String get noFavoriteActivities =>
+      'No favorite activities yet.\nMark activities in the activity database with the star icon.';
+
+  @override
+  String get noActivityShortcuts =>
+      'No shortcuts yet.\nTap an item under \"Recent\" or \"Favorites\" and choose \"Save as shortcut\".';
+
+  @override
+  String activityAdded(String name) {
+    return '\"$name\" added';
+  }
+
+  @override
+  String get durationMinutes => 'Duration (min)';
+
+  @override
+  String get noKcalEstimate => 'Set your weight for kcal estimates';
 }

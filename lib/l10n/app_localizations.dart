@@ -2997,6 +2997,48 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Zu wenig Fett:'**
   String get shortOnFat;
+
+  /// No description provided for @searchActivityHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivitäten suchen…'**
+  String get searchActivityHint;
+
+  /// No description provided for @noRecentActivities.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Aktivitäten vorhanden.'**
+  String get noRecentActivities;
+
+  /// No description provided for @noFavoriteActivities.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Lieblings-Aktivitäten.\nMarkiere Aktivitäten in der Datenbank mit dem Stern-Symbol.'**
+  String get noFavoriteActivities;
+
+  /// No description provided for @noActivityShortcuts.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Kurzbefehle.\nTippe auf einen Eintrag unter „Zuletzt“ oder „Favoriten“ und wähle „Als Kurzbefehl speichern“.'**
+  String get noActivityShortcuts;
+
+  /// No description provided for @activityAdded.
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}\" hinzugefügt'**
+  String activityAdded(String name);
+
+  /// No description provided for @durationMinutes.
+  ///
+  /// In de, this message translates to:
+  /// **'Dauer (Min)'**
+  String get durationMinutes;
+
+  /// No description provided for @noKcalEstimate.
+  ///
+  /// In de, this message translates to:
+  /// **'Gewicht setzen für kcal-Schätzung'**
+  String get noKcalEstimate;
 }
 
 class _AppLocalizationsDelegate

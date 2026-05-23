@@ -716,5 +716,17 @@
   "suggestionsHint": "Often also:",
   "shortOnProtein": "Short on protein:",
   "shortOnCarbs": "Short on carbs:",
-  "shortOnFat": "Short on fat:"
+  "shortOnFat": "Short on fat:",
+  "searchActivityHint": "Search activities…",
+  "noRecentActivities": "No activities yet.",
+  "noFavoriteActivities": "No favorite activities yet.\nMark activities in the activity database with the star icon.",
+  "noActivityShortcuts": "No shortcuts yet.\nTap an item under \"Recent\" or \"Favorites\" and choose \"Save as shortcut\".",
+  "activityAdded": "\"{name}\" added",
+  "@activityAdded": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "durationMinutes": "Duration (min)",
+  "noKcalEstimate": "Set your weight for kcal estimates"
 }

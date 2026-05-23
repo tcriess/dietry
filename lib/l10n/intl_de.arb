@@ -721,5 +721,17 @@
   "suggestionsHint": "Häufig auch:",
   "shortOnProtein": "Zu wenig Eiweiß:",
   "shortOnCarbs": "Zu wenig Kohlenhydrate:",
-  "shortOnFat": "Zu wenig Fett:"
+  "shortOnFat": "Zu wenig Fett:",
+  "searchActivityHint": "Aktivitäten suchen…",
+  "noRecentActivities": "Noch keine Aktivitäten vorhanden.",
+  "noFavoriteActivities": "Noch keine Lieblings-Aktivitäten.\nMarkiere Aktivitäten in der Datenbank mit dem Stern-Symbol.",
+  "noActivityShortcuts": "Noch keine Kurzbefehle.\nTippe auf einen Eintrag unter „Zuletzt“ oder „Favoriten“ und wähle „Als Kurzbefehl speichern“.",
+  "activityAdded": "„{name}\" hinzugefügt",
+  "@activityAdded": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "durationMinutes": "Dauer (Min)",
+  "noKcalEstimate": "Gewicht setzen für kcal-Schätzung"
 }

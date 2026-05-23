@@ -58,6 +58,11 @@ class QuickFoodEntrySheet extends StatefulWidget {
   /// verfügbar; dann wird der Etikett-Scan-Button ausgeblendet.
   final VoidCallback? onScanLabel;
 
+  /// Opens the food-database management screen (edit / delete custom
+  /// foods). Null hides the header button — e.g. in guest mode where
+  /// there's no remote database to manage.
+  final VoidCallback? onManageDatabase;
+
   /// Daily macro goal active for [date], used to drive macro-gap
   /// suggestions. When null the sheet falls back to phase-1/2/3 ranking
   /// only — no gap hint is rendered.
@@ -80,6 +85,7 @@ class QuickFoodEntrySheet extends StatefulWidget {
     required this.onManualEntry,
     this.onOpenTemplates,
     this.onScanLabel,
+    this.onManageDatabase,
     this.dailyGoal,
     this.initialConsumedCalories = 0,
     this.initialConsumedProtein = 0,
@@ -781,6 +787,15 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold)),
               ),
+              if (widget.onManageDatabase != null)
+                IconButton(
+                  icon: const Icon(Icons.edit_note),
+                  tooltip: l.myFoods,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onManageDatabase!();
+                  },
+                ),
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).pop(),

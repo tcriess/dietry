@@ -1587,4 +1587,29 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get shortOnFat => 'Zu wenig Fett:';
+
+  @override
+  String get searchActivityHint => 'Aktivitäten suchen…';
+
+  @override
+  String get noRecentActivities => 'Noch keine Aktivitäten vorhanden.';
+
+  @override
+  String get noFavoriteActivities =>
+      'Noch keine Lieblings-Aktivitäten.\nMarkiere Aktivitäten in der Datenbank mit dem Stern-Symbol.';
+
+  @override
+  String get noActivityShortcuts =>
+      'Noch keine Kurzbefehle.\nTippe auf einen Eintrag unter „Zuletzt“ oder „Favoriten“ und wähle „Als Kurzbefehl speichern“.';
+
+  @override
+  String activityAdded(String name) {
+    return '„$name\" hinzugefügt';
+  }
+
+  @override
+  String get durationMinutes => 'Dauer (Min)';
+
+  @override
+  String get noKcalEstimate => 'Gewicht setzen für kcal-Schätzung';
 }

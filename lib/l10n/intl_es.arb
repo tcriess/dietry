@@ -716,5 +716,17 @@
   "suggestionsHint": "También sueles:",
   "shortOnProtein": "Falta proteína:",
   "shortOnCarbs": "Faltan carbohidratos:",
-  "shortOnFat": "Falta grasa:"
+  "shortOnFat": "Falta grasa:",
+  "searchActivityHint": "Buscar actividades…",
+  "noRecentActivities": "Aún no hay actividades.",
+  "noFavoriteActivities": "Aún no hay actividades favoritas.\nMarca actividades en la base de datos con el icono de estrella.",
+  "noActivityShortcuts": "Aún no hay atajos.\nToca un elemento en «Recientes» o «Favoritos» y elige «Guardar como atajo».",
+  "activityAdded": "«{name}» añadida",
+  "@activityAdded": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "durationMinutes": "Duración (min)",
+  "noKcalEstimate": "Define tu peso para estimar kcal"
 }
