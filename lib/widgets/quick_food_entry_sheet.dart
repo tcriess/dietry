@@ -65,12 +65,21 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   late TabController _tabController;
   late MealType _mealType;
 
-  List<FoodEntry> _recentEntries = [];
+  /// Raw recent fetch (last 30 days, ordered by created_at desc) before
+  /// dedup. Kept raw so the time-of-day re-ranking in [_displayRecent] can
+  /// re-evaluate when the user picks a different meal-type chip without
+  /// re-hitting the network.
+  List<FoodEntry> _rawRecent = [];
   List<FoodItem> _favouriteFoods = [];
   List<FoodShortcut> _shortcuts = [];
   Map<String, FoodItem> _recentFoods = {};
   bool _loading = true;
   String? _addingId;
+
+  /// Name of the most recently logged entry — drives the in-sheet "added"
+  /// toast. Null while no toast is showing.
+  String? _lastAddedName;
+  Timer? _toastTimer;
 
   // ── Live-Suche ───────────────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
@@ -92,6 +101,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     _tabController.dispose();
     _searchCtrl.dispose();
     _searchDebounce?.cancel();
+    _toastTimer?.cancel();
     super.dispose();
   }
 
@@ -127,19 +137,16 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           .map((json) => FoodEntry.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      // Dedup by lowercase name, keep most recent
-      final seen = <String>{};
-      final deduped = <FoodEntry>[];
-      for (final e in entries) {
-        if (seen.add(e.name.toLowerCase().trim()) && deduped.length < 30) {
-          deduped.add(e);
-        }
-      }
-
-      // Load food items for entries with foodId
+      // Preload food items for the initially-displayed set. The display set
+      // can shift on meal-type change but recent entries don't churn much,
+      // so the cache stays mostly accurate without re-fetching.
+      final initialDisplay =
+          _rankAndDedupRecent(entries, _mealType, DateTime.now().hour);
       final foodService = FoodDatabaseService(widget.dbService);
-      final uniqueFoodIds =
-          deduped.where((e) => e.foodId != null).map((e) => e.foodId!).toSet();
+      final uniqueFoodIds = initialDisplay
+          .where((e) => e.foodId != null)
+          .map((e) => e.foodId!)
+          .toSet();
       final foodFutures = uniqueFoodIds
           .map((id) => foodService.getFoodById(id))
           .toList();
@@ -154,12 +161,18 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
 
       if (mounted) {
         setState(() {
-          _recentEntries = deduped;
+          _rawRecent = entries;
           _recentFoods = recentFoods;
         });
       }
     } catch (_) {}
   }
+
+  /// Sorts [_rawRecent] by relevance to the current meal context, then
+  /// dedupes by lowercase name. Recomputed on every rebuild so changing
+  /// the meal-type chip immediately re-ranks the list.
+  List<FoodEntry> _displayRecent() =>
+      _rankAndDedupRecent(_rawRecent, _mealType, DateTime.now().hour);
 
   Future<void> _loadFavourites() async {
     try {
@@ -203,6 +216,15 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       }
 
       if (mounted) {
+        HapticFeedback.lightImpact();
+        _toastTimer?.cancel();
+        setState(() => _lastAddedName = entry.name);
+        _toastTimer = Timer(const Duration(milliseconds: 1800), () {
+          if (mounted) setState(() => _lastAddedName = null);
+        });
+        // SnackBar acts as a fallback for the brief window where the user
+        // dismisses the sheet before the in-sheet toast renders — under
+        // the sheet it's hidden, but it's already on the queue.
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(AppLocalizations.of(context)!.foodAdded(entry.name)),
           backgroundColor: Colors.green,
@@ -573,6 +595,19 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
             ],
           ),
         ),
+        // In-sheet "added" toast — visible inside the 85%-tall sheet that
+        // would otherwise occlude the ScaffoldMessenger SnackBar.
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          alignment: Alignment.topCenter,
+          child: _lastAddedName == null
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: _AddedToast(name: _lastAddedName!),
+                ),
+        ),
         // Meal-type chips
         SizedBox(
           height: 40,
@@ -699,7 +734,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
             controller: _tabController,
             children: [
               _RecentTab(
-                entries: _recentEntries,
+                entries: _displayRecent(),
                 addingId: _addingId,
                 onTap: _instantAddRecent,
                 onLongPress: _adjustRecent,
@@ -787,6 +822,82 @@ String _macroSummary(AppLocalizations l, String base, double kcal,
       '${l.macroProteinShort}${protein.toStringAsFixed(0)} '
       '${l.macroFatShort}${fat.toStringAsFixed(0)} '
       '${l.macroCarbsShort}${carbs.toStringAsFixed(0)}';
+}
+
+// ── Recent ranking ────────────────────────────────────────────────────────────
+
+/// Circular hour distance, 0–12. e.g. distance(23, 1) == 2.
+int _hourDistance(int a, int b) {
+  final d = (a - b).abs();
+  return d > 12 ? 24 - d : d;
+}
+
+/// Lower is better: (0=meal-type match, 1=other), then hour-of-day distance,
+/// then negative recency. Keeps "breakfast banana" at the top in the morning
+/// even if the most recently logged banana was at dinner last night.
+int _compareRecent(FoodEntry a, FoodEntry b, MealType mealType, int hour) {
+  final aMatch = a.mealType == mealType ? 0 : 1;
+  final bMatch = b.mealType == mealType ? 0 : 1;
+  if (aMatch != bMatch) return aMatch - bMatch;
+
+  final aHourDist = _hourDistance(a.createdAt.hour, hour);
+  final bHourDist = _hourDistance(b.createdAt.hour, hour);
+  if (aHourDist != bHourDist) return aHourDist - bHourDist;
+
+  return b.createdAt.compareTo(a.createdAt);
+}
+
+/// Sorts [entries] by relevance to the current ([mealType], [hour]) context,
+/// then dedupes by lowercase name, keeping the best-ranked entry per name.
+List<FoodEntry> _rankAndDedupRecent(
+    List<FoodEntry> entries, MealType mealType, int hour) {
+  final sorted = entries.toList()
+    ..sort((a, b) => _compareRecent(a, b, mealType, hour));
+  final seen = <String>{};
+  final result = <FoodEntry>[];
+  for (final e in sorted) {
+    if (seen.add(e.name.toLowerCase().trim()) && result.length < 30) {
+      result.add(e);
+    }
+  }
+  return result;
+}
+
+// ── Added toast ───────────────────────────────────────────────────────────────
+
+class _AddedToast extends StatelessWidget {
+  final String name;
+  const _AddedToast({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Material(
+      elevation: 4,
+      borderRadius: BorderRadius.circular(8),
+      color: Colors.green.shade600,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                l.foodAdded(name),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ── Recent tab ────────────────────────────────────────────────────────────────
