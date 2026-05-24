@@ -279,9 +279,7 @@ jobs:
           flutter build apk --release \
             --dart-define-from-file=config/ce.json \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
-            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
-            --build-name="${{ github.ref_name }}" \
-            --build-number="${{ github.run_number }}"
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - name: Build App Bundle (Play Store)
         env:
@@ -291,9 +289,7 @@ jobs:
           flutter build appbundle --release \
             --dart-define-from-file=config/ce.json \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
-            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
-            --build-name="${{ github.ref_name }}" \
-            --build-number="${{ github.run_number }}"
+            --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - name: Rename release artifacts
         run: |
@@ -471,8 +467,6 @@ jobs:
             --dart-define-from-file=config/ce.json \
             --dart-define=GIT_HASH=$(git rev-parse --short HEAD) \
             --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d) \
-            --build-name="${{ github.ref_name }}" \
-            --build-number="${{ github.run_number }}" \
             --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload build artifact
