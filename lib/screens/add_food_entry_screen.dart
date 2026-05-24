@@ -481,8 +481,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
   }
 
-  /// Opens the barcode scanner, looks up the scanned barcode in the local DB and
-  /// Open Food Facts, and selects the food if found.
+  /// Opens the barcode scanner, looks up the scanned barcode in the local DB
+  /// and Open Food Facts, and selects the food if found. On an OFF hit, also
+  /// silently persists the food into the user's own DB (with the scanned
+  /// barcode, no portions) so the next scan resolves locally — portions get
+  /// added later via the food database screen when the user knows them.
   Future<void> _scanBarcode() async {
     final barcode = await showBarcodeScannerSheet(context);
     if (barcode == null || !mounted) return;
@@ -500,17 +503,47 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     );
 
     if (!mounted) return;
-    setState(() => _isSearching = false);
 
     final l = AppLocalizations.of(context);
     if (result == null) {
+      setState(() => _isSearching = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l?.barcodeNotFound ?? 'Produkt nicht gefunden')),
       );
       return;
     }
 
-    _selectFood(result.food, micros: result.micros);
+    // OFF hit + we have a user DB → silently save before selecting so the
+    // entry foodId points at the persistent row, not the one-shot OFF copy.
+    FoodItem foodForSelect = result.food;
+    Map<String, double> microsForSelect = result.micros;
+    if (result.fromOff && widget.dbService != null) {
+      try {
+        final created = await FoodDatabaseService(widget.dbService!)
+            .createFood(result.food.copyWith(barcode: barcode));
+        if (result.micros.isNotEmpty) {
+          final userId = widget.dbService!.userId;
+          final jwt = widget.dbService!.jwt;
+          if (userId != null && jwt != null) {
+            await premiumFeatures.saveFoodDatabaseMicrosFromMap(
+              foodId: created.id,
+              userId: userId,
+              micros100g: result.micros,
+              authToken: jwt,
+              apiUrl: NeonDatabaseService.dataApiUrl,
+            );
+          }
+        }
+        foodForSelect = created;
+      } catch (e) {
+        appLogger.w('⚠️ Silent OFF→own save failed: $e');
+        // Fall through; the entry logs from the OFF row as before.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isSearching = false);
+    _selectFood(foodForSelect, micros: microsForSelect);
 
     if (result.fromOff) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2277,6 +2310,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
   late final TextEditingController _saturatedFatController;
   late final TextEditingController _categoryController;
   late final TextEditingController _brandController;
+  late final TextEditingController _barcodeController;
   final List<({TextEditingController name, TextEditingController amount})>
       _portionRows = [];
   bool _isPublic = false;
@@ -2319,6 +2353,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     _categoryController =
         TextEditingController(text: widget.initialCategory ?? '');
     _brandController = TextEditingController(text: widget.initialBrand ?? '');
+    _barcodeController = TextEditingController();
     // Portionszeilen aus initialPortions übernehmen
     for (final p in widget.initialPortions) {
       _portionRows.add((
@@ -2350,6 +2385,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     _saturatedFatController.dispose();
     _categoryController.dispose();
     _brandController.dispose();
+    _barcodeController.dispose();
     for (final row in _portionRows) {
       row.name.dispose();
       row.amount.dispose();
@@ -2435,7 +2471,9 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
       category:
           _categoryController.text.isNotEmpty ? _categoryController.text : null,
       brand: _brandController.text.isNotEmpty ? _brandController.text : null,
-      barcode: null,
+      barcode: _barcodeController.text.trim().isNotEmpty
+          ? _barcodeController.text.trim()
+          : null,
       isPublic: _isPublic,
       isLiquid: _isLiquid,
       isApproved: false,
@@ -2521,6 +2559,30 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
               decoration: const InputDecoration(
                 labelText: 'Marke (optional)',
                 border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Barcode
+            TextFormField(
+              controller: _barcodeController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)?.barcodeField ??
+                    'Barcode (optional)',
+                hintText: AppLocalizations.of(context)?.barcodeHint,
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.qr_code_scanner),
+                  tooltip: AppLocalizations.of(context)?.barcodeScanTitle,
+                  onPressed: () async {
+                    final scanned = await showBarcodeScannerSheet(context);
+                    if (scanned != null && mounted) {
+                      setState(() => _barcodeController.text = scanned);
+                    }
+                  },
+                ),
               ),
             ),
 

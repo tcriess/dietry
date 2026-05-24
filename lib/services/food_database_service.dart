@@ -286,33 +286,52 @@ class FoodDatabaseService {
     }
   }
   
-  /// Suche Food per Barcode (zukünftig für Scanner-Funktion)
+  /// Look up a food by barcode. Prefers the user's own foods over public
+  /// entries — user-set barcodes (which may carry custom portion sizes) win
+  /// over the generic public copy. Returns `null` if no match.
+  ///
+  /// Implementation note: a single `or()` + `maybeSingle()` would throw when
+  /// the same barcode exists both publicly and in the user's own DB (two rows
+  /// → "more than one row" error). Query the user's own foods first; only
+  /// fall back to public foods on miss.
   Future<FoodItem?> searchByBarcode(String barcode) async {
     try {
       appLogger.d('🔍 Suche per Barcode: $barcode');
 
-      // Token prüfen
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) return null;
 
       final userId = _userId;
       if (userId == null) return null;
 
-      final response = await _db.client
-        .from('food_database')
-        .select()
-        .or('is_public.eq.true,user_id.eq.$userId')
-        .eq('barcode', barcode)
-        .maybeSingle();
-
-      if (response == null) {
-        appLogger.i('ℹ️ Kein Food mit Barcode $barcode gefunden');
-        return null;
+      // Own foods first.
+      final ownRows = await _db.client
+          .from('food_database')
+          .select()
+          .eq('barcode', barcode)
+          .eq('user_id', userId)
+          .limit(1);
+      if (ownRows.isNotEmpty) {
+        final food = FoodItem.fromJson(ownRows.first);
+        appLogger.i('✅ Food (eigen) gefunden: ${food.name}');
+        return food;
       }
 
-      final food = FoodItem.fromJson(response);
-      appLogger.i('✅ Food gefunden: ${food.name}');
-      return food;
+      // Fall back to public foods.
+      final publicRows = await _db.client
+          .from('food_database')
+          .select()
+          .eq('barcode', barcode)
+          .eq('is_public', true)
+          .limit(1);
+      if (publicRows.isNotEmpty) {
+        final food = FoodItem.fromJson(publicRows.first);
+        appLogger.i('✅ Food (öffentlich) gefunden: ${food.name}');
+        return food;
+      }
+
+      appLogger.i('ℹ️ Kein Food mit Barcode $barcode gefunden');
+      return null;
     } catch (e) {
       appLogger.e('❌ Fehler bei Barcode-Suche: $e');
       return null;

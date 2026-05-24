@@ -13,6 +13,7 @@ import '../services/food_database_service.dart';
 import '../services/food_shortcuts_service.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/neon_database_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 
@@ -490,20 +491,50 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
 
     final locale = Localizations.localeOf(context).languageCode;
 
-    // Blocking loader — the lookup hits the local DB and then Open Food Facts,
-    // which can take a moment, especially on a cold connection.
+    // Blocking loader — covers both the OFF/local lookup and (on OFF hit)
+    // the silent save into the user's own food DB. Single overlay so the
+    // user doesn't see "nothing happening" between the two awaits.
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     BarcodeLookupResult? result;
+    FoodItem? foodForEntry;
     try {
       result = await BarcodeLookupService.lookup(
         barcode,
         dbService: FoodDatabaseService(widget.dbService),
         locale: locale,
       );
+      // On OFF hit: persist the food to the user's own DB so the next scan
+      // of this barcode resolves locally (no OFF round-trip). No portions
+      // — those get added later via the food database screen when the
+      // user actually has portion knowledge to attach.
+      if (result != null && result.fromOff) {
+        try {
+          final created = await FoodDatabaseService(widget.dbService)
+              .createFood(result.food.copyWith(barcode: barcode));
+          if (result.micros.isNotEmpty) {
+            final jwt = widget.dbService.jwt;
+            final userId = widget.dbService.userId;
+            if (jwt != null && userId != null) {
+              await premiumFeatures.saveFoodDatabaseMicrosFromMap(
+                foodId: created.id,
+                userId: userId,
+                micros100g: result.micros,
+                authToken: jwt,
+                apiUrl: NeonDatabaseService.dataApiUrl,
+              );
+            }
+          }
+          foodForEntry = created;
+        } catch (e) {
+          // Silent — the entry still logs from the OFF row, the save can
+          // be retried via the food database screen.
+          appLogger.w('⚠️ Silent OFF→own save failed: $e');
+        }
+      }
     } finally {
       if (mounted) Navigator.of(context).pop(); // dismiss the loader
     }
@@ -530,7 +561,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       );
       return;
     }
-    await _pickFood(result.food);
+    await _pickFood(foodForEntry ?? result.food);
   }
 
   // ── Auswahl eines Datenbank-Lebensmittels (Favoriten, Suche, Scan) ───────────
@@ -1993,22 +2024,36 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
           // Nutrition preview
           _NutritionPreview(entry: _buildEntry()),
           const SizedBox(height: 12),
-          // Meal type
-          Wrap(
-            spacing: 6,
-            children: MealType.values
-                .map((mt) => ChoiceChip(
-                      label: Text('${mt.icon} ${mt.localizedName(l)}',
-                          style: const TextStyle(fontSize: 11)),
-                      selected: _mealType == mt,
-                      onSelected: (v) {
-                        if (v) {
-                          setState(() => _mealType = mt);
-                          widget.onMealTypeChanged(mt);
-                        }
-                      },
-                    ))
-                .toList(),
+          // Meal type — compact dropdown rather than a row of chips. The chip
+          // version wrapped to two lines on narrow phones and the second row
+          // got clipped behind the dialog's action buttons, leaving some
+          // meal types unselectable.
+          Row(
+            children: [
+              Text('${l.mealType}:', style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButton<MealType>(
+                  value: _mealType,
+                  isDense: true,
+                  isExpanded: true,
+                  items: MealType.values
+                      .map((mt) => DropdownMenuItem(
+                            value: mt,
+                            child: Text(
+                              '${mt.icon} ${mt.localizedName(l)}',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (mt) {
+                    if (mt == null) return;
+                    setState(() => _mealType = mt);
+                    widget.onMealTypeChanged(mt);
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -2116,3 +2161,4 @@ class _MacroChip extends StatelessWidget {
     );
   }
 }
+
