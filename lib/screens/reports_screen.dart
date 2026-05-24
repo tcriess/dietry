@@ -97,12 +97,16 @@ class ReportsScreen extends StatefulWidget {
   final NutritionGoal? goal;
   /// Increment to trigger a data reload (e.g. when switching to this tab).
   final ValueNotifier<int>? refreshTrigger;
+  /// Called when the user pulls to refresh. If null, only the local report
+  /// reload runs (no app-wide sync).
+  final Future<void> Function()? onRefresh;
 
   const ReportsScreen({
     super.key,
     required this.dbService,
     this.goal,
     this.refreshTrigger,
+    this.onRefresh,
   });
 
   @override
@@ -261,12 +265,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  Future<void> _onPullToRefresh() async {
+    // Delegate to the parent-supplied callback when present (which also
+    // bumps refreshTrigger via DataStore wiring). Fall back to a local
+    // reload so the gesture still works in isolation.
+    final ext = widget.onRefresh;
+    if (ext != null) {
+      await ext();
+      return;
+    }
+    _reload();
+    try {
+      await _future;
+    } catch (_) {
+      // Surface errors via the existing snackbar paths elsewhere; the gesture
+      // itself should always end so the spinner hides.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+    return RefreshIndicator(
+      onRefresh: _onPullToRefresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Range selector + export button
@@ -330,6 +355,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             },
           ),
         ],
+        ),
       ),
     );
   }

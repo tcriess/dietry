@@ -36,10 +36,6 @@ class QuickActivityEntrySheet extends StatefulWidget {
   /// Opens the full manual-entry form (`AddActivityScreen`).
   final VoidCallback onManualEntry;
 
-  /// Triggers Health Connect import. Null when the platform doesn't
-  /// support Health Connect (web/desktop) — the button is hidden.
-  final VoidCallback? onImportHealthConnect;
-
   /// Opens the activity-database management screen (edit / delete custom
   /// templates). Null hides the header button — e.g. in guest mode where
   /// there's no remote database to manage.
@@ -51,7 +47,6 @@ class QuickActivityEntrySheet extends StatefulWidget {
     required this.date,
     required this.onAdd,
     required this.onManualEntry,
-    this.onImportHealthConnect,
     this.onManageDatabase,
   });
 
@@ -497,21 +492,6 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
           child: Row(
             children: [
-              if (widget.onImportHealthConnect != null) ...[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.health_and_safety_outlined,
-                        size: 18),
-                    label: Text(l.importHealthConnect,
-                        style: const TextStyle(fontSize: 13)),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onImportHealthConnect!();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
               Expanded(
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.edit_note, size: 18),

@@ -263,15 +263,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get healthConnectNoResultsBody => 'Keine neuen Messwerte gefunden';
 
   @override
-  String get importRangeTitle => 'Importzeitraum';
+  String get dataSourcesTitle => 'Datenquellen';
 
   @override
-  String importRangeSinceGoal(String date) {
-    return 'Ab Tracking-Start ($date)';
-  }
+  String get healthConnectToggleTitle => 'Health Connect Import';
 
   @override
-  String get importRangeAll => 'Alle verfügbaren Daten';
+  String get healthConnectToggleSubtitle =>
+      'Holt beim Aktualisieren Aktivitäten und Körperdaten.';
 
   @override
   String get addFoodScreenTitle => 'Lebensmittel eintragen';
@@ -1014,6 +1013,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get syncNow => 'Jetzt sync';
+
+  @override
+  String get refreshTooltip => 'Aktualisieren';
 
   @override
   String get appBarTitle => 'Dietry';

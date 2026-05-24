@@ -263,15 +263,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthConnectNoResultsBody => 'No new measurements found';
 
   @override
-  String get importRangeTitle => 'Import range';
+  String get dataSourcesTitle => 'Data sources';
 
   @override
-  String importRangeSinceGoal(String date) {
-    return 'Since tracking start ($date)';
-  }
+  String get healthConnectToggleTitle => 'Health Connect import';
 
   @override
-  String get importRangeAll => 'All available data';
+  String get healthConnectToggleSubtitle =>
+      'Pulls activities and body measurements when refreshing.';
 
   @override
   String get addFoodScreenTitle => 'Log Food';
@@ -1010,6 +1009,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncNow => 'Sync now';
+
+  @override
+  String get refreshTooltip => 'Refresh';
 
   @override
   String get appBarTitle => 'Dietry';

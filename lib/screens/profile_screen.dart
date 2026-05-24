@@ -9,6 +9,7 @@ import '../services/data_store.dart';
 import '../services/neon_database_service.dart';
 import '../services/neon_auth_service.dart';
 import '../services/health_connect_service.dart';
+import '../services/health_connect_prefs.dart';
 import '../services/account_service.dart';
 import '../services/water_reminder_service.dart';
 import '../services/app_logger.dart';
@@ -47,7 +48,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   _MeasurementRange _selectedRange = _MeasurementRange.months3;
   bool _waterReminderEnabled = false;
-  
+  bool _hcImportEnabled = false;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         goalService.getGoalForDate(DateTime.now()),
       ]);
       final reminderEnabled = await WaterReminderService.isEnabled();
+      final hcEnabled = await HealthConnectPrefs.isEnabled();
 
       if (mounted) {
         setState(() {
@@ -93,9 +96,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _allMeasurements = results[2] as List<UserBodyMeasurement>;
           _goal = results[3] as NutritionGoal?;
           _waterReminderEnabled = reminderEnabled;
+          _hcImportEnabled = hcEnabled;
           _isLoading = false;
         });
       }
+
     } catch (e) {
       appLogger.e('❌ Fehler beim Laden: $e');
       if (mounted) {
@@ -105,7 +110,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
-  
+
+  /// User-triggered refresh entry point: reload screen data, then (if the
+  /// HC toggle is on) pull fresh body measurements silently, re-loading the
+  /// screen once more only if HC saved any new rows. Used by both the
+  /// AppBar refresh icon and pull-to-refresh.
+  Future<void> _userRefresh() async {
+    await _loadData();
+    if (!mounted || !_hcImportEnabled || !HealthConnectService.isSupported) {
+      return;
+    }
+    final added = await _silentHcImportBodyMeasurements();
+    if (added > 0 && mounted) {
+      await _loadData();
+    }
+  }
+
+  /// Silent HC body-measurements import for the Profile screen. Mirrors the
+  /// helper in main.dart: incremental window based on [HealthConnectPrefs.lastSyncAt]
+  /// with a one-day overlap; no toasts. Returns the number of saved rows.
+  /// Uses [HealthConnectService.hasPermissions] (non-prompting) — silent paths
+  /// must never pop a permission dialog.
+  Future<int> _silentHcImportBodyMeasurements() async {
+    if (!HealthConnectService.isSupported) return 0;
+    final hc = HealthConnectService();
+    final granted = await hc.hasPermissions();
+    if (!granted) return 0;
+    try {
+      final end = DateTime.now();
+      final lastSync = await HealthConnectPrefs.lastSyncAt();
+      DateTime start;
+      if (lastSync != null) {
+        start = lastSync.subtract(const Duration(days: 1));
+      } else {
+        final earliestGoalDate =
+            await NutritionGoalService(widget.dbService).getEarliestGoalDate();
+        start = earliestGoalDate ?? DateTime(2000);
+      }
+      final imported =
+          await hc.importBodyMeasurements(start: start, end: end);
+      await HealthConnectPrefs.setLastSyncAt(end);
+      if (imported.isEmpty) return 0;
+      final service = UserBodyMeasurementsService(widget.dbService);
+      for (final m in imported) {
+        await service.saveMeasurement(m);
+      }
+      await NutritionGoalService.autoAdjustGoal(widget.dbService);
+      return imported.length;
+    } catch (e) {
+      appLogger.w('⚠️ Silent HC body import failed: $e');
+      return 0;
+    }
+  }
+
+  /// Toggle the device-local "import from Health Connect" preference. On
+  /// turning ON, request permissions immediately and kick off an initial
+  /// body-measurements import so the chart updates without a second tap.
+  /// If permissions are denied, revert the toggle and surface a snackbar.
+  Future<void> _toggleHcImport(bool value) async {
+    setState(() => _hcImportEnabled = value);
+    await HealthConnectPrefs.setEnabled(value);
+    if (!value) return;
+    if (!HealthConnectService.isSupported) return;
+    final hc = HealthConnectService();
+    final granted = await hc.requestPermissions();
+    if (!granted) {
+      await HealthConnectPrefs.setEnabled(false);
+      if (!mounted) return;
+      setState(() => _hcImportEnabled = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectUnavailable)),
+      );
+      return;
+    }
+    // Fire-and-forget initial body-measurement pull so the chart populates.
+    // ignore: discarded_futures
+    _importBodyFromHealthConnect();
+  }
+
   DateTime? _rangeStart(DateTime end) {
     switch (_selectedRange) {
       case _MeasurementRange.month1:  return end.subtract(const Duration(days: 30));
@@ -182,38 +264,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (!mounted) return;
 
-    // Determine earliest tracking date from first nutrition goal.
+    // Always import since the earliest tracking date (or the year-2000 floor
+    // when no goal exists yet). The time-period selection dialog was dropped
+    // along with the Reports/Activities HC FABs.
     final earliestGoalDate = await NutritionGoalService(widget.dbService).getEarliestGoalDate();
 
     if (!mounted) return;
-
-    // Ask user which range to import.
-    final dateStr = earliestGoalDate != null
-        ? '${earliestGoalDate.day.toString().padLeft(2, '0')}.${earliestGoalDate.month.toString().padLeft(2, '0')}.${earliestGoalDate.year}'
-        : null;
-
-    final useAllData = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final ld = AppLocalizations.of(ctx)!;
-        return SimpleDialog(
-          title: Text(ld.importRangeTitle),
-          children: [
-            if (earliestGoalDate != null)
-              SimpleDialogOption(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text(ld.importRangeSinceGoal(dateStr!)),
-              ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(ld.importRangeAll),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (useAllData == null || !mounted) return; // dialog dismissed
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(l.healthConnectImportingBody)),
@@ -221,9 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final end = DateTime.now();
-      final start = (useAllData || earliestGoalDate == null)
-          ? DateTime(2000) // effectively "all data"
-          : earliestGoalDate;
+      final start = earliestGoalDate ?? DateTime(2000);
       final imported = await hc.importBodyMeasurements(start: start, end: end);
 
       if (imported.isEmpty) {
@@ -338,18 +392,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.profileTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: l.refreshTooltip,
+            onPressed: _isLoading ? null : _userRefresh,
+          ),
+        ],
       ),
-      floatingActionButton: HealthConnectService.isSupported
-          ? FloatingActionButton(
-              heroTag: 'fab_profile_health_connect',
-              onPressed: _importBodyFromHealthConnect,
-              tooltip: l.importHealthConnect,
-              child: const Icon(Icons.health_and_safety_outlined),
-            )
-          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
+          : RefreshIndicator(
+              onRefresh: _userRefresh,
+              child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(16, 16, 16, 80 + MediaQuery.paddingOf(context).bottom),
               children: [
                 // =======================================
@@ -549,7 +605,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 
                 const SizedBox(height: 16),
-                
+
+                // =======================================
+                // DATA SOURCES (Health Connect toggle)
+                // Only rendered on platforms where HC is available.
+                // =======================================
+                if (HealthConnectService.isSupported) ...[
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.cloud_sync_outlined, size: 24),
+                              const SizedBox(width: 8),
+                              Text(
+                                l.dataSourcesTitle,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: _hcImportEnabled,
+                            onChanged: _toggleHcImport,
+                            title: Text(l.healthConnectToggleTitle),
+                            subtitle: Text(l.healthConnectToggleSubtitle),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // =======================================
                 // KÖRPERMESSUNGEN (zeitbasiert, regelmäßig)
                 // =======================================
@@ -572,10 +664,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ],
                             ),
-                            IconButton(
-                              icon: Icon(_currentMeasurement == null ? Icons.add : Icons.edit),
-                              onPressed: _addOrEditMeasurement,
-                              tooltip: _currentMeasurement == null ? l.addWeight : l.edit,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (HealthConnectService.isSupported)
+                                  IconButton(
+                                    icon: const Icon(Icons.health_and_safety_outlined),
+                                    tooltip: l.importHealthConnect,
+                                    onPressed: _importBodyFromHealthConnect,
+                                  ),
+                                IconButton(
+                                  icon: Icon(_currentMeasurement == null ? Icons.add : Icons.edit),
+                                  onPressed: _addOrEditMeasurement,
+                                  tooltip: _currentMeasurement == null ? l.addWeight : l.edit,
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -784,6 +887,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   authService: widget.authService,
                 ),
               ],
+            ),
             ),
     );
   }

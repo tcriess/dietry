@@ -23,6 +23,29 @@ const _bodyTypes = [
   HealthDataType.BODY_FAT_PERCENTAGE,
 ];
 
+/// Check whether the health package reports permissions as already granted,
+/// without re-prompting the user. Returns `false` on any error.
+///
+/// Use this on silent-refresh paths: `_health.requestAuthorization()` is known
+/// to return `false` on subsequent calls after the OS already granted
+/// permissions (it doesn't re-prompt), so silent paths must check rather than
+/// re-request.
+Future<bool> hasHealthPermissions() async {
+  try {
+    await _health.configure();
+    final types = [..._activityTypes, ..._bodyTypes];
+    final perms = [
+      ..._activityTypes.map((_) => HealthDataAccess.READ),
+      ..._bodyTypes.map((_) => HealthDataAccess.READ),
+    ];
+    final ok = await _health.hasPermissions(types, permissions: perms);
+    return ok ?? false;
+  } catch (e) {
+    appLogger.w('⚠️ hasHealthPermissions check failed: $e');
+    return false;
+  }
+}
+
 Future<bool> requestHealthPermissions() async {
   try {
     await _health.configure();

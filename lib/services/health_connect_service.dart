@@ -21,6 +21,14 @@ class HealthConnectService {
   /// Gibt `true` zurück wenn alle benötigten Berechtigungen gewährt wurden.
   Future<bool> requestPermissions() => requestHealthPermissions();
 
+  /// Check whether HC permissions are *already* granted, without prompting.
+  ///
+  /// Use this on the silent refresh path. The `health` package's
+  /// `requestAuthorization()` is known to return `false` on subsequent calls
+  /// after the OS already granted permissions (it doesn't re-prompt) — so
+  /// silent paths must check rather than re-request.
+  Future<bool> hasPermissions() => hasHealthPermissions();
+
   /// Importiere Aktivitäten aus Health Connect / HealthKit.
   ///
   /// Gibt eine Liste von [PhysicalActivity] zurück, die noch nicht in der DB

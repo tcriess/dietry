@@ -61,6 +61,7 @@ import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/health_connect_service.dart';
+import 'services/health_connect_prefs.dart';
 import 'screens/info_screen.dart';
 import 'screens/reports_screen.dart';
 
@@ -2150,6 +2151,21 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               )
             : null,
         actions: [
+          // Refresh: reload day data (and Reports) on user demand. Disabled
+          // while a load is already in flight.
+          ListenableBuilder(
+            listenable: DataStore.instance,
+            builder: (_, __) {
+              final isLoading = DataStore.instance.isLoading;
+              return IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: l.refreshTooltip,
+                onPressed: isLoading
+                    ? null
+                    : () => _dietryHomeKey.currentState?.refreshAll(),
+              );
+            },
+          ),
           // Admin-Dashboard (Cloud web, role=admin only)
           if (AppFeatures.isAdmin)
             IconButton(
@@ -2462,6 +2478,38 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _sync.processPendingQueue();
   }
 
+  /// User-triggered refresh: reload data for the current day, force a Reports
+  /// reload, flush the offline queue, and — when Health Connect import is
+  /// enabled — pull fresh activities + body measurements silently. Called
+  /// from the AppBar refresh icon and from each tab's pull-to-refresh gesture.
+  ///
+  /// Returns when all loads complete so RefreshIndicator can hide its spinner.
+  Future<void> refreshAll() async {
+    await _store.loadDay(_selectedDay, silent: true);
+    _reportsRefreshTrigger.value++;
+    final db = widget.dbService;
+    if (!widget.isGuestMode && db != null && db.userId != null) {
+      await _sync.processPendingQueue();
+    }
+    // Health Connect: silently pull new activities + body measurements when
+    // the toggle is on. Errors are logged, never surfaced as snackbars here
+    // (the user can still trigger an explicit import from the profile chart
+    // for the toast-driven UX).
+    //
+    // Run sequentially, not via Future.wait — the health plugin's underlying
+    // platform channels don't tolerate two concurrent calls well (the second
+    // can hang indefinitely on Android, leaving the RefreshIndicator spinner
+    // stuck because its onRefresh future never completes).
+    if (await HealthConnectPrefs.isEnabled()) {
+      final addedActivities = await _silentHcImportActivities();
+      final addedBody = await _silentHcImportBodyMeasurements();
+      if ((addedActivities + addedBody) > 0 && mounted) {
+        // Body measurements may shift goals/charts — re-trigger reports.
+        _reportsRefreshTrigger.value++;
+      }
+    }
+  }
+
   void _showWaterReminder(String title, String body) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -2504,41 +2552,29 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _importFromHealthConnect(BuildContext ctx) async {
-    final l = AppLocalizations.of(ctx)!;
-    if (!HealthConnectService.isSupported) {
-      ScaffoldMessenger.of(ctx)
-          .showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
-      return;
-    }
+  /// Silent HC activities import for the currently selected day. No toasts.
+  /// Called from [refreshAll]; gated by [HealthConnectPrefs.isEnabled]. Returns
+  /// the number of newly-saved activities (0 if HC disabled, denied, or no data).
+  ///
+  /// Uses [HealthConnectService.hasPermissions] (a non-prompting check) rather
+  /// than [HealthConnectService.requestPermissions] — silent paths must never
+  /// pop a permission dialog, and `requestAuthorization()` is also known to
+  /// flake to `false` on already-granted permissions.
+  Future<int> _silentHcImportActivities() async {
+    if (!HealthConnectService.isSupported) return 0;
     final hc = HealthConnectService();
-    final granted = await hc.requestPermissions();
-    if (!granted) {
-      if (ctx.mounted)
-        ScaffoldMessenger.of(ctx)
-            .showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
-      return;
-    }
-    if (!ctx.mounted) return;
-    ScaffoldMessenger.of(ctx)
-        .showSnackBar(SnackBar(content: Text(l.healthConnectImporting)));
+    final granted = await hc.hasPermissions();
+    if (!granted) return 0;
     try {
       final d = _selectedDay;
       final start = DateTime(d.year, d.month, d.day);
       final end = DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
       final imported = await hc.importActivities(start: start, end: end);
-      if (imported.isEmpty) {
-        if (ctx.mounted)
-          ScaffoldMessenger.of(ctx)
-              .showSnackBar(SnackBar(content: Text(l.healthConnectNoResults)));
-        return;
-      }
+      if (imported.isEmpty) return 0;
       final db = widget.dbService;
-      // Auto-link imported workouts to a row in activity_database (so the edit
-      // screen's dropdown finds a match) and fill in calories via MET when
-      // Health Connect didn't record any.
-      final enriched =
-          db != null ? await _enrichImportedActivities(db, imported) : imported;
+      final enriched = db != null
+          ? await _enrichImportedActivities(db, imported)
+          : imported;
       Set<String> existingHcIds = {};
       if (db != null) {
         final existing = await PhysicalActivityService(db)
@@ -2562,19 +2598,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         final saved = await _sync.saveActivity(activity);
         _store.addActivity(saved ?? activity);
       }
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-          content: Text(l.healthConnectSuccess(toSave.length)),
-          backgroundColor: Colors.green,
-        ));
-      }
+      return toSave.length;
     } catch (e) {
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-          content: Text(l.healthConnectError(e.toString())),
-          backgroundColor: Colors.red,
-        ));
-      }
+      appLogger.w('⚠️ Silent HC activity import failed: $e');
+      return 0;
     }
   }
 
@@ -2647,90 +2674,42 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _importBodyWeightsFromHealthConnect(BuildContext ctx) async {
-    final l = AppLocalizations.of(ctx)!;
+  /// Silent HC body-measurements import. No toasts; called from [refreshAll].
+  /// Uses [HealthConnectPrefs.lastSyncAt] for incremental imports with a
+  /// one-day overlap to catch late writes. Falls back to earliest tracking
+  /// date or year-2000 floor on first run. Updates `lastSyncAt` on success.
+  /// Returns the number of saved measurements. See [_silentHcImportActivities]
+  /// for why this uses `hasPermissions` instead of `requestPermissions`.
+  Future<int> _silentHcImportBodyMeasurements() async {
     final db = widget.dbService;
-    if (db == null || !HealthConnectService.isSupported) return;
-
+    if (db == null || !HealthConnectService.isSupported) return 0;
     final hc = HealthConnectService();
-    final granted = await hc.requestPermissions();
-    if (!granted) {
-      if (ctx.mounted)
-        ScaffoldMessenger.of(ctx)
-            .showSnackBar(SnackBar(content: Text(l.healthConnectUnavailable)));
-      return;
-    }
-    if (!ctx.mounted) return;
-
-    final earliestGoalDate =
-        await NutritionGoalService(db).getEarliestGoalDate();
-    if (!ctx.mounted) return;
-
-    final dateStr = earliestGoalDate != null
-        ? '${earliestGoalDate.day.toString().padLeft(2, '0')}.${earliestGoalDate.month.toString().padLeft(2, '0')}.${earliestGoalDate.year}'
-        : null;
-
-    final useAllData = await showDialog<bool>(
-      context: ctx,
-      builder: (dlgCtx) {
-        final ld = AppLocalizations.of(dlgCtx)!;
-        return SimpleDialog(
-          title: Text(ld.importRangeTitle),
-          children: [
-            if (earliestGoalDate != null)
-              SimpleDialogOption(
-                onPressed: () => Navigator.of(dlgCtx).pop(false),
-                child: Text(ld.importRangeSinceGoal(dateStr!)),
-              ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(dlgCtx).pop(true),
-              child: Text(ld.importRangeAll),
-            ),
-          ],
-        );
-      },
-    );
-    if (useAllData == null || !ctx.mounted) return;
-
-    ScaffoldMessenger.of(ctx)
-        .showSnackBar(SnackBar(content: Text(l.healthConnectImportingBody)));
-
+    final granted = await hc.hasPermissions();
+    if (!granted) return 0;
     try {
       final end = DateTime.now();
-      final start = (useAllData || earliestGoalDate == null)
-          ? DateTime(2000)
-          : earliestGoalDate;
-      final imported = await hc.importBodyMeasurements(start: start, end: end);
-
-      if (imported.isEmpty) {
-        if (ctx.mounted)
-          ScaffoldMessenger.of(ctx).showSnackBar(
-              SnackBar(content: Text(l.healthConnectNoResultsBody)));
-        return;
+      final lastSync = await HealthConnectPrefs.lastSyncAt();
+      DateTime start;
+      if (lastSync != null) {
+        start = lastSync.subtract(const Duration(days: 1));
+      } else {
+        final earliestGoalDate =
+            await NutritionGoalService(db).getEarliestGoalDate();
+        start = earliestGoalDate ?? DateTime(2000);
       }
-
+      final imported =
+          await hc.importBodyMeasurements(start: start, end: end);
+      await HealthConnectPrefs.setLastSyncAt(end);
+      if (imported.isEmpty) return 0;
       final service = UserBodyMeasurementsService(db);
-      int saved = 0;
       for (final m in imported) {
         await service.saveMeasurement(m);
-        saved++;
       }
       await NutritionGoalService.autoAdjustGoal(db);
-
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-          content: Text(l.healthConnectSuccessBody(saved)),
-          backgroundColor: Colors.green,
-        ));
-        _reportsRefreshTrigger.value++;
-      }
+      return imported.length;
     } catch (e) {
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-          content: Text(l.healthConnectError(e.toString())),
-          backgroundColor: Colors.red,
-        ));
-      }
+      appLogger.w('⚠️ Silent HC body import failed: $e');
+      return 0;
     }
   }
 
@@ -3124,18 +3103,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       );
     }
 
-    // Build FAB based on selected tab
+    // Build FAB based on selected tab. Reports no longer has a HC FAB —
+    // body-measurements import now runs as part of the global refresh
+    // (gated by HealthConnectPrefs) and via the Profile chart's refresh icon.
     Widget? fab;
-    if (_selectedIndex == 3 &&
-        HealthConnectService.isSupported &&
-        widget.dbService != null) {
-      fab = FloatingActionButton(
-        heroTag: 'fab_reports_health_connect',
-        onPressed: () => _importBodyWeightsFromHealthConnect(context),
-        tooltip: l.importHealthConnect,
-        child: const Icon(Icons.health_and_safety_outlined),
-      );
-    } else if (_selectedIndex == 2) {
+    if (_selectedIndex == 2) {
       final db = widget.dbService;
 
       // Single entry point: one unified add sheet, parallel to the food
@@ -3166,9 +3138,6 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
               dbService: db,
               date: _selectedDay,
               onManualEntry: openManualActivity,
-              onImportHealthConnect: HealthConnectService.isSupported
-                  ? () => _importFromHealthConnect(context)
-                  : null,
               onManageDatabase: () => Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => ActivityDatabaseScreen(dbService: db),
@@ -3392,6 +3361,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                         _store.streak,
                         _store.bestStreak)
                     : null,
+                onRefresh: refreshAll,
               ),
               FoodEntriesListScreen(
                 dbService: widget.dbService,
@@ -3401,6 +3371,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 canGoBack: _canGoBack,
                 canGoForward:
                     !DateUtils.isSameDay(_selectedDay, DateTime.now()),
+                onRefresh: refreshAll,
               ),
               ActivitiesListScreen(
                 dbService: widget.dbService,
@@ -3410,11 +3381,13 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 canGoBack: _canGoBack,
                 canGoForward:
                     !DateUtils.isSameDay(_selectedDay, DateTime.now()),
+                onRefresh: refreshAll,
               ),
               ReportsScreen(
                 dbService: widget.dbService,
                 goal: _store.goal,
                 refreshTrigger: _reportsRefreshTrigger,
+                onRefresh: refreshAll,
               ),
             ],
           ),
@@ -3540,6 +3513,7 @@ class OverviewScreen extends StatelessWidget {
   final int bestStreak;
   final Future<void> Function() onToggleCheatDay;
   final VoidCallback? onShareProgress;
+  final Future<void> Function()? onRefresh;
 
   const OverviewScreen({
     super.key,
@@ -3560,6 +3534,7 @@ class OverviewScreen extends StatelessWidget {
     required this.bestStreak,
     required this.onToggleCheatDay,
     this.onShareProgress,
+    this.onRefresh,
   });
 
   // Berechne Gesamt-Nährwerte aus entries
@@ -3963,7 +3938,8 @@ class OverviewScreen extends StatelessWidget {
             .format(selectedDay);
     final isToday = DateUtils.isSameDay(selectedDay, DateTime.now());
 
-    return SingleChildScrollView(
+    final scroll = SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4266,6 +4242,10 @@ class OverviewScreen extends StatelessWidget {
         ],
       ),
     );
+
+    final refresh = onRefresh;
+    if (refresh == null) return scroll;
+    return RefreshIndicator(onRefresh: refresh, child: scroll);
   }
 }
 

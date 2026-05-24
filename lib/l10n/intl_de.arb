@@ -121,16 +121,9 @@
   },
   "healthConnectImportingBody": "Importiere Messwerte...",
   "healthConnectNoResultsBody": "Keine neuen Messwerte gefunden",
-  "importRangeTitle": "Importzeitraum",
-  "importRangeSinceGoal": "Ab Tracking-Start ({date})",
-  "@importRangeSinceGoal": {
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "importRangeAll": "Alle verfügbaren Daten",
+  "dataSourcesTitle": "Datenquellen",
+  "healthConnectToggleTitle": "Health Connect Import",
+  "healthConnectToggleSubtitle": "Holt beim Aktualisieren Aktivitäten und Körperdaten.",
   "addFoodScreenTitle": "Lebensmittel eintragen",
   "searchHint": "z.B. Apfel, Reis, Hähnchen...",
   "onlineSearch": "Online-Suche",
@@ -444,6 +437,7 @@
   "offlineMode": "Offline – Änderungen werden synchronisiert sobald die Verbindung steht",
   "pendingSyncCount": "Änderungen warten auf Synchronisierung",
   "syncNow": "Jetzt sync",
+  "refreshTooltip": "Aktualisieren",
   "appBarTitle": "Dietry",
   "profileTooltip": "Profil",
   "infoTooltip": "Info & Impressum",

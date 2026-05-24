@@ -20,6 +20,7 @@ class FoodEntriesListScreen extends StatefulWidget {
   final VoidCallback onJumpToToday;
   final bool canGoBack;
   final bool canGoForward;
+  final Future<void> Function()? onRefresh;
 
   const FoodEntriesListScreen({
     super.key,
@@ -29,6 +30,7 @@ class FoodEntriesListScreen extends StatefulWidget {
     required this.onJumpToToday,
     required this.canGoBack,
     required this.canGoForward,
+    this.onRefresh,
   });
   
   @override
@@ -237,26 +239,26 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       final isToday = DateUtils.isSameDay(widget.selectedDay, DateTime.now());
       final entries = _store.foodEntries;
 
-      return Scaffold(
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Visibility(
-                      visible: widget.canGoBack,
-                      maintainSize: true,
-                      maintainAnimation: true,
-                      maintainState: true,
-                      child: IconButton(
-                        icon: const Icon(Icons.chevron_left),
-                        tooltip: l.previousDay,
-                        onPressed: () => widget.onChangeDay(-1),
-                      ),
+      final guestScroll = SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Visibility(
+                    visible: widget.canGoBack,
+                    maintainSize: true,
+                    maintainAnimation: true,
+                    maintainState: true,
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      tooltip: l.previousDay,
+                      onPressed: () => widget.onChangeDay(-1),
                     ),
+                  ),
                     Column(
                       children: [
                         Text(
@@ -314,7 +316,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                 ),
             ],
           ),
-        ),
+      );
+
+      final refresh = widget.onRefresh;
+      return Scaffold(
+        body: refresh == null
+            ? guestScroll
+            : RefreshIndicator(onRefresh: refresh, child: guestScroll),
       );
     }
 
@@ -386,27 +394,43 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
           Expanded(
             child: _store.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : entries.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.no_food, size: 64, color: Colors.grey.shade400),
-                            const SizedBox(height: 16),
-                            Text(
-                              l.entriesEmpty,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: Colors.grey.shade600,
+                : _wrapWithRefresh(entries.isEmpty
+                    ? LayoutBuilder(
+                        builder: (ctx, c) => SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(minHeight: c.maxHeight),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.no_food,
+                                      size: 64, color: Colors.grey.shade400),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    l.entriesEmpty,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: Colors.grey.shade600,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    l.entriesEmptyHint,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.grey.shade500,
+                                        ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l.entriesEmptyHint,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       )
                     : ListView(
@@ -563,11 +587,19 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                             );
                           }),
                         ],
-                      ),
+                      )),
           ),
         ],
       ),
     );
+  }
+
+  /// Wrap [child] in a [RefreshIndicator] when an onRefresh callback was
+  /// supplied; otherwise return the child unchanged.
+  Widget _wrapWithRefresh(Widget child) {
+    final refresh = widget.onRefresh;
+    if (refresh == null) return child;
+    return RefreshIndicator(onRefresh: refresh, child: child);
   }
 }
 

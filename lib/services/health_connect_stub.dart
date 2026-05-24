@@ -4,6 +4,8 @@ import '../models/user_body_data.dart';
 
 Future<bool> requestHealthPermissions() async => false;
 
+Future<bool> hasHealthPermissions() async => false;
+
 Future<List<PhysicalActivity>> fetchHealthActivities({
   required DateTime start,
   required DateTime end,

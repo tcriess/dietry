@@ -15,6 +15,7 @@ class ActivitiesListScreen extends StatefulWidget {
   final VoidCallback onJumpToToday;
   final bool canGoBack;
   final bool canGoForward;
+  final Future<void> Function()? onRefresh;
 
   const ActivitiesListScreen({
     super.key,
@@ -24,6 +25,7 @@ class ActivitiesListScreen extends StatefulWidget {
     required this.onJumpToToday,
     required this.canGoBack,
     required this.canGoForward,
+    this.onRefresh,
   });
 
   @override
@@ -179,19 +181,38 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
           Expanded(
             child: _store.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : activities.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.directions_run, size: 64, color: Colors.grey.shade400),
-                            const SizedBox(height: 16),
-                            Text(l.activitiesEmpty,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey.shade600)),
-                            const SizedBox(height: 8),
-                            Text(l.activitiesEmptyHint,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500)),
-                          ],
+                : _wrapWithRefresh(activities.isEmpty
+                    ? LayoutBuilder(
+                        builder: (ctx, c) => SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(minHeight: c.maxHeight),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.directions_run,
+                                      size: 64,
+                                      color: Colors.grey.shade400),
+                                  const SizedBox(height: 16),
+                                  Text(l.activitiesEmpty,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                              color: Colors.grey.shade600)),
+                                  const SizedBox(height: 8),
+                                  Text(l.activitiesEmptyHint,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                              color: Colors.grey.shade500)),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       )
                     : ListView.builder(
@@ -258,10 +279,18 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                             ),
                           );
                         },
-                      ),
+                      )),
           ),
         ],
       ),
     );
+  }
+
+  /// Wrap [child] in a [RefreshIndicator] when an onRefresh callback was
+  /// supplied; otherwise return the child unchanged.
+  Widget _wrapWithRefresh(Widget child) {
+    final refresh = widget.onRefresh;
+    if (refresh == null) return child;
+    return RefreshIndicator(onRefresh: refresh, child: child);
   }
 }

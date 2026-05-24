@@ -580,23 +580,23 @@ abstract class AppLocalizations {
   /// **'Keine neuen Messwerte gefunden'**
   String get healthConnectNoResultsBody;
 
-  /// No description provided for @importRangeTitle.
+  /// No description provided for @dataSourcesTitle.
   ///
   /// In de, this message translates to:
-  /// **'Importzeitraum'**
-  String get importRangeTitle;
+  /// **'Datenquellen'**
+  String get dataSourcesTitle;
 
-  /// No description provided for @importRangeSinceGoal.
+  /// No description provided for @healthConnectToggleTitle.
   ///
   /// In de, this message translates to:
-  /// **'Ab Tracking-Start ({date})'**
-  String importRangeSinceGoal(String date);
+  /// **'Health Connect Import'**
+  String get healthConnectToggleTitle;
 
-  /// No description provided for @importRangeAll.
+  /// No description provided for @healthConnectToggleSubtitle.
   ///
   /// In de, this message translates to:
-  /// **'Alle verfügbaren Daten'**
-  String get importRangeAll;
+  /// **'Holt beim Aktualisieren Aktivitäten und Körperdaten.'**
+  String get healthConnectToggleSubtitle;
 
   /// No description provided for @addFoodScreenTitle.
   ///
@@ -1953,6 +1953,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Jetzt sync'**
   String get syncNow;
+
+  /// No description provided for @refreshTooltip.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktualisieren'**
+  String get refreshTooltip;
 
   /// No description provided for @appBarTitle.
   ///
