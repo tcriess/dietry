@@ -123,50 +123,50 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     }
   }
 
-  /// Renders a single "Repeat …" chip for an empty meal group. Prefers
-  /// yesterday's same meal-type; falls back to the leftover-pattern hint
-  /// (lunch ← yesterday's dinner, dinner ← today's lunch) when there's
-  /// nothing from yesterday at the same meal. Returns [SizedBox.shrink]
-  /// when nothing applies.
+  /// Renders one or more "Repeat …" chips for an empty meal group. Always
+  /// includes yesterday's same meal-type when available; for lunch also
+  /// surfaces yesterday's dinner (leftovers-as-tomorrow's-lunch pattern),
+  /// for dinner also surfaces today's lunch (same-day-leftover pattern).
+  /// Returns [SizedBox.shrink] when no suggestions apply.
   Widget _buildRepeatChipForEmptyMeal(
       AppLocalizations l, MealType mealType, List<FoodEntry> todayEntries) {
     final prev = _previousDayEntries;
-    ({String label, List<FoodEntry> sources})? pick;
+    final suggestions = <({String label, List<FoodEntry> sources})>[];
 
     if (prev != null) {
       final sameYesterday =
           prev.where((e) => e.mealType == mealType).toList();
       if (sameYesterday.isNotEmpty) {
-        pick = (
+        suggestions.add((
           label: l.repeatYesterdaysMeal(mealType.localizedName(l)),
           sources: sameYesterday,
-        );
-      } else if (mealType == MealType.lunch) {
+        ));
+      }
+      if (mealType == MealType.lunch) {
         final ydDinner =
             prev.where((e) => e.mealType == MealType.dinner).toList();
         if (ydDinner.isNotEmpty) {
-          pick = (
-            label:
-                l.repeatYesterdaysMeal(MealType.dinner.localizedName(l)),
+          suggestions.add((
+            label: l.repeatYesterdaysMeal(
+                MealType.dinner.localizedName(l)),
             sources: ydDinner,
-          );
+          ));
         }
       }
     }
 
-    if (pick == null && mealType == MealType.dinner) {
+    if (mealType == MealType.dinner) {
       final todayLunch =
           todayEntries.where((e) => e.mealType == MealType.lunch).toList();
       if (todayLunch.isNotEmpty) {
-        pick = (
+        suggestions.add((
           label: l.repeatTodaysMeal(MealType.lunch.localizedName(l)),
           sources: todayLunch,
-        );
+        ));
       }
     }
 
-    if (pick == null) return const SizedBox.shrink();
-    final suggestion = pick;
+    if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,18 +189,25 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: ActionChip(
-            avatar: _repeatingMeal
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.replay, size: 18),
-            label: Text('${suggestion.label} (${suggestion.sources.length})'),
-            onPressed: _repeatingMeal
-                ? null
-                : () => _repeatMeal(mealType, suggestion.sources),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final s in suggestions)
+                ActionChip(
+                  avatar: _repeatingMeal
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.replay, size: 18),
+                  label: Text('${s.label} (${s.sources.length})'),
+                  onPressed: _repeatingMeal
+                      ? null
+                      : () => _repeatMeal(mealType, s.sources),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
