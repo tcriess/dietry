@@ -191,6 +191,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get entryDeleted => 'Entry deleted';
 
   @override
+  String repeatYesterdaysMeal(String meal) {
+    return 'Repeat yesterday\'s $meal';
+  }
+
+  @override
+  String repeatTodaysMeal(String meal) {
+    return 'Repeat today\'s $meal';
+  }
+
+  @override
   String get myFoods => 'My Foods';
 
   @override

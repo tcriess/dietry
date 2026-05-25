@@ -15,6 +15,7 @@ import '../services/neon_database_service.dart';
 import '../services/food_image_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
+import '../services/user_food_prefs_service.dart';
 import '../services/food_search_service.dart';
 import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
@@ -755,6 +756,19 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       // Add the server entity (real id) or the optimistic entry (queued offline).
       final effective = saved ?? entry;
       DataStore.instance.addFoodEntry(effective);
+
+      // Remember the portion (amount + unit) for this food so the quick-add
+      // sheet pre-fills it next time. Fire-and-forget; auth-only.
+      if (dbService != null) {
+        final prefFoodId = entry.foodId;
+        if (prefFoodId != null && prefFoodId.isNotEmpty) {
+          unawaited(UserFoodPrefsService(dbService).upsert(
+            foodId: prefFoodId,
+            amount: entry.amount,
+            unit: entry.unit,
+          ));
+        }
+      }
 
       // Auto-copy micro nutrients (best-effort, fire-and-forget).
       // Only in authenticated mode (cloud feature).

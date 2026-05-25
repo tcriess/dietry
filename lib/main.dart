@@ -3165,8 +3165,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
               tooltip: l.addActivity,
               child: const Icon(Icons.add),
             );
-    } else if (_selectedIndex == 1) {
-      // Food Entries tab
+    } else if (_selectedIndex == 1 || _selectedIndex == 0) {
+      // Food Entries tab + Overview tab share the same add-food FAB so users
+      // can log a meal without leaving the summary.
       final db = widget.dbService;
       final jwt = db?.jwt;
       final userId = db?.userId;

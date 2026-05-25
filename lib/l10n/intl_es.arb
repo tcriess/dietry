@@ -72,6 +72,22 @@
     }
   },
   "entryDeleted": "Entrada eliminada",
+  "repeatYesterdaysMeal": "Repetir {meal} de ayer",
+  "@repeatYesterdaysMeal": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
+  "repeatTodaysMeal": "Repetir {meal} de hoy",
+  "@repeatTodaysMeal": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
   "myFoods": "Mis Alimentos",
   "addEntry": "Registrar Alimento",
   "mealTemplates": "Plantillas de Comidas",

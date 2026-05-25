@@ -8,6 +8,7 @@ import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_image_service.dart';
+import '../services/food_entry_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'edit_food_entry_screen.dart';
@@ -42,6 +43,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   final _imageCache = <String, String?>{};
   late FoodImageService _imageService;
 
+  /// Cached entries from the day before [widget.selectedDay], used to power
+  /// the "Repeat yesterday's …" chip on empty meal groups. Loaded lazily on
+  /// init and refreshed whenever [widget.selectedDay] changes. Null while a
+  /// fetch is in flight; empty list when the previous day had no entries.
+  List<FoodEntry>? _previousDayEntries;
+  bool _repeatingMeal = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +57,16 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     if (widget.dbService != null) {
       _imageService = FoodImageService(widget.dbService!);
       _loadImagesForEntries(_store.foodEntries);
+      _loadPreviousDayEntries();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant FoodEntriesListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!DateUtils.isSameDay(oldWidget.selectedDay, widget.selectedDay)) {
+      _previousDayEntries = null;
+      _loadPreviousDayEntries();
     }
   }
 
@@ -56,6 +74,138 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   void dispose() {
     _store.removeListener(_onStoreChanged);
     super.dispose();
+  }
+
+  Future<void> _loadPreviousDayEntries() async {
+    final db = widget.dbService;
+    if (db == null) return;
+    final previousDay =
+        widget.selectedDay.subtract(const Duration(days: 1));
+    try {
+      final entries =
+          await FoodEntryService(db).getFoodEntriesForDate(previousDay);
+      if (!mounted) return;
+      if (!DateUtils.isSameDay(
+          previousDay, widget.selectedDay.subtract(const Duration(days: 1)))) {
+        // selectedDay changed while we were fetching — discard stale result.
+        return;
+      }
+      setState(() => _previousDayEntries = entries);
+    } catch (e) {
+      appLogger.d('Repeat-meal: previous-day fetch failed: $e');
+    }
+  }
+
+  /// Bulk-copies [sourceEntries] into [widget.selectedDay]. Each entry is
+  /// re-created with a fresh id and today's date; everything else (name,
+  /// macros, foodId, amount, unit, mealType) is preserved.
+  Future<void> _repeatMeal(
+      MealType mealType, List<FoodEntry> sourceEntries) async {
+    if (_repeatingMeal || sourceEntries.isEmpty) return;
+    setState(() => _repeatingMeal = true);
+    final sync = SyncService.instance;
+    final now = DateTime.now();
+    try {
+      for (final src in sourceEntries) {
+        final copy = src.copyWith(
+          id: '',
+          entryDate: widget.selectedDay,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await sync.createFoodEntry(copy);
+      }
+      await _store.loadDay(widget.selectedDay, silent: true, delta: true);
+    } catch (e) {
+      appLogger.e('Repeat-meal failed: $e');
+    } finally {
+      if (mounted) setState(() => _repeatingMeal = false);
+    }
+  }
+
+  /// Renders a single "Repeat …" chip for an empty meal group. Prefers
+  /// yesterday's same meal-type; falls back to the leftover-pattern hint
+  /// (lunch ← yesterday's dinner, dinner ← today's lunch) when there's
+  /// nothing from yesterday at the same meal. Returns [SizedBox.shrink]
+  /// when nothing applies.
+  Widget _buildRepeatChipForEmptyMeal(
+      AppLocalizations l, MealType mealType, List<FoodEntry> todayEntries) {
+    final prev = _previousDayEntries;
+    ({String label, List<FoodEntry> sources})? pick;
+
+    if (prev != null) {
+      final sameYesterday =
+          prev.where((e) => e.mealType == mealType).toList();
+      if (sameYesterday.isNotEmpty) {
+        pick = (
+          label: l.repeatYesterdaysMeal(mealType.localizedName(l)),
+          sources: sameYesterday,
+        );
+      } else if (mealType == MealType.lunch) {
+        final ydDinner =
+            prev.where((e) => e.mealType == MealType.dinner).toList();
+        if (ydDinner.isNotEmpty) {
+          pick = (
+            label:
+                l.repeatYesterdaysMeal(MealType.dinner.localizedName(l)),
+            sources: ydDinner,
+          );
+        }
+      }
+    }
+
+    if (pick == null && mealType == MealType.dinner) {
+      final todayLunch =
+          todayEntries.where((e) => e.mealType == MealType.lunch).toList();
+      if (todayLunch.isNotEmpty) {
+        pick = (
+          label: l.repeatTodaysMeal(MealType.lunch.localizedName(l)),
+          sources: todayLunch,
+        );
+      }
+    }
+
+    if (pick == null) return const SizedBox.shrink();
+    final suggestion = pick;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Row(
+            children: [
+              Text(mealType.icon, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 8),
+              Text(
+                mealType.localizedName(l),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: ActionChip(
+            avatar: _repeatingMeal
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.replay, size: 18),
+            label: Text('${suggestion.label} (${suggestion.sources.length})'),
+            onPressed: _repeatingMeal
+                ? null
+                : () => _repeatMeal(mealType, suggestion.sources),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
   }
 
   void _onStoreChanged() {
@@ -439,7 +589,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                           // Gruppiere nach Meal-Type
                           ...MealType.values.map((mealType) {
                             final mealEntries = entries.where((e) => e.mealType == mealType).toList();
-                            if (mealEntries.isEmpty) return const SizedBox.shrink();
+                            if (mealEntries.isEmpty) {
+                              return _buildRepeatChipForEmptyMeal(
+                                  l, mealType, entries);
+                            }
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

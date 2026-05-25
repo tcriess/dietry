@@ -72,6 +72,22 @@
     }
   },
   "entryDeleted": "Entry deleted",
+  "repeatYesterdaysMeal": "Repeat yesterday's {meal}",
+  "@repeatYesterdaysMeal": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
+  "repeatTodaysMeal": "Repeat today's {meal}",
+  "@repeatTodaysMeal": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
   "myFoods": "My Foods",
   "addEntry": "Log Food",
   "mealTemplates": "Meal Templates",

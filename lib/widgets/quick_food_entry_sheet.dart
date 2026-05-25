@@ -13,6 +13,7 @@ import '../services/food_database_service.dart';
 import '../services/food_shortcuts_service.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/neon_database_service.dart';
+import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
@@ -113,6 +114,12 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   Map<String, FoodItem> _recentFoods = {};
   bool _loading = true;
   String? _addingId;
+
+  /// Cached per-user portion presets keyed by food id. Populated as foods
+  /// surface in the sheet (favourites, recent, search) and consulted by
+  /// [_pickFood] to override the food's generic serving size with the
+  /// user's typical portion.
+  final Map<String, UserFoodPref> _portionPrefs = {};
 
   /// Name of the most recently logged entry — drives the in-sheet "added"
   /// toast. Null while no toast is showing.
@@ -251,6 +258,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           _refreshMacroGapSuggestions();
         });
       }
+      await _prefetchPortionPrefs(uniqueFoodIds);
     } catch (_) {}
   }
 
@@ -366,7 +374,49 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       final foods =
           await FoodDatabaseService(widget.dbService).getFavouriteFoods();
       if (mounted) setState(() => _favouriteFoods = foods);
+      await _prefetchPortionPrefs(foods.map((f) => f.id));
     } catch (_) {}
+  }
+
+  /// Batch-loads portion presets for [foodIds] and merges them into the
+  /// in-memory cache. Already-cached ids are skipped, so repeated calls
+  /// (favourites + recent + search) don't re-query rows we already have.
+  Future<void> _prefetchPortionPrefs(Iterable<String> foodIds) async {
+    final missing = foodIds
+        .where((id) => id.isNotEmpty && !_portionPrefs.containsKey(id))
+        .toSet()
+        .toList();
+    if (missing.isEmpty) return;
+    final prefs = await UserFoodPrefsService(widget.dbService)
+        .getForFoodIds(missing);
+    if (!mounted || prefs.isEmpty) return;
+    setState(() => _portionPrefs.addAll(prefs));
+  }
+
+  /// Toggles the favourite flag for [food]. Optimistically flips the star in
+  /// search results; on success re-fetches the Favorites tab so its ordering
+  /// stays in sync with the database. Rolls back search highlight on failure.
+  Future<void> _toggleFavourite(FoodItem food) async {
+    final newValue = !food.isFavourite;
+    setState(() {
+      _searchResults = _searchResults
+          .map((f) =>
+              f.id == food.id ? f.copyWith(isFavourite: newValue) : f)
+          .toList();
+    });
+    try {
+      await FoodDatabaseService(widget.dbService)
+          .toggleFoodFavourite(food.id, isFavourite: newValue);
+      await _loadFavourites();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _searchResults = _searchResults
+            .map((f) =>
+                f.id == food.id ? f.copyWith(isFavourite: !newValue) : f)
+            .toList();
+      });
+    }
   }
 
   Future<void> _loadShortcuts() async {
@@ -381,6 +431,20 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     setState(() => _addingId = entry.id);
     try {
       await widget.onAdd(entry);
+
+      // Remember this portion for next time. Only foods that live in our
+      // food_database (foodId set) get a pref row — OFF/USDA hits and
+      // meal-template entries don't have a stable food id to key against.
+      final prefFoodId = entry.foodId;
+      if (prefFoodId != null && prefFoodId.isNotEmpty && !entry.isMeal) {
+        _portionPrefs[prefFoodId] =
+            UserFoodPref(amount: entry.amount, unit: entry.unit);
+        unawaited(UserFoodPrefsService(widget.dbService).upsert(
+          foodId: prefFoodId,
+          amount: entry.amount,
+          unit: entry.unit,
+        ));
+      }
 
       // Copy cloud micronutrients for database-backed foods (best-effort).
       // Needs the grams the entry represents; skipped when unknown.
@@ -468,6 +532,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         _searchResults = results;
         _searching = false;
       });
+      await _prefetchPortionPrefs(results.map((f) => f.id));
     } catch (_) {
       if (mounted) setState(() => _searching = false);
     }
@@ -569,12 +634,21 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   /// Opens the confirm dialog for a [food] from food_database (per-100g values),
   /// then logs it on confirm.
   Future<void> _pickFood(FoodItem food) async {
-    final defaultAmount = food.servingSize ?? 100.0;
+    // Prefer the user's remembered portion (last_amount + last_unit from
+    // user_food_prefs) when one exists for this food — falls back to the
+    // food's generic servingSize otherwise. The pref is stored as a flat
+    // amount + unit pair, so we only apply it when the unit matches what
+    // the confirm dialog can scale against (food's serving unit, 'g', or
+    // 'ml'); other units (named portions) are surfaced verbatim and we
+    // let _confirm do its scaling from the food's per-100g table.
+    final pref = _portionPrefs[food.id];
+    final defaultAmount = pref?.amount ?? food.servingSize ?? 100.0;
+    final defaultUnit = pref?.unit ?? food.servingUnit ?? 'g';
     final f = defaultAmount / 100;
     final confirmed = await _confirm(
       name: food.name,
       amount: defaultAmount,
-      unit: food.servingUnit ?? 'g',
+      unit: defaultUnit,
       calories: food.calories * f,
       protein: food.protein * f,
       fat: food.fat * f,
@@ -627,6 +701,105 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     final amountG =
         (recent.unit == 'g' || recent.unit == 'ml') ? recent.amount : null;
     await _addEntry(entry, amountG);
+  }
+
+  /// Single repeat suggestion for the currently selected meal-type chip,
+  /// or null when nothing applies. Prefers yesterday's same meal-type;
+  /// falls back to the leftover-pattern cross-meal hint when there's
+  /// nothing from yesterday at the same meal — "lunch ← yesterday's
+  /// dinner" and "dinner ← today's lunch". Capped at one to keep the
+  /// row from crowding the Recent list below.
+  ({String label, List<FoodEntry> sources})? _repeatSuggestion(
+      AppLocalizations l) {
+    final yesterday = widget.date.subtract(const Duration(days: 1));
+
+    List<FoodEntry> entriesFor(DateTime day, MealType mt) => _rawRecent
+        .where((e) =>
+            DateUtils.isSameDay(e.entryDate, day) && e.mealType == mt)
+        .toList();
+
+    final sameMeal = entriesFor(yesterday, _mealType);
+    if (sameMeal.isNotEmpty) {
+      return (
+        label: l.repeatYesterdaysMeal(_mealType.localizedName(l)),
+        sources: sameMeal,
+      );
+    }
+
+    if (_mealType == MealType.lunch) {
+      final ydDinner = entriesFor(yesterday, MealType.dinner);
+      if (ydDinner.isNotEmpty) {
+        return (
+          label: l.repeatYesterdaysMeal(MealType.dinner.localizedName(l)),
+          sources: ydDinner,
+        );
+      }
+    } else if (_mealType == MealType.dinner) {
+      final todayLunch = entriesFor(widget.date, MealType.lunch);
+      if (todayLunch.isNotEmpty) {
+        return (
+          label: l.repeatTodaysMeal(MealType.lunch.localizedName(l)),
+          sources: todayLunch,
+        );
+      }
+    }
+
+    return null;
+  }
+
+  /// Bulk-logs every source entry into [widget.date] under the current
+  /// meal-type. Calls [widget.onAdd] directly (bypassing the per-entry
+  /// snackbar path in [_addEntry]) so the user gets one combined toast at
+  /// the end instead of N stacked snackbars. [label] is shown in that
+  /// toast so the user knows which suggestion fired.
+  Future<void> _repeatMealFromSuggestion(
+      String label, List<FoodEntry> sources) async {
+    if (_addingId != null || sources.isEmpty) return;
+    setState(() => _addingId = 'repeat-meal');
+    try {
+      for (final src in sources) {
+        final entry = FoodEntry(
+          id: const Uuid().v4(),
+          userId: widget.dbService.userId!,
+          foodId: _nonEmptyFoodId(src.foodId),
+          mealTemplateId: src.mealTemplateId,
+          entryDate: widget.date,
+          mealType: _mealType,
+          name: src.name,
+          amount: src.amount,
+          unit: src.unit,
+          calories: src.calories,
+          protein: src.protein,
+          fat: src.fat,
+          carbs: src.carbs,
+          fiber: src.fiber,
+          sugar: src.sugar,
+          sodium: src.sodium,
+          saturatedFat: src.saturatedFat,
+          isLiquid: src.isLiquid,
+          amountMl: src.amountMl,
+          isMeal: src.isMeal,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await widget.onAdd(entry);
+        _consumedCalories += entry.calories;
+        _consumedProtein += entry.protein;
+        _consumedFat += entry.fat;
+        _consumedCarbs += entry.carbs;
+        _loggedThisSession.add(entry.name.toLowerCase().trim());
+      }
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$label · ${sources.length}'),
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        duration: const Duration(seconds: 2),
+      ));
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _addingId = null);
+    }
   }
 
   /// Opens the confirm dialog pre-filled from [entry] so the amount/meal can be
@@ -1005,11 +1178,15 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                 addingId: _addingId,
                 onTap: _instantAddRecent,
                 onLongPress: _adjustRecent,
+                suggestion:
+                    _repeatSuggestion(AppLocalizations.of(context)!),
+                onRepeatSuggestion: _repeatMealFromSuggestion,
               ),
               _FavouritesTab(
                 foods: _favouriteFoods,
                 addingId: _addingId,
                 onTap: _pickFood,
+                onToggleFavourite: _toggleFavourite,
               ),
               _ShortcutsTab(
                 shortcuts: _shortcuts,
@@ -1073,7 +1250,27 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.add_circle_outline, color: Colors.teal),
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        food.isFavourite ? Icons.star : Icons.star_border,
+                        color: food.isFavourite
+                            ? Colors.amber.shade600
+                            : Colors.grey.shade400,
+                        size: 22,
+                      ),
+                      onPressed: () => _toggleFavourite(food),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.add_circle_outline, color: Colors.teal),
+                  ],
+                ),
           onTap: isAdding ? null : () => _pickFood(food),
         );
       },
@@ -1502,24 +1699,42 @@ class _RecentTab extends StatelessWidget {
   /// Long press → open the confirm dialog to adjust amount/meal first.
   final void Function(FoodEntry) onLongPress;
 
+  /// Single repeat suggestion, or null when nothing applies for the
+  /// currently selected meal-type. Renders as one compact bar above
+  /// the orange recent-hint banner.
+  final ({String label, List<FoodEntry> sources})? suggestion;
+  final Future<void> Function(String label, List<FoodEntry> sources)
+      onRepeatSuggestion;
+
   const _RecentTab({
     required this.entries,
     required this.addingId,
     required this.onTap,
     required this.onLongPress,
+    required this.suggestion,
+    required this.onRepeatSuggestion,
   });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    if (entries.isEmpty) {
+    final s = suggestion;
+    if (entries.isEmpty && s == null) {
       return Center(
         child: Text(l.noRecentEntries,
             style: const TextStyle(color: Colors.grey)),
       );
     }
+    final isRepeating = addingId == 'repeat-meal';
     return Column(
       children: [
+        if (s != null)
+          _RepeatSuggestionRow(
+            label: s.label,
+            sources: s.sources,
+            isRepeating: isRepeating,
+            onTap: () => onRepeatSuggestion(s.label, s.sources),
+          ),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1575,17 +1790,91 @@ class _RecentTab extends StatelessWidget {
   }
 }
 
+// ── Repeat suggestion row ─────────────────────────────────────────────────────
+
+/// Compact one-line "Repeat …" bar pinned at the top of the Recent tab.
+/// Dense by design — the Recent list below is the primary surface, so this
+/// bar yields most of the vertical space. Theme-aware (secondaryContainer /
+/// onSecondaryContainer) so contrast holds in light and dark mode.
+class _RepeatSuggestionRow extends StatelessWidget {
+  final String label;
+  final List<FoodEntry> sources;
+  final bool isRepeating;
+  final VoidCallback onTap;
+
+  const _RepeatSuggestionRow({
+    required this.label,
+    required this.sources,
+    required this.isRepeating,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.secondaryContainer,
+      child: InkWell(
+        onTap: isRepeating ? null : onTap,
+        child: Container(
+          width: double.infinity,
+          padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom:
+                  BorderSide(color: cs.outlineVariant, width: 0.5),
+            ),
+          ),
+          child: Row(
+            children: [
+              isRepeating
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation(cs.onSecondaryContainer)))
+                  : Icon(Icons.replay,
+                      color: cs.onSecondaryContainer, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '$label · ${sources.length}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSecondaryContainer,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right,
+                  color: cs.onSecondaryContainer.withValues(alpha: 0.7),
+                  size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Favourites tab ────────────────────────────────────────────────────────────
 
 class _FavouritesTab extends StatelessWidget {
   final List<FoodItem> foods;
   final String? addingId;
   final void Function(FoodItem) onTap;
+  final void Function(FoodItem) onToggleFavourite;
 
   const _FavouritesTab({
     required this.foods,
     required this.addingId,
     required this.onTap,
+    required this.onToggleFavourite,
   });
 
   @override
@@ -1625,7 +1914,22 @@ class _FavouritesTab extends StatelessWidget {
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.add_circle_outline, color: Colors.teal),
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.star,
+                          color: Colors.amber.shade600, size: 22),
+                      onPressed: () => onToggleFavourite(food),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.add_circle_outline, color: Colors.teal),
+                  ],
+                ),
           onTap: isAdding ? null : () => onTap(food),
         );
       },

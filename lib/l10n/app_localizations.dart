@@ -454,6 +454,18 @@ abstract class AppLocalizations {
   /// **'Eintrag gelöscht'**
   String get entryDeleted;
 
+  /// No description provided for @repeatYesterdaysMeal.
+  ///
+  /// In de, this message translates to:
+  /// **'{meal} von gestern wiederholen'**
+  String repeatYesterdaysMeal(String meal);
+
+  /// No description provided for @repeatTodaysMeal.
+  ///
+  /// In de, this message translates to:
+  /// **'{meal} von heute wiederholen'**
+  String repeatTodaysMeal(String meal);
+
   /// No description provided for @myFoods.
   ///
   /// In de, this message translates to:

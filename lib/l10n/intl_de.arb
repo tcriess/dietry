@@ -72,6 +72,22 @@
     }
   },
   "entryDeleted": "Eintrag gelöscht",
+  "repeatYesterdaysMeal": "{meal} von gestern wiederholen",
+  "@repeatYesterdaysMeal": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
+  "repeatTodaysMeal": "{meal} von heute wiederholen",
+  "@repeatTodaysMeal": {
+    "placeholders": {
+      "meal": {
+        "type": "String"
+      }
+    }
+  },
   "myFoods": "Meine Lebensmittel",
   "addEntry": "Eintragen",
   "mealTemplates": "Mahlzeiten-Vorlagen",
