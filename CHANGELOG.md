@@ -27,6 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] — 2026-05-25
+
+### Added
+- **Add-food FAB on the Overview tab** — log a meal without first switching to the Entries tab.
+- **One-tap "Repeat yesterday's meal"** — compact bar at the top of the Recent tab in the quick-add sheet, plus a chip on empty meal groups in the Entries list. Falls back to a leftover-pattern hint (lunch ← yesterday's dinner, dinner ← today's lunch) when the same meal-type has nothing from yesterday.
+- **Favorite toggle in the quick-add sheet** — star icon on search-results and favorites rows to add/remove favorites without leaving the sheet.
+- **Per-food portion memory** — the quick-add sheet now pre-fills your last amount and unit for each food instead of the generic serving size. New `user_food_prefs` table (per-user, per-food) so it also works for public/shared foods.
+- **Meal templates (Cloud) remember the last portion count** — the Portions input in the log dialog defaults to your typical multiplier (e.g. always 1.5 ×) instead of always 1.
+
+### Changed
+- Pinned repeat-meal bar in the quick sheet uses theme-aware Material 3 colors and a compact single-line layout so the Recent list keeps most of the vertical space.
+
+---
+
 ## [1.0.0] — 2026-04-04
 
 ### First Public Release ✨
