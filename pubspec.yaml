@@ -80,7 +80,9 @@ dependencies:
   idb_shim: ^2.8.5+2
 
   # Barcode scanner (Android, iOS, macOS, web; Linux: manual text-entry fallback)
-  mobile_scanner: ^6.0.0
+  # 7.x uses Apple's Vision framework on iOS/macOS (no GoogleMLKit), avoiding a
+  # MLKitVision version clash with google_mlkit_text_recognition (label OCR).
+  mobile_scanner: ^7.2.0
 
 dev_dependencies:
   flutter_test:
