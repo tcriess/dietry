@@ -642,9 +642,28 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     // 'ml'); other units (named portions) are surfaced verbatim and we
     // let _confirm do its scaling from the food's per-100g table.
     final pref = _portionPrefs[food.id];
-    final defaultAmount = pref?.amount ?? food.servingSize ?? 100.0;
-    final defaultUnit = pref?.unit ?? food.servingUnit ?? 'g';
-    final f = defaultAmount / 100;
+    // No remembered portion → default to the food's primary (first) named
+    // portion when it has one, so e.g. "1 slice" is preselected instead of
+    // a raw gram serving size. Falls back to servingSize, then 100 g.
+    final primaryPortion =
+        food.portions.isNotEmpty ? food.portions.first : null;
+    final double defaultAmount;
+    final String defaultUnit;
+    final double defaultGrams; // grams the default selection represents
+    if (pref != null) {
+      defaultAmount = pref.amount;
+      defaultUnit = pref.unit;
+      defaultGrams = defaultAmount;
+    } else if (primaryPortion != null) {
+      defaultAmount = 1;
+      defaultUnit = primaryPortion.name;
+      defaultGrams = primaryPortion.amountG;
+    } else {
+      defaultAmount = food.servingSize ?? 100.0;
+      defaultUnit = food.servingUnit ?? 'g';
+      defaultGrams = defaultAmount;
+    }
+    final f = defaultGrams / 100;
     final confirmed = await _confirm(
       name: food.name,
       amount: defaultAmount,
@@ -660,7 +679,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       foodId: _nonEmptyFoodId(food.id),
       scaleByAmount: true,
       isLiquid: food.isLiquid,
-      amountMl: food.isLiquid ? defaultAmount : null,
+      amountMl: food.isLiquid ? defaultGrams : null,
       isMeal: false,
       food: food,
     );
@@ -1181,16 +1200,19 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                 suggestion:
                     _repeatSuggestion(AppLocalizations.of(context)!),
                 onRepeatSuggestion: _repeatMealFromSuggestion,
+                macroOnly: widget.dailyGoal?.macroOnly == true,
               ),
               _FavouritesTab(
                 foods: _favouriteFoods,
                 addingId: _addingId,
                 onTap: _pickFood,
                 onToggleFavourite: _toggleFavourite,
+                macroOnly: widget.dailyGoal?.macroOnly == true,
               ),
               _ShortcutsTab(
                 shortcuts: _shortcuts,
                 addingId: _addingId,
+                macroOnly: widget.dailyGoal?.macroOnly == true,
                 onTap: (sc) async {
                   final entry = _entryFromShortcut(sc);
                   // Grams known only for g/ml shortcuts; portion
@@ -1242,7 +1264,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           title: Text(food.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
             _macroSummary(l, l.per100g, food.calories, food.protein,
-                food.fat, food.carbs),
+                food.fat, food.carbs,
+                macroOnly: widget.dailyGoal?.macroOnly == true),
             style: const TextStyle(fontSize: 11),
           ),
           trailing: isAdding
@@ -1280,12 +1303,16 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
 
 /// Compact one-line macro summary, e.g. "100 g · 250 kcal · P12 F8 K30".
 /// [base] is an already-formatted prefix — a serving size or "per 100 g".
+/// When [macroOnly] is true the kcal segment is dropped so calorie-free
+/// tracking stays calorie-free on the logging surface.
 String _macroSummary(AppLocalizations l, String base, double kcal,
-    double protein, double fat, double carbs) {
-  return '$base · ${kcal.toStringAsFixed(0)} kcal · '
-      '${l.macroProteinShort}${protein.toStringAsFixed(0)} '
+    double protein, double fat, double carbs,
+    {bool macroOnly = false}) {
+  final macros = '${l.macroProteinShort}${protein.toStringAsFixed(0)} '
       '${l.macroFatShort}${fat.toStringAsFixed(0)} '
       '${l.macroCarbsShort}${carbs.toStringAsFixed(0)}';
+  if (macroOnly) return '$base · $macros';
+  return '$base · ${kcal.toStringAsFixed(0)} kcal · $macros';
 }
 
 // ── Recent ranking ────────────────────────────────────────────────────────────
@@ -1706,6 +1733,9 @@ class _RecentTab extends StatelessWidget {
   final Future<void> Function(String label, List<FoodEntry> sources)
       onRepeatSuggestion;
 
+  /// Hide the kcal segment in macro summaries when in macro-only mode.
+  final bool macroOnly;
+
   const _RecentTab({
     required this.entries,
     required this.addingId,
@@ -1713,6 +1743,7 @@ class _RecentTab extends StatelessWidget {
     required this.onLongPress,
     required this.suggestion,
     required this.onRepeatSuggestion,
+    this.macroOnly = false,
   });
 
   @override
@@ -1769,7 +1800,7 @@ class _RecentTab extends StatelessWidget {
                 title: Text(e.name, style: const TextStyle(fontSize: 14)),
                 subtitle: Text(
                   _macroSummary(l, amountStr, e.calories, e.protein,
-                      e.fat, e.carbs),
+                      e.fat, e.carbs, macroOnly: macroOnly),
                   style: const TextStyle(fontSize: 11),
                 ),
                 trailing: isAdding
@@ -1869,12 +1900,14 @@ class _FavouritesTab extends StatelessWidget {
   final String? addingId;
   final void Function(FoodItem) onTap;
   final void Function(FoodItem) onToggleFavourite;
+  final bool macroOnly;
 
   const _FavouritesTab({
     required this.foods,
     required this.addingId,
     required this.onTap,
     required this.onToggleFavourite,
+    this.macroOnly = false,
   });
 
   @override
@@ -1906,7 +1939,7 @@ class _FavouritesTab extends StatelessWidget {
           title: Text(food.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
             _macroSummary(l, l.per100g, food.calories, food.protein,
-                food.fat, food.carbs),
+                food.fat, food.carbs, macroOnly: macroOnly),
             style: const TextStyle(fontSize: 11),
           ),
           trailing: isAdding
@@ -1944,12 +1977,14 @@ class _ShortcutsTab extends StatelessWidget {
   final String? addingId;
   final void Function(FoodShortcut) onTap;
   final void Function(FoodShortcut) onDelete;
+  final bool macroOnly;
 
   const _ShortcutsTab({
     required this.shortcuts,
     required this.addingId,
     required this.onTap,
     required this.onDelete,
+    this.macroOnly = false,
   });
 
   @override
@@ -1992,7 +2027,8 @@ class _ShortcutsTab extends StatelessWidget {
             title: Text(sc.label, style: const TextStyle(fontSize: 14)),
             subtitle: Text(
               _macroSummary(l, '${sc.amount.toStringAsFixed(0)} ${sc.unit}',
-                  sc.calories, sc.protein, sc.fat, sc.carbs),
+                  sc.calories, sc.protein, sc.fat, sc.carbs,
+                  macroOnly: macroOnly),
               style: const TextStyle(fontSize: 11),
             ),
             trailing: isAdding
