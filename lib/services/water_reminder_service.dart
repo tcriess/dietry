@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'tz_helper.dart';
+import 'reminder_strings.dart';
 import '../main_web_imports_web.dart'
     if (dart.library.io) '../main_web_imports.dart' as html;
 
@@ -207,8 +208,8 @@ class WaterReminderService {
   static Future<void> _fireReminder() async {
     if (!_shouldNotify()) return;
 
-    const title = '💧 Zeit zum Trinken!';
-    const body = 'Denk daran, regelmäßig zu trinken.';
+    final title = ReminderStrings.waterTitle;
+    final body = ReminderStrings.waterBody;
 
     if (kIsWeb) {
       // Web: Browser-Notification
@@ -243,8 +244,8 @@ class WaterReminderService {
 
       await _plugin.zonedSchedule(
         id: _ids[i],
-        title: '💧 Zeit zum Trinken!',
-        body: 'Denk daran, regelmäßig zu trinken.',
+        title: ReminderStrings.waterTitle,
+        body: ReminderStrings.waterBody,
         scheduledDate: scheduled,
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(

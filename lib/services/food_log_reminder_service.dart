@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'tz_helper.dart';
+import 'reminder_strings.dart';
 import '../main_web_imports_web.dart'
     if (dart.library.io) '../main_web_imports.dart' as html;
 
@@ -28,9 +29,6 @@ class FoodLogReminderService {
   static const _channelName = 'Essens-Erinnerungen';
   static const _channelDesc =
       'Erinnerung, das Essen einzutragen, falls bis nachmittags nichts geloggt wurde';
-
-  static const _title = '🍽️ Schon etwas gegessen?';
-  static const _body = 'Vergiss nicht, deine Mahlzeiten einzutragen.';
 
   static const _id = 210;
   static const _reminderHour = 15;
@@ -143,9 +141,10 @@ class FoodLogReminderService {
   static Future<void> _fireReminder() async {
     if (_hasLoggedToday()) return; // already logged → no nudge
     if (kIsWeb) {
-      html.showBrowserNotification(_title, _body);
+      html.showBrowserNotification(
+          ReminderStrings.foodTitle, ReminderStrings.foodBody);
     } else if (!_isAndroid) {
-      onInAppReminder?.call(_title, _body);
+      onInAppReminder?.call(ReminderStrings.foodTitle, ReminderStrings.foodBody);
     }
     // Android: handled by zonedSchedule.
   }
@@ -170,8 +169,8 @@ class FoodLogReminderService {
 
     await _plugin.zonedSchedule(
       id: _id,
-      title: _title,
-      body: _body,
+      title: ReminderStrings.foodTitle,
+      body: ReminderStrings.foodBody,
       scheduledDate: scheduled,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
