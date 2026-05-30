@@ -1026,9 +1026,9 @@ class LocalDataService {
     if (kIsWeb || _db == null) return [];
 
     try {
-      final maps = await _db!.query('water_intake', orderBy: 'intake_date ASC');
+      final maps = await _db!.query('water_intake', orderBy: 'date ASC');
       return maps.map((map) => {
-        'date': DateTime.parse(map['intake_date'] as String),
+        'date': DateTime.parse(map['date'] as String),
         'amount': map['amount_ml'] as int,
       }).toList();
     } catch (e) {
@@ -1043,13 +1043,9 @@ class LocalDataService {
     if (kIsWeb || _db == null) return [];
 
     try {
-      final maps = await _db!.query(
-        'cheat_days',
-        where: 'is_cheat_day = ?',
-        whereArgs: [1],
-        orderBy: 'cheat_date ASC',
-      );
-      return maps.map((map) => DateTime.parse(map['cheat_date'] as String)).toList();
+      // Every row in cheat_days represents a cheat day (no boolean flag column).
+      final maps = await _db!.query('cheat_days', orderBy: 'date ASC');
+      return maps.map((map) => DateTime.parse(map['date'] as String)).toList();
     } catch (e) {
       appLogger.w('⚠️ Error getting all cheat days: $e');
       return [];
