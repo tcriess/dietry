@@ -1,3 +1,4 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
 
 // Visible iOS app name (CFBundleDisplayName). CI workflows override this
