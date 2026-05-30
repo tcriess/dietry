@@ -1437,6 +1437,46 @@ class AppLocalizationsDe extends AppLocalizations {
   String get filterByTag => 'Nach Tag filtern';
 
   @override
+  String get manageTags => 'Tags verwalten';
+
+  @override
+  String get noTagsCreated => 'Du hast noch keine Tags erstellt.';
+
+  @override
+  String tagUsageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Auf $count Lebensmitteln',
+      one: 'Auf 1 Lebensmittel',
+      zero: 'Auf keinem Lebensmittel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get deleteTagTitle => 'Tag löschen?';
+
+  @override
+  String deleteTagConfirm(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '\"$name\" wird endgültig gelöscht und von $count Lebensmitteln entfernt.',
+      one: '\"$name\" wird endgültig gelöscht und von 1 Lebensmittel entfernt.',
+      zero: '\"$name\" wird endgültig gelöscht.',
+    );
+    return '$_temp0 Dies kann nicht rückgängig gemacht werden.';
+  }
+
+  @override
+  String get tagDeleted => 'Tag gelöscht';
+
+  @override
+  String get tagDeleteFailed => 'Tag konnte nicht gelöscht werden';
+
+  @override
   String get deleteGuestDataTitle => 'Gast-Daten löschen';
 
   @override

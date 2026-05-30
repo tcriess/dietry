@@ -1446,6 +1446,46 @@ class AppLocalizationsEs extends AppLocalizations {
   String get filterByTag => 'Filtrar por etiqueta';
 
   @override
+  String get manageTags => 'Gestionar etiquetas';
+
+  @override
+  String get noTagsCreated => 'Aún no has creado ninguna etiqueta.';
+
+  @override
+  String tagUsageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Usada en $count alimentos',
+      one: 'Usada en 1 alimento',
+      zero: 'No usada en ningún alimento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get deleteTagTitle => '¿Eliminar etiqueta?';
+
+  @override
+  String deleteTagConfirm(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '\"$name\" se eliminará permanentemente y se quitará de $count alimentos.',
+      one: '\"$name\" se eliminará permanentemente y se quitará de 1 alimento.',
+      zero: '\"$name\" se eliminará permanentemente.',
+    );
+    return '$_temp0 Esta acción no se puede deshacer.';
+  }
+
+  @override
+  String get tagDeleted => 'Etiqueta eliminada';
+
+  @override
+  String get tagDeleteFailed => 'No se pudo eliminar la etiqueta';
+
+  @override
   String get deleteGuestDataTitle => 'Eliminar datos de invitado';
 
   @override

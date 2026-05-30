@@ -2716,6 +2716,48 @@ abstract class AppLocalizations {
   /// **'Nach Tag filtern'**
   String get filterByTag;
 
+  /// No description provided for @manageTags.
+  ///
+  /// In de, this message translates to:
+  /// **'Tags verwalten'**
+  String get manageTags;
+
+  /// No description provided for @noTagsCreated.
+  ///
+  /// In de, this message translates to:
+  /// **'Du hast noch keine Tags erstellt.'**
+  String get noTagsCreated;
+
+  /// No description provided for @tagUsageCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{Auf keinem Lebensmittel} =1{Auf 1 Lebensmittel} other{Auf {count} Lebensmitteln}}'**
+  String tagUsageCount(int count);
+
+  /// No description provided for @deleteTagTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag löschen?'**
+  String get deleteTagTitle;
+
+  /// No description provided for @deleteTagConfirm.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, =0{\"{name}\" wird endgültig gelöscht.} =1{\"{name}\" wird endgültig gelöscht und von 1 Lebensmittel entfernt.} other{\"{name}\" wird endgültig gelöscht und von {count} Lebensmitteln entfernt.}} Dies kann nicht rückgängig gemacht werden.'**
+  String deleteTagConfirm(String name, int count);
+
+  /// No description provided for @tagDeleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag gelöscht'**
+  String get tagDeleted;
+
+  /// No description provided for @tagDeleteFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag konnte nicht gelöscht werden'**
+  String get tagDeleteFailed;
+
   /// No description provided for @deleteGuestDataTitle.
   ///
   /// In de, this message translates to:

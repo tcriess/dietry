@@ -222,4 +222,85 @@ class TagService {
       return [];
     }
   }
+
+  /// Hole alle vom aktuellen User erstellten Tags inkl. (globaler) Nutzungsanzahl.
+  ///
+  /// Ruft die RPC `get_my_tags()` auf. Nur Tags, die der User erstellt hat
+  /// (und damit löschen darf), werden zurückgegeben.
+  Future<List<ManagedTag>> getMyTags() async {
+    try {
+      appLogger.d('🏷️ Hole eigene Tags');
+
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) {
+        appLogger.w('⚠️ Token ungültig');
+        return [];
+      }
+
+      final url = '${NeonDatabaseService.dataApiUrl}/rpc/get_my_tags';
+      final response = await _db.dioClient.get(url);
+
+      if (response.statusCode != 200) {
+        appLogger.e('❌ RPC get_my_tags failed: ${response.statusCode}');
+        return [];
+      }
+
+      final data = response.data;
+      if (data is! List) {
+        appLogger.w('⚠️ Expected List, got ${data.runtimeType}');
+        return [];
+      }
+
+      final tags = data
+          .map((json) => ManagedTag.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+      appLogger.i('✅ ${tags.length} eigene Tags gefunden');
+      return tags;
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Abrufen eigener Tags: $e');
+      return [];
+    }
+  }
+
+  /// Lösche einen Tag global aus dem `tags`-Pool.
+  ///
+  /// Nur der Ersteller darf löschen (RLS). Das Löschen entfernt den Tag per
+  /// ON DELETE CASCADE aus allen `user_food_tags`-Zuordnungen, sodass er für
+  /// alle User aus Vorschlägen und Filtern verschwindet.
+  Future<bool> deleteTag(String tagId) async {
+    try {
+      appLogger.d('🗑️ Lösche Tag $tagId');
+
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) {
+        appLogger.w('⚠️ Token ungültig');
+        return false;
+      }
+
+      await _db.dioClient.delete(
+        '/tags?id=eq.$tagId',
+        options: Options(headers: {'Prefer': 'return=minimal'}),
+      );
+
+      appLogger.i('✅ Tag gelöscht');
+      return true;
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Löschen von Tag: $e');
+      return false;
+    }
+  }
+}
+
+/// A tag owned by the current user, with its global usage count.
+class ManagedTag {
+  final Tag tag;
+  final int usageCount;
+
+  const ManagedTag({required this.tag, required this.usageCount});
+
+  factory ManagedTag.fromJson(Map<String, dynamic> json) => ManagedTag(
+        tag: Tag.fromJson(json),
+        usageCount: (json['usage_count'] as num?)?.toInt() ?? 0,
+      );
 }

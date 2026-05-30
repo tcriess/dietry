@@ -20,6 +20,7 @@ import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
+import 'tag_management_screen.dart';
 // food_detail_screen.dart removed — detail nav replaced by log-food action;
 
 /// Screen zur Verwaltung eigener Lebensmittel in der Datenbank.
@@ -363,6 +364,21 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                 ]),
               ),
             ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.sell_outlined),
+            tooltip: l.manageTags,
+            onPressed: () async {
+              final changed = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      TagManagementScreen(dbService: widget.dbService),
+                ),
+              );
+              if (changed == true) {
+                _loadAvailableTags();
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

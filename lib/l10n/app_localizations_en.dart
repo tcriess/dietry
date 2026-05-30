@@ -1431,6 +1431,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterByTag => 'Filter by tag';
 
   @override
+  String get manageTags => 'Manage tags';
+
+  @override
+  String get noTagsCreated => 'You haven\'t created any tags yet.';
+
+  @override
+  String tagUsageCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Used on $count foods',
+      one: 'Used on 1 food',
+      zero: 'Not used on any food',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get deleteTagTitle => 'Delete tag?';
+
+  @override
+  String deleteTagConfirm(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '\"$name\" will be permanently deleted and removed from $count foods.',
+      one: '\"$name\" will be permanently deleted and removed from 1 food.',
+      zero: '\"$name\" will be permanently deleted.',
+    );
+    return '$_temp0 This cannot be undone.';
+  }
+
+  @override
+  String get tagDeleted => 'Tag deleted';
+
+  @override
+  String get tagDeleteFailed => 'Could not delete tag';
+
+  @override
   String get deleteGuestDataTitle => 'Delete Guest Data';
 
   @override
