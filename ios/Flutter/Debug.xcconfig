@@ -1,0 +1,10 @@
+#include "Generated.xcconfig"
+
+// Visible iOS app name (CFBundleDisplayName). CI workflows override this
+// based on edition+environment; local debug builds get the "Dev" marker.
+APP_DISPLAY_NAME = Dietry Dev
+
+// Bundle identifier per edition. Defaults to the Community Edition id; the
+// Cloud CI appends `DIETRY_BUNDLE_ID = de.dietry.app` before building so the
+// later assignment wins (mirrors the Android edition->appId logic).
+DIETRY_BUNDLE_ID = com.sws.dietry

@@ -65,6 +65,5 @@ dietry-*.apk
 dietry-*.aab
 dietry-*.tar.bz2
 
-# not ready yet
+# macOS deferred; iOS is now tracked and under active development
 /macos
-/ios
