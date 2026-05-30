@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+import 'tz_helper.dart';
 import '../main_web_imports_web.dart'
     if (dart.library.io) '../main_web_imports.dart' as html;
 
@@ -65,7 +65,7 @@ class WaterReminderService {
     if (!isSupported) return;
 
     if (_isAndroid) {
-      tz_data.initializeTimeZones();
+      await ensureLocalTimezone();
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
       await _plugin.initialize(

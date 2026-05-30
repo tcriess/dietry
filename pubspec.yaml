@@ -59,6 +59,9 @@ dependencies:
   dart_jsonwebtoken: ^3.4.0
   flutter_local_notifications: ^21.0.0
   timezone: ^0.11.0
+  # Resolves the device's IANA timezone so scheduled reminders use local time
+  # (tz.setLocalLocation); without it tz.local defaults to UTC.
+  flutter_timezone: ^4.1.1
   logger: ^2.0.0
 
   shared_preferences: ^2.3.5
