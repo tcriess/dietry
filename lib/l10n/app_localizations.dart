@@ -2212,6 +2212,18 @@ abstract class AppLocalizations {
   /// **'Alle 4 Stunden an Wasser trinken erinnern'**
   String get waterReminderSubtitle;
 
+  /// No description provided for @foodLogReminderTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Essens-Erinnerung'**
+  String get foodLogReminderTitle;
+
+  /// No description provided for @foodLogReminderSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Nachmittags erinnern, falls noch nichts eingetragen wurde'**
+  String get foodLogReminderSubtitle;
+
   /// No description provided for @waterFromFood.
   ///
   /// In de, this message translates to:

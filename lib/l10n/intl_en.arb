@@ -529,6 +529,8 @@
   "waterGoalFieldHint": "Recommended: approx. 35 ml per kg body weight",
   "waterReminderTitle": "Drink reminders",
   "waterReminderSubtitle": "Remind to drink water every 4 hours",
+  "foodLogReminderTitle": "Meal log reminder",
+  "foodLogReminderSubtitle": "Remind in the afternoon if nothing has been logged yet",
   "waterFromFood": "from food",
   "waterManual": "manual",
   "cheatDayTitle": "Cheat Day",

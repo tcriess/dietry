@@ -1174,6 +1174,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get waterReminderSubtitle => 'Recordar beber agua cada 4 horas';
 
   @override
+  String get foodLogReminderTitle => 'Recordatorio de comidas';
+
+  @override
+  String get foodLogReminderSubtitle =>
+      'Avisar por la tarde si aún no se ha registrado nada';
+
+  @override
   String get waterFromFood => 'de alimentos';
 
   @override

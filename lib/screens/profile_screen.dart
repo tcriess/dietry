@@ -12,6 +12,7 @@ import '../services/health_connect_service.dart';
 import '../services/health_connect_prefs.dart';
 import '../services/account_service.dart';
 import '../services/water_reminder_service.dart';
+import '../services/food_log_reminder_service.dart';
 import '../services/app_logger.dart';
 import '../app_config.dart';
 import '../app_features.dart';
@@ -48,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   _MeasurementRange _selectedRange = _MeasurementRange.months3;
   bool _waterReminderEnabled = false;
+  bool _foodLogReminderEnabled = false;
   bool _hcImportEnabled = false;
 
   @override
@@ -87,6 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         goalService.getGoalForDate(DateTime.now()),
       ]);
       final reminderEnabled = await WaterReminderService.isEnabled();
+      final foodLogReminderEnabled = await FoodLogReminderService.isEnabled();
       final hcEnabled = await HealthConnectPrefs.isEnabled();
 
       if (mounted) {
@@ -96,6 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _allMeasurements = results[2] as List<UserBodyMeasurement>;
           _goal = results[3] as NutritionGoal?;
           _waterReminderEnabled = reminderEnabled;
+          _foodLogReminderEnabled = foodLogReminderEnabled;
           _hcImportEnabled = hcEnabled;
           _isLoading = false;
         });
@@ -492,6 +496,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildWaterGoalRow(l),
                           if (WaterReminderService.isSupported)
                             _buildWaterReminderRow(l),
+                          if (FoodLogReminderService.isSupported)
+                            _buildFoodLogReminderRow(l),
                         ],
                       ],
                     ),
@@ -977,6 +983,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // On error, revert to previous state
                 if (mounted) {
                   setState(() => _waterReminderEnabled = !value);
+                }
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoodLogReminderRow(AppLocalizations l) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            _foodLogReminderEnabled
+                ? Icons.notifications_active
+                : Icons.notifications_off_outlined,
+            color: _foodLogReminderEnabled ? Colors.orange : Colors.grey,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.foodLogReminderTitle,
+                    style: Theme.of(context).textTheme.bodyLarge),
+                Text(l.foodLogReminderSubtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                        )),
+              ],
+            ),
+          ),
+          Switch(
+            value: _foodLogReminderEnabled,
+            activeThumbColor: Colors.orange,
+            onChanged: (value) {
+              setState(() => _foodLogReminderEnabled = value);
+              FoodLogReminderService.setEnabled(value).then((actual) {
+                if (mounted && actual != value) {
+                  setState(() => _foodLogReminderEnabled = actual);
+                }
+              }).catchError((e) {
+                if (mounted) {
+                  setState(() => _foodLogReminderEnabled = !value);
                 }
               });
             },

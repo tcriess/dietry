@@ -529,6 +529,8 @@
   "waterGoalFieldHint": "Recomendación: aprox. 35 ml por kg de peso corporal",
   "waterReminderTitle": "Recordatorios de agua",
   "waterReminderSubtitle": "Recordar beber agua cada 4 horas",
+  "foodLogReminderTitle": "Recordatorio de comidas",
+  "foodLogReminderSubtitle": "Avisar por la tarde si aún no se ha registrado nada",
   "waterFromFood": "de alimentos",
   "waterManual": "manual",
   "cheatDayTitle": "Día Trampa",

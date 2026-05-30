@@ -35,6 +35,7 @@ import 'services/data_store.dart';
 import 'services/sync_service.dart';
 import 'services/water_intake_service.dart';
 import 'services/water_reminder_service.dart';
+import 'services/food_log_reminder_service.dart';
 import 'services/cheat_day_service.dart';
 import 'services/guest_mode_service.dart';
 import 'services/guest_migration_service.dart';
@@ -108,6 +109,12 @@ void main() async {
     await WaterReminderService.initialize();
   } catch (e) {
     appLogger.d('⚠️ WaterReminderService init failed: $e');
+  }
+
+  try {
+    await FoodLogReminderService.initialize();
+  } catch (e) {
+    appLogger.d('⚠️ FoodLogReminderService init failed: $e');
   }
 
   runApp(const AuthApp());
@@ -2411,6 +2418,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   // re-scheduling notifications when an unrelated store change fires.
   int? _lastReminderIntakeMl;
   int? _lastReminderGoalMl;
+  // Whether the loaded day had any food entry at the last reminder refresh —
+  // used to re-arm the food-log reminder only when this flips.
+  bool? _lastHadFoodEntry;
 
   @override
   void initState() {
@@ -2440,6 +2450,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           _store.waterIntakeMl + _store.liquidFoodIntakeMl,
           _store.goal?.waterGoalMl ?? 2000
         );
+    FoodLogReminderService.onInAppReminder = _showFoodLogReminder;
+    FoodLogReminderService.getHasLoggedToday =
+        () => _store.foodEntries.isNotEmpty;
   }
 
   @override
@@ -2449,6 +2462,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _store.removeListener(_onStoreChanged);
     WaterReminderService.onInAppReminder = null;
     WaterReminderService.getWaterStatus = null;
+    FoodLogReminderService.onInAppReminder = null;
+    FoodLogReminderService.getHasLoggedToday = null;
     super.dispose();
   }
 
@@ -2459,6 +2474,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       // Re-evaluate today's water reminders — date may have rolled over while
       // the app was backgrounded.
       WaterReminderService.refreshSchedule();
+      FoodLogReminderService.refreshSchedule();
     }
   }
 
@@ -2528,6 +2544,22 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
               // Immer zum heutigen Tag hinzufügen, unabhängig vom angezeigten Tag.
               _addWaterToday(200);
             }),
+      ),
+    );
+  }
+
+  void _showFoodLogReminder(String title, String body) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Text('🍽️', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(body)),
+          ],
+        ),
+        duration: const Duration(seconds: 6),
       ),
     );
   }
@@ -2743,6 +2775,14 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       _lastReminderIntakeMl = currentIntake;
       _lastReminderGoalMl = currentGoal;
       WaterReminderService.refreshSchedule();
+    }
+
+    // Re-arm the food-log reminder when today gains/loses its first entry, so
+    // logging before 15:00 silently pushes the nudge to tomorrow.
+    final hasFoodEntry = _store.foodEntries.isNotEmpty;
+    if (hasFoodEntry != _lastHadFoodEntry) {
+      _lastHadFoodEntry = hasFoodEntry;
+      FoodLogReminderService.refreshSchedule();
     }
 
     setState(() {});

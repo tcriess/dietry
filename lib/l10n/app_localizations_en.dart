@@ -1160,6 +1160,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waterReminderSubtitle => 'Remind to drink water every 4 hours';
 
   @override
+  String get foodLogReminderTitle => 'Meal log reminder';
+
+  @override
+  String get foodLogReminderSubtitle =>
+      'Remind in the afternoon if nothing has been logged yet';
+
+  @override
   String get waterFromFood => 'from food';
 
   @override
