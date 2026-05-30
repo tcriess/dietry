@@ -1,6 +1,6 @@
-# Minimum iOS deployment target. Raised to 15.5 because the premium
-# nutrition-label OCR (google_mlkit_text_recognition -> GoogleMLKit) requires
-# it. Keep in sync with IPHONEOS_DEPLOYMENT_TARGET in the Xcode project.
+# Minimum iOS deployment target. 15.5 because the premium nutrition-label OCR
+# (google_mlkit_text_recognition -> GoogleMLKit) requires it. Keep in sync with
+# IPHONEOS_DEPLOYMENT_TARGET in the Xcode project.
 platform :ios, '15.5'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.

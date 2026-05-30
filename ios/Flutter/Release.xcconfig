@@ -1,12 +1,1 @@
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
-
-// Default visible iOS app name (CFBundleDisplayName). CI workflows append
-// an edition+environment-specific override to this file before `flutter
-// build ipa`; later xcconfig assignments win, so the override takes effect.
-APP_DISPLAY_NAME = Dietry
-
-// Bundle identifier per edition. Defaults to the Community Edition id; the
-// Cloud CI appends `DIETRY_BUNDLE_ID = de.dietry.app` before building so the
-// later assignment wins (mirrors the Android edition->appId logic).
-DIETRY_BUNDLE_ID = com.sws.dietry
