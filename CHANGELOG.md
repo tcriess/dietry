@@ -27,6 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] — 2026-05-30
+
+### Added
+- **Tag management screen** — review the tags you've created and delete them; deleting a tag removes it from every food it was applied to.
+- **Meal-log reminder (opt-in)** — an optional daily nudge at 15:00 when you haven't logged any food yet that day. Enable it in the profile screen, next to the water reminder.
+
+### Changed
+- **Quick-add sheet** — now defaults to a food's primary (named) portion instead of a raw gram serving size, and hides calories when macro-only mode is on.
+- **Reminder notifications are localized** (German, English, Spanish) instead of always German.
+
+### Fixed
+- **Reminders fire at the correct local time** — the scheduler used UTC, so water reminders could arrive in the middle of the night; it now uses the device's timezone.
+- **Guest → account migration no longer loses data** — water-intake history and cheat days were silently dropped when converting a guest account to a real one; they now migrate correctly.
+
+---
+
 ## [1.1.3] — 2026-05-25
 
 ### Added
