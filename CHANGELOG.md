@@ -27,6 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.5] — 2026-06-02
+
+### Added
+- **Onboarding tutorial** — new users (guest or logged-in) get a one-time spotlight tour right after creating their first nutrition goal, highlighting the main areas of the app. It can be replayed any time from the profile screen.
+
+### Fixed
+- **"Repeat meal"** now logs the copied entries under the meal you tapped. Repeating yesterday's dinner into an empty lunch slot (or today's lunch into dinner) previously kept the original meal type; the copies now adopt the target meal.
+
+---
+
 ## [1.1.4] — 2026-05-30
 
 ### Added
