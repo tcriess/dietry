@@ -97,8 +97,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   /// Bulk-copies [sourceEntries] into [widget.selectedDay]. Each entry is
-  /// re-created with a fresh id and today's date; everything else (name,
-  /// macros, foodId, amount, unit, mealType) is preserved.
+  /// re-created with a fresh id, today's date and the [mealType] of the target
+  /// section (so repeating yesterday's dinner into the lunch slot tags the
+  /// copies as lunch); everything else (name, macros, foodId, amount, unit) is
+  /// preserved.
   Future<void> _repeatMeal(
       MealType mealType, List<FoodEntry> sourceEntries) async {
     if (_repeatingMeal || sourceEntries.isEmpty) return;
@@ -110,6 +112,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         final copy = src.copyWith(
           id: '',
           entryDate: widget.selectedDay,
+          mealType: mealType,
           createdAt: now,
           updatedAt: now,
         );
