@@ -3111,6 +3111,96 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Gewicht setzen für kcal-Schätzung'**
   String get noKcalEstimate;
+
+  /// No description provided for @tutorialSkip.
+  ///
+  /// In de, this message translates to:
+  /// **'Überspringen'**
+  String get tutorialSkip;
+
+  /// No description provided for @tutorialNext.
+  ///
+  /// In de, this message translates to:
+  /// **'Weiter'**
+  String get tutorialNext;
+
+  /// No description provided for @tutorialDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Verstanden'**
+  String get tutorialDone;
+
+  /// No description provided for @tutorialOverviewTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Deine Tagesübersicht'**
+  String get tutorialOverviewTitle;
+
+  /// No description provided for @tutorialOverviewBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Sieh Kalorien, Makros und Wasser auf einen Blick und wechsle zwischen den Tagen.'**
+  String get tutorialOverviewBody;
+
+  /// No description provided for @tutorialFoodTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Mahlzeiten erfassen'**
+  String get tutorialFoodTitle;
+
+  /// No description provided for @tutorialFoodBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Trag hier alles ein, was du isst – Lebensmittel suchen, Etiketten scannen oder frühere Mahlzeiten wiederholen.'**
+  String get tutorialFoodBody;
+
+  /// No description provided for @tutorialActivitiesTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivitäten erfassen'**
+  String get tutorialActivitiesTitle;
+
+  /// No description provided for @tutorialActivitiesBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Erfasse Sport und Bewegung, um sie in deine Tagesbilanz einzurechnen.'**
+  String get tutorialActivitiesBody;
+
+  /// No description provided for @tutorialReportsTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Deinen Fortschritt sehen'**
+  String get tutorialReportsTitle;
+
+  /// No description provided for @tutorialReportsBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Diagramme und Trends zeigen, wie sich deine Ernährung über die Zeit entwickelt.'**
+  String get tutorialReportsBody;
+
+  /// No description provided for @tutorialAddTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Eintrag hinzufügen'**
+  String get tutorialAddTitle;
+
+  /// No description provided for @tutorialAddBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Tippe jederzeit auf das +, um schnell eine Mahlzeit zu erfassen.'**
+  String get tutorialAddBody;
+
+  /// No description provided for @replayTutorialTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Tutorial erneut anzeigen'**
+  String get replayTutorialTitle;
+
+  /// No description provided for @replayTutorialSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Die kurze App-Tour wiederholen'**
+  String get replayTutorialSubtitle;
 }
 
 class _AppLocalizationsDelegate

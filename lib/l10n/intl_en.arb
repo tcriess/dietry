@@ -747,5 +747,20 @@
     }
   },
   "durationMinutes": "Duration (min)",
-  "noKcalEstimate": "Set your weight for kcal estimates"
+  "noKcalEstimate": "Set your weight for kcal estimates",
+  "tutorialSkip": "Skip",
+  "tutorialNext": "Next",
+  "tutorialDone": "Got it",
+  "tutorialOverviewTitle": "Your daily overview",
+  "tutorialOverviewBody": "See your calories, macros and water at a glance, and switch between days.",
+  "tutorialFoodTitle": "Log your meals",
+  "tutorialFoodBody": "Add everything you eat here — search foods, scan labels or reuse past meals.",
+  "tutorialActivitiesTitle": "Track activities",
+  "tutorialActivitiesBody": "Log workouts and movement to add them to your daily energy balance.",
+  "tutorialReportsTitle": "See your progress",
+  "tutorialReportsBody": "Charts and trends show how your nutrition develops over time.",
+  "tutorialAddTitle": "Add an entry",
+  "tutorialAddBody": "Tap the + button any time to quickly log a meal.",
+  "replayTutorialTitle": "Show tutorial again",
+  "replayTutorialSubtitle": "Replay the quick app tour"
 }

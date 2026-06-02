@@ -1665,4 +1665,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noKcalEstimate => 'Set your weight for kcal estimates';
+
+  @override
+  String get tutorialSkip => 'Skip';
+
+  @override
+  String get tutorialNext => 'Next';
+
+  @override
+  String get tutorialDone => 'Got it';
+
+  @override
+  String get tutorialOverviewTitle => 'Your daily overview';
+
+  @override
+  String get tutorialOverviewBody =>
+      'See your calories, macros and water at a glance, and switch between days.';
+
+  @override
+  String get tutorialFoodTitle => 'Log your meals';
+
+  @override
+  String get tutorialFoodBody =>
+      'Add everything you eat here — search foods, scan labels or reuse past meals.';
+
+  @override
+  String get tutorialActivitiesTitle => 'Track activities';
+
+  @override
+  String get tutorialActivitiesBody =>
+      'Log workouts and movement to add them to your daily energy balance.';
+
+  @override
+  String get tutorialReportsTitle => 'See your progress';
+
+  @override
+  String get tutorialReportsBody =>
+      'Charts and trends show how your nutrition develops over time.';
+
+  @override
+  String get tutorialAddTitle => 'Add an entry';
+
+  @override
+  String get tutorialAddBody =>
+      'Tap the + button any time to quickly log a meal.';
+
+  @override
+  String get replayTutorialTitle => 'Show tutorial again';
+
+  @override
+  String get replayTutorialSubtitle => 'Replay the quick app tour';
 }

@@ -63,6 +63,8 @@ import 'screens/add_activity_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/health_connect_service.dart';
 import 'services/health_connect_prefs.dart';
+import 'services/tutorial_prefs.dart';
+import 'widgets/main_tutorial.dart';
 import 'screens/info_screen.dart';
 import 'screens/reports_screen.dart';
 
@@ -2408,6 +2410,14 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   final _sync = SyncService.instance;
   Timer? _refreshTimer;
 
+  // Targets for the first-run onboarding coach-mark tour (see [MainTutorial]).
+  // Attached to the live bottom-nav icons and the add-meal FAB.
+  final _tabOverviewKey = GlobalKey();
+  final _tabFoodKey = GlobalKey();
+  final _tabActivitiesKey = GlobalKey();
+  final _tabReportsKey = GlobalKey();
+  final _fabAddFoodKey = GlobalKey();
+
   /// True when navigating back one day would land on a date that has a
   /// nutrition goal — i.e. when the back-chevron should be shown. Computed
   /// asynchronously by [_refreshCanGoBack]; defaults to false until the
@@ -2453,6 +2463,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     FoodLogReminderService.onInAppReminder = _showFoodLogReminder;
     FoodLogReminderService.getHasLoggedToday =
         () => _store.foodEntries.isNotEmpty;
+    MainTutorial.replayRequests.addListener(_onReplayTutorialRequested);
   }
 
   @override
@@ -2464,7 +2475,49 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     WaterReminderService.getWaterStatus = null;
     FoodLogReminderService.onInAppReminder = null;
     FoodLogReminderService.getHasLoggedToday = null;
+    MainTutorial.replayRequests.removeListener(_onReplayTutorialRequested);
     super.dispose();
+  }
+
+  /// Auto-starts the onboarding tour the first time a goal exists (right after
+  /// the new user creates one). No-op once the tour has been seen.
+  Future<void> _maybeStartTutorialAfterGoal() async {
+    await _loadCurrentGoal();
+    if (!mounted || _store.goal == null) return;
+    if (await TutorialPrefs.hasSeenMainTutorial()) return;
+    if (!mounted) return;
+    _showMainTutorial();
+  }
+
+  /// Replay entry point — fired when the user taps "Show tutorial again" in the
+  /// profile screen. A short delay lets the profile route finish popping so the
+  /// coach marks land over the home screen, not the closing route.
+  void _onReplayTutorialRequested() {
+    if (!mounted || _store.goal == null) return;
+    _showMainTutorial(delay: const Duration(milliseconds: 400));
+  }
+
+  /// Presents the coach-mark tour. Forces the Overview tab first so the
+  /// add-meal FAB target is mounted, then shows after the next frame.
+  void _showMainTutorial({Duration delay = Duration.zero}) {
+    if (_selectedIndex != 0) setState(() => _selectedIndex = 0);
+    Future.delayed(delay, () {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final l = AppLocalizations.of(context);
+        if (l == null) return;
+        MainTutorial.show(
+          context,
+          l: l,
+          overviewTabKey: _tabOverviewKey,
+          foodTabKey: _tabFoodKey,
+          activitiesTabKey: _tabActivitiesKey,
+          reportsTabKey: _tabReportsKey,
+          addFoodFabKey: _fabAddFoodKey,
+        );
+      });
+    });
   }
 
   @override
@@ -3111,8 +3164,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                           ),
                         ),
                       );
-                      // Nach Rückkehr: Goal neu laden
-                      _loadCurrentGoal();
+                      // Nach Rückkehr: Goal neu laden, dann ggf. Onboarding-Tour
+                      _maybeStartTutorialAfterGoal();
                     },
                     icon: const Icon(Icons.add),
                     label: Text(l.createGoal),
@@ -3130,8 +3183,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                         ),
                       );
 
-                      // Nach Rückkehr: Goal neu laden
-                      _loadCurrentGoal();
+                      // Nach Rückkehr: Goal neu laden, dann ggf. Onboarding-Tour
+                      _maybeStartTutorialAfterGoal();
                     },
                     icon: const Icon(Icons.add),
                     label: Text(l.createGoal),
@@ -3342,12 +3395,14 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
         fab = MediaQuery.of(context).size.width >= 550
             ? FloatingActionButton.extended(
+                key: _fabAddFoodKey,
                 heroTag: 'fab_add_entry',
                 onPressed: openAddSheet,
                 icon: const Icon(Icons.add),
                 label: Text(l.addEntry),
               )
             : FloatingActionButton(
+                key: _fabAddFoodKey,
                 heroTag: 'fab_add_entry',
                 onPressed: openAddSheet,
                 tooltip: l.addEntry,
@@ -3356,6 +3411,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       } else {
         // Guest mode: single FAB → full entry form
         fab = FloatingActionButton(
+          key: _fabAddFoodKey,
           heroTag: 'fab_add_entry',
           onPressed: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => AddFoodEntryScreen(
@@ -3514,19 +3570,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
-            icon: const Icon(Icons.assessment),
+            icon: Icon(Icons.assessment, key: _tabOverviewKey),
             label: l.navOverview,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.restaurant_menu),
+            icon: Icon(Icons.restaurant_menu, key: _tabFoodKey),
             label: l.navEntries,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.directions_run),
+            icon: Icon(Icons.directions_run, key: _tabActivitiesKey),
             label: l.navActivities,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.bar_chart),
+            icon: Icon(Icons.bar_chart, key: _tabReportsKey),
             label: l.navReports,
           ),
         ],

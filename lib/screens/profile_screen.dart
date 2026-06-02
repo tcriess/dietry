@@ -18,6 +18,7 @@ import '../app_config.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/app_features_utils.dart';
+import '../widgets/main_tutorial.dart';
 import 'profile_setup_screen.dart';
 import 'add_body_measurement_screen.dart';
 import 'goal_recommendation_screen.dart';
@@ -885,6 +886,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     description: l.upgradeProProfileDescription,
                   ),
                 ],
+
+                // Hilfe & Onboarding-Tour
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading:
+                        const Icon(Icons.school_outlined, color: Colors.blue),
+                    title: Text(l.replayTutorialTitle),
+                    subtitle: Text(l.replayTutorialSubtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      // Return to the home screen, then replay the tour over it.
+                      Navigator.of(context).pop();
+                      MainTutorial.requestReplay();
+                    },
+                  ),
+                ),
 
                 // Account & Daten
                 const SizedBox(height: 8),

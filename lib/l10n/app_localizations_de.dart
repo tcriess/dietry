@@ -1671,4 +1671,54 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noKcalEstimate => 'Gewicht setzen für kcal-Schätzung';
+
+  @override
+  String get tutorialSkip => 'Überspringen';
+
+  @override
+  String get tutorialNext => 'Weiter';
+
+  @override
+  String get tutorialDone => 'Verstanden';
+
+  @override
+  String get tutorialOverviewTitle => 'Deine Tagesübersicht';
+
+  @override
+  String get tutorialOverviewBody =>
+      'Sieh Kalorien, Makros und Wasser auf einen Blick und wechsle zwischen den Tagen.';
+
+  @override
+  String get tutorialFoodTitle => 'Mahlzeiten erfassen';
+
+  @override
+  String get tutorialFoodBody =>
+      'Trag hier alles ein, was du isst – Lebensmittel suchen, Etiketten scannen oder frühere Mahlzeiten wiederholen.';
+
+  @override
+  String get tutorialActivitiesTitle => 'Aktivitäten erfassen';
+
+  @override
+  String get tutorialActivitiesBody =>
+      'Erfasse Sport und Bewegung, um sie in deine Tagesbilanz einzurechnen.';
+
+  @override
+  String get tutorialReportsTitle => 'Deinen Fortschritt sehen';
+
+  @override
+  String get tutorialReportsBody =>
+      'Diagramme und Trends zeigen, wie sich deine Ernährung über die Zeit entwickelt.';
+
+  @override
+  String get tutorialAddTitle => 'Eintrag hinzufügen';
+
+  @override
+  String get tutorialAddBody =>
+      'Tippe jederzeit auf das +, um schnell eine Mahlzeit zu erfassen.';
+
+  @override
+  String get replayTutorialTitle => 'Tutorial erneut anzeigen';
+
+  @override
+  String get replayTutorialSubtitle => 'Die kurze App-Tour wiederholen';
 }

@@ -747,5 +747,20 @@
     }
   },
   "durationMinutes": "Duración (min)",
-  "noKcalEstimate": "Define tu peso para estimar kcal"
+  "noKcalEstimate": "Define tu peso para estimar kcal",
+  "tutorialSkip": "Omitir",
+  "tutorialNext": "Siguiente",
+  "tutorialDone": "Entendido",
+  "tutorialOverviewTitle": "Tu resumen diario",
+  "tutorialOverviewBody": "Consulta tus calorías, macros y agua de un vistazo y cambia entre los días.",
+  "tutorialFoodTitle": "Registra tus comidas",
+  "tutorialFoodBody": "Añade aquí todo lo que comes: busca alimentos, escanea etiquetas o reutiliza comidas anteriores.",
+  "tutorialActivitiesTitle": "Registra actividades",
+  "tutorialActivitiesBody": "Registra ejercicio y movimiento para sumarlos a tu balance energético diario.",
+  "tutorialReportsTitle": "Mira tu progreso",
+  "tutorialReportsBody": "Los gráficos y las tendencias muestran cómo evoluciona tu nutrición con el tiempo.",
+  "tutorialAddTitle": "Añadir un registro",
+  "tutorialAddBody": "Toca el botón + en cualquier momento para registrar una comida rápidamente.",
+  "replayTutorialTitle": "Mostrar el tutorial de nuevo",
+  "replayTutorialSubtitle": "Repetir el recorrido rápido por la app"
 }

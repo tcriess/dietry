@@ -769,5 +769,20 @@
     }
   },
   "durationMinutes": "Dauer (Min)",
-  "noKcalEstimate": "Gewicht setzen für kcal-Schätzung"
+  "noKcalEstimate": "Gewicht setzen für kcal-Schätzung",
+  "tutorialSkip": "Überspringen",
+  "tutorialNext": "Weiter",
+  "tutorialDone": "Verstanden",
+  "tutorialOverviewTitle": "Deine Tagesübersicht",
+  "tutorialOverviewBody": "Sieh Kalorien, Makros und Wasser auf einen Blick und wechsle zwischen den Tagen.",
+  "tutorialFoodTitle": "Mahlzeiten erfassen",
+  "tutorialFoodBody": "Trag hier alles ein, was du isst – Lebensmittel suchen, Etiketten scannen oder frühere Mahlzeiten wiederholen.",
+  "tutorialActivitiesTitle": "Aktivitäten erfassen",
+  "tutorialActivitiesBody": "Erfasse Sport und Bewegung, um sie in deine Tagesbilanz einzurechnen.",
+  "tutorialReportsTitle": "Deinen Fortschritt sehen",
+  "tutorialReportsBody": "Diagramme und Trends zeigen, wie sich deine Ernährung über die Zeit entwickelt.",
+  "tutorialAddTitle": "Eintrag hinzufügen",
+  "tutorialAddBody": "Tippe jederzeit auf das +, um schnell eine Mahlzeit zu erfassen.",
+  "replayTutorialTitle": "Tutorial erneut anzeigen",
+  "replayTutorialSubtitle": "Die kurze App-Tour wiederholen"
 }
