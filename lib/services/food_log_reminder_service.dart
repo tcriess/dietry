@@ -46,6 +46,10 @@ class FoodLogReminderService {
   /// Von DietryHome gesetzt, damit der Service ohne DataStore-Zugriff prüfen kann.
   static bool Function()? getHasLoggedToday;
 
+  /// True wenn der heutige Tag als Cheat-Day markiert ist. An einem Cheat-Day
+  /// soll nicht ans Eintragen erinnert werden. Von DietryHome gesetzt.
+  static bool Function()? getIsCheatDay;
+
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   static bool get _isIOS =>
@@ -115,6 +119,8 @@ class FoodLogReminderService {
 
   static bool _hasLoggedToday() => getHasLoggedToday?.call() ?? false;
 
+  static bool _isCheatDay() => getIsCheatDay?.call() ?? false;
+
   // ── Timer (web/desktop, läuft solange App/Tab offen) ──────────────────────
 
   static DateTime _nextReminderTime() {
@@ -140,6 +146,7 @@ class FoodLogReminderService {
 
   static Future<void> _fireReminder() async {
     if (_hasLoggedToday()) return; // already logged → no nudge
+    if (_isCheatDay()) return; // cheat day → no nudge
     if (kIsWeb) {
       html.showBrowserNotification(
           ReminderStrings.foodTitle, ReminderStrings.foodBody);
@@ -160,10 +167,11 @@ class FoodLogReminderService {
     var scheduled =
         tz.TZDateTime(location, now.year, now.month, now.day, _reminderHour);
 
-    // Skip today if it's already (nearly) past 15:00 or an entry already
-    // exists; the daily recurrence (matchDateTimeComponents.time) continues.
+    // Skip today if it's already (nearly) past 15:00, an entry already exists,
+    // or today is a cheat day; the daily recurrence
+    // (matchDateTimeComponents.time) continues.
     final isPast = scheduled.isBefore(now.add(const Duration(minutes: 1)));
-    if (isPast || _hasLoggedToday()) {
+    if (isPast || _hasLoggedToday() || _isCheatDay()) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
 

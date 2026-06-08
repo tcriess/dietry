@@ -2424,13 +2424,17 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   /// first check completes.
   bool _canGoBack = false;
 
-  // Last (intake, goal) snapshot pushed to WaterReminderService — used to skip
-  // re-scheduling notifications when an unrelated store change fires.
-  int? _lastReminderIntakeMl;
-  int? _lastReminderGoalMl;
-  // Whether the loaded day had any food entry at the last reminder refresh —
-  // used to re-arm the food-log reminder only when this flips.
-  bool? _lastHadFoodEntry;
+  // Day-precise snapshot of *today's* state, used to decide whether the
+  // food/water reminders should fire. Reminders are always about today, so this
+  // must never read the currently-selected day. While today is the selected day
+  // it's refreshed for free from the store; it's only re-queried directly when
+  // the calendar day rolls over past [_reminderSnapshotDay] (today's local data
+  // can't change while the user is looking at a different day).
+  int _todayWaterIntakeMl = 0;
+  int _todayWaterGoalMl = 2000;
+  bool _todayHasFoodEntry = false;
+  bool _todayIsCheatDay = false;
+  DateTime? _reminderSnapshotDay;
 
   @override
   void initState() {
@@ -2455,14 +2459,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // Refresh data every 60 s while the app is in the foreground.
     _refreshTimer =
         Timer.periodic(const Duration(seconds: 60), (_) => _silentRefresh());
+    // All reminder inputs come from the day-precise today snapshot, never the
+    // selected day — a reminder is always about today.
     WaterReminderService.onInAppReminder = _showWaterReminder;
-    WaterReminderService.getWaterStatus = () => (
-          _store.waterIntakeMl + _store.liquidFoodIntakeMl,
-          _store.goal?.waterGoalMl ?? 2000
-        );
+    WaterReminderService.getWaterStatus =
+        () => (_todayWaterIntakeMl, _todayWaterGoalMl);
     FoodLogReminderService.onInAppReminder = _showFoodLogReminder;
-    FoodLogReminderService.getHasLoggedToday =
-        () => _store.foodEntries.isNotEmpty;
+    FoodLogReminderService.getHasLoggedToday = () => _todayHasFoodEntry;
+    // Suppress both reminders on a cheat day.
+    WaterReminderService.getIsCheatDay = () => _todayIsCheatDay;
+    FoodLogReminderService.getIsCheatDay = () => _todayIsCheatDay;
     MainTutorial.replayRequests.addListener(_onReplayTutorialRequested);
   }
 
@@ -2473,8 +2479,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _store.removeListener(_onStoreChanged);
     WaterReminderService.onInAppReminder = null;
     WaterReminderService.getWaterStatus = null;
+    WaterReminderService.getIsCheatDay = null;
     FoodLogReminderService.onInAppReminder = null;
     FoodLogReminderService.getHasLoggedToday = null;
+    FoodLogReminderService.getIsCheatDay = null;
     MainTutorial.replayRequests.removeListener(_onReplayTutorialRequested);
     super.dispose();
   }
@@ -2524,10 +2532,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _silentRefresh();
-      // Re-evaluate today's water reminders — date may have rolled over while
-      // the app was backgrounded.
-      WaterReminderService.refreshSchedule();
-      FoodLogReminderService.refreshSchedule();
+      // Re-evaluate today's reminders — the date may have rolled over while the
+      // app was backgrounded, and the selected day may differ from today.
+      _syncTodayReminderSnapshot(force: true);
     }
   }
 
@@ -2819,26 +2826,105 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       });
     }
 
-    // If today's water intake or goal changed, re-evaluate scheduled reminders
-    // so already-met goals stop firing notifications.
-    final currentIntake = _store.waterIntakeMl + _store.liquidFoodIntakeMl;
-    final currentGoal = _store.goal?.waterGoalMl ?? 2000;
-    if (currentIntake != _lastReminderIntakeMl ||
-        currentGoal != _lastReminderGoalMl) {
-      _lastReminderIntakeMl = currentIntake;
-      _lastReminderGoalMl = currentGoal;
-      WaterReminderService.refreshSchedule();
-    }
-
-    // Re-arm the food-log reminder when today gains/loses its first entry, so
-    // logging before 15:00 silently pushes the nudge to tomorrow.
-    final hasFoodEntry = _store.foodEntries.isNotEmpty;
-    if (hasFoodEntry != _lastHadFoodEntry) {
-      _lastHadFoodEntry = hasFoodEntry;
-      FoodLogReminderService.refreshSchedule();
-    }
+    // Keep the day-precise reminder snapshot in sync so the scheduled
+    // notifications always reflect the real "today" (intake/goal met, food
+    // already logged, cheat day), regardless of which day is selected.
+    _syncTodayReminderSnapshot();
 
     setState(() {});
+  }
+
+  /// Refreshes the day-precise reminder snapshot ([_todayWaterIntakeMl],
+  /// [_todayHasFoodEntry], [_todayIsCheatDay], …) and re-arms the scheduled
+  /// notifications when it changes.
+  ///
+  /// When today is the selected day the snapshot is taken from the store for
+  /// free. Otherwise the previously-captured snapshot stays valid — today's
+  /// local data cannot change while another day is shown — unless the calendar
+  /// day has rolled over, in which case today's data is fetched directly.
+  ///
+  /// [force] re-arms the notifications even if the snapshot is unchanged (used
+  /// on app resume, where the time-of-day window may have moved).
+  void _syncTodayReminderSnapshot({bool force = false}) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (DateUtils.isSameDay(_selectedDay, today)) {
+      _reminderSnapshotDay = today;
+      _applyTodayReminderSnapshot(
+        intake: _store.waterIntakeMl + _store.liquidFoodIntakeMl,
+        goal: _store.goal?.waterGoalMl ?? 2000,
+        hasFood: _store.foodEntries.isNotEmpty,
+        isCheat: _store.isCheatDay,
+        force: force,
+      );
+      return;
+    }
+
+    final rolledOver = _reminderSnapshotDay == null ||
+        !DateUtils.isSameDay(_reminderSnapshotDay!, today);
+    if (rolledOver) {
+      unawaited(_fetchTodayReminderSnapshot(today));
+    } else if (force) {
+      WaterReminderService.refreshSchedule();
+      FoodLogReminderService.refreshSchedule();
+    }
+  }
+
+  /// Loads today's reminder inputs directly (used when the selected day is not
+  /// today, e.g. after a midnight rollover). Keeps the previous snapshot on
+  /// error.
+  Future<void> _fetchTodayReminderSnapshot(DateTime today) async {
+    try {
+      final int intakeMl;
+      final List<FoodEntry> entries;
+      final bool isCheat;
+      final db = widget.dbService;
+      if (widget.isGuestMode || db == null) {
+        final local = LocalDataService.instance;
+        intakeMl = await local.getWaterIntakeForDate(today);
+        entries = await local.getFoodEntriesForDate(today);
+        isCheat = await local.isCheatDay(today);
+      } else {
+        intakeMl = await WaterIntakeService(db).getIntakeForDate(today);
+        entries = await FoodEntryService(db).getFoodEntriesForDate(today);
+        isCheat = await CheatDayService(db).isCheatDay(today);
+      }
+      if (!mounted) return;
+      final liquidMl = entries
+          .where((e) => e.amountMl != null)
+          .fold<int>(0, (sum, e) => sum + e.amountMl!.round());
+      _reminderSnapshotDay = today;
+      _applyTodayReminderSnapshot(
+        intake: intakeMl + liquidMl,
+        goal: _store.goal?.waterGoalMl ?? 2000,
+        hasFood: entries.isNotEmpty,
+        isCheat: isCheat,
+      );
+    } catch (_) {
+      // Keep the previous snapshot on error.
+    }
+  }
+
+  /// Stores the snapshot values and re-arms the food/water notifications when
+  /// any of them changed (or [force] is set).
+  void _applyTodayReminderSnapshot({
+    required int intake,
+    required int goal,
+    required bool hasFood,
+    required bool isCheat,
+    bool force = false,
+  }) {
+    final changed = intake != _todayWaterIntakeMl ||
+        goal != _todayWaterGoalMl ||
+        hasFood != _todayHasFoodEntry ||
+        isCheat != _todayIsCheatDay;
+    _todayWaterIntakeMl = intake;
+    _todayWaterGoalMl = goal;
+    _todayHasFoodEntry = hasFood;
+    _todayIsCheatDay = isCheat;
+    if (changed || force) {
+      WaterReminderService.refreshSchedule();
+      FoodLogReminderService.refreshSchedule();
+    }
   }
 
   void _showMilestoneCelebration(int milestone) {

@@ -45,6 +45,10 @@ class WaterReminderService {
   /// Benachrichtigung sinnvoll ist, ohne direkt auf den DataStore zuzugreifen.
   static (int intake, int goal) Function()? getWaterStatus;
 
+  /// True wenn der heutige Tag als Cheat-Day markiert ist. An einem Cheat-Day
+  /// werden keine Trink-Erinnerungen ausgelöst. Von DietryHome gesetzt.
+  static bool Function()? getIsCheatDay;
+
   // Fenster für die Hochrechnung: erstes bis letztes Reminder-Fenster
   static const _windowStartHour = 12;
   static const _windowEndHour = 20;
@@ -180,6 +184,8 @@ class WaterReminderService {
   /// - [atFireTime] true (eigentliches Auslösen): "noch zu früh" → false
   /// - [atFireTime] false (Vor-Planung): Slot liegt noch in der Zukunft → true
   static bool _isReminderUseful({required bool atFireTime}) {
+    if (getIsCheatDay?.call() ?? false) return false; // Cheat-Day → keine Erinnerung
+
     final status = getWaterStatus?.call();
     if (status == null) return true; // kein Datenzugang → lieber zu viel
 
