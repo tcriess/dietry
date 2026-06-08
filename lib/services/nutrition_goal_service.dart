@@ -214,6 +214,7 @@ class NutritionGoalService {
       final currentGoal = await service.getCurrentGoal();
       final method = currentGoal?.trackingMethod ?? TrackingMethod.tdeeHybrid;
       final preserveMacroOnly = currentGoal?.macroOnly ?? false;
+      final preserveProteinOnly = currentGoal?.proteinOnly ?? false;
 
       final profile = await UserProfileService(db).getCurrentProfile();
       final measurement = await UserBodyMeasurementsService(db).getCurrentMeasurement();
@@ -247,6 +248,7 @@ class NutritionGoalService {
         trackingMethod: baseGoal.trackingMethod,
         waterGoalMl: waterGoalMl,
         macroOnly: preserveMacroOnly,
+        proteinOnly: preserveProteinOnly,
       );
       return await service.createOrUpdateGoal(goal);
     } catch (_) {

@@ -630,6 +630,7 @@
     }
   },
   "macroOnlyMode": "Solo macros (sin objetivo calórico)",
+  "proteinOnlyMode": "Seguir solo proteína",
   "caloriesTooMuch": "{amount} demasiado",
   "@caloriesTooMuch": {
     "placeholders": {

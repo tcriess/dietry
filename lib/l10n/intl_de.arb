@@ -630,6 +630,7 @@
     }
   },
   "macroOnlyMode": "Nur Makros tracken (kein Kalorienziel)",
+  "proteinOnlyMode": "Nur Eiweiß tracken",
   "caloriesTooMuch": "{amount} zu viel",
   "@caloriesTooMuch": {
     "placeholders": {

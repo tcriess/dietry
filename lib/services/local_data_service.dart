@@ -18,7 +18,7 @@ class LocalDataService {
 
   static const String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 4;  // Version 4: fixed physical_activities schema
+  static const int _version = 5;  // Version 5: add protein_only to nutrition_goals
 
   Database? _db;
   bool _initialized = false;
@@ -123,6 +123,7 @@ class LocalDataService {
           sodium REAL,
           saturated_fat REAL,
           macro_only INTEGER NOT NULL DEFAULT 0,
+          protein_only INTEGER NOT NULL DEFAULT 0,
           tracking_method TEXT,
           water_goal_ml INTEGER,
           created_at TEXT NOT NULL,
@@ -345,6 +346,28 @@ class LocalDataService {
         appLogger.e('❌ Error in migration 3→4: $e');
       }
     }
+
+    if (oldVersion < 5) {
+      // Version 5: add protein_only (protein-only sub-mode of macro-only).
+      // Also (defensively) re-add macro_only, which was introduced in onCreate
+      // without its own upgrade step — older guest DBs may be missing it.
+      try {
+        await db.execute(
+            'ALTER TABLE nutrition_goals ADD COLUMN macro_only INTEGER NOT NULL DEFAULT 0');
+        appLogger.d('✅ Added macro_only column to nutrition_goals');
+      } catch (e) {
+        appLogger.d('ℹ️ macro_only column already exists: $e');
+      }
+
+      try {
+        await db.execute(
+            'ALTER TABLE nutrition_goals ADD COLUMN protein_only INTEGER NOT NULL DEFAULT 0');
+        appLogger.d('✅ Added protein_only column to nutrition_goals');
+        appLogger.i('✅ Migration 4→5 complete');
+      } catch (e) {
+        appLogger.d('ℹ️ protein_only column already exists: $e');
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -451,6 +474,7 @@ class LocalDataService {
         final json = jsonDecode(jsonStr) as Map<String, dynamic>;
         // Convert 0/1 back to boolean
         json['macro_only'] = (json['macro_only'] as int? ?? 0) != 0;
+        json['protein_only'] = (json['protein_only'] as int? ?? 0) != 0;
         return NutritionGoal.fromJson(json);
       } else {
         if (_db == null) return null;
@@ -467,6 +491,7 @@ class LocalDataService {
         // Convert SQLite 0/1 back to boolean (create new map since results are read-only)
         final json = Map<String, dynamic>.from(results.first);
         json['macro_only'] = (json['macro_only'] as int? ?? 0) != 0;
+        json['protein_only'] = (json['protein_only'] as int? ?? 0) != 0;
         return NutritionGoal.fromJson(json);
       }
     } catch (e) {
@@ -495,6 +520,7 @@ class LocalDataService {
         'carbs': goal.carbs,
         'valid_from': validFromStr,
         'macro_only': goal.macroOnly ? 1 : 0,
+        'protein_only': goal.proteinOnly ? 1 : 0,
         'tracking_method': goal.trackingMethod?.name,
         'water_goal_ml': goal.waterGoalMl,
         'created_at': now,
@@ -526,6 +552,7 @@ class LocalDataService {
         trackingMethod: goal.trackingMethod,
         waterGoalMl: goal.waterGoalMl,
         macroOnly: goal.macroOnly,
+        proteinOnly: goal.proteinOnly,
       );
 
       return goalWithId;

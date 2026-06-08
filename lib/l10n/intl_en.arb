@@ -630,6 +630,7 @@
     }
   },
   "macroOnlyMode": "Track macros only (no calorie goal)",
+  "proteinOnlyMode": "Track protein only",
   "caloriesTooMuch": "{amount} too much",
   "@caloriesTooMuch": {
     "placeholders": {

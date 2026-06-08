@@ -36,6 +36,11 @@ class NutritionGoal {
   final int? waterGoalMl;
   final bool macroOnly;
 
+  /// Sub-mode of [macroOnly]: only protein has a hard target. Fat and carbs are
+  /// still tracked, but shown without a compliance/remaining target. Only
+  /// meaningful when [macroOnly] is true — use [proteinOnlyEffective] to gate UI.
+  final bool proteinOnly;
+
   const NutritionGoal({
     this.id,
     this.userId,
@@ -47,7 +52,12 @@ class NutritionGoal {
     this.trackingMethod,
     this.waterGoalMl,
     this.macroOnly = false,
+    this.proteinOnly = false,
   });
+
+  /// True when only protein should show a target/compliance bar (protein-only
+  /// mode is a sub-mode of macro-only, so it requires [macroOnly]).
+  bool get proteinOnlyEffective => macroOnly && proteinOnly;
 
   factory NutritionGoal.fromJson(Map<String, dynamic> json) {
     final methodStr = json['tracking_method'] as String?;
@@ -69,6 +79,7 @@ class NutritionGoal {
         : null,
       waterGoalMl: json['water_goal_ml'] as int?,
       macroOnly: json['macro_only'] as bool? ?? false,
+      proteinOnly: json['protein_only'] as bool? ?? false,
     );
   }
 
@@ -83,5 +94,6 @@ class NutritionGoal {
     if (trackingMethod != null) 'tracking_method': trackingMethod!.name,
     if (waterGoalMl != null) 'water_goal_ml': waterGoalMl,
     'macro_only': macroOnly,
+    'protein_only': proteinOnly,
   };
 }

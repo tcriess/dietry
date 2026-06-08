@@ -3941,24 +3941,28 @@ class OverviewScreen extends StatelessWidget {
             '${remainingProtein.toStringAsFixed(1)} g',
             Colors.red,
           ),
-          _buildNutrientCard(
-            context,
-            l.nutrientFat,
-            '${goal.fat.toStringAsFixed(1)} g',
-            '${totalFat.toStringAsFixed(1)} g',
-            '-',
-            '${remainingFat.toStringAsFixed(1)} g',
-            Colors.orange,
-          ),
-          _buildNutrientCard(
-            context,
-            l.nutrientCarbs,
-            '${goal.carbs.toStringAsFixed(1)} g',
-            '${totalCarbs.toStringAsFixed(1)} g',
-            '-',
-            '${remainingCarbs.toStringAsFixed(1)} g',
-            Colors.amber,
-          ),
+          // Protein-only mode: fat & carbs have no target, so they're omitted
+          // from the compliance overview (still shown in the pie chart / entries).
+          if (!goal.proteinOnlyEffective) ...[
+            _buildNutrientCard(
+              context,
+              l.nutrientFat,
+              '${goal.fat.toStringAsFixed(1)} g',
+              '${totalFat.toStringAsFixed(1)} g',
+              '-',
+              '${remainingFat.toStringAsFixed(1)} g',
+              Colors.orange,
+            ),
+            _buildNutrientCard(
+              context,
+              l.nutrientCarbs,
+              '${goal.carbs.toStringAsFixed(1)} g',
+              '${totalCarbs.toStringAsFixed(1)} g',
+              '-',
+              '${remainingCarbs.toStringAsFixed(1)} g',
+              Colors.amber,
+            ),
+          ],
         ],
       );
     } else {
@@ -4006,26 +4010,30 @@ class OverviewScreen extends StatelessWidget {
             DataCell(Text(remainingProtein.toStringAsFixed(1),
                 overflow: TextOverflow.ellipsis)),
           ]),
-          DataRow(cells: [
-            DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
-            DataCell(Text(goal.fat.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalFat.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
-            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
-            DataCell(Text(remainingFat.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
-          ]),
-          DataRow(cells: [
-            DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
-            DataCell(Text(goal.carbs.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalCarbs.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
-            const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
-            DataCell(Text(remainingCarbs.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
-          ]),
+          // Protein-only mode: fat & carbs have no target, so they're omitted
+          // from the compliance table (still shown in the pie chart / entries).
+          if (!goal.proteinOnlyEffective) ...[
+            DataRow(cells: [
+              DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
+              DataCell(Text(goal.fat.toStringAsFixed(1),
+                  overflow: TextOverflow.ellipsis)),
+              DataCell(Text(totalFat.toStringAsFixed(1),
+                  overflow: TextOverflow.ellipsis)),
+              const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+              DataCell(Text(remainingFat.toStringAsFixed(1),
+                  overflow: TextOverflow.ellipsis)),
+            ]),
+            DataRow(cells: [
+              DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
+              DataCell(Text(goal.carbs.toStringAsFixed(1),
+                  overflow: TextOverflow.ellipsis)),
+              DataCell(Text(totalCarbs.toStringAsFixed(1),
+                  overflow: TextOverflow.ellipsis)),
+              const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
+              DataCell(Text(remainingCarbs.toStringAsFixed(1),
+                  overflow: TextOverflow.ellipsis)),
+            ]),
+          ],
         ],
       );
 

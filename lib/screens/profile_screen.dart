@@ -482,18 +482,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             value: '${_goal!.protein.toInt()} g',
                             color: Colors.red,
                           ),
-                          _buildDataRow(
-                            icon: Icons.grain,
-                            label: l.nutrientCarbs,
-                            value: '${_goal!.carbs.toInt()} g',
-                            color: Colors.amber,
-                          ),
-                          _buildDataRow(
-                            icon: Icons.opacity,
-                            label: l.nutrientFat,
-                            value: '${_goal!.fat.toInt()} g',
-                            color: Colors.blue,
-                          ),
+                          // Protein-only mode: fat & carbs have no target.
+                          if (!_goal!.proteinOnlyEffective) ...[
+                            _buildDataRow(
+                              icon: Icons.grain,
+                              label: l.nutrientCarbs,
+                              value: '${_goal!.carbs.toInt()} g',
+                              color: Colors.amber,
+                            ),
+                            _buildDataRow(
+                              icon: Icons.opacity,
+                              label: l.nutrientFat,
+                              value: '${_goal!.fat.toInt()} g',
+                              color: Colors.blue,
+                            ),
+                          ],
                           _buildWaterGoalRow(l),
                           if (WaterReminderService.isSupported)
                             _buildWaterReminderRow(l),

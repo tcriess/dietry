@@ -44,6 +44,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   bool _isSaving = false;
   bool _isLoadingProfile = true;
   bool _macroOnly = false;
+  bool _proteinOnly = false;
   TrackingMethod _trackingMethod = TrackingMethod.tdeeHybrid;
   UserBodyData? _currentBodyData;
 
@@ -212,6 +213,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         trackingMethod: baseGoal.trackingMethod,
         waterGoalMl: _waterGoalMl,
         macroOnly: _macroOnly,
+        proteinOnly: _macroOnly && _proteinOnly,
       );
       appLogger.d('   ✅ Goal erstellt:');
       appLogger.d('      - Kalorien: ${goal.calories.toInt()} kcal');
@@ -578,10 +580,27 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 onChanged: (value) {
                   setState(() {
                     _macroOnly = value;
+                    // Protein-only is a sub-mode of macro-only.
+                    if (!value) _proteinOnly = false;
                   });
                 },
                 contentPadding: EdgeInsets.zero,
               ),
+
+              // Protein-only sub-mode (only a hard protein target; fat & carbs
+              // are tracked but without a target). Available only in macro-only.
+              if (_macroOnly)
+                SwitchListTile(
+                  title: Text(l.proteinOnlyMode),
+                  subtitle: const Text('Only protein has a target'),
+                  value: _proteinOnly,
+                  onChanged: (value) {
+                    setState(() {
+                      _proteinOnly = value;
+                    });
+                  },
+                  contentPadding: const EdgeInsets.only(left: 16),
+                ),
 
               // Tracking method selector (hidden in macro-only mode)
               if (!_macroOnly) ...[

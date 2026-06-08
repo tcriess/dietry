@@ -283,6 +283,10 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     }
 
     final pP = frac(goal.protein, _consumedProtein);
+    // Protein-only mode: fat & carbs have no target, so only nudge on protein.
+    if (goal.proteinOnlyEffective) {
+      return pP >= _macroGapMinFraction ? _MacroKind.protein : null;
+    }
     final pF = frac(goal.fat, _consumedFat);
     final pC = frac(goal.carbs, _consumedCarbs);
     final best = [

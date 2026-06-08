@@ -2608,6 +2608,12 @@ abstract class AppLocalizations {
   /// **'Nur Makros tracken (kein Kalorienziel)'**
   String get macroOnlyMode;
 
+  /// No description provided for @proteinOnlyMode.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur Eiweiß tracken'**
+  String get proteinOnlyMode;
+
   /// No description provided for @caloriesTooMuch.
   ///
   /// In de, this message translates to:

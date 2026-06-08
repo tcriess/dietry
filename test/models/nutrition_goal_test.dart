@@ -90,6 +90,62 @@ void main() {
       expect(goal.fat, 72.3);
       expect(goal.carbs, 245.8);
     });
+
+    group('macroOnly / proteinOnly', () {
+      NutritionGoal base({bool macroOnly = false, bool proteinOnly = false}) =>
+          NutritionGoal(
+            calories: 2000.0,
+            protein: 150.0,
+            fat: 65.0,
+            carbs: 200.0,
+            macroOnly: macroOnly,
+            proteinOnly: proteinOnly,
+          );
+
+      test('default to false', () {
+        final goal = base();
+        expect(goal.macroOnly, false);
+        expect(goal.proteinOnly, false);
+        expect(goal.proteinOnlyEffective, false);
+      });
+
+      test('fromJson reads protein_only (defaults false when absent)', () {
+        final withFlag = NutritionGoal.fromJson({
+          'calories': 2000.0,
+          'protein': 150.0,
+          'fat': 65.0,
+          'carbs': 200.0,
+          'macro_only': true,
+          'protein_only': true,
+        });
+        expect(withFlag.macroOnly, true);
+        expect(withFlag.proteinOnly, true);
+
+        final absent = NutritionGoal.fromJson({
+          'calories': 2000.0,
+          'protein': 150.0,
+          'fat': 65.0,
+          'carbs': 200.0,
+        });
+        expect(absent.proteinOnly, false);
+      });
+
+      test('toJson writes protein_only', () {
+        expect(base(macroOnly: true, proteinOnly: true).toJson()['protein_only'],
+            true);
+        expect(base().toJson()['protein_only'], false);
+      });
+
+      test('proteinOnlyEffective requires macroOnly', () {
+        // proteinOnly without macroOnly is not effective.
+        expect(base(proteinOnly: true).proteinOnlyEffective, false);
+        // both set → effective.
+        expect(base(macroOnly: true, proteinOnly: true).proteinOnlyEffective,
+            true);
+        // macroOnly alone → not protein-only.
+        expect(base(macroOnly: true).proteinOnlyEffective, false);
+      });
+    });
   });
 }
 
