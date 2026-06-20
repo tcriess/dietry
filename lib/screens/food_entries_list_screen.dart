@@ -50,6 +50,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   List<FoodEntry>? _previousDayEntries;
   bool _repeatingMeal = false;
 
+  /// True once yesterday's entries have loaded and at least one can be
+  /// repeated. Used to fall through to the per-meal "Repeat yesterday's …"
+  /// chips on an otherwise empty day instead of the bare "no entries"
+  /// placeholder (which would hide the repeat feature entirely).
+  bool get _canRepeatPreviousDay =>
+      _previousDayEntries != null && _previousDayEntries!.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -554,7 +561,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
           Expanded(
             child: _store.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _wrapWithRefresh(entries.isEmpty
+                : _wrapWithRefresh(entries.isEmpty && !_canRepeatPreviousDay
                     ? LayoutBuilder(
                         builder: (ctx, c) => SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
