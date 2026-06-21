@@ -88,6 +88,17 @@
       }
     }
   },
+  "repeatSelectTitle": "Einträge zum Wiederholen auswählen",
+  "repeatSelectedCount": "{count} wiederholen",
+  "@repeatSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectAll": "Alle auswählen",
+  "deselectAll": "Alle abwählen",
   "myFoods": "Meine Lebensmittel",
   "addEntry": "Eintragen",
   "mealTemplates": "Mahlzeiten-Vorlagen",

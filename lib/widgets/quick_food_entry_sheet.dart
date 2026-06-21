@@ -17,6 +17,7 @@ import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
+import 'repeat_meal_picker.dart';
 
 /// Postgres rejects an empty string as a `uuid`, and PostgREST surfaces
 /// that as a 400 which [SyncService.createFoodEntry] misreads as
@@ -778,9 +779,24 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   Future<void> _repeatMealFromSuggestion(
       String label, List<FoodEntry> sources) async {
     if (_addingId != null || sources.isEmpty) return;
+
+    // More than one item → let the user pick which to repeat; a single-item
+    // meal repeats directly (unchanged behaviour).
+    var entries = sources;
+    if (entries.length > 1) {
+      final picked = await showRepeatMealPicker(
+        context,
+        label: label,
+        entries: entries,
+        macroOnly: widget.dailyGoal?.macroOnly == true,
+      );
+      if (picked == null || picked.isEmpty || !mounted) return;
+      entries = picked;
+    }
+
     setState(() => _addingId = 'repeat-meal');
     try {
-      for (final src in sources) {
+      for (final src in entries) {
         final entry = FoodEntry(
           id: const Uuid().v4(),
           userId: widget.dbService.userId!,
@@ -815,7 +831,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('$label · ${sources.length}'),
+        content: Text('$label · ${entries.length}'),
         backgroundColor: Theme.of(context).colorScheme.secondary,
         duration: const Duration(seconds: 2),
       ));

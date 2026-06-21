@@ -201,6 +201,20 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get repeatSelectTitle => 'Einträge zum Wiederholen auswählen';
+
+  @override
+  String repeatSelectedCount(int count) {
+    return '$count wiederholen';
+  }
+
+  @override
+  String get selectAll => 'Alle auswählen';
+
+  @override
+  String get deselectAll => 'Alle abwählen';
+
+  @override
   String get myFoods => 'Meine Lebensmittel';
 
   @override

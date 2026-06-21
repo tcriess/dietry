@@ -88,6 +88,17 @@
       }
     }
   },
+  "repeatSelectTitle": "Select items to repeat",
+  "repeatSelectedCount": "Repeat ({count})",
+  "@repeatSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectAll": "Select all",
+  "deselectAll": "Deselect all",
   "myFoods": "My Foods",
   "addEntry": "Log Food",
   "mealTemplates": "Meal Templates",

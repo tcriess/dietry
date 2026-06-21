@@ -11,6 +11,7 @@ import '../services/food_image_service.dart';
 import '../services/food_entry_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/repeat_meal_picker.dart';
 import 'edit_food_entry_screen.dart';
 
 /// Screen zur Anzeige und Verwaltung aller Food-Entries eines Tages
@@ -108,14 +109,30 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   /// section (so repeating yesterday's dinner into the lunch slot tags the
   /// copies as lunch); everything else (name, macros, foodId, amount, unit) is
   /// preserved.
+  ///
+  /// When the source meal has more than one item, a checkbox picker lets the
+  /// user choose which entries to repeat; a single-item meal repeats directly.
   Future<void> _repeatMeal(
-      MealType mealType, List<FoodEntry> sourceEntries) async {
+      MealType mealType, String label, List<FoodEntry> sourceEntries) async {
     if (_repeatingMeal || sourceEntries.isEmpty) return;
+
+    var entries = sourceEntries;
+    if (entries.length > 1) {
+      final picked = await showRepeatMealPicker(
+        context,
+        label: label,
+        entries: entries,
+        macroOnly: _store.goal?.macroOnly == true,
+      );
+      if (picked == null || picked.isEmpty || !mounted) return;
+      entries = picked;
+    }
+
     setState(() => _repeatingMeal = true);
     final sync = SyncService.instance;
     final now = DateTime.now();
     try {
-      for (final src in sourceEntries) {
+      for (final src in entries) {
         final copy = src.copyWith(
           id: '',
           entryDate: widget.selectedDay,
@@ -215,7 +232,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                   label: Text('${s.label} (${s.sources.length})'),
                   onPressed: _repeatingMeal
                       ? null
-                      : () => _repeatMeal(mealType, s.sources),
+                      : () => _repeatMeal(mealType, s.label, s.sources),
                 ),
             ],
           ),

@@ -88,6 +88,17 @@
       }
     }
   },
+  "repeatSelectTitle": "Selecciona los elementos a repetir",
+  "repeatSelectedCount": "Repetir ({count})",
+  "@repeatSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectAll": "Seleccionar todo",
+  "deselectAll": "Deseleccionar todo",
   "myFoods": "Mis Alimentos",
   "addEntry": "Registrar Alimento",
   "mealTemplates": "Plantillas de Comidas",

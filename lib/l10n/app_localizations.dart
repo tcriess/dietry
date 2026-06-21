@@ -466,6 +466,30 @@ abstract class AppLocalizations {
   /// **'{meal} von heute wiederholen'**
   String repeatTodaysMeal(String meal);
 
+  /// No description provided for @repeatSelectTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Einträge zum Wiederholen auswählen'**
+  String get repeatSelectTitle;
+
+  /// No description provided for @repeatSelectedCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} wiederholen'**
+  String repeatSelectedCount(int count);
+
+  /// No description provided for @selectAll.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle auswählen'**
+  String get selectAll;
+
+  /// No description provided for @deselectAll.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle abwählen'**
+  String get deselectAll;
+
   /// No description provided for @myFoods.
   ///
   /// In de, this message translates to:
