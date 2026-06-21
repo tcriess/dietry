@@ -27,6 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.6] — 2026-06-21
+
+### Added
+- **Protein-only mode** — a focused variant of macro-only tracking where only protein has a target; calories and the other macros stay hidden.
+
+### Changed
+- **"Repeat meal" item picker** — repeating a meal that has more than one entry now opens a checklist so you can choose exactly which items to copy; single-item meals still repeat in one tap. Available both on the Entries-list "Repeat …" chips and in the quick-add Recent tab.
+
+### Fixed
+- **Reminders on cheat days** — food and water nudges are now suppressed on cheat days, evaluated per calendar day.
+- **Quick-add no longer shifts the list** — logging a food from the quick-add toast no longer makes the list jump, and "Repeat yesterday's meal" is now reachable on a fully empty day.
+
+---
+
 ## [1.1.5] — 2026-06-02
 
 ### Added
