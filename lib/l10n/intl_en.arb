@@ -723,6 +723,8 @@
   "barcodeScanConfirm": "Search",
   "barcodeNotFound": "Product not found",
   "barcodeNotFoundHint": "No product matched this barcode.",
+  "barcodeCreateFood": "Create food",
+  "barcodeCreatePrompt": "Create a new food with this barcode? You can enter the nutrition yourself or scan it from the label.",
   "barcodeFoundOff": "Found on Open Food Facts",
   "barcodeImportOff": "Import nutrition data from Open Food Facts?",
   "barcodeImport": "Import",

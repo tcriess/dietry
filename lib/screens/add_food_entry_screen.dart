@@ -508,9 +508,24 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final l = AppLocalizations.of(context);
     if (result == null) {
       setState(() => _isSearching = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l?.barcodeNotFound ?? 'Produkt nicht gefunden')),
-      );
+      final db = widget.dbService;
+      if (db != null) {
+        // Offer to create a new food carrying the scanned barcode, then select
+        // it so the user can log an entry for it.
+        final created = await createFoodFromScannedBarcode(
+          context: context,
+          dbService: db,
+          barcode: barcode,
+        );
+        if (created != null && mounted) {
+          _selectFood(created);
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(l?.barcodeNotFound ?? 'Produkt nicht gefunden')),
+        );
+      }
       return;
     }
 
@@ -2270,6 +2285,82 @@ typedef AddFoodDialogResult = ({
   Map<String, double> micros,
 });
 
+/// After a failed barcode lookup, offers to create a brand-new food carrying
+/// [barcode]. On confirm it opens the "add to database" dialog (nutrition
+/// entered manually or scanned from the label), persists the food to the
+/// user's food DB, and returns the created [FoodItem] so the caller can log a
+/// food entry for it. Returns null when the user cancels or the save fails.
+Future<FoodItem?> createFoodFromScannedBarcode({
+  required BuildContext context,
+  required NeonDatabaseService dbService,
+  required String barcode,
+}) async {
+  final l = AppLocalizations.of(context)!;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.barcodeNotFound),
+      content: Text(l.barcodeCreatePrompt),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(l.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(l.barcodeCreateFood),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return null;
+
+  final result = await showDialog<AddFoodDialogResult>(
+    context: context,
+    builder: (_) => _AddFoodToDatabaseDialog(
+      initialName: '',
+      initialCalories: 0,
+      initialProtein: 0,
+      initialFat: 0,
+      initialCarbs: 0,
+      initialBarcode: barcode,
+      showLabelScan: true,
+      dbService: dbService,
+    ),
+  );
+  if (result == null) return null;
+
+  try {
+    final service = FoodDatabaseService(dbService);
+    final created = await service.createFood(result.food);
+    if (result.food.tags.isNotEmpty) {
+      await TagService(dbService).setFoodTags(created.id, result.food.tags);
+    }
+    if (result.micros.isNotEmpty) {
+      final userId = dbService.userId;
+      final jwt = dbService.jwt;
+      if (userId != null && jwt != null) {
+        await premiumFeatures.saveFoodDatabaseMicrosFromMap(
+          foodId: created.id,
+          userId: userId,
+          micros100g: result.micros,
+          authToken: jwt,
+          apiUrl: NeonDatabaseService.dataApiUrl,
+        );
+      }
+    }
+    return created;
+  } catch (e) {
+    appLogger.w('⚠️ Create-food-from-barcode failed: $e');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ $e'), backgroundColor: Colors.red),
+      );
+    }
+    return null;
+  }
+}
+
 /// Dialog zum Hinzufügen eines neuen Foods zur Datenbank
 class _AddFoodToDatabaseDialog extends StatefulWidget {
   final String initialName;
@@ -2286,6 +2377,15 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
   final List<FoodPortion> initialPortions;
   final Map<String, double> initialMicros;
   final bool initialIsLiquid;
+
+  /// Pre-fills the barcode field — used by the "create food from an unknown
+  /// barcode" flow so the scanned code is carried onto the new food row.
+  final String? initialBarcode;
+
+  /// When true (and the nutrition-label OCR feature is available), a
+  /// "scan label" button is shown at the top to auto-fill the nutrition
+  /// fields. Only enabled for the create-from-barcode flow.
+  final bool showLabelScan;
   final NeonDatabaseService? dbService; // Nullable for guest mode
 
   const _AddFoodToDatabaseDialog({
@@ -2303,6 +2403,8 @@ class _AddFoodToDatabaseDialog extends StatefulWidget {
     this.initialPortions = const [],
     this.initialMicros = const {},
     this.initialIsLiquid = false,
+    this.initialBarcode,
+    this.showLabelScan = false,
     required this.dbService,
   });
 
@@ -2367,7 +2469,8 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     _categoryController =
         TextEditingController(text: widget.initialCategory ?? '');
     _brandController = TextEditingController(text: widget.initialBrand ?? '');
-    _barcodeController = TextEditingController();
+    _barcodeController =
+        TextEditingController(text: widget.initialBarcode ?? '');
     // Portionszeilen aus initialPortions übernehmen
     for (final p in widget.initialPortions) {
       _portionRows.add((
@@ -2442,6 +2545,60 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
     );
   }
 
+  /// Runs the nutrition-label OCR scan (Premium, mobile) and pre-fills the
+  /// form's nutrition fields with the recognised per-100 g values. Leaves the
+  /// barcode and any field the scan couldn't read untouched.
+  Future<void> _scanLabelIntoForm() async {
+    if (!AppFeatures.nutritionLabelScan) return;
+    final result = await premiumFeatures.scanNutritionLabel(
+      context: context,
+      preferredLocale: Localizations.localeOf(context),
+    );
+    if (!mounted || result == null) return;
+
+    String fmt(double? v, {int digits = 1}) =>
+        v == null ? '' : v.toStringAsFixed(digits);
+
+    setState(() {
+      if (result.productName != null && result.productName!.isNotEmpty) {
+        _nameController.text = result.productName!;
+      }
+      if (result.caloriesPer100g != null) {
+        _caloriesController.text = fmt(result.caloriesPer100g, digits: 0);
+      }
+      if (result.proteinPer100g != null) {
+        _proteinController.text = fmt(result.proteinPer100g);
+      }
+      if (result.fatPer100g != null) {
+        _fatController.text = fmt(result.fatPer100g);
+      }
+      if (result.carbsPer100g != null) {
+        _carbsController.text = fmt(result.carbsPer100g);
+      }
+      if (result.satFatPer100g != null) {
+        _saturatedFatController.text = fmt(result.satFatPer100g);
+      }
+      if (result.sugarPer100g != null) {
+        _sugarController.text = fmt(result.sugarPer100g);
+      }
+      if (result.fiberPer100g != null) {
+        _fiberController.text = fmt(result.fiberPer100g);
+      }
+      if (result.saltPer100g != null) {
+        _sodiumController.text = fmt(result.saltPer100g, digits: 2);
+      }
+    });
+
+    if (result.warnings.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.warnings.join(' ')),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
+  }
+
   void _save() {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -2511,6 +2668,19 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Optional: pre-fill the nutrition fields by scanning the label
+            // (Premium / mobile). Only offered for the create-from-barcode flow.
+            if (widget.showLabelScan && AppFeatures.nutritionLabelScan) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _scanLabelIntoForm,
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  label: Text(l.scanNutritionLabel),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             // Info
             Container(
               padding: const EdgeInsets.all(12),

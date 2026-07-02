@@ -740,6 +740,8 @@
   "barcodeScanConfirm": "Suchen",
   "barcodeNotFound": "Produkt nicht gefunden",
   "barcodeNotFoundHint": "Kein Produkt zu diesem Barcode gefunden.",
+  "barcodeCreateFood": "Lebensmittel anlegen",
+  "barcodeCreatePrompt": "Möchtest du ein neues Lebensmittel mit diesem Barcode anlegen? Die Nährwerte kannst du selbst eingeben oder vom Etikett scannen.",
   "barcodeFoundOff": "Bei Open Food Facts gefunden",
   "barcodeImportOff": "Nährwerte von Open Food Facts importieren?",
   "barcodeImport": "Importieren",

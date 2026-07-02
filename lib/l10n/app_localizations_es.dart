@@ -1596,6 +1596,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se encontró ningún producto con este código.';
 
   @override
+  String get barcodeCreateFood => 'Crear alimento';
+
+  @override
+  String get barcodeCreatePrompt =>
+      '¿Crear un alimento nuevo con este código de barras? Puedes introducir los valores nutricionales o escanearlos de la etiqueta.';
+
+  @override
   String get barcodeFoundOff => 'Encontrado en Open Food Facts';
 
   @override

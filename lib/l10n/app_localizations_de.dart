@@ -1585,6 +1585,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get barcodeNotFoundHint => 'Kein Produkt zu diesem Barcode gefunden.';
 
   @override
+  String get barcodeCreateFood => 'Lebensmittel anlegen';
+
+  @override
+  String get barcodeCreatePrompt =>
+      'Möchtest du ein neues Lebensmittel mit diesem Barcode anlegen? Die Nährwerte kannst du selbst eingeben oder vom Etikett scannen.';
+
+  @override
   String get barcodeFoundOff => 'Bei Open Food Facts gefunden';
 
   @override

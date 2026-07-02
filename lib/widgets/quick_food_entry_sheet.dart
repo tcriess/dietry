@@ -18,6 +18,7 @@ import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 import 'repeat_meal_picker.dart';
+import '../screens/add_food_entry_screen.dart' show createFoodFromScannedBarcode;
 
 /// Postgres rejects an empty string as a `uuid`, and PostgREST surfaces
 /// that as a 400 which [SyncService.createFoodEntry] misreads as
@@ -611,24 +612,17 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     if (!mounted) return;
 
     if (result == null) {
-      // A dialog, not a SnackBar: a SnackBar renders at the bottom of the
-      // screen, hidden behind this 85%-height bottom sheet.
-      await showDialog<void>(
+      // Nothing matched. Offer to create a new food carrying this barcode
+      // (nutrition entered manually or scanned from the label); on save we log
+      // an entry for it just like a normal scan hit.
+      final created = await createFoodFromScannedBarcode(
         context: context,
-        builder: (ctx) {
-          final ld = AppLocalizations.of(ctx)!;
-          return AlertDialog(
-            title: Text(ld.barcodeNotFound),
-            content: Text(ld.barcodeNotFoundHint),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
+        dbService: widget.dbService,
+        barcode: barcode,
       );
+      if (created != null && mounted) {
+        await _pickFood(created);
+      }
       return;
     }
     await _pickFood(foodForEntry ?? result.food);

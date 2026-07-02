@@ -2950,6 +2950,18 @@ abstract class AppLocalizations {
   /// **'Kein Produkt zu diesem Barcode gefunden.'**
   String get barcodeNotFoundHint;
 
+  /// No description provided for @barcodeCreateFood.
+  ///
+  /// In de, this message translates to:
+  /// **'Lebensmittel anlegen'**
+  String get barcodeCreateFood;
+
+  /// No description provided for @barcodeCreatePrompt.
+  ///
+  /// In de, this message translates to:
+  /// **'Möchtest du ein neues Lebensmittel mit diesem Barcode anlegen? Die Nährwerte kannst du selbst eingeben oder vom Etikett scannen.'**
+  String get barcodeCreatePrompt;
+
   /// No description provided for @barcodeFoundOff.
   ///
   /// In de, this message translates to:

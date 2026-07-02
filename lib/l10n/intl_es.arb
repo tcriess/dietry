@@ -723,6 +723,8 @@
   "barcodeScanConfirm": "Buscar",
   "barcodeNotFound": "Producto no encontrado",
   "barcodeNotFoundHint": "No se encontró ningún producto con este código.",
+  "barcodeCreateFood": "Crear alimento",
+  "barcodeCreatePrompt": "¿Crear un alimento nuevo con este código de barras? Puedes introducir los valores nutricionales o escanearlos de la etiqueta.",
   "barcodeFoundOff": "Encontrado en Open Food Facts",
   "barcodeImportOff": "¿Importar datos nutricionales de Open Food Facts?",
   "barcodeImport": "Importar",
