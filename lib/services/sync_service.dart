@@ -29,6 +29,12 @@ class SyncService extends ChangeNotifier {
   /// Call once after [NeonDatabaseService] is ready.
   Future<void> init(NeonDatabaseService db) async {
     _db = db;
+    // Drop any guest-mode local backend so write-through and reads go to the
+    // server after a guest→login transition. The service is a singleton and
+    // its write methods check _local before _db, so a lingering guest instance
+    // would otherwise send post-login writes to the wiped guest SQLite. See
+    // initLocal().
+    _local = null;
     _pendingCount = await OfflineQueue.instance.pendingCount();
     notifyListeners();
 
@@ -41,6 +47,9 @@ class SyncService extends ChangeNotifier {
   /// Initialize for guest mode (local SQLite storage)
   void initLocal(LocalDataService local) {
     _local = local;
+    // Guest and authenticated modes are mutually exclusive; keep exactly one
+    // backend set so write-through dispatch is unambiguous.
+    _db = null;
     _isOnline = true;  // Always online in local mode (no queue)
     _pendingCount = 0;  // No offline queue in local mode
     notifyListeners();

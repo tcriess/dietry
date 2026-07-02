@@ -74,11 +74,19 @@ class DataStore extends ChangeNotifier {
 
   void init(NeonDatabaseService db) {
     _db = db;
+    // Drop any guest-mode local backend so loadDay() dispatches to the server.
+    // The store is a process-lifetime singleton; on a guest→login transition it
+    // otherwise keeps reading the (now-wiped) guest SQLite — which checks
+    // _local before _db — until a full app restart. See initLocal().
+    _local = null;
   }
 
   /// Initialize for guest mode (local SQLite storage)
   void initLocal(LocalDataService local) {
     _local = local;
+    // Guest and authenticated modes are mutually exclusive; keep exactly one
+    // backend set so the loadDay() dispatch is unambiguous.
+    _db = null;
   }
 
   /// Clear all in-memory state and arm the initial-loading flag.
