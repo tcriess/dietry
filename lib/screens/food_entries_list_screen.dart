@@ -150,12 +150,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     }
   }
 
-  /// Renders one or more "Repeat …" chips for an empty meal group. Always
-  /// includes yesterday's same meal-type when available; for lunch also
-  /// surfaces yesterday's dinner (leftovers-as-tomorrow's-lunch pattern),
-  /// for dinner also surfaces today's lunch (same-day-leftover pattern).
-  /// Returns [SizedBox.shrink] when no suggestions apply.
-  Widget _buildRepeatChipForEmptyMeal(
+  /// Computes the "Repeat …" suggestions for [mealType]. Always includes
+  /// yesterday's same meal-type when available; for lunch also surfaces
+  /// yesterday's dinner (leftovers-as-tomorrow's-lunch pattern), for dinner
+  /// also surfaces today's lunch (same-day-leftover pattern). Independent of
+  /// whether the section currently has entries, so it powers the chips on both
+  /// empty and non-empty meal groups.
+  List<({String label, List<FoodEntry> sources})> _repeatSuggestionsFor(
       AppLocalizations l, MealType mealType, List<FoodEntry> todayEntries) {
     final prev = _previousDayEntries;
     final suggestions = <({String label, List<FoodEntry> sources})>[];
@@ -192,7 +193,45 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         ));
       }
     }
+    return suggestions;
+  }
 
+  /// Renders the row of "Repeat …" [ActionChip]s for [suggestions]. Returns
+  /// [SizedBox.shrink] when there is nothing to repeat.
+  Widget _buildRepeatChips(
+      List<({String label, List<FoodEntry> sources})> suggestions,
+      MealType mealType) {
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final s in suggestions)
+            ActionChip(
+              avatar: _repeatingMeal
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.replay, size: 18),
+              label: Text('${s.label} (${s.sources.length})'),
+              onPressed: _repeatingMeal
+                  ? null
+                  : () => _repeatMeal(mealType, s.label, s.sources),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Renders the greyed-out header + "Repeat …" chips for an *empty* meal
+  /// group. Returns [SizedBox.shrink] when no suggestions apply.
+  Widget _buildRepeatChipForEmptyMeal(
+      AppLocalizations l, MealType mealType, List<FoodEntry> todayEntries) {
+    final suggestions = _repeatSuggestionsFor(l, mealType, todayEntries);
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -214,29 +253,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              for (final s in suggestions)
-                ActionChip(
-                  avatar: _repeatingMeal
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.replay, size: 18),
-                  label: Text('${s.label} (${s.sources.length})'),
-                  onPressed: _repeatingMeal
-                      ? null
-                      : () => _repeatMeal(mealType, s.label, s.sources),
-                ),
-            ],
-          ),
-        ),
+        _buildRepeatChips(suggestions, mealType),
         const SizedBox(height: 8),
       ],
     );
@@ -768,7 +785,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                     ),
                                   ),
                                 )),
-                                
+
+                                // Repeat chips — also offered when the section
+                                // already has entries (overview only).
+                                _buildRepeatChips(
+                                    _repeatSuggestionsFor(l, mealType, entries),
+                                    mealType),
+
                                 const SizedBox(height: 8),
                               ],
                             );
