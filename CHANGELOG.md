@@ -27,6 +27,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.7] — 2026-07-02
+
+### Added
+- **Create food from an unknown barcode** — when a barcode scan matches neither your food database nor Open Food Facts, you can now create a new food carrying that barcode instead of hitting a dead end. Enter the nutrition manually or, on Pro/mobile, scan it straight off the nutrition label; the food is saved with its barcode and logged in one flow.
+- **Repeat a meal even when the section already has entries** — the "Repeat yesterday's …" chips in the Entries overview now also appear under meal sections that already contain items, not just empty ones.
+
+### Changed
+- **"Kalorienbilanz" is now a true energy balance** — the report's calorie-balance chart compares intake against your maintenance (BMR/TDEE derived from your body data and tracking method) instead of just intake minus exercise. A green bar now means a real deficit (below maintenance), orange a surplus.
+
+### Fixed
+- **Health Connect no longer double-counts a workout** — the same training exported by two apps (e.g. your watch plus Google Fit re-exporting it) is de-duplicated by overlapping time and activity type, so it shows only once.
+- **Food entries load right after logging in from guest mode** — previously they stayed empty (and newly added entries were written to the discarded guest database) until the app was restarted.
+
+---
+
 ## [1.1.6] — 2026-06-21
 
 ### Added
