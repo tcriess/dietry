@@ -9,9 +9,11 @@ import '../utils/app_features_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
 import '../services/neon_database_service.dart';
+import '../services/nutrition_calculator.dart';
 import '../services/nutrition_goal_service.dart';
 import '../services/platform_export.dart' as exporter;
 import '../services/reports_service.dart';
+import '../services/user_body_data_service.dart';
 
 enum _FoodSortMode { calories, count, weight }
 
@@ -81,12 +83,18 @@ class _ReportsData {
   final List<FoodFrequencyItem> mostEatenFoods;
   final List<NutritionGoal> goalHistory;
 
+  /// Current body data — used to compute the true energy-balance maintenance
+  /// base (BMR/TDEE) for the cloud "Kalorienbilanz" chart. Null in CE, guest
+  /// mode, or when the user hasn't entered body data.
+  final UserBodyData? bodyData;
+
   const _ReportsData({
     required this.nutrition,
     required this.water,
     required this.weight,
     this.mostEatenFoods = const [],
     this.goalHistory = const [],
+    this.bodyData,
   });
 }
 
@@ -192,6 +200,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _svc.getWeightTrend(from, todayDate),
       _svc.getMostEatenFoods(from, to),
       NutritionGoalService(widget.dbService!).getAllGoals(),
+      // Only the cloud energy-balance chart needs body data — skip the fetch in CE.
+      if (AppConfig.isCloudEdition)
+        UserBodyDataService(widget.dbService!).getCurrentBodyData()
+      else
+        Future<UserBodyData?>.value(null),
     ]);
 
     final result = _ReportsData(
@@ -200,6 +213,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       weight: results[2] as List<WeightEntry>,
       mostEatenFoods: results[3] as List<FoodFrequencyItem>,
       goalHistory: results[4] as List<NutritionGoal>,
+      bodyData: results[5] as UserBodyData?,
     );
     _lastData = result;
     return result;
@@ -385,6 +399,32 @@ class _ReportsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+
+    // True energy-balance maintenance base for the cloud "Kalorienbilanz"
+    // chart. Depends on the goal's tracking method:
+    //   • bmrOnly      → base = BMR, add logged exercise on top
+    //   • tdeeComplete → base = TDEE (activity already baked in), no exercise
+    //   • tdeeHybrid   → base = TDEE (everyday only), add logged exercise
+    // Null base (no body data) makes the cloud chart fall back to its old
+    // intake − exercise behaviour.
+    double? maintenanceCalories;
+    bool? maintenanceAddsExercise;
+    final bodyData = data.bodyData;
+    if (bodyData != null) {
+      final method = goal?.trackingMethod ?? TrackingMethod.tdeeHybrid;
+      switch (method) {
+        case TrackingMethod.bmrOnly:
+          maintenanceCalories = NutritionCalculator.calculateBMR(bodyData);
+          maintenanceAddsExercise = true;
+        case TrackingMethod.tdeeComplete:
+          maintenanceCalories = NutritionCalculator.calculateTDEE(bodyData);
+          maintenanceAddsExercise = false;
+        case TrackingMethod.tdeeHybrid:
+          maintenanceCalories = NutritionCalculator.calculateTDEE(bodyData);
+          maintenanceAddsExercise = true;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -443,6 +483,8 @@ class _ReportsBody extends StatelessWidget {
             fatGoal: goal?.fat,
             carbsGoal: goal?.carbs,
             waterGoalMl: goal?.waterGoalMl,
+            maintenanceCalories: maintenanceCalories,
+            maintenanceAddsExercise: maintenanceAddsExercise,
           ),
           if (!AppFeatures.isPaid)
             AppFeaturesUtils.buildUpgradePrompt(

@@ -414,6 +414,8 @@ abstract class PremiumFeatures {
     double? fatGoal,
     double? carbsGoal,
     int? waterGoalMl,
+    double? maintenanceCalories,
+    bool? maintenanceAddsExercise,
   });
 
   /// Exportiert alle sichtbaren Report-Daten als CSV-Dateien.
@@ -598,6 +600,8 @@ class NullPremiumFeatures implements PremiumFeatures {
     double? fatGoal,
     double? carbsGoal,
     int? waterGoalMl,
+    double? maintenanceCalories,
+    bool? maintenanceAddsExercise,
   }) =>
       const SizedBox.shrink();
 
