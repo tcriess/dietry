@@ -1,11 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/physical_activity.dart';
+import '../models/food_entry.dart' show MealType;
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
+import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/move_copy_sheet.dart';
 import 'edit_activity_screen.dart';
+
+/// Maps an activity's start time to the meal bucket it falls in, so the
+/// move/copy sheet can pre-select a sensible meal.
+MealType _mealForTime(DateTime dt) {
+  final h = dt.hour;
+  if (h < 11) return MealType.breakfast;
+  if (h < 15) return MealType.lunch;
+  if (h < 18) return MealType.snack;
+  return MealType.dinner;
+}
+
+/// Representative time-of-day used when an activity is placed into a meal slot
+/// other than its original one (activities store a timestamp, not a meal).
+({int hour, int minute}) _timeForMeal(MealType meal) {
+  switch (meal) {
+    case MealType.breakfast:
+      return (hour: 8, minute: 0);
+    case MealType.lunch:
+      return (hour: 12, minute: 30);
+    case MealType.snack:
+      return (hour: 15, minute: 30);
+    case MealType.dinner:
+      return (hour: 19, minute: 0);
+  }
+}
 
 /// Screen zur Anzeige aller Aktivitäten eines Tages
 class ActivitiesListScreen extends StatefulWidget {
@@ -69,6 +97,75 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
           dbService: widget.dbService,
           activity: activity,
         ),
+      ),
+    );
+  }
+
+  /// Long-press handler: copy or move [activity] to another day / meal. The
+  /// chosen meal maps to a representative start time on the target day (the
+  /// original time is kept when the meal is unchanged); the duration is
+  /// preserved. A copy is a fresh manual entry; a move re-dates in place.
+  Future<void> _moveCopyActivity(PhysicalActivity activity) async {
+    final currentMeal = _mealForTime(activity.startTime);
+    final result = await showMoveCopySheet(
+      context,
+      title: activity.displayName,
+      initialDay: activity.startTime,
+      initialMeal: currentMeal,
+    );
+    if (result == null || !mounted) return;
+
+    final l = AppLocalizations.of(context)!;
+    final sync = SyncService.instance;
+
+    final int hour, minute;
+    if (result.meal == currentMeal) {
+      hour = activity.startTime.hour;
+      minute = activity.startTime.minute;
+    } else {
+      final t = _timeForMeal(result.meal);
+      hour = t.hour;
+      minute = t.minute;
+    }
+    final newStart = DateTime(result.day.year, result.day.month, result.day.day,
+        hour, minute, activity.startTime.second);
+    final newEnd =
+        newStart.add(activity.endTime.difference(activity.startTime));
+
+    try {
+      if (result.action == MoveCopyAction.copy) {
+        // A copy is a fresh manual entry: no id and no Health Connect link, so
+        // it can't collide with the source on the (user_id, hc_record_id)
+        // unique constraint (which would silently no-op the insert).
+        await sync.saveActivity(PhysicalActivity(
+          activityType: activity.activityType,
+          activityId: activity.activityId,
+          activityName: activity.activityName,
+          startTime: newStart,
+          endTime: newEnd,
+          durationMinutes: activity.durationMinutes,
+          caloriesBurned: activity.caloriesBurned,
+          distanceKm: activity.distanceKm,
+          steps: activity.steps,
+          avgHeartRate: activity.avgHeartRate,
+          notes: activity.notes,
+          source: DataSource.manual,
+        ));
+      } else {
+        await sync.updateActivity(
+            activity.copyWith(startTime: newStart, endTime: newEnd));
+      }
+      await _store.loadDay(widget.selectedDay, silent: true);
+    } catch (e) {
+      appLogger.e('Move/copy activity failed: $e');
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.action == MoveCopyAction.copy
+            ? l.activityCopied
+            : l.activityMoved),
+        backgroundColor: Colors.green,
       ),
     );
   }
@@ -275,6 +372,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                   tooltip: l.delete,
                                 ),
                                 onTap: () => _editActivity(activity),
+                                onLongPress: () => _moveCopyActivity(activity),
                               ),
                             ),
                           );

@@ -79,6 +79,46 @@ class PhysicalActivity {
     ),
     healthConnectRecordId: json['health_connect_record_id'] as String?,
   );
+
+  /// Returns a copy with the given fields replaced. Used e.g. when moving an
+  /// entry to another day/meal (re-dating [startTime]/[endTime] while keeping
+  /// [id] and [healthConnectRecordId]). To duplicate an activity, construct a
+  /// fresh [PhysicalActivity] instead so `id`/`healthConnectRecordId` can be
+  /// cleared (copyWith can't set a field back to null).
+  PhysicalActivity copyWith({
+    String? id,
+    ActivityType? activityType,
+    String? activityId,
+    String? activityName,
+    DateTime? startTime,
+    DateTime? endTime,
+    int? durationMinutes,
+    double? caloriesBurned,
+    double? distanceKm,
+    int? steps,
+    double? avgHeartRate,
+    String? notes,
+    DataSource? source,
+    String? healthConnectRecordId,
+  }) {
+    return PhysicalActivity(
+      id: id ?? this.id,
+      activityType: activityType ?? this.activityType,
+      activityId: activityId ?? this.activityId,
+      activityName: activityName ?? this.activityName,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      caloriesBurned: caloriesBurned ?? this.caloriesBurned,
+      distanceKm: distanceKm ?? this.distanceKm,
+      steps: steps ?? this.steps,
+      avgHeartRate: avgHeartRate ?? this.avgHeartRate,
+      notes: notes ?? this.notes,
+      source: source ?? this.source,
+      healthConnectRecordId:
+          healthConnectRecordId ?? this.healthConnectRecordId,
+    );
+  }
 }
 
 /// Aktivitätstypen (kompatibel mit Health Connect)

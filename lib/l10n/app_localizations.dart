@@ -208,6 +208,78 @@ abstract class AppLocalizations {
   /// **'Heute'**
   String get today;
 
+  /// No description provided for @yesterday.
+  ///
+  /// In de, this message translates to:
+  /// **'Gestern'**
+  String get yesterday;
+
+  /// No description provided for @tomorrow.
+  ///
+  /// In de, this message translates to:
+  /// **'Morgen'**
+  String get tomorrow;
+
+  /// No description provided for @moveOrCopy.
+  ///
+  /// In de, this message translates to:
+  /// **'Verschieben oder kopieren'**
+  String get moveOrCopy;
+
+  /// No description provided for @copy.
+  ///
+  /// In de, this message translates to:
+  /// **'Kopieren'**
+  String get copy;
+
+  /// No description provided for @move.
+  ///
+  /// In de, this message translates to:
+  /// **'Verschieben'**
+  String get move;
+
+  /// No description provided for @pickDate.
+  ///
+  /// In de, this message translates to:
+  /// **'Datum wählen…'**
+  String get pickDate;
+
+  /// No description provided for @daySectionLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag'**
+  String get daySectionLabel;
+
+  /// No description provided for @mealSectionLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Mahlzeit'**
+  String get mealSectionLabel;
+
+  /// No description provided for @entryCopied.
+  ///
+  /// In de, this message translates to:
+  /// **'Eintrag kopiert'**
+  String get entryCopied;
+
+  /// No description provided for @entryMoved.
+  ///
+  /// In de, this message translates to:
+  /// **'Eintrag verschoben'**
+  String get entryMoved;
+
+  /// No description provided for @activityCopied.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivität kopiert'**
+  String get activityCopied;
+
+  /// No description provided for @activityMoved.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivität verschoben'**
+  String get activityMoved;
+
   /// No description provided for @cancel.
   ///
   /// In de, this message translates to:

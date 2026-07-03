@@ -63,6 +63,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String get today => 'Heute';
 
   @override
+  String get yesterday => 'Gestern';
+
+  @override
+  String get tomorrow => 'Morgen';
+
+  @override
+  String get moveOrCopy => 'Verschieben oder kopieren';
+
+  @override
+  String get copy => 'Kopieren';
+
+  @override
+  String get move => 'Verschieben';
+
+  @override
+  String get pickDate => 'Datum wählen…';
+
+  @override
+  String get daySectionLabel => 'Tag';
+
+  @override
+  String get mealSectionLabel => 'Mahlzeit';
+
+  @override
+  String get entryCopied => 'Eintrag kopiert';
+
+  @override
+  String get entryMoved => 'Eintrag verschoben';
+
+  @override
+  String get activityCopied => 'Aktivität kopiert';
+
+  @override
+  String get activityMoved => 'Aktivität verschoben';
+
+  @override
   String get cancel => 'Abbrechen';
 
   @override

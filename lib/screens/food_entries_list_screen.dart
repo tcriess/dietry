@@ -12,6 +12,7 @@ import '../services/food_entry_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/repeat_meal_picker.dart';
+import '../widgets/move_copy_sheet.dart';
 import 'edit_food_entry_screen.dart';
 
 /// Screen zur Anzeige und Verwaltung aller Food-Entries eines Tages
@@ -389,6 +390,52 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
           dbService: widget.dbService,
           entry: entry,
         ),
+      ),
+    );
+  }
+
+  /// Long-press handler: copy or move [entry] to another day / meal. A copy is
+  /// a fresh entry (new id) at the target; a move re-dates the existing entry
+  /// in place. After either, the currently-viewed day is reloaded so same-day
+  /// changes re-group and entries moved to another day disappear.
+  Future<void> _moveCopyEntry(FoodEntry entry) async {
+    final result = await showMoveCopySheet(
+      context,
+      title: entry.name,
+      initialDay: entry.entryDate,
+      initialMeal: entry.mealType,
+    );
+    if (result == null || !mounted) return;
+
+    final l = AppLocalizations.of(context)!;
+    final sync = SyncService.instance;
+    final now = DateTime.now();
+    try {
+      if (result.action == MoveCopyAction.copy) {
+        await sync.createFoodEntry(entry.copyWith(
+          id: '',
+          entryDate: result.day,
+          mealType: result.meal,
+          createdAt: now,
+          updatedAt: now,
+        ));
+      } else {
+        await sync.updateFoodEntry(entry.copyWith(
+          entryDate: result.day,
+          mealType: result.meal,
+          updatedAt: now,
+        ));
+      }
+      await _store.loadDay(widget.selectedDay, silent: true);
+    } catch (e) {
+      appLogger.e('Move/copy food entry failed: $e');
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            result.action == MoveCopyAction.copy ? l.entryCopied : l.entryMoved),
+        backgroundColor: Colors.green,
       ),
     );
   }
@@ -782,6 +829,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                         ],
                                       ),
                                       onTap: () => _editEntry(entry),
+                                      onLongPress: () => _moveCopyEntry(entry),
                                     ),
                                   ),
                                 )),
