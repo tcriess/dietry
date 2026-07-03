@@ -153,18 +153,26 @@ class PhysicalActivityService {
 
       // Health Connect imports carry a record id and the table has
       // UNIQUE(user_id, health_connect_record_id). Re-imports (queue replays,
-      // races, repeated syncs) would otherwise 409. Upsert via PostgREST so the
-      // existing row is updated in place. Manual saves keep plain INSERT
-      // semantics (NULLs are distinct, no constraint to merge against).
+      // races, repeated syncs) would otherwise 409. Insert with
+      // `resolution=ignore-duplicates` (ON CONFLICT DO NOTHING) so a re-import
+      // NEVER overwrites an already-stored activity — the first import wins and
+      // its values are kept. This matters because the SAME real-world workout
+      // can be re-read from Health Connect with degraded data: Google Fit
+      // re-exports a watch workout with lower calories, and the health plugin
+      // sums distance deltas across both source apps (watch + Google Fit) into
+      // one inflated total. Merging those in would clobber the trusted original.
+      // Manual saves keep plain INSERT semantics (NULLs are distinct, no
+      // constraint to merge against).
       final hasHcId = activity.healthConnectRecordId != null;
       final path = hasHcId
           ? '/physical_activities?on_conflict=user_id,health_connect_record_id'
           : '/physical_activities';
       final prefer = hasHcId
-          ? 'return=representation,resolution=merge-duplicates'
+          ? 'return=representation,resolution=ignore-duplicates'
           : 'return=representation';
 
-      appLogger.d('   Führe ${hasHcId ? "UPSERT" : "INSERT"} via Dio aus...');
+      appLogger
+          .d('   Führe ${hasHcId ? "INSERT (ignore-dupes)" : "INSERT"} aus...');
 
       final response = await _db.dioClient.post(
         path,
@@ -179,7 +187,26 @@ class PhysicalActivityService {
             'INSERT fehlgeschlagen: ${response.statusCode}');
       }
 
-      final createdJson = (response.data as List).first as Map<String, dynamic>;
+      final rows = response.data as List;
+      if (rows.isEmpty) {
+        // Conflict was ignored: an activity with this health_connect_record_id
+        // is already stored. Keep it untouched and return the EXISTING row so
+        // the caller reflects the trusted first-import values, not the
+        // re-imported (possibly degraded) ones.
+        appLogger.i('↩️ Aktivität bereits vorhanden – HC-Re-Import übersprungen');
+        final existing = await _db.client
+            .from('physical_activities')
+            .select()
+            .eq('user_id', userId)
+            .eq('health_connect_record_id', activity.healthConnectRecordId!)
+            .limit(1);
+        if (existing.isNotEmpty) {
+          return PhysicalActivity.fromJson(existing.first);
+        }
+        return activity;
+      }
+
+      final createdJson = rows.first as Map<String, dynamic>;
       final created = PhysicalActivity.fromJson(createdJson);
 
       appLogger.i('✅ Aktivität erfolgreich gespeichert: ${created.id}');
