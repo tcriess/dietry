@@ -289,6 +289,53 @@ class DataStore extends ChangeNotifier {
     }
   }
 
+  /// Background-caches the trailing [days] days of food entries + activities so
+  /// past-day browsing is instant/offline and the cache stays warm. Best-effort
+  /// and fire-and-forget — call after the initial load. No-op without a cache/db
+  /// or a valid token.
+  Future<void> backfillRecentDays({int days = 30}) async {
+    final cache = _cache;
+    final db = _db;
+    if (cache == null || db == null) return;
+    if (db.userId == null || !await db.ensureValidToken(minMinutesValid: 5)) {
+      return;
+    }
+    try {
+      final today = DateTime.now();
+      final end = DateTime(today.year, today.month, today.day);
+      final start = end.subtract(Duration(days: days));
+
+      final entries =
+          await FoodEntryService(db).getFoodEntriesForRange(start, end);
+      final activities = await PhysicalActivityService(db)
+          .getActivitiesInRange(start: start, end: end);
+
+      String dayKey(DateTime d) => d.toIso8601String().split('T')[0];
+      final entriesByDay = <String, List<FoodEntry>>{};
+      for (final e in entries) {
+        (entriesByDay[dayKey(e.entryDate)] ??= []).add(e);
+      }
+      final actsByDay = <String, List<PhysicalActivity>>{};
+      for (final a in activities) {
+        (actsByDay[dayKey(a.startTime)] ??= []).add(a);
+      }
+
+      // Only write days that actually have server data — an empty day is left
+      // untouched (it will reconcile if the user opens it).
+      final touchedDays = {...entriesByDay.keys, ...actsByDay.keys};
+      for (final key in touchedDays) {
+        final date = DateTime.parse(key);
+        await cache.replaceCachedEntriesForDate(
+            date, entriesByDay[key] ?? const []);
+        await cache.replaceCachedActivitiesForDate(
+            date, actsByDay[key] ?? const []);
+      }
+      appLogger.i('✅ Backfilled ${touchedDays.length} days into local cache');
+    } catch (e) {
+      appLogger.w('⚠️ Cache backfill failed: $e');
+    }
+  }
+
   // ── Food entries ──────────────────────────────────────────────────────────
 
   void addFoodEntry(FoodEntry entry) {

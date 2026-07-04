@@ -242,18 +242,25 @@ class FoodEntryService {
     }
   }
 
-  /// Hole alle Food Entries für einen Datumsbereich
+  /// Hole alle Food Entries für einen Datumsbereich [start, end] (inklusiv).
+  /// Best-effort: leere Liste bei fehlendem Token/Fehler (Cache-Backfill).
   Future<List<FoodEntry>> getFoodEntriesForRange(DateTime start, DateTime end) async {
     try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return [];
+      final userId = _db.userId;
+      if (userId == null) return [];
+
       final startStr = start.toIso8601String().split('T')[0];
       final endStr = end.toIso8601String().split('T')[0];
 
       final response = await _db.client
         .from('food_entries')
         .select()
-        .gte('date', startStr)
-        .lte('date', endStr)
-        .order('date', ascending: false)
+        .eq('user_id', userId)
+        .gte('entry_date', startStr)  // Spalte heißt entry_date, nicht date
+        .lte('entry_date', endStr)
+        .order('entry_date', ascending: false)
         .order('created_at', ascending: false);
 
       return (response as List)
@@ -261,7 +268,7 @@ class FoodEntryService {
         .toList();
     } catch (e) {
       appLogger.e('❌ Fehler beim Abrufen der Food Entries (Range): $e');
-      rethrow;
+      return [];
     }
   }
 }

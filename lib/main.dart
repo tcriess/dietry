@@ -3058,6 +3058,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     await _refreshCanGoBack();
     // Try flushing any queued operations now that we're online.
     _sync.processPendingQueue();
+    // Background: warm the cache with recent days so past-day browsing is
+    // instant/offline. Fire-and-forget, low priority — never blocks the UI.
+    _store.backfillRecentDays().ignore();
   }
 
   Future<void> _loadCurrentGoal() async {
