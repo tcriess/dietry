@@ -31,11 +31,19 @@ class LocalDataService {
     }
 
     try {
-      // One SQL path on every platform: native sqflite, desktop FFI, and web
-      // ffi_web (IndexedDB/WASM). The right factory is selected in main().
-      appLogger.d('[LocalDataService.init] Getting database path...');
-      final dbPath = await getDatabasesPath();
-      final fullPath = path.join(dbPath, _dbName);
+      // Same SQL/schema on every platform; only the path differs. Native &
+      // desktop resolve a filesystem path via getDatabasesPath(); web/ffi_web
+      // has no filesystem — it keys IndexedDB by the database name, and
+      // getDatabasesPath() is unsupported there (throws "getDatabasesPath is
+      // null"). So on web we open by bare name.
+      appLogger.d('[LocalDataService.init] Resolving database path...');
+      final String fullPath;
+      if (kIsWeb) {
+        fullPath = _dbName;
+      } else {
+        final dbPath = await getDatabasesPath();
+        fullPath = path.join(dbPath, _dbName);
+      }
       appLogger.d('[LocalDataService.init] Opening database at $fullPath');
       _db = await openDatabase(
         fullPath,
