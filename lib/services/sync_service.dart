@@ -19,6 +19,12 @@ class SyncService extends ChangeNotifier {
 
   NeonDatabaseService? _db;
   LocalDataService? _local;
+
+  /// Logged-in write-through cache (offline mirror). Distinct from [_local]
+  /// (the guest-mode backend); when set, [_db] is also set. Logged-in writes
+  /// mirror into it so a change survives a force-quit → cold start even before
+  /// the next background refresh. Attached via [attachCache].
+  LocalDataService? _cache;
   bool _isOnline = true;
   int _pendingCount = 0;
   bool _isSyncing = false;
@@ -37,6 +43,9 @@ class SyncService extends ChangeNotifier {
     // would otherwise send post-login writes to the wiped guest SQLite. See
     // initLocal().
     _local = null;
+    // Re-attached per session in _initializeAndLoadData() once the user id
+    // resolves; clear any stale cache from a previous login.
+    _cache = null;
     _pendingCount = await OfflineQueue.instance.pendingCount();
     notifyListeners();
 
@@ -52,9 +61,31 @@ class SyncService extends ChangeNotifier {
     // Guest and authenticated modes are mutually exclusive; keep exactly one
     // backend set so write-through dispatch is unambiguous.
     _db = null;
+    // The logged-in write-through cache only applies in authenticated mode; in
+    // guest mode _local is already the source of truth.
+    _cache = null;
     _isOnline = true;  // Always online in local mode (no queue)
     _pendingCount = 0;  // No offline queue in local mode
     notifyListeners();
+  }
+
+  /// Attach the per-user local cache (offline mirror, logged-in mode) so writes
+  /// mirror into it immediately. Must already be init()'d with the real user id.
+  void attachCache(LocalDataService cache) {
+    _cache = cache;
+  }
+
+  /// Best-effort write-through of a logged-in mutation into the local cache.
+  /// Never throws — a cache failure must not affect the user-facing operation.
+  Future<void> _mirrorToCache(
+      Future<void> Function(LocalDataService cache) op) async {
+    final c = _cache;
+    if (c == null) return;
+    try {
+      await op(c);
+    } catch (e) {
+      appLogger.w('⚠️ Cache write-through failed: $e');
+    }
   }
 
   @override
@@ -82,6 +113,10 @@ class SyncService extends ChangeNotifier {
         return null;
       }
     }
+
+    // Logged-in: mirror into the local cache so a cold start reflects the add
+    // even before the next background refresh; then write to the server.
+    await _mirrorToCache((c) => c.cacheUpsertFoodEntry(e));
 
     // Remote mode: existing behavior
     try {
@@ -114,6 +149,9 @@ class SyncService extends ChangeNotifier {
       }
     }
 
+    // Logged-in: mirror the edit into the local cache, then write to the server.
+    await _mirrorToCache((c) => c.cacheUpsertFoodEntry(entry));
+
     // Remote mode: existing behavior
     try {
       final result = await FoodEntryService(_db!).updateFoodEntry(entry);
@@ -142,6 +180,9 @@ class SyncService extends ChangeNotifier {
         return;
       }
     }
+
+    // Logged-in: mirror the delete into the local cache, then hit the server.
+    await _mirrorToCache((c) => c.deleteFoodEntry(id));
 
     // Remote mode: existing behavior
     try {
@@ -176,6 +217,9 @@ class SyncService extends ChangeNotifier {
       }
     }
 
+    // Logged-in: mirror into the local cache, then write to the server.
+    await _mirrorToCache((c) => c.cacheUpsertActivity(a));
+
     // Remote mode: existing behavior
     try {
       final result = await PhysicalActivityService(_db!).saveActivity(a);
@@ -207,6 +251,9 @@ class SyncService extends ChangeNotifier {
       }
     }
 
+    // Logged-in: mirror the edit into the local cache, then write to the server.
+    await _mirrorToCache((c) => c.cacheUpsertActivity(activity));
+
     // Remote mode: existing behavior
     try {
       final result = await PhysicalActivityService(_db!).updateActivity(activity);
@@ -235,6 +282,9 @@ class SyncService extends ChangeNotifier {
         return;
       }
     }
+
+    // Logged-in: mirror the delete into the local cache, then hit the server.
+    await _mirrorToCache((c) => c.deleteActivity(id));
 
     // Remote mode: existing behavior
     try {

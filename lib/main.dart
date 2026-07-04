@@ -3021,6 +3021,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       try {
         await LocalDataService.instance.init(userId: uid);
         _store.attachCache(LocalDataService.instance);
+        _sync.attachCache(LocalDataService.instance);
       } catch (e) {
         appLogger.w('⚠️ Local cache unavailable: $e');
       }

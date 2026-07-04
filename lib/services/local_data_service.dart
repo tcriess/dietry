@@ -1111,6 +1111,33 @@ class LocalDataService {
     }
   }
 
+  /// Upserts a single food entry into the cache by id (offline-mirror write-
+  /// through when a logged-in user adds/edits). Preserves the entry's own id
+  /// and timestamps; idempotent (replace on id conflict).
+  Future<void> cacheUpsertFoodEntry(FoodEntry entry) async {
+    if (_db == null) return;
+    final data = entry.toJson();
+    data['user_id'] = _userId;
+    data['is_liquid'] = entry.isLiquid ? 1 : 0; // SQLite has no bool
+    data['is_meal'] = entry.isMeal ? 1 : 0;
+    await _db!.insert('food_entries', data,
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Upserts a single activity into the cache by id (logged-in write-through).
+  /// The model carries no created_at/updated_at, so stamp them now (cache-only
+  /// metadata; display ordering uses start_time).
+  Future<void> cacheUpsertActivity(PhysicalActivity activity) async {
+    if (_db == null) return;
+    final now = DateTime.now().toIso8601String();
+    final data = activity.toJson();
+    data['user_id'] = _userId;
+    data['created_at'] = now;
+    data['updated_at'] = now;
+    await _db!.insert('physical_activities', data,
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   /// Delete all guest data from database and shared preferences
   Future<void> clearAll() async {
     try {
