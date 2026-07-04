@@ -16,17 +16,27 @@ class LocalDataService {
   static final LocalDataService instance = LocalDataService._();
   LocalDataService._();
 
-  static const String _userId = 'guest';
+  /// Active user id applied to every read/write. `'guest'` for the no-account
+  /// local store; a real user id when caching a logged-in user's data for the
+  /// offline mirror. Settable via [init] so one shared DB file can hold both,
+  /// partitioned by the `user_id` column. Was a const `'guest'`.
+  String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
   static const int _version = 5;  // Version 5: add protein_only to nutrition_goals
 
   Database? _db;
   bool _initialized = false;
 
-  Future<void> init() async {
-    appLogger.d('[LocalDataService.init] Starting...');
+  /// Opens the shared local DB (once) and sets the [userId] whose rows this
+  /// service reads/writes. Pass a real user id to cache a logged-in user's data
+  /// (offline mirror); defaults to `'guest'` for the no-account store. The
+  /// active user is updated on every call so a guest→login (or account) switch
+  /// retargets the same DB file without reopening it.
+  Future<void> init({String userId = 'guest'}) async {
+    appLogger.d('[LocalDataService.init] Starting (userId=$userId)...');
+    _userId = userId;
     if (_initialized && _db != null) {
-      appLogger.d('[LocalDataService.init] Already initialized, returning early');
+      appLogger.d('[LocalDataService.init] DB already open; active user updated');
       return;
     }
 
@@ -1044,7 +1054,12 @@ class LocalDataService {
         appLogger.w('⚠️ Database not initialized, skipping clearAll');
         return;
       }
-      // Same tables on every platform now that web is also SQLite-backed.
+      // Clears the whole local DB (all users). Safe while the local store only
+      // ever holds guest data — callers (guest→login migration, guest "clear my
+      // data") always run with _userId == 'guest'.
+      // TODO(offline-mirror phase 4): when logged-in users also cache locally,
+      // scope this to _userId (note: guest_foods has no user_id → keep it
+      // guest-only rather than filtering).
       final tables = [
         'food_entries',
         'nutrition_goals',
