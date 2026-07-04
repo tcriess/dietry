@@ -5,6 +5,7 @@ import '../services/user_profile_service.dart';
 import '../services/user_body_measurements_service.dart';
 import '../services/nutrition_goal_service.dart';
 import '../services/nutrition_calculator.dart';
+import '../services/local_data_service.dart';
 import '../services/data_store.dart';
 import '../services/neon_database_service.dart';
 import '../services/neon_auth_service.dart';
@@ -67,9 +68,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadData() async {
     final db = widget.dbService;
 
-    setState(() {
-      _isLoading = true;
-    });
+    // Local-first: paint cached profile/measurements/goal instantly (clears the
+    // full-screen spinner if the cache has anything), then reconcile from the
+    // server and write the fresh data back to the cache.
+    await _hydrateFromCache();
 
     try {
       final profileService = UserProfileService(db);
@@ -93,12 +95,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final foodLogReminderEnabled = await FoodLogReminderService.isEnabled();
       final hcEnabled = await HealthConnectPrefs.isEnabled();
 
+      final profile = results[0] as UserProfile?;
+      final current = results[1] as UserBodyMeasurement?;
+      final measurements = results[2] as List<UserBodyMeasurement>;
+      final goal = results[3] as NutritionGoal?;
+
       if (mounted) {
         setState(() {
-          _profile = results[0] as UserProfile?;
-          _currentMeasurement = results[1] as UserBodyMeasurement?;
-          _allMeasurements = results[2] as List<UserBodyMeasurement>;
-          _goal = results[3] as NutritionGoal?;
+          _profile = profile;
+          _currentMeasurement = current;
+          _allMeasurements = measurements;
+          _goal = goal;
           _waterReminderEnabled = reminderEnabled;
           _foodLogReminderEnabled = foodLogReminderEnabled;
           _hcImportEnabled = hcEnabled;
@@ -106,6 +113,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
 
+      // Write the fresh server data back into the cache for the next open.
+      await _cacheProfileData(
+        profile: profile,
+        current: current,
+        measurements: measurements,
+        goal: goal,
+      );
     } catch (e) {
       appLogger.e('❌ Fehler beim Laden: $e');
       if (mounted) {
@@ -113,6 +127,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Local-first hydrate: read cached profile, current measurement, measurement
+  /// range and goal from the offline mirror so the screen paints without
+  /// waiting on the server. Clears the spinner when the cache has any data; a
+  /// cache miss leaves it up until the server responds.
+  Future<void> _hydrateFromCache() async {
+    if (widget.isGuestMode) return;
+    try {
+      final cache = LocalDataService.instance;
+      final end = DateTime.now();
+      final start = _rangeStart(end);
+
+      final profile = await cache.getUserProfile();
+      final current = await cache.getCurrentMeasurement();
+      final measurements = start != null
+          ? await cache.getMeasurementsInRange(start: start, end: end)
+          : await cache.getAllMeasurements();
+      final goal = await cache.getGoalForDate(DateTime.now());
+
+      final hasData = profile != null ||
+          current != null ||
+          measurements.isNotEmpty ||
+          goal != null;
+      if (hasData && mounted) {
+        setState(() {
+          _profile = profile;
+          _currentMeasurement = current;
+          _allMeasurements = measurements;
+          _goal = goal;
+          _isLoading = false; // paint cached data, hide the spinner
+        });
+      }
+    } catch (e) {
+      appLogger.w('⚠️ Profile cache hydrate failed: $e');
+    }
+  }
+
+  /// Write-through: persist freshly-fetched profile data into the local cache.
+  Future<void> _cacheProfileData({
+    UserProfile? profile,
+    UserBodyMeasurement? current,
+    required List<UserBodyMeasurement> measurements,
+    NutritionGoal? goal,
+  }) async {
+    if (widget.isGuestMode) return;
+    try {
+      final cache = LocalDataService.instance;
+      if (profile != null) await cache.saveUserProfile(profile);
+      await cache.cacheMeasurements(measurements);
+      if (current != null) await cache.saveMeasurement(current);
+      if (goal != null) await cache.upsertGoal(goal);
+    } catch (e) {
+      appLogger.w('⚠️ Profile cache write-through failed: $e');
     }
   }
 

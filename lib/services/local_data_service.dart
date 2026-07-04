@@ -893,6 +893,79 @@ class LocalDataService {
     }
   }
 
+  /// Cached body measurements in [start, end] (inclusive), newest first — for
+  /// the offline-mirror ProfileScreen hydrate. measured_at is stored as full
+  /// ISO-8601, which sorts/compares lexicographically, so string bounds work.
+  Future<List<UserBodyMeasurement>> getMeasurementsInRange({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    if (!_initialized || _db == null) return [];
+    try {
+      final result = await _db!.query(
+        'user_body_measurements',
+        where: 'user_id = ? AND measured_at >= ? AND measured_at <= ?',
+        whereArgs: [_userId, start.toIso8601String(), end.toIso8601String()],
+        orderBy: 'measured_at DESC',
+      );
+      return result
+          .map((r) => UserBodyMeasurement.fromJson(Map<String, dynamic>.from(r)))
+          .toList();
+    } catch (e) {
+      appLogger.e('❌ Error fetching measurements in range (local): $e');
+      return [];
+    }
+  }
+
+  /// All cached body measurements for the active user, newest first.
+  Future<List<UserBodyMeasurement>> getAllMeasurements() async {
+    if (!_initialized || _db == null) return [];
+    try {
+      final result = await _db!.query(
+        'user_body_measurements',
+        where: 'user_id = ?',
+        whereArgs: [_userId],
+        orderBy: 'measured_at DESC',
+      );
+      return result
+          .map((r) => UserBodyMeasurement.fromJson(Map<String, dynamic>.from(r)))
+          .toList();
+    } catch (e) {
+      appLogger.e('❌ Error fetching all measurements (local): $e');
+      return [];
+    }
+  }
+
+  /// Bulk-upserts server measurements into the cache (offline-mirror write-
+  /// through for ProfileScreen). Idempotent by id / (user_id, measured_at).
+  Future<void> cacheMeasurements(List<UserBodyMeasurement> measurements) async {
+    if (_db == null || measurements.isEmpty) return;
+    final now = DateTime.now().toIso8601String();
+    try {
+      await _db!.transaction((txn) async {
+        for (final m in measurements) {
+          await txn.insert(
+            'user_body_measurements',
+            {
+              'id': m.id ?? const Uuid().v4(),
+              'user_id': _userId,
+              'weight': m.weight,
+              'body_fat_percentage': m.bodyFatPercentage,
+              'muscle_mass_kg': m.muscleMassKg,
+              'waist_cm': m.waistCm,
+              'measured_at': m.measuredAt.toIso8601String(),
+              'notes': m.notes,
+              'created_at': now,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      });
+    } catch (e) {
+      appLogger.w('⚠️ Cache measurements failed: $e');
+    }
+  }
+
   /// Close the database (cleanup)
   Future<void> close() async {
     if (_db != null) {
