@@ -46,6 +46,10 @@ class PendingOperation {
 
 /// SQLite-backed queue for operations that could not reach the server.
 /// Operations are replayed in insertion order when connectivity is restored.
+///
+/// Works on every platform: native sqflite, desktop FFI, and web ffi_web
+/// (IndexedDB) — the factory is selected in main(). So a write made while
+/// offline is queued and replayed on reconnect on web too, not just native.
 class OfflineQueue {
   static final OfflineQueue instance = OfflineQueue._();
   OfflineQueue._();
@@ -63,9 +67,11 @@ class OfflineQueue {
   }
 
   Future<Database> _open() async {
-    final dbPath = await getDatabasesPath();
+    // web/ffi_web keys IndexedDB by name and has no getDatabasesPath(); native
+    // & desktop resolve a filesystem path. (Same split as LocalDataService.)
+    final fullPath = kIsWeb ? _dbName : join(await getDatabasesPath(), _dbName);
     return openDatabase(
-      join(dbPath, _dbName),
+      fullPath,
       version: _version,
       onCreate: (db, _) => db.execute('''
         CREATE TABLE $_tableName (
@@ -85,7 +91,6 @@ class OfflineQueue {
     required QueueOperation operation,
     required Map<String, dynamic> payload,
   }) async {
-    if (kIsWeb) return; // sqflite not available on web
     final op = PendingOperation(
       id: const Uuid().v4(),
       table: table,
@@ -98,27 +103,23 @@ class OfflineQueue {
   }
 
   Future<List<PendingOperation>> getPending() async {
-    if (kIsWeb) return []; // sqflite not available on web
     final db = await _database;
     final rows = await db.query(_tableName, orderBy: 'created_at ASC');
     return rows.map(PendingOperation.fromDbRow).toList();
   }
 
   Future<int> pendingCount() async {
-    if (kIsWeb) return 0; // sqflite not available on web
     final db = await _database;
     final result = await db.rawQuery('SELECT COUNT(*) AS c FROM $_tableName');
     return result.first['c'] as int;
   }
 
   Future<void> remove(String id) async {
-    if (kIsWeb) return; // sqflite not available on web
     final db = await _database;
     await db.delete(_tableName, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> incrementRetry(String id) async {
-    if (kIsWeb) return; // sqflite not available on web
     final db = await _database;
     await db.rawUpdate(
       'UPDATE $_tableName SET retry_count = retry_count + 1 WHERE id = ?',
@@ -127,7 +128,6 @@ class OfflineQueue {
   }
 
   Future<void> clear() async {
-    if (kIsWeb) return; // sqflite not available on web
     final db = await _database;
     await db.delete(_tableName);
   }

@@ -265,7 +265,21 @@ class NeonDatabaseService {
   
   /// Getter für dio-Client (mit Cookie-Support)
   Dio get dioClient => _dio;
-  
+
+  /// Fire-and-forget lightweight authenticated query that wakes a sleeping Neon
+  /// serverless compute, so the first real fetch afterwards doesn't pay the
+  /// cold-start latency. Best-effort — no await, errors swallowed. HEAD runs
+  /// the query on Postgres (passing RLS) but returns no body. Call it as early
+  /// as a token is available, e.g. while the UI hydrates from the local cache.
+  void warmUp() {
+    if (_jwt == null) return;
+    try {
+      _dio.head('/food_entries', queryParameters: {'limit': 1}).ignore();
+    } catch (_) {
+      // ignore — warm-up is purely an optimization
+    }
+  }
+
   /// Getter für User-ID
   String? get userId => _userId;
 

@@ -3018,6 +3018,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // back through it. Best-effort — a cache failure must never block loading.
     final uid = widget.dbService!.userId;
     if (uid != null) {
+      // Wake the (possibly sleeping) Neon compute now, in parallel with the
+      // local cache init + hydrate below, so the reconcile fetch is warm.
+      widget.dbService!.warmUp();
       try {
         await LocalDataService.instance.init(userId: uid);
         _store.attachCache(LocalDataService.instance);
