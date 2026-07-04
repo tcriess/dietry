@@ -3,6 +3,7 @@ import '../models/physical_activity.dart';
 import '../models/user_body_data.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 
 /// Service für physische Aktivitäten (Tracking & Health Connect Integration)
 class PhysicalActivityService {
@@ -149,7 +150,14 @@ class PhysicalActivityService {
 
       final json = activity.toJson();
       json['user_id'] = userId;
-      json.remove('id');  // ID wird von DB generiert
+      // Client-generated UUID (offline-first): keep a stable id shared by the
+      // local optimistic entry, this insert and any queued replay so writes are
+      // idempotent. The PK accepts client-supplied UUIDs; the DB default only
+      // fires when none is sent. (PhysicalActivity.toJson omits a null id.)
+      final rawId = json['id'];
+      if (rawId == null || (rawId as String).trim().isEmpty) {
+        json['id'] = const Uuid().v4();
+      }
 
       // Health Connect imports carry a record id and the table has
       // UNIQUE(user_id, health_connect_record_id). Re-imports (queue replays,

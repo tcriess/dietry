@@ -400,7 +400,9 @@ class LocalDataService {
   Future<FoodEntry> createFoodEntry(FoodEntry entry) async {
     if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
     try {
-      final id = const Uuid().v4();
+      // Honor an id already assigned upstream (SyncService mints one so local &
+      // remote share it); only generate when none was provided.
+      final id = entry.id.isEmpty ? const Uuid().v4() : entry.id;
       final now = DateTime.now();
       final entryWithIds = entry.copyWith(
         id: id,
@@ -589,7 +591,10 @@ class LocalDataService {
   Future<PhysicalActivity> createActivity(PhysicalActivity activity) async {
     if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
     try {
-      final id = const Uuid().v4();
+      // Honor an id already assigned upstream (see createFoodEntry).
+      final id = (activity.id == null || activity.id!.isEmpty)
+          ? const Uuid().v4()
+          : activity.id!;
       final now = DateTime.now().toIso8601String();
       final activityWithId = PhysicalActivity(
         id: id,

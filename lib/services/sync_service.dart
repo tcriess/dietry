@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../models/food_entry.dart';
 import '../models/physical_activity.dart';
 import 'food_entry_service.dart';
@@ -66,20 +68,24 @@ class SyncService extends ChangeNotifier {
   /// Create a food entry. Returns the server-assigned entity (with real id/timestamps),
   /// or null if the operation was queued for later.
   Future<FoodEntry?> createFoodEntry(FoodEntry entry) async {
+    // Assign a stable client id up-front so the optimistic UI entry, the remote
+    // insert and any queued replay all share one identity (idempotent writes).
+    final e = entry.id.isEmpty ? entry.copyWith(id: const Uuid().v4()) : entry;
+
     // Guest mode: direct local storage
     if (_local != null) {
       try {
-        final result = await _local!.createFoodEntry(entry);
+        final result = await _local!.createFoodEntry(e);
         return result;
-      } catch (e) {
-        appLogger.e('❌ Error creating food entry locally: $e');
+      } catch (err) {
+        appLogger.e('❌ Error creating food entry locally: $err');
         return null;
       }
     }
 
     // Remote mode: existing behavior
     try {
-      final result = await FoodEntryService(_db!).createFoodEntry(entry);
+      final result = await FoodEntryService(_db!).createFoodEntry(e);
       _markOnline();
       return result;
     } catch (_) {
@@ -87,10 +93,12 @@ class SyncService extends ChangeNotifier {
       await OfflineQueue.instance.enqueue(
         table: QueueTable.foodEntries,
         operation: QueueOperation.create,
-        payload: entry.toJson(),
+        payload: e.toJson(),
       );
       await _refreshPendingCount();
-      return null; // caller keeps the optimistic entry
+      // Return the entry with its assigned id (was null) so the caller's
+      // optimistic add carries the same id the queued replay will insert.
+      return e;
     }
   }
 
@@ -151,10 +159,16 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<PhysicalActivity?> saveActivity(PhysicalActivity activity) async {
+    // Assign a stable client id up-front (see createFoodEntry). PhysicalActivity
+    // uses a nullable id, so treat null or empty as "needs one".
+    final a = (activity.id == null || activity.id!.isEmpty)
+        ? activity.copyWith(id: const Uuid().v4())
+        : activity;
+
     // Guest mode: direct local storage
     if (_local != null) {
       try {
-        final result = await _local!.createActivity(activity);
+        final result = await _local!.createActivity(a);
         return result;
       } catch (e) {
         appLogger.e('❌ Error saving activity locally: $e');
@@ -164,7 +178,7 @@ class SyncService extends ChangeNotifier {
 
     // Remote mode: existing behavior
     try {
-      final result = await PhysicalActivityService(_db!).saveActivity(activity);
+      final result = await PhysicalActivityService(_db!).saveActivity(a);
       _markOnline();
       return result;
     } catch (_) {
@@ -172,10 +186,12 @@ class SyncService extends ChangeNotifier {
       await OfflineQueue.instance.enqueue(
         table: QueueTable.physicalActivities,
         operation: QueueOperation.create,
-        payload: activity.toJson(),
+        payload: a.toJson(),
       );
       await _refreshPendingCount();
-      return null;
+      // Return the activity with its assigned id (was null) so the caller's
+      // optimistic add matches the id the queued replay will insert.
+      return a;
     }
   }
 
@@ -293,6 +309,20 @@ class SyncService extends ChangeNotifier {
       }
       _markOnline();
       return true;
+    } on DioException catch (e) {
+      // A queued create whose HTTP response was lost may already have committed
+      // server-side; the replay then hits a duplicate-key (409 Conflict) on the
+      // client-supplied id. Now that ids are client-generated this is the
+      // "already applied" case — treat it as success so the op drains instead
+      // of wedging the queue on every cycle. Any other error → still offline.
+      if (op.operation == QueueOperation.create &&
+          e.response?.statusCode == 409) {
+        appLogger.i('↩️ Replay: create already applied (409) — treating as done');
+        _markOnline();
+        return true;
+      }
+      _markOffline();
+      return false;
     } catch (_) {
       _markOffline();
       return false;

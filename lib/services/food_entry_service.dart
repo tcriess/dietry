@@ -3,6 +3,7 @@ import 'package:dietry/services/app_logger.dart';
 import '../models/models.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 
 class FoodEntryService {
   final NeonDatabaseService _db;
@@ -114,8 +115,16 @@ class FoodEntryService {
 
       final json = entry.toJson();
       json['user_id'] = userId;
-      // Entferne id für INSERT (wird von DB generiert)
-      json.remove('id');
+      // Client-generated UUID: send the id instead of letting the DB generate
+      // one, so the local optimistic entry, this insert and any queued replay
+      // all share a single stable identity (offline-first prerequisite — makes
+      // creates idempotent and replay-safe). The PK column accepts client
+      // values (`id UUID PRIMARY KEY DEFAULT gen_random_uuid()`); the default
+      // only ever fires when no id is supplied.
+      final rawId = json['id'];
+      if (rawId == null || (rawId as String).trim().isEmpty) {
+        json['id'] = const Uuid().v4();
+      }
 
       appLogger.d('   Führe INSERT via Dio aus (umgeht postgrest Prefer-Header-Bug)...');
 
