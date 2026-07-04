@@ -1138,6 +1138,32 @@ class LocalDataService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  /// Deletes one user's cached rows from the shared local DB — the offline
+  /// mirror for a logged-in user, cleared on an explicit logout (privacy on a
+  /// shared device). guest_foods has no user_id and belongs to the guest store,
+  /// so it's left untouched (use [clearAll] for guest data). Call only on a
+  /// deliberate logout, never on a transient token-expiry signOut.
+  Future<void> clearUser(String userId) async {
+    if (_db == null) return;
+    const userScoped = [
+      'food_entries',
+      'nutrition_goals',
+      'physical_activities',
+      'water_intake',
+      'cheat_days',
+      'user_profile',
+      'user_body_measurements',
+    ];
+    try {
+      for (final table in userScoped) {
+        await _db!.delete(table, where: 'user_id = ?', whereArgs: [userId]);
+      }
+      appLogger.i('✅ Cleared local cache for logged-out user');
+    } catch (e) {
+      appLogger.w('⚠️ Error clearing user cache on logout: $e');
+    }
+  }
+
   /// Delete all guest data from database and shared preferences
   Future<void> clearAll() async {
     try {

@@ -2383,6 +2383,14 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               icon: const Icon(Icons.logout),
               tooltip: l.logoutTooltip,
               onPressed: () async {
+                // Explicit logout: drop this user's offline-mirror cache from
+                // the shared local DB (privacy on shared devices). Only here —
+                // NOT on transient token-expiry signOut(), which would need-
+                // lessly discard a cache the same user still benefits from.
+                final uid = widget.dbService?.userId;
+                if (uid != null) {
+                  await LocalDataService.instance.clearUser(uid);
+                }
                 await widget.authService.signOut();
               },
             ),
