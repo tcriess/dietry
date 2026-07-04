@@ -15,6 +15,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+// Web selects the ffi_web factory; native swaps to a no-op stub. sqflite_common_
+// ffi_web can't compile on native (js interop), hence the conditional import.
+import 'services/web_database_init_web.dart'
+    if (dart.library.io) 'services/web_database_init_stub.dart';
 import 'platform_utils.dart' as platform;
 import 'l10n/app_localizations.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
@@ -89,8 +93,13 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
     appLogger.d('🖥️ Desktop platform: Using SQLite FFI');
+  } else if (kIsWeb) {
+    // Web: route sqflite through the IndexedDB/WASM-backed ffi_web factory so
+    // LocalDataService's SQL runs unchanged in the browser. The shared worker +
+    // sqlite3.wasm live in web/ (copied by sqflite_common_ffi_web:setup).
+    initWebDatabaseFactory();
+    appLogger.d('🌐 Web platform: Using sqflite ffi_web (IndexedDB)');
   }
-  // Web: LocalDataService will use idb_shim's IndexedDB API directly
   // Mobile (Android/iOS): Uses default sqflite (no setup needed)
 
   // Load any user-configured server URLs before services start.

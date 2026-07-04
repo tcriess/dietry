@@ -51,6 +51,10 @@ dependencies:
   share_plus: ^12.0.2
   sqflite: ^2.4.2
   sqflite_common_ffi: ^2.3.4+4
+  # Web: routes sqflite through an IndexedDB/WASM-backed factory so the same
+  # LocalDataService SQL runs in the browser (offline mirror, all platforms).
+  # Requires web assets copied via `dart run sqflite_common_ffi_web:setup`.
+  sqflite_common_ffi_web: ^0.4.0
   file_picker: ^11.0.2
   flutter_image_compress: ^2.3.0
   image_picker: ^1.1.2
@@ -80,7 +84,6 @@ dependencies:
   dietry_cloud:
     path: packages/dietry_cloud
   package_info_plus: ^9.0.1
-  idb_shim: ^2.8.5+2
 
   # Barcode scanner (Android, iOS, macOS, web; Linux: manual text-entry fallback)
   # 7.x uses Apple's Vision framework on iOS/macOS (no GoogleMLKit), avoiding a

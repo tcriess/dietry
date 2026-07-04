@@ -31,31 +31,21 @@ class LocalDataService {
     }
 
     try {
-      if (kIsWeb) {
-        appLogger.d('[LocalDataService.init] Web platform detected - using IndexedDB via idb_shim');
-        await _initWeb();
-      } else {
-        appLogger.d('[LocalDataService.init] Native platform - using sqflite');
-        appLogger.d('[LocalDataService.init] Getting database path...');
-        final dbPath = await getDatabasesPath();
-        appLogger.d('[LocalDataService.init] dbPath=$dbPath');
-
-        final fullPath = path.join(dbPath, _dbName);
-        appLogger.d('[LocalDataService.init] fullPath=$fullPath');
-
-        appLogger.d('[LocalDataService.init] Opening database...');
-        _db = await openDatabase(
-          fullPath,
-          version: _version,
-          onCreate: _onCreate,
-          onUpgrade: _onUpgrade,
-        );
-        appLogger.d('[LocalDataService.init] Database opened successfully');
-      }
-
+      // One SQL path on every platform: native sqflite, desktop FFI, and web
+      // ffi_web (IndexedDB/WASM). The right factory is selected in main().
+      appLogger.d('[LocalDataService.init] Getting database path...');
+      final dbPath = await getDatabasesPath();
+      final fullPath = path.join(dbPath, _dbName);
+      appLogger.d('[LocalDataService.init] Opening database at $fullPath');
+      _db = await openDatabase(
+        fullPath,
+        version: _version,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
       _initialized = true;
-      appLogger.d('[LocalDataService.init] Set _initialized=true');
-
+      // Pull pre-ffi_web web guests' settings into SQLite (one-time, web-only).
+      await _migrateLegacyWebPrefs();
       appLogger.i('✅ LocalDataService initialized');
     } catch (e) {
       appLogger.e('❌ Error initializing LocalDataService: $e');
@@ -63,17 +53,35 @@ class LocalDataService {
     }
   }
 
-  /// Initialize web storage using IndexedDB
-  Future<void> _initWeb() async {
+  /// One-time import of guest data written by the pre-ffi_web web build, which
+  /// stored the goal/profile/measurement singletons in SharedPreferences
+  /// because web had no SQLite yet. Now that web uses the same SQLite store,
+  /// pull those rows in once so existing web guests keep their settings. The
+  /// prefs JSON was written as column maps, so it inserts directly. Native
+  /// platforms never used the prefs fallback → this is web-only and runs once.
+  Future<void> _migrateLegacyWebPrefs() async {
+    if (!kIsWeb || _db == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('local_db_web_migrated') ?? false) return;
     try {
-      appLogger.d('[LocalDataService._initWeb] Opening IndexedDB database...');
-      // Use idb_shim's getIdbFactory function (if available) or direct access
-      // For now, we'll defer actual IndexedDB operations to individual CRUD methods
-      // and use a simpler approach with localStorage for MVP
-      appLogger.d('[LocalDataService._initWeb] IndexedDB support prepared');
+      Future<void> importInto(String key, String table) async {
+        final str = prefs.getString(key);
+        if (str == null) return;
+        await _db!.insert(
+          table,
+          jsonDecode(str) as Map<String, dynamic>,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await prefs.remove(key);
+      }
+
+      await importInto('nutrition_goal', 'nutrition_goals');
+      await importInto('user_profile', 'user_profile');
+      await importInto('current_measurement', 'user_body_measurements');
+      await prefs.setBool('local_db_web_migrated', true);
+      appLogger.i('✅ Migrated legacy web guest prefs into SQLite');
     } catch (e) {
-      appLogger.e('❌ Error initializing web storage: $e');
-      rethrow;
+      appLogger.w('⚠️ Legacy web prefs migration skipped: $e');
     }
   }
 
@@ -467,35 +475,23 @@ class LocalDataService {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<NutritionGoal?> getGoalForDate(DateTime date) async {
-    if (!_initialized) return null;
+    if (!_initialized || _db == null) return null;
     try {
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        final jsonStr = prefs.getString('nutrition_goal');
-        if (jsonStr == null) return null;
-        final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-        // Convert 0/1 back to boolean
-        json['macro_only'] = (json['macro_only'] as int? ?? 0) != 0;
-        json['protein_only'] = (json['protein_only'] as int? ?? 0) != 0;
-        return NutritionGoal.fromJson(json);
-      } else {
-        if (_db == null) return null;
-        final dateStr = date.toIso8601String().split('T')[0];
-        final results = await _db!.query(
-          'nutrition_goals',
-          where: 'user_id = ? AND valid_from <= ?',
-          whereArgs: [_userId, dateStr],
-          orderBy: 'valid_from DESC',
-          limit: 1,
-        );
-        if (results.isEmpty) return null;
+      final dateStr = date.toIso8601String().split('T')[0];
+      final results = await _db!.query(
+        'nutrition_goals',
+        where: 'user_id = ? AND valid_from <= ?',
+        whereArgs: [_userId, dateStr],
+        orderBy: 'valid_from DESC',
+        limit: 1,
+      );
+      if (results.isEmpty) return null;
 
-        // Convert SQLite 0/1 back to boolean (create new map since results are read-only)
-        final json = Map<String, dynamic>.from(results.first);
-        json['macro_only'] = (json['macro_only'] as int? ?? 0) != 0;
-        json['protein_only'] = (json['protein_only'] as int? ?? 0) != 0;
-        return NutritionGoal.fromJson(json);
-      }
+      // Convert SQLite 0/1 back to boolean (create new map since results are read-only)
+      final json = Map<String, dynamic>.from(results.first);
+      json['macro_only'] = (json['macro_only'] as int? ?? 0) != 0;
+      json['protein_only'] = (json['protein_only'] as int? ?? 0) != 0;
+      return NutritionGoal.fromJson(json);
     } catch (e) {
       appLogger.e('❌ Error fetching nutrition goal: $e');
       return null;
@@ -529,19 +525,13 @@ class LocalDataService {
         'updated_at': now,
       };
 
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('nutrition_goal', jsonEncode(data));
-        appLogger.d('✅ Upserted nutrition goal (web): $id');
-      } else {
-        if (_db == null) throw Exception('LocalDataService database not initialized');
-        await _db!.insert(
-          'nutrition_goals',
-          data,
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        appLogger.d('✅ Upserted nutrition goal: $id');
-      }
+      if (_db == null) throw Exception('LocalDataService database not initialized');
+      await _db!.insert(
+        'nutrition_goals',
+        data,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      appLogger.d('✅ Upserted nutrition goal: $id');
 
       final goalWithId = NutritionGoal(
         id: id,
@@ -782,27 +772,18 @@ class LocalDataService {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<UserProfile?> getUserProfile() async {
-    if (!_initialized) return null;
+    if (!_initialized || _db == null) return null;
     try {
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        final jsonStr = prefs.getString('user_profile');
-        if (jsonStr == null) return null;
-        final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-        return UserProfile.fromJson(json);
-      } else {
-        if (_db == null) return null;
-        final result = await _db!.query(
-          'user_profile',
-          where: 'user_id = ?',
-          whereArgs: [_userId],
-          limit: 1,
-        );
-        if (result.isEmpty) return null;
+      final result = await _db!.query(
+        'user_profile',
+        where: 'user_id = ?',
+        whereArgs: [_userId],
+        limit: 1,
+      );
+      if (result.isEmpty) return null;
 
-        final json = Map<String, dynamic>.from(result.first);
-        return UserProfile.fromJson(json);
-      }
+      final json = Map<String, dynamic>.from(result.first);
+      return UserProfile.fromJson(json);
     } catch (e) {
       appLogger.e('❌ Error fetching user profile: $e');
       return null;
@@ -810,42 +791,27 @@ class LocalDataService {
   }
 
   Future<void> saveUserProfile(UserProfile profile) async {
-    if (!_initialized) throw Exception('LocalDataService not initialized');
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
     try {
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        final now = DateTime.now().toIso8601String();
-        final data = {
-          'user_id': _userId,
-          'birthdate': profile.birthdate?.toIso8601String().split('T')[0],
-          'height': profile.height,
-          'gender': profile.gender?.name,
-          'activity_level': profile.activityLevel?.name,
-          'weight_goal': profile.weightGoal?.name,
-          'updated_at': now,
-        };
-        await prefs.setString('user_profile', jsonEncode(data));
-        appLogger.d('✅ Saved user profile (web)');
-      } else {
-        if (_db == null) throw Exception('LocalDataService database not initialized');
-        final now = DateTime.now().toIso8601String();
-        final data = {
-          'user_id': _userId,
-          'birthdate': profile.birthdate?.toIso8601String().split('T')[0],
-          'height': profile.height,
-          'gender': profile.gender?.name,
-          'activity_level': profile.activityLevel?.name,
-          'weight_goal': profile.weightGoal?.name,
-          'updated_at': now,
-        };
+      final now = DateTime.now().toIso8601String();
+      final data = {
+        'user_id': _userId,
+        'birthdate': profile.birthdate?.toIso8601String().split('T')[0],
+        'height': profile.height,
+        'gender': profile.gender?.name,
+        'activity_level': profile.activityLevel?.name,
+        'weight_goal': profile.weightGoal?.name,
+        'updated_at': now,
+      };
 
-        await _db!.insert(
-          'user_profile',
-          data,
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        appLogger.d('✅ Saved user profile');
-      }
+      await _db!.insert(
+        'user_profile',
+        data,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      appLogger.d('✅ Saved user profile');
     } catch (e) {
       appLogger.e('❌ Error saving user profile: $e');
       rethrow;
@@ -857,28 +823,19 @@ class LocalDataService {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<UserBodyMeasurement?> getCurrentMeasurement() async {
-    if (!_initialized) return null;
+    if (!_initialized || _db == null) return null;
     try {
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        final jsonStr = prefs.getString('current_measurement');
-        if (jsonStr == null) return null;
-        final json = jsonDecode(jsonStr) as Map<String, dynamic>;
-        return UserBodyMeasurement.fromJson(json);
-      } else {
-        if (_db == null) return null;
-        final result = await _db!.query(
-          'user_body_measurements',
-          where: 'user_id = ?',
-          whereArgs: [_userId],
-          orderBy: 'measured_at DESC',
-          limit: 1,
-        );
-        if (result.isEmpty) return null;
+      final result = await _db!.query(
+        'user_body_measurements',
+        where: 'user_id = ?',
+        whereArgs: [_userId],
+        orderBy: 'measured_at DESC',
+        limit: 1,
+      );
+      if (result.isEmpty) return null;
 
-        final json = Map<String, dynamic>.from(result.first);
-        return UserBodyMeasurement.fromJson(json);
-      }
+      final json = Map<String, dynamic>.from(result.first);
+      return UserBodyMeasurement.fromJson(json);
     } catch (e) {
       appLogger.e('❌ Error fetching current measurement: $e');
       return null;
@@ -886,7 +843,9 @@ class LocalDataService {
   }
 
   Future<void> saveMeasurement(UserBodyMeasurement measurement) async {
-    if (!_initialized) throw Exception('LocalDataService not initialized');
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
     try {
       final id = measurement.id ?? const Uuid().v4();
       final now = DateTime.now().toIso8601String();
@@ -904,19 +863,12 @@ class LocalDataService {
         'created_at': now,
       };
 
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('current_measurement', jsonEncode(data));
-        appLogger.d('✅ Saved body measurement (web)');
-      } else {
-        if (_db == null) throw Exception('LocalDataService database not initialized');
-        await _db!.insert(
-          'user_body_measurements',
-          data,
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        appLogger.d('✅ Saved body measurement');
-      }
+      await _db!.insert(
+        'user_body_measurements',
+        data,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      appLogger.d('✅ Saved body measurement');
     } catch (e) {
       appLogger.e('❌ Error saving body measurement: $e');
       rethrow;
@@ -936,10 +888,6 @@ class LocalDataService {
   /// Save a food created locally in guest mode.
   /// Returns the saved FoodItem with the new ID.
   Future<FoodItem> saveGuestFood(FoodItem food) async {
-    if (kIsWeb) {
-      appLogger.w('⚠️ Guest food saving not yet implemented for web');
-      return food;
-    }
     if (_db == null) {
       throw Exception('Database not initialized');
     }
@@ -975,9 +923,6 @@ class LocalDataService {
 
   /// Search locally stored guest foods by name/brand.
   Future<List<FoodItem>> searchGuestFoods(String query) async {
-    if (kIsWeb) {
-      return [];
-    }
     if (_db == null) {
       return [];
     }
@@ -1028,7 +973,7 @@ class LocalDataService {
 
   /// Get all food entries from database (for migration)
   Future<List<FoodEntry>> getAllFoodEntries() async {
-    if (kIsWeb || _db == null) return [];
+    if (_db == null) return [];
 
     try {
       final maps = await _db!.query('food_entries', orderBy: 'entry_date ASC');
@@ -1041,7 +986,7 @@ class LocalDataService {
 
   /// Get all physical activities from database (for migration)
   Future<List<PhysicalActivity>> getAllActivities() async {
-    if (kIsWeb || _db == null) return [];
+    if (_db == null) return [];
 
     try {
       final maps = await _db!.query('physical_activities', orderBy: 'activity_date ASC');
@@ -1055,7 +1000,7 @@ class LocalDataService {
   /// Get all water intake entries from database (for migration)
   /// Returns list of maps with 'date' and 'amount' keys
   Future<List<Map<String, dynamic>>> getAllWaterIntakeDays() async {
-    if (kIsWeb || _db == null) return [];
+    if (_db == null) return [];
 
     try {
       final maps = await _db!.query('water_intake', orderBy: 'date ASC');
@@ -1072,7 +1017,7 @@ class LocalDataService {
   /// Get all cheat days from database (for migration)
   /// Returns list of dates that are marked as cheat days
   Future<List<DateTime>> getAllCheatDays() async {
-    if (kIsWeb || _db == null) return [];
+    if (_db == null) return [];
 
     try {
       // Every row in cheat_days represents a cheat day (no boolean flag column).
@@ -1087,35 +1032,26 @@ class LocalDataService {
   /// Delete all guest data from database and shared preferences
   Future<void> clearAll() async {
     try {
-      if (kIsWeb) {
-        // Web: Clear SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('nutrition_goal');
-        await prefs.remove('user_profile');
-        await prefs.remove('current_measurement');
-        appLogger.d('✅ Cleared all guest data from SharedPreferences (web)');
-      } else {
-        // Native: Clear all tables
-        if (_db == null) {
-          appLogger.w('⚠️ Database not initialized, skipping clearAll');
-          return;
-        }
-        final tables = [
-          'food_entries',
-          'nutrition_goals',
-          'physical_activities',
-          'water_intake',
-          'cheat_days',
-          'user_profile',
-          'user_body_measurements',
-          'guest_foods',
-        ];
-        for (final table in tables) {
-          await _db!.delete(table);
-          appLogger.d('   ✅ Cleared $table');
-        }
-        appLogger.i('✅ All guest data cleared from database');
+      if (_db == null) {
+        appLogger.w('⚠️ Database not initialized, skipping clearAll');
+        return;
       }
+      // Same tables on every platform now that web is also SQLite-backed.
+      final tables = [
+        'food_entries',
+        'nutrition_goals',
+        'physical_activities',
+        'water_intake',
+        'cheat_days',
+        'user_profile',
+        'user_body_measurements',
+        'guest_foods',
+      ];
+      for (final table in tables) {
+        await _db!.delete(table);
+        appLogger.d('   ✅ Cleared $table');
+      }
+      appLogger.i('✅ All guest data cleared from database');
     } catch (e) {
       appLogger.e('❌ Error clearing guest data: $e');
       rethrow;
