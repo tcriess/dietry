@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 5;  // Version 5: add protein_only to nutrition_goals
+  static const int _version = 6;  // Version 6: (user_id, date) PK on water_intake + cheat_days
 
   Database? _db;
   bool _initialized = false;
@@ -183,20 +183,22 @@ class LocalDataService {
       // water_intake table
       await db.execute('''
         CREATE TABLE IF NOT EXISTS water_intake (
-          date TEXT PRIMARY KEY,
           user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
           amount_ml INTEGER NOT NULL,
           created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
         )
       ''');
 
       // cheat_days table
       await db.execute('''
         CREATE TABLE IF NOT EXISTS cheat_days (
-          date TEXT PRIMARY KEY,
           user_id TEXT NOT NULL,
-          created_at TEXT NOT NULL
+          date TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
         )
       ''');
 
@@ -393,6 +395,51 @@ class LocalDataService {
       } catch (e) {
         appLogger.d('ℹ️ protein_only column already exists: $e');
       }
+    }
+
+    if (oldVersion < 6) {
+      // Version 6: key water_intake & cheat_days by (user_id, date) instead of
+      // date alone, so a guest and a logged-in user can hold rows for the same
+      // date without colliding (offline mirror shares one DB file). SQLite can't
+      // alter a PK in place → rebuild each table and copy the rows. These run
+      // inside sqflite's implicit onUpgrade transaction (like the steps above),
+      // so no explicit BEGIN/COMMIT. NOT wrapped in try/catch on purpose: a
+      // destructive rebuild must be atomic — letting an error propagate rolls
+      // the whole onUpgrade transaction back (old schema intact, retried next
+      // launch) instead of committing a half-migrated table.
+      await db.execute('''
+        CREATE TABLE water_intake_new (
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          amount_ml INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
+        )
+      ''');
+      await db.execute('''
+        INSERT OR IGNORE INTO water_intake_new
+          (user_id, date, amount_ml, created_at, updated_at)
+        SELECT user_id, date, amount_ml, created_at, updated_at FROM water_intake
+      ''');
+      await db.execute('DROP TABLE water_intake');
+      await db.execute('ALTER TABLE water_intake_new RENAME TO water_intake');
+
+      await db.execute('''
+        CREATE TABLE cheat_days_new (
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
+        )
+      ''');
+      await db.execute('''
+        INSERT OR IGNORE INTO cheat_days_new (user_id, date, created_at)
+        SELECT user_id, date, created_at FROM cheat_days
+      ''');
+      await db.execute('DROP TABLE cheat_days');
+      await db.execute('ALTER TABLE cheat_days_new RENAME TO cheat_days');
+      appLogger.i('✅ Migration 5→6 complete ((user_id, date) PK)');
     }
   }
 
@@ -679,8 +726,8 @@ class LocalDataService {
       final dateStr = date.toIso8601String().split('T')[0];
       final result = await _db!.query(
         'water_intake',
-        where: 'date = ?',
-        whereArgs: [dateStr],
+        where: 'user_id = ? AND date = ?',
+        whereArgs: [_userId, dateStr],
         limit: 1,
       );
       if (result.isEmpty) return 0;
@@ -724,8 +771,8 @@ class LocalDataService {
       final dateStr = date.toIso8601String().split('T')[0];
       final result = await _db!.query(
         'cheat_days',
-        where: 'date = ?',
-        whereArgs: [dateStr],
+        where: 'user_id = ? AND date = ?',
+        whereArgs: [_userId, dateStr],
       );
       return result.isNotEmpty;
     } catch (e) {
@@ -759,7 +806,8 @@ class LocalDataService {
     if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
     try {
       final dateStr = date.toIso8601String().split('T')[0];
-      await _db!.delete('cheat_days', where: 'date = ?', whereArgs: [dateStr]);
+      await _db!.delete('cheat_days',
+          where: 'user_id = ? AND date = ?', whereArgs: [_userId, dateStr]);
       appLogger.d('✅ Unmarked cheat day: $dateStr');
     } catch (e) {
       appLogger.e('❌ Error unmarking cheat day: $e');
@@ -775,8 +823,8 @@ class LocalDataService {
       final month = date.month.toString().padLeft(2, '0');
       final prefix = '$year-$month';
       final result = await _db!.rawQuery(
-        'SELECT COUNT(*) as count FROM cheat_days WHERE date LIKE ?',
-        ['$prefix%'],
+        'SELECT COUNT(*) as count FROM cheat_days WHERE user_id = ? AND date LIKE ?',
+        [_userId, '$prefix%'],
       );
       return (result.first['count'] as int?) ?? 0;
     } catch (e) {
@@ -1062,25 +1110,41 @@ class LocalDataService {
     }).toList();
   }
 
-  /// Get all food entries from database (for migration)
+  /// Get all guest food entries (for guest→login migration).
   Future<List<FoodEntry>> getAllFoodEntries() async {
     if (_db == null) return [];
 
     try {
-      final maps = await _db!.query('food_entries', orderBy: 'entry_date ASC');
-      return maps.map((map) => FoodEntry.fromJson(map)).toList();
+      final maps = await _db!.query('food_entries',
+          where: 'user_id = ?', whereArgs: ['guest'], orderBy: 'entry_date ASC');
+      return maps.map((map) {
+        final json = Map<String, dynamic>.from(map);
+        // SQLite stores bools as 0/1; FoodEntry.fromJson expects real bools.
+        // (Passing the raw int here used to throw and silently return [] — so
+        // guest food entries were never migrated, then wiped by clearAll.)
+        json['is_liquid'] = (json['is_liquid'] as int? ?? 0) != 0;
+        json['is_meal'] = (json['is_meal'] as int? ?? 0) != 0;
+        // Drop the guest-local food_id: it references a guest_foods row that
+        // doesn't exist on the server, so keeping it would FK-fail the migrate
+        // INSERT and lose the entry. Nutrition is denormalised on the entry, so
+        // it still displays correctly without the link.
+        json.remove('food_id');
+        return FoodEntry.fromJson(json);
+      }).toList();
     } catch (e) {
       appLogger.w('⚠️ Error getting all food entries: $e');
       return [];
     }
   }
 
-  /// Get all physical activities from database (for migration)
+  /// Get all guest physical activities (for guest→login migration).
   Future<List<PhysicalActivity>> getAllActivities() async {
     if (_db == null) return [];
 
     try {
-      final maps = await _db!.query('physical_activities', orderBy: 'activity_date ASC');
+      // Column is start_time, not activity_date — the old value threw → [].
+      final maps = await _db!.query('physical_activities',
+          where: 'user_id = ?', whereArgs: ['guest'], orderBy: 'start_time ASC');
       return maps.map((map) => PhysicalActivity.fromJson(map)).toList();
     } catch (e) {
       appLogger.w('⚠️ Error getting all activities: $e');
