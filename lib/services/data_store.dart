@@ -42,6 +42,12 @@ class DataStore extends ChangeNotifier {
   NeonDatabaseService? _db;
   LocalDataService? _local;
 
+  /// Offline-mirror read/write cache for logged-in mode, keyed by the real user
+  /// id. Distinct from [_local] (the guest-mode backend): when set, [_db] is
+  /// also set. loadDay() hydrates from it instantly on cold start and writes
+  /// each fetched day back through it. Attached via [attachCache].
+  LocalDataService? _cache;
+
   // ── Delta-Sync Zeitstempel ─────────────────────────────────────────────────
   // Null = noch kein Sync für den aktuellen Tag → immer Full-Fetch.
   // Wird bei Tag-Wechsel (Full-Load) zurückgesetzt.
@@ -79,6 +85,16 @@ class DataStore extends ChangeNotifier {
     // otherwise keeps reading the (now-wiped) guest SQLite — which checks
     // _local before _db — until a full app restart. See initLocal().
     _local = null;
+    // Re-attached per session in _initializeAndLoadData() once the user id
+    // resolves; clear any stale cache from a previous session's login.
+    _cache = null;
+  }
+
+  /// Attach a per-user local cache (offline mirror, logged-in mode). loadDay()
+  /// then paints from it instantly on cold start and writes each fetched day
+  /// back through it. The cache must already be init()'d with the real user id.
+  void attachCache(LocalDataService cache) {
+    _cache = cache;
   }
 
   /// Initialize for guest mode (local SQLite storage)
@@ -87,6 +103,8 @@ class DataStore extends ChangeNotifier {
     // Guest and authenticated modes are mutually exclusive; keep exactly one
     // backend set so the loadDay() dispatch is unambiguous.
     _db = null;
+    // The logged-in read-through cache only applies in authenticated mode.
+    _cache = null;
   }
 
   /// Clear all in-memory state and arm the initial-loading flag.
@@ -125,14 +143,12 @@ class DataStore extends ChangeNotifier {
     // Guest mode or remote mode?
     if (_local == null && _db == null) return;
 
-    if (!silent) {
-      _isLoading = true;
-      notifyListeners();
-    }
-
-    // Dispatch to local or remote loaders
+    // ── Guest mode: local SQLite only ──
     if (_local != null) {
-      // Guest mode: load from local SQLite
+      if (!silent) {
+        _isLoading = true;
+        notifyListeners();
+      }
       await Future.wait([
         _loadGoalLocal(date),
         _loadEntriesLocal(date),
@@ -140,55 +156,137 @@ class DataStore extends ChangeNotifier {
         _loadWaterIntakeLocal(date),
         _loadCheatDayLocal(date),
       ]);
-    } else if (_db != null) {
-      // Preflight: ohne userId und gültiges Token können wir keinen
-      // authoritativen Fetch machen. In dem Fall lieber gar nichts ändern als
-      // den im Speicher gehaltenen Zustand mit leeren Fallbacks zu überschreiben.
-      // Sonst flackert beim Resume / nach Speichern eines Eintrags / während
-      // einem Token-Refresh kurz der "kein Ziel konfiguriert"-Screen.
-      final canFetch = _db!.userId != null &&
-          await _db!.ensureValidToken(minMinutesValid: 5);
+      _isLoading = false;
+      _isInitialLoading = false;
+      notifyListeners();
+      return;
+    }
 
-      if (!canFetch) {
-        // Silent refresh (Resume, periodischer Refresh, nach-Speichern):
-        // State unangetastet lassen, _isInitialLoading nicht umschalten.
-        if (silent) return;
-        // Initialer/expliziter Load: Loading-Flag freigeben, damit der Spinner
-        // verschwindet — aber den restlichen State nicht clobbern.
-        _isLoading = false;
-        _isInitialLoading = false;
-        notifyListeners();
-        return;
-      }
+    // ── Logged-in mode: local-first cache, then reconcile from the server ──
+    // On the very first load, paint cached data instantly so a cold Neon
+    // compute no longer blocks behind the full-screen spinner. The hydrate
+    // clears _isInitialLoading when it finds a cached goal.
+    final wasInitial = _isInitialLoading;
+    if (!silent && wasInitial && _cache != null) {
+      await _hydrateFromCache(date);
+    }
 
-      if (delta) {
-        // Delta: nur Entries + Activities delta-fetchen.
-        // Goal + Water sind single-row und trivial leicht → immer full.
-        await Future.wait([
-          _loadGoal(date),
-          _loadEntriesDelta(date),
-          _loadActivitiesDelta(date),
-          _loadWaterIntake(date),
-          _loadCheatDay(date),
-        ]);
-      } else {
-        // Full-Fetch: Sync-Zeitstempel zurücksetzen.
-        _lastEntriesSync = null;
-        _lastActivitiesSync = null;
-        await Future.wait([
-          _loadGoal(date),
-          _loadEntries(date),
-          _loadActivities(date),
-          _loadWaterIntake(date),
-          _loadCheatDay(date),
-          _loadStreak(),
-        ]);
-      }
+    // Show the blocking loading indicator only when we still have nothing to
+    // paint: a cache miss on the first load, or any later non-silent load
+    // (day-change, jump-to-today). A successful hydrate skips it.
+    final hydrated = wasInitial && !_isInitialLoading;
+    if (!silent && !hydrated) {
+      _isLoading = true;
+      notifyListeners();
+    }
+
+    // Preflight: ohne userId und gültiges Token können wir keinen
+    // authoritativen Fetch machen. In dem Fall lieber gar nichts ändern als
+    // den im Speicher gehaltenen Zustand mit leeren Fallbacks zu überschreiben.
+    // Sonst flackert beim Resume / nach Speichern eines Eintrags / während
+    // einem Token-Refresh kurz der "kein Ziel konfiguriert"-Screen.
+    final canFetch = _db!.userId != null &&
+        await _db!.ensureValidToken(minMinutesValid: 5);
+
+    if (!canFetch) {
+      // Silent refresh (Resume, periodischer Refresh, nach-Speichern):
+      // State unangetastet lassen, _isInitialLoading nicht umschalten.
+      if (silent) return;
+      // Initialer/expliziter Load: Loading-Flag freigeben, damit der Spinner
+      // verschwindet — aber den restlichen State nicht clobbern. (Ein Cache-
+      // Hydrate hat _isInitialLoading ggf. schon gelöscht und Daten gemalt.)
+      _isLoading = false;
+      _isInitialLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    if (delta) {
+      // Delta: nur Entries + Activities delta-fetchen.
+      // Goal + Water sind single-row und trivial leicht → immer full.
+      await Future.wait([
+        _loadGoal(date),
+        _loadEntriesDelta(date),
+        _loadActivitiesDelta(date),
+        _loadWaterIntake(date),
+        _loadCheatDay(date),
+      ]);
+    } else {
+      // Full-Fetch: Sync-Zeitstempel zurücksetzen.
+      _lastEntriesSync = null;
+      _lastActivitiesSync = null;
+      await Future.wait([
+        _loadGoal(date),
+        _loadEntries(date),
+        _loadActivities(date),
+        _loadWaterIntake(date),
+        _loadCheatDay(date),
+        _loadStreak(),
+      ]);
+    }
+
+    // Persist the freshly-fetched day into the cache so the next cold start is
+    // instant. Best-effort; never blocks or fails the load.
+    if (_cache != null) {
+      await _writeThroughToCache(date);
     }
 
     _isLoading = false;
     _isInitialLoading = false;
     notifyListeners();
+  }
+
+  // ── Offline-mirror cache helpers (logged-in) ────────────────────────────────
+
+  /// Fast read of [date] from the local cache to paint the UI before the server
+  /// responds. A cached goal is enough to render the app, so finding one clears
+  /// the loading gate immediately; without one we keep waiting for the server
+  /// (mirrors [_goalConfirmed] — never show the "no goal" state from a cache
+  /// miss). Best-effort: any failure just falls through to the normal fetch.
+  Future<void> _hydrateFromCache(DateTime date) async {
+    final cache = _cache;
+    if (cache == null) return;
+    try {
+      final goal = await cache.getGoalForDate(date);
+      final entries = await cache.getFoodEntriesForDate(date);
+      final activities = await cache.getActivitiesForDate(date);
+      final water = await cache.getWaterIntakeForDate(date);
+      final cheat = await cache.isCheatDay(date);
+
+      _foodEntries = entries;
+      _activities = activities;
+      _waterIntakeMl = water;
+      _isCheatDay = cheat;
+      if (goal != null) {
+        _goal = goal;
+        _goalConfirmed = true;
+        _isInitialLoading = false;
+        notifyListeners(); // paint cached data immediately
+      }
+    } catch (e) {
+      appLogger.w('⚠️ Cache hydrate failed: $e');
+    }
+  }
+
+  /// Persists the current in-memory day (already reconciled from the server)
+  /// into the local cache under the real user id, so the next cold start can
+  /// hydrate from it. Best-effort; failures are logged and ignored.
+  Future<void> _writeThroughToCache(DateTime date) async {
+    final cache = _cache;
+    if (cache == null) return;
+    try {
+      if (_goal != null) await cache.upsertGoal(_goal!);
+      await cache.replaceCachedEntriesForDate(date, _foodEntries);
+      await cache.replaceCachedActivitiesForDate(date, _activities);
+      await cache.setWaterIntakeForDate(date, _waterIntakeMl);
+      if (_isCheatDay) {
+        await cache.markCheatDay(date);
+      } else {
+        await cache.unmarkCheatDay(date);
+      }
+    } catch (e) {
+      appLogger.w('⚠️ Cache write-through failed: $e');
+    }
   }
 
   // ── Food entries ──────────────────────────────────────────────────────────

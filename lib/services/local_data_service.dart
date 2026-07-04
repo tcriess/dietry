@@ -1021,7 +1021,8 @@ class LocalDataService {
     if (_db == null) return [];
 
     try {
-      final maps = await _db!.query('water_intake', orderBy: 'date ASC');
+      final maps = await _db!.query('water_intake',
+          where: 'user_id = ?', whereArgs: ['guest'], orderBy: 'date ASC');
       return maps.map((map) => {
         'date': DateTime.parse(map['date'] as String),
         'amount': map['amount_ml'] as int,
@@ -1039,11 +1040,74 @@ class LocalDataService {
 
     try {
       // Every row in cheat_days represents a cheat day (no boolean flag column).
-      final maps = await _db!.query('cheat_days', orderBy: 'date ASC');
+      final maps = await _db!.query('cheat_days',
+          where: 'user_id = ?', whereArgs: ['guest'], orderBy: 'date ASC');
       return maps.map((map) => DateTime.parse(map['date'] as String)).toList();
     } catch (e) {
       appLogger.w('⚠️ Error getting all cheat days: $e');
       return [];
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Offline-mirror read-through cache (logged-in): persist a day's server data
+  // locally under the active _userId so the next cold start paints instantly.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Replaces the cached food entries for [date] with [entries] — an
+  /// authoritative set just fetched from the server. Server ids/timestamps are
+  /// preserved. Runs in a transaction so a concurrent reader never sees a
+  /// half-updated day.
+  Future<void> replaceCachedEntriesForDate(
+      DateTime date, List<FoodEntry> entries) async {
+    if (_db == null) return;
+    final dateStr = date.toIso8601String().split('T')[0];
+    try {
+      await _db!.transaction((txn) async {
+        await txn.delete('food_entries',
+            where: 'user_id = ? AND entry_date = ?',
+            whereArgs: [_userId, dateStr]);
+        for (final e in entries) {
+          final data = e.toJson();
+          data['user_id'] = _userId;
+          data['is_liquid'] = e.isLiquid ? 1 : 0; // SQLite has no bool
+          data['is_meal'] = e.isMeal ? 1 : 0;
+          await txn.insert('food_entries', data,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+    } catch (e) {
+      appLogger.w('⚠️ Cache replace entries failed: $e');
+    }
+  }
+
+  /// Replaces the cached activities for [date] with [activities]. The model has
+  /// no created_at/updated_at, so stamp them now — cache-only metadata; display
+  /// ordering uses start_time.
+  Future<void> replaceCachedActivitiesForDate(
+      DateTime date, List<PhysicalActivity> activities) async {
+    if (_db == null) return;
+    final startOfDay =
+        DateTime(date.year, date.month, date.day).toIso8601String();
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999)
+        .toIso8601String();
+    final now = DateTime.now().toIso8601String();
+    try {
+      await _db!.transaction((txn) async {
+        await txn.delete('physical_activities',
+            where: 'user_id = ? AND start_time >= ? AND start_time <= ?',
+            whereArgs: [_userId, startOfDay, endOfDay]);
+        for (final a in activities) {
+          final data = a.toJson();
+          data['user_id'] = _userId;
+          data['created_at'] = now;
+          data['updated_at'] = now;
+          await txn.insert('physical_activities', data,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+    } catch (e) {
+      appLogger.w('⚠️ Cache replace activities failed: $e');
     }
   }
 
@@ -1054,13 +1118,11 @@ class LocalDataService {
         appLogger.w('⚠️ Database not initialized, skipping clearAll');
         return;
       }
-      // Clears the whole local DB (all users). Safe while the local store only
-      // ever holds guest data — callers (guest→login migration, guest "clear my
-      // data") always run with _userId == 'guest'.
-      // TODO(offline-mirror phase 4): when logged-in users also cache locally,
-      // scope this to _userId (note: guest_foods has no user_id → keep it
-      // guest-only rather than filtering).
-      final tables = [
+      // Guest-scoped: only wipe the 'guest' user's rows, never a logged-in
+      // user's offline-mirror cache (real user_id) that shares this DB file.
+      // All callers (guest→login migration, guest "clear my data") mean "clear
+      // guest data". guest_foods has no user_id column → it's guest-only.
+      const userScoped = [
         'food_entries',
         'nutrition_goals',
         'physical_activities',
@@ -1068,12 +1130,13 @@ class LocalDataService {
         'cheat_days',
         'user_profile',
         'user_body_measurements',
-        'guest_foods',
       ];
-      for (final table in tables) {
-        await _db!.delete(table);
-        appLogger.d('   ✅ Cleared $table');
+      for (final table in userScoped) {
+        await _db!.delete(table, where: 'user_id = ?', whereArgs: ['guest']);
+        appLogger.d('   ✅ Cleared guest rows from $table');
       }
+      await _db!.delete('guest_foods');
+      appLogger.d('   ✅ Cleared guest_foods');
       appLogger.i('✅ All guest data cleared from database');
     } catch (e) {
       appLogger.e('❌ Error clearing guest data: $e');

@@ -3013,6 +3013,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       attempts++;
     }
 
+    // Offline mirror: attach a per-user local cache so the first load paints
+    // instantly from disk (no cold-DB wait) and each fetched day is written
+    // back through it. Best-effort — a cache failure must never block loading.
+    final uid = widget.dbService!.userId;
+    if (uid != null) {
+      try {
+        await LocalDataService.instance.init(userId: uid);
+        _store.attachCache(LocalDataService.instance);
+      } catch (e) {
+        appLogger.w('⚠️ Local cache unavailable: $e');
+      }
+    }
+
     await _store.loadDay(_selectedDay);
 
     // The very first query often races a cold database (Neon compute
