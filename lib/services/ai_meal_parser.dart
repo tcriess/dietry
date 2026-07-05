@@ -33,6 +33,7 @@ class AiMealParser implements MealParser {
     return '''
 You extract foods from a meal description. Return ONLY a JSON array, no prose.
 Each element is {"food": string, "quantity": number, "unit": string or null}.
+"food" is the food NAME ONLY — never put numbers or unit words in it.
 "unit" must be one of: g, ml, plate, bowl, cup, glass, slice, handful, piece,
 spoon, serving — or null for a bare count. Keep food names in the description's
 language.
@@ -77,6 +78,7 @@ Description: "${description.replaceAll('"', "'").trim()}"
     }
 
     final items = <ParsedMealItem>[];
+    final seen = <String>{};
     for (final e in decoded) {
       if (e is! Map) continue;
       final food = (e['food'] ?? e['name'])?.toString().trim();
@@ -92,10 +94,25 @@ Description: "${description.replaceAll('"', "'").trim()}"
       if (qty <= 0) qty = 1;
 
       final unitRaw = e['unit']?.toString().trim().toLowerCase();
-      final unit =
+      String? unit =
           (unitRaw != null && allowedUnits.contains(unitRaw)) ? unitRaw : null;
 
-      items.add(ParsedMealItem(query: food, quantity: qty, portion: unit));
+      // Small models often cram the quantity/unit into the food name
+      // ("2 Teller Gaspacho") or use a localized unit ("teller"). Run the name
+      // through the heuristic parser to recover a clean name + the real
+      // quantity/portion it can't express.
+      String query = food;
+      final cleaned = MealDescriptionParser.parse(food);
+      if (cleaned.length == 1 && cleaned.first.query.isNotEmpty) {
+        query = cleaned.first.query;
+        if (qty == 1 && cleaned.first.quantity != 1) qty = cleaned.first.quantity;
+        unit ??= cleaned.first.portion;
+      }
+
+      // De-dupe (small models sometimes repeat the same item).
+      if (seen.add('$query|$qty|$unit')) {
+        items.add(ParsedMealItem(query: query, quantity: qty, portion: unit));
+      }
     }
     if (items.isEmpty) {
       throw const FormatException('No valid items in model output');

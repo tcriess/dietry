@@ -40,6 +40,16 @@ void main() {
           [const ParsedMealItem(query: 'rice', quantity: 2, portion: 'plate')]);
     });
 
+    test('cleans quantity/unit crammed into the food name + de-dupes', () {
+      // Real weak-model output: name holds "2 Teller", localized unit, repeated.
+      final r = AiMealParser.parseResponse(
+          '[{"food":"2 Teller Gaspacho","quantity":1,"unit":"teller"},'
+          '{"food":"2 Teller Gaspacho","quantity":1,"unit":"teller"}]');
+      expect(r, [
+        const ParsedMealItem(query: 'gaspacho', quantity: 2, portion: 'plate'),
+      ]);
+    });
+
     test('bails on truncated reasoning instead of grabbing stray brackets', () {
       // <think> opened, no </think>, contains a bracket [value] like the real
       // truncated-output bug — must throw, not return garbage.
