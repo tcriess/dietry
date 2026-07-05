@@ -92,8 +92,17 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   MealType _selectedMealType = _mealTypeForCurrentTime();
   FoodPortion? _selectedPortion; // null = custom g/ml Eingabe
   String _customUnit = 'g'; // 'g' oder 'ml' wenn _selectedPortion == null
-  // How sure the user is of amount/values — drives the nutrition uncertainty band.
+  // How sure the user is of amount/values — drives the nutrition uncertainty
+  // band. The default auto-derives from portion type + the food's own level;
+  // once the user taps a chip we honour their choice.
   EstimateLevel _estimateLevel = EstimateLevel.none;
+  bool _userSetEstimate = false;
+  EstimateLevel _autoEstimate() => EstimateLevel.defaultForLog(
+        isNamedPortion: _selectedPortion != null,
+        foodLevel: _selectedFood?.estimateLevel ?? EstimateLevel.none,
+      );
+  EstimateLevel get _effectiveEstimate =>
+      _userSetEstimate ? _estimateLevel : _autoEstimate();
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
@@ -621,8 +630,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           children: EstimateLevel.values.map((lvl) {
             return ChoiceChip(
               label: Text(lvl.localizedName(l)),
-              selected: _estimateLevel == lvl,
-              onSelected: (_) => setState(() => _estimateLevel = lvl),
+              selected: _effectiveEstimate == lvl,
+              onSelected: (_) => setState(() {
+                _estimateLevel = lvl;
+                _userSetEstimate = true;
+              }),
             );
           }).toList(),
         ),
@@ -793,7 +805,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: false,
-        estimateLevel: _estimateLevel,
+        estimateLevel: _effectiveEstimate,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

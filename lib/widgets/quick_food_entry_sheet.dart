@@ -2182,6 +2182,18 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   FoodPortion? _selectedPortion;
   bool _savingShortcut = false;
 
+  // Auto-derived uncertainty (weighed g/ml → exact, named portion → rougher,
+  // seeded by the food's own level). Re-derived on unit change until the user
+  // overrides it via the picker.
+  late EstimateLevel _estimateLevel;
+  bool _userSetEstimate = false;
+
+  /// Auto default for the current selection.
+  EstimateLevel _autoEstimate() => EstimateLevel.defaultForLog(
+        isNamedPortion: !_isGramMl,
+        foodLevel: widget.food?.estimateLevel ?? EstimateLevel.none,
+      );
+
   double get _currentAmount =>
       tryParseDouble(_amountCtrl.text) ?? widget.initialAmount;
 
@@ -2210,6 +2222,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
             orElse: () => null,
           );
     }
+    _estimateLevel = _autoEstimate();
   }
 
   @override
@@ -2252,6 +2265,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         final servingSize = food?.servingSize ?? 100.0;
         _amountCtrl.text = servingSize.toStringAsFixed(0);
       }
+      // Follow the portion type unless the user has explicitly overridden.
+      if (!_userSetEstimate) _estimateLevel = _autoEstimate();
     });
   }
 
@@ -2334,8 +2349,37 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       isLiquid: widget.isLiquid,
       amountMl: scaledAmountMl,
       isMeal: widget.isMeal,
+      estimateLevel: _estimateLevel,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+    );
+  }
+
+  /// Compact "how sure?" override — a small row of chips, pre-set to the
+  /// auto-derived level; tapping marks it user-overridden.
+  Widget _buildEstimateRow(AppLocalizations l) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.estimateLabel,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          children: EstimateLevel.values.map((lvl) {
+            return ChoiceChip(
+              label: Text(lvl.localizedName(l),
+                  style: const TextStyle(fontSize: 12)),
+              selected: _estimateLevel == lvl,
+              visualDensity: VisualDensity.compact,
+              onSelected: (_) => setState(() {
+                _estimateLevel = lvl;
+                _userSetEstimate = true;
+              }),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -2393,6 +2437,9 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
           const SizedBox(height: 12),
           // Nutrition preview
           _NutritionPreview(entry: _buildEntry()),
+          const SizedBox(height: 12),
+          // How sure? — auto-derived from the portion type, overridable.
+          _buildEstimateRow(l),
           const SizedBox(height: 12),
           // Meal type — compact dropdown rather than a row of chips. The chip
           // version wrapped to two lines on narrow phones and the second row

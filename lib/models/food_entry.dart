@@ -287,6 +287,24 @@ enum EstimateLevel {
         orElse: () => EstimateLevel.none,
       );
 
+  /// The more-uncertain of two levels (levels combine by taking the max — if
+  /// either the portion is vague OR the food is inherently variable, the entry
+  /// is at least that uncertain).
+  EstimateLevel orHigher(EstimateLevel other) => index >= other.index ? this : other;
+
+  /// Default uncertainty for a *log* entry, derived from how it was logged:
+  ///   - weighed grams/ml → exact ([none]);
+  ///   - a named portion ("1 plate", "handful", "slice") → [medium], since a
+  ///     portion count is inherently a rough amount.
+  /// Combined (max) with the food's own inherent uncertainty [foodLevel].
+  static EstimateLevel defaultForLog({
+    required bool isNamedPortion,
+    EstimateLevel foodLevel = EstimateLevel.none,
+  }) {
+    final portion = isNamedPortion ? EstimateLevel.medium : EstimateLevel.none;
+    return portion.orHigher(foodLevel);
+  }
+
   /// Coefficient of variation (σ/μ) for this level. Tunable; chosen so a "high"
   /// guess is ~±45%. Amount error dominates and scales all nutrients together,
   /// so one CV per entry (applied proportionally) is a principled first cut.

@@ -1,3 +1,4 @@
+import 'food_entry.dart' show EstimateLevel;
 import 'food_portion.dart';
 import 'tag.dart';
 
@@ -54,9 +55,15 @@ class FoodItem {
 
   // Metadaten
   final String? source;
+
+  /// Inherent uncertainty of this food's per-100g values (e.g. a homemade dish
+  /// is variable, a packaged product is exact). Seeds a log entry's estimate
+  /// level; see EstimateLevel.defaultForLog.
+  final EstimateLevel estimateLevel;
+
   final DateTime createdAt;
   final DateTime updatedAt;
-  
+
   FoodItem({
     required this.id,
     this.userId,
@@ -82,6 +89,7 @@ class FoodItem {
     this.hasImage = false,
     this.tags = const [],
     this.source,
+    this.estimateLevel = EstimateLevel.none,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -124,6 +132,7 @@ class FoodItem {
       hasImage: json['has_image'] as bool? ?? false,
       tags: _parseTags(json['tags']),
       source: _safeString(json['source']),
+      estimateLevel: EstimateLevel.fromJson(json['estimate_level'] as String?),
       createdAt: DateTime.parse(createdAtRaw),
       updatedAt: DateTime.parse(updatedAtRaw),
     );
@@ -208,6 +217,7 @@ class FoodItem {
       'is_liquid': isLiquid,
       'has_image': hasImage,
       if (source != null) 'source': source,
+      'estimate_level': estimateLevel.toJson(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
