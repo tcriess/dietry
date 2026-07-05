@@ -92,6 +92,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   MealType _selectedMealType = _mealTypeForCurrentTime();
   FoodPortion? _selectedPortion; // null = custom g/ml Eingabe
   String _customUnit = 'g'; // 'g' oder 'ml' wenn _selectedPortion == null
+  // How sure the user is of amount/values — drives the nutrition uncertainty band.
+  EstimateLevel _estimateLevel = EstimateLevel.none;
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
@@ -601,6 +603,33 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   }
 
   /// Card showing total nutrition for the current amount.
+  /// Confidence picker: how sure is the user of amount/values? Feeds
+  /// [FoodEntry.estimateLevel] → the daily uncertainty band.
+  Widget _buildEstimatePicker() {
+    final l = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.estimateLabel,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          children: EstimateLevel.values.map((lvl) {
+            return ChoiceChip(
+              label: Text(lvl.localizedName(l)),
+              selected: _estimateLevel == lvl,
+              onSelected: (_) => setState(() => _estimateLevel = lvl),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTotalsPreview() {
     final totals = _computeTotals();
     final rawAmount = tryParseDouble(_amountController.text) ?? 0;
@@ -764,6 +793,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: false,
+        estimateLevel: _estimateLevel,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -1888,6 +1918,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     // Totals preview: shows scaled nutrition so the user sees the
                     // effect of the current amount on the per-100g values below.
                     _buildTotalsPreview(),
+
+                    const SizedBox(height: 16),
+
+                    // How sure? — nutrition uncertainty (drives the daily band).
+                    _buildEstimatePicker(),
 
                     const SizedBox(height: 16),
 

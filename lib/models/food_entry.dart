@@ -41,6 +41,10 @@ class FoodEntry {
   // if false, nutrition values are totals for the specified amount (food)
   final bool isMeal;
 
+  // How uncertain this entry's nutrition is (see [EstimateLevel]). Drives the
+  // daily uncertainty band; does NOT change the nutrition means. Default: exact.
+  final EstimateLevel estimateLevel;
+
   // Metadaten
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -67,9 +71,20 @@ class FoodEntry {
     this.isLiquid = false,
     this.amountMl,
     this.isMeal = false,
+    this.estimateLevel = EstimateLevel.none,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Standard deviation (σ) of a nutrient total for this entry, given its
+  /// estimate level. σ = value × CV(level). Used to build the daily band
+  /// (variances add: σ_day = √Σσ²).
+  double sigmaOf(double value) => value * estimateLevel.cv;
+
+  double get caloriesSigma => sigmaOf(calories);
+  double get proteinSigma => sigmaOf(protein);
+  double get fatSigma => sigmaOf(fat);
+  double get carbsSigma => sigmaOf(carbs);
   
   /// Erstelle FoodEntry aus JSON (Datenbank-Response)
   factory FoodEntry.fromJson(Map<String, dynamic> json) {
@@ -95,6 +110,7 @@ class FoodEntry {
       isLiquid: json['is_liquid'] as bool? ?? false,
       amountMl: json['amount_ml'] != null ? (json['amount_ml'] as num).toDouble() : null,
       isMeal: json['is_meal'] as bool? ?? false,
+      estimateLevel: EstimateLevel.fromJson(json['estimate_level'] as String?),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -124,6 +140,7 @@ class FoodEntry {
       'is_liquid': isLiquid,
       if (amountMl != null) 'amount_ml': amountMl,
       'is_meal': isMeal,
+      'estimate_level': estimateLevel.toJson(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -152,6 +169,7 @@ class FoodEntry {
     bool? isLiquid,
     double? amountMl,
     bool? isMeal,
+    EstimateLevel? estimateLevel,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -177,6 +195,7 @@ class FoodEntry {
       isLiquid: isLiquid ?? this.isLiquid,
       amountMl: amountMl ?? this.amountMl,
       isMeal: isMeal ?? this.isMeal,
+      estimateLevel: estimateLevel ?? this.estimateLevel,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -243,6 +262,57 @@ enum MealType {
         return '🌙';
       case MealType.snack:
         return '🍎';
+    }
+  }
+}
+
+/// How uncertain a food entry's nutrition is.
+///
+/// Each level maps to a coefficient of variation (CV = σ/μ) that is applied to
+/// every nutrient of the entry. The nutrition *means* are never changed — this
+/// only feeds the daily uncertainty band, which aggregates by adding variances
+/// (σ_day = √Σσ²). `none` = weighed/packaged (exact); higher = rougher guess.
+enum EstimateLevel {
+  none,
+  low,
+  medium,
+  high;
+
+  String toJson() => name;
+
+  /// Tolerant parse: unknown/missing → [none] (backward-compatible default).
+  static EstimateLevel fromJson(String? value) =>
+      EstimateLevel.values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => EstimateLevel.none,
+      );
+
+  /// Coefficient of variation (σ/μ) for this level. Tunable; chosen so a "high"
+  /// guess is ~±45%. Amount error dominates and scales all nutrients together,
+  /// so one CV per entry (applied proportionally) is a principled first cut.
+  double get cv {
+    switch (this) {
+      case EstimateLevel.none:
+        return 0.0;
+      case EstimateLevel.low:
+        return 0.10;
+      case EstimateLevel.medium:
+        return 0.25;
+      case EstimateLevel.high:
+        return 0.45;
+    }
+  }
+
+  String localizedName(dynamic l) {
+    switch (this) {
+      case EstimateLevel.none:
+        return l.estimateNone as String;
+      case EstimateLevel.low:
+        return l.estimateLow as String;
+      case EstimateLevel.medium:
+        return l.estimateMedium as String;
+      case EstimateLevel.high:
+        return l.estimateHigh as String;
     }
   }
 }

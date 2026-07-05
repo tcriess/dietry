@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 6;  // Version 6: (user_id, date) PK on water_intake + cheat_days
+  static const int _version = 7;  // Version 7: estimate_level on food_entries (nutrition uncertainty)
 
   Database? _db;
   bool _initialized = false;
@@ -129,6 +129,7 @@ class LocalDataService {
           is_liquid INTEGER NOT NULL DEFAULT 0,
           amount_ml REAL,
           is_meal INTEGER NOT NULL DEFAULT 0,
+          estimate_level TEXT NOT NULL DEFAULT 'none',
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -440,6 +441,19 @@ class LocalDataService {
       await db.execute('DROP TABLE cheat_days');
       await db.execute('ALTER TABLE cheat_days_new RENAME TO cheat_days');
       appLogger.i('✅ Migration 5→6 complete ((user_id, date) PK)');
+    }
+
+    if (oldVersion < 7) {
+      // Version 7: per-entry nutrition uncertainty (mirrors sql/32). Default
+      // 'none' keeps existing rows exact.
+      try {
+        await db.execute(
+            "ALTER TABLE food_entries ADD COLUMN estimate_level TEXT NOT NULL DEFAULT 'none'");
+        appLogger.d('✅ Added estimate_level column to food_entries');
+      } catch (e) {
+        appLogger.d('ℹ️ estimate_level column already exists: $e');
+      }
+      appLogger.i('✅ Migration 6→7 complete (estimate_level)');
     }
   }
 

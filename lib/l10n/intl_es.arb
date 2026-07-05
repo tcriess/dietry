@@ -788,5 +788,11 @@
   "tutorialAddTitle": "Añadir un registro",
   "tutorialAddBody": "Toca el botón + en cualquier momento para registrar una comida rápidamente.",
   "replayTutorialTitle": "Mostrar el tutorial de nuevo",
-  "replayTutorialSubtitle": "Repetir el recorrido rápido por la app"
+  "replayTutorialSubtitle": "Repetir el recorrido rápido por la app",
+  "estimateLabel": "¿Qué tan seguro?",
+  "estimateNone": "Exacto",
+  "estimateLow": "Bastante seguro",
+  "estimateMedium": "Aproximado",
+  "estimateHigh": "Estimado",
+  "estimateProbUnderGoal": "≈ {pct}% probablemente bajo el objetivo"
 }

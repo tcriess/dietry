@@ -12,18 +12,6 @@ export 'food_item.dart';
 export 'food_entry.dart';
 export 'water_intake.dart';
 
-// Legacy EstimateLevel (für alte FoodEntry-Implementierung)
-enum EstimateLevel { 
-  low, 
-  medium, 
-  high, 
-  none;
-  
-  String toJson() => name;
-  static EstimateLevel fromJson(String value) => EstimateLevel.values.firstWhere((e) => e.name == value);
-}
-
-
 class NutritionGoal {
   final String? id;
   final String? userId;

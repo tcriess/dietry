@@ -3315,6 +3315,42 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Die kurze App-Tour wiederholen'**
   String get replayTutorialSubtitle;
+
+  /// No description provided for @estimateLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie sicher?'**
+  String get estimateLabel;
+
+  /// No description provided for @estimateNone.
+  ///
+  /// In de, this message translates to:
+  /// **'Genau'**
+  String get estimateNone;
+
+  /// No description provided for @estimateLow.
+  ///
+  /// In de, this message translates to:
+  /// **'Ziemlich sicher'**
+  String get estimateLow;
+
+  /// No description provided for @estimateMedium.
+  ///
+  /// In de, this message translates to:
+  /// **'Ungefähr'**
+  String get estimateMedium;
+
+  /// No description provided for @estimateHigh.
+  ///
+  /// In de, this message translates to:
+  /// **'Geschätzt'**
+  String get estimateHigh;
+
+  /// No description provided for @estimateProbUnderGoal.
+  ///
+  /// In de, this message translates to:
+  /// **'≈ {pct}% unter deinem Ziel'**
+  String estimateProbUnderGoal(int pct);
 }
 
 class _AppLocalizationsDelegate

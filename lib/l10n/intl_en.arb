@@ -788,5 +788,11 @@
   "tutorialAddTitle": "Add an entry",
   "tutorialAddBody": "Tap the + button any time to quickly log a meal.",
   "replayTutorialTitle": "Show tutorial again",
-  "replayTutorialSubtitle": "Replay the quick app tour"
+  "replayTutorialSubtitle": "Replay the quick app tour",
+  "estimateLabel": "How sure?",
+  "estimateNone": "Exact",
+  "estimateLow": "Fairly sure",
+  "estimateMedium": "Rough",
+  "estimateHigh": "Guess",
+  "estimateProbUnderGoal": "≈ {pct}% likely under goal"
 }

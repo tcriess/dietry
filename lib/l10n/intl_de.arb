@@ -810,5 +810,12 @@
   "tutorialAddTitle": "Eintrag hinzufügen",
   "tutorialAddBody": "Tippe jederzeit auf das +, um schnell eine Mahlzeit zu erfassen.",
   "replayTutorialTitle": "Tutorial erneut anzeigen",
-  "replayTutorialSubtitle": "Die kurze App-Tour wiederholen"
+  "replayTutorialSubtitle": "Die kurze App-Tour wiederholen",
+  "estimateLabel": "Wie sicher?",
+  "estimateNone": "Genau",
+  "estimateLow": "Ziemlich sicher",
+  "estimateMedium": "Ungefähr",
+  "estimateHigh": "Geschätzt",
+  "estimateProbUnderGoal": "≈ {pct}% unter deinem Ziel",
+  "@estimateProbUnderGoal": {"placeholders": {"pct": {"type": "int"}}}
 }

@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'main_web_imports_web.dart' if (dart.library.io) 'main_web_imports.dart'
     as html;
 import 'dart:async';
-import 'dart:math' show min;
+import 'dart:math' show min, sqrt, exp;
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -3857,6 +3857,96 @@ class OverviewScreen extends StatelessWidget {
   double get totalFat => entries.fold(0, (sum, e) => sum + e.fat);
   double get totalCarbs => entries.fold(0, (sum, e) => sum + e.carbs);
 
+  // Uncertainty (σ) of the day's totals from each entry's estimate level.
+  // Variances add (independent errors), so σ_day = √Σσᵢ² — grows sub-linearly.
+  // Zero when every entry is "exact" (the default), so nothing shows by default.
+  double _sigmaQuad(double Function(FoodEntry) sigma) => sqrt(
+      entries.fold(0.0, (s, e) {
+        final x = sigma(e);
+        return s + x * x;
+      }));
+  double get caloriesSigma => _sigmaQuad((e) => e.caloriesSigma);
+  double get proteinSigma => _sigmaQuad((e) => e.proteinSigma);
+  double get fatSigma => _sigmaQuad((e) => e.fatSigma);
+  double get carbsSigma => _sigmaQuad((e) => e.carbsSigma);
+
+  // Relative daily calorie uncertainty (σ/μ). We only surface the band when it's
+  // meaningful (≥3%), so days logged exactly show nothing.
+  double get caloriesRelSigma =>
+      totalCalories > 0 ? caloriesSigma / totalCalories : 0;
+  bool get showCalorieBand => caloriesRelSigma >= 0.03;
+
+  /// Standard normal CDF Φ (Abramowitz & Stegun 26.2.17 — dart:math has no erf).
+  double _phi(double z) {
+    final az = z.abs();
+    final t = 1.0 / (1.0 + 0.2316419 * az);
+    final d = 0.3989422804014327 * exp(-az * az / 2.0);
+    final p = d *
+        t *
+        (0.319381530 +
+            t *
+                (-0.356563782 +
+                    t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return z >= 0 ? 1.0 - p : p;
+  }
+
+  /// P(true intake is under the goal) given the day's calorie uncertainty.
+  /// net = goal − consumed + burned; under-goal ⇔ net > 0 ⇒ P = Φ(net/σ).
+  /// null when there's no meaningful uncertainty to reason about.
+  int? get probUnderGoalPct {
+    if (!showCalorieBand || caloriesSigma <= 0) return null;
+    final net = goal.calories - totalCalories + totalCaloriesBurned;
+    return (_phi(net / caloriesSigma) * 100).round();
+  }
+
+  /// Calorie progress bar, with a translucent ±σ band overlaid when the day's
+  /// uncertainty is meaningful (see [showCalorieBand]).
+  Widget _calorieBar() {
+    final barValue = goal.calories > 0
+        ? (totalCalories / goal.calories).clamp(0.0, 1.0)
+        : 0.0;
+    final bar = LinearProgressIndicator(
+      value: barValue,
+      minHeight: 12,
+      backgroundColor: Colors.grey[300],
+      color: Colors.deepPurple,
+    );
+    if (!showCalorieBand || goal.calories <= 0) return bar;
+    final lo = ((totalCalories - caloriesSigma) / goal.calories).clamp(0.0, 1.0);
+    final hi = ((totalCalories + caloriesSigma) / goal.calories).clamp(0.0, 1.0);
+    return SizedBox(
+      height: 12,
+      child: Stack(
+        children: [
+          Positioned.fill(child: bar),
+          // Fractional [μ−σ, μ+σ] band via flex weights (no pixel math).
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(flex: (lo * 1000).round(), child: const SizedBox()),
+                Expanded(
+                  flex: ((hi - lo) * 1000).round().clamp(1, 1000),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withValues(alpha: 0.30),
+                      border: Border.symmetric(
+                        vertical: BorderSide(
+                          color: Colors.deepPurple.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                    flex: ((1 - hi) * 1000).round(), child: const SizedBox()),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ✅ Berechne verbrannte Kalorien aus activities
   double get totalCaloriesBurned =>
       activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
@@ -4421,20 +4511,15 @@ class OverviewScreen extends StatelessWidget {
             const SizedBox(height: 16),
             // Kalorien-Fortschritt (mit verbrannten Kalorien)
             Text(l.nutrientCalories),
-            LinearProgressIndicator(
-              value: goal.calories > 0
-                  ? (totalCalories / goal.calories).clamp(0, 1)
-                  : 0,
-              minHeight: 12,
-              backgroundColor: Colors.grey[300],
-              color: Colors.deepPurple,
-            ),
+            _calorieBar(),
             LayoutBuilder(
               builder: (context, constraints) {
                 final stats = <({String label, String value, Color? color})>[
                   (
                     label: l.consumed,
-                    value: '${totalCalories.toStringAsFixed(0)} kcal',
+                    value: showCalorieBand
+                        ? '${totalCalories.toStringAsFixed(0)} ± ${caloriesSigma.toStringAsFixed(0)} kcal'
+                        : '${totalCalories.toStringAsFixed(0)} kcal',
                     color: null
                   ),
                   if (totalCaloriesBurned > 0)
@@ -4506,7 +4591,9 @@ class OverviewScreen extends StatelessWidget {
               },
             ),
             Text(
-              '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}',
+              showCalorieBand
+                  ? '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}  (± ${caloriesSigma.toStringAsFixed(0)})'
+                  : '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color:
@@ -4515,6 +4602,14 @@ class OverviewScreen extends StatelessWidget {
                         : Colors.red,
               ),
             ),
+            if (probUnderGoalPct != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  l.estimateProbUnderGoal(probUnderGoalPct!),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ),
           ],
           const SizedBox(height: 24),
           // Makronährstoff-Kreisdiagramm

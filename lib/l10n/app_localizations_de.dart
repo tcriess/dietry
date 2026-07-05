@@ -1781,4 +1781,24 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get replayTutorialSubtitle => 'Die kurze App-Tour wiederholen';
+
+  @override
+  String get estimateLabel => 'Wie sicher?';
+
+  @override
+  String get estimateNone => 'Genau';
+
+  @override
+  String get estimateLow => 'Ziemlich sicher';
+
+  @override
+  String get estimateMedium => 'Ungefähr';
+
+  @override
+  String get estimateHigh => 'Geschätzt';
+
+  @override
+  String estimateProbUnderGoal(int pct) {
+    return '≈ $pct% unter deinem Ziel';
+  }
 }
