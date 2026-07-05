@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] — 2026-07-05
+
+### Fixed
+- **Guest mode is usable on phones again** — sign in to sync directly from the guest-mode banner (just tap it), the top-bar action icons no longer disappear on narrow screens (secondary actions moved into a "⋮" overflow menu), and the info/guest banners no longer cut off longer text.
+- **"Cheat Day" chip no longer overflows** — the streak + Cheat Day row now wraps instead of running off the right edge on smaller screens.
+
+### Changed
+- **Version number** on the Info screen now shows just the release version (e.g. `1.2.0`), without the internal build suffix.
+- **Under the hood** — dependency and toolchain modernization: upgraded the sharing, notifications, timezone, on-device storage, secure-storage and device-info libraries; moved to Flutter 3.44.4; and raised the Android build to Java 17. No intended change to how the app behaves.
+
+---
+
 ## [1.1.7] — 2026-07-02
 
 ### Added
