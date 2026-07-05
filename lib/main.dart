@@ -3727,8 +3727,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ListenableBuilder(
             listenable: _sync,
             builder: (context, _) {
-              if (_sync.isOnline && _sync.pendingCount == 0)
+              if (_sync.isOnline && _sync.pendingCount == 0) {
                 return const SizedBox.shrink();
+              }
               return Positioned(
                 top: 0,
                 left: 0,

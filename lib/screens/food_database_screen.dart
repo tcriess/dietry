@@ -734,8 +734,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                               final jwt = widget.dbService.jwt;
                                               final userId =
                                                   widget.dbService.userId;
-                                              if (jwt == null || userId == null)
+                                              if (jwt == null || userId == null) {
                                                 return;
+                                              }
                                               premiumFeatures
                                                   .showFoodDatabaseMicrosSheet(
                                                 context: context,
@@ -778,8 +779,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                             final jwt = widget.dbService.jwt;
                                             final userId =
                                                 widget.dbService.userId;
-                                            if (jwt == null || userId == null)
+                                            if (jwt == null || userId == null) {
                                               return;
+                                            }
                                             premiumFeatures
                                                 .showFoodDatabaseMicrosSheet(
                                               context: context,
@@ -1247,8 +1249,9 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       _carbsController.text = f.carbs.toStringAsFixed(1);
       if (f.fiber != null) _fiberController.text = f.fiber!.toStringAsFixed(1);
       if (f.sugar != null) _sugarController.text = f.sugar!.toStringAsFixed(1);
-      if (f.sodium != null)
+      if (f.sodium != null) {
         _sodiumController.text = f.sodium!.toStringAsFixed(1);
+      }
       if (f.saturatedFat != null) {
         _saturatedFatController.text = f.saturatedFat!.toStringAsFixed(1);
       }
