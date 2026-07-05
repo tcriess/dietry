@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,9 +20,8 @@ Future<void> exportCsvFiles({
     // Let user pick the destination directory; fall back to Downloads on error/cancel.
     String? selectedDir;
     try {
-      selectedDir = await FilePicker.getDirectoryPath(
-        dialogTitle: 'Exportverzeichnis wählen',
-        lockParentWindow: true,
+      selectedDir = await getDirectoryPath(
+        confirmButtonText: 'Exportverzeichnis wählen',
       );
     } catch (_) {}
 
