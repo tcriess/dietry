@@ -3926,12 +3926,15 @@ class OverviewScreen extends StatelessWidget {
                 Expanded(flex: (lo * 1000).round(), child: const SizedBox()),
                 Expanded(
                   flex: ((hi - lo) * 1000).round().clamp(1, 1000),
+                  // Light fill + dark edges so the ±σ zone reads clearly over
+                  // both the grey track and the deep-purple fill.
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple.withValues(alpha: 0.30),
+                      color: Colors.white.withValues(alpha: 0.45),
                       border: Border.symmetric(
                         vertical: BorderSide(
-                          color: Colors.deepPurple.withValues(alpha: 0.55),
+                          color: Colors.black.withValues(alpha: 0.55),
+                          width: 1.5,
                         ),
                       ),
                     ),
