@@ -2080,6 +2080,31 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
   }
 }
 
+// Secondary AppBar actions, folded into a single "⋮" overflow menu so the
+// toolbar never overflows (and silently clips its icons) on narrow phones.
+enum _HomeMenuAction {
+  info,
+  admin,
+  feedback,
+  profile,
+  deleteGuestData,
+  signIn,
+  logout,
+}
+
+// Height reserved per AppBar info banner (dev / guest). Tall enough for the
+// longer (German) strings to wrap to two lines without being clipped.
+const double _kBannerHeight = 40;
+
+// Icon + label row for an overflow-menu entry.
+Widget _menuRow(IconData icon, String label) => Row(
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 12),
+        Text(label),
+      ],
+    );
+
 // Wrapper für DietryHome mit Logout-Button
 class DietryHomeWithLogout extends StatefulWidget {
   final NeonAuthService authService;
@@ -2116,6 +2141,136 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
     }
   }
 
+  // Leave guest mode and go to the login screen so guest data can be synced to
+  // a real account. Shared by the guest banner (tap) and the overflow menu.
+  Future<void> _startGuestSignIn() async {
+    await GuestModeService.disable();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthApp()),
+      (route) => false,
+    );
+  }
+
+  // Dispatches the secondary AppBar actions selected from the "⋮" overflow menu.
+  Future<void> _onHomeMenuAction(
+      BuildContext context, _HomeMenuAction action) async {
+    switch (action) {
+      case _HomeMenuAction.info:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const InfoScreen()),
+        );
+        break;
+      case _HomeMenuAction.admin:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => premiumFeatures.buildAdminDashboard(
+              userId: widget.dbService?.userId ?? '',
+              authToken: widget.authService.jwt ?? '',
+              apiUrl: AppConfig.dataApiUrl,
+              onLogout: widget.authService.signOut,
+            ),
+          ),
+        );
+        break;
+      case _HomeMenuAction.feedback:
+        if (_feedbackService != null) {
+          FeedbackDialog.show(context, _feedbackService!);
+        }
+        break;
+      case _HomeMenuAction.profile:
+        if (widget.isGuestMode) {
+          // Guest mode: goal/profile setup via GoalRecommendationScreen.
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => GoalRecommendationScreen(dbService: null),
+            ),
+          );
+        } else if (widget.dbService != null) {
+          // Remote mode: full ProfileScreen.
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProfileScreen(
+                dbService: widget.dbService!,
+                authService: widget.authService,
+                isGuestMode: widget.isGuestMode,
+              ),
+            ),
+          );
+        }
+        // Nach Rückkehr: Ziel könnte geändert worden sein → neu laden.
+        _dietryHomeKey.currentState?._loadCurrentGoal();
+        break;
+      case _HomeMenuAction.deleteGuestData:
+        await _confirmAndDeleteGuestData(context);
+        break;
+      case _HomeMenuAction.signIn:
+        await _startGuestSignIn();
+        break;
+      case _HomeMenuAction.logout:
+        // Explicit logout: drop this user's offline-mirror cache from the
+        // shared local DB (privacy on shared devices). Only here — NOT on
+        // transient token-expiry signOut(), which would needlessly discard a
+        // cache the same user still benefits from.
+        final uid = widget.dbService?.userId;
+        if (uid != null) {
+          await LocalDataService.instance.clearUser(uid);
+        }
+        await widget.authService.signOut();
+        break;
+    }
+  }
+
+  // Confirm + wipe all local guest data, then return to the login screen.
+  Future<void> _confirmAndDeleteGuestData(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.deleteGuestDataTitle),
+        content: Text(l.deleteGuestDataConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await LocalDataService.instance.clearAll();
+      await GuestModeService.disable();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.deleteGuestDataSuccess),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthApp()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.errorPrefix(e.toString())),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -2129,16 +2284,18 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
         bottom: (AppConfig.showDeveloperBanner || widget.isGuestMode)
             ? PreferredSize(
                 preferredSize: Size.fromHeight(
-                  (AppConfig.showDeveloperBanner ? 24 : 0) +
-                      (widget.isGuestMode ? 24 : 0),
+                  (AppConfig.showDeveloperBanner ? _kBannerHeight : 0) +
+                      (widget.isGuestMode ? _kBannerHeight : 0),
                 ),
                 child: Column(
                   children: [
                     if (AppConfig.showDeveloperBanner)
                       Container(
                         width: double.infinity,
+                        height: _kBannerHeight,
+                        alignment: Alignment.center,
                         color: Colors.orange.shade700,
-                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           l.devBannerText,
                           textAlign: TextAlign.center,
@@ -2150,17 +2307,35 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                         ),
                       ),
                     if (widget.isGuestMode)
-                      Container(
-                        width: double.infinity,
+                      Material(
                         color: Colors.blue.shade600,
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Text(
-                          l.guestModeBannerText,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        child: InkWell(
+                          onTap: _startGuestSignIn,
+                          child: Container(
+                            width: double.infinity,
+                            height: _kBannerHeight,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    l.guestModeBannerText,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.login,
+                                    size: 14, color: Colors.white),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -2184,32 +2359,6 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               );
             },
           ),
-          // Admin-Dashboard (Cloud web, role=admin only)
-          if (AppFeatures.isAdmin)
-            IconButton(
-              icon: const Icon(Icons.admin_panel_settings),
-              tooltip: 'Admin',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => premiumFeatures.buildAdminDashboard(
-                      userId: widget.dbService?.userId ?? '',
-                      authToken: widget.authService.jwt ?? '',
-                      apiUrl: AppConfig.dataApiUrl,
-                      onLogout: widget.authService.signOut,
-                    ),
-                  ),
-                );
-              },
-            ),
-          // Feedback (remote mode only)
-          if (!widget.isGuestMode && _feedbackService != null)
-            IconButton(
-              icon: const Icon(Icons.feedback_outlined),
-              tooltip: l.feedbackTooltip,
-              onPressed: () => FeedbackDialog.show(context, _feedbackService!),
-            ),
           // Design-Modus wechseln
           PopupMenuButton<ThemeMode>(
             icon: Icon(_themeModeIcon(widget.themeMode)),
@@ -2259,141 +2408,54 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
               const PopupMenuItem(value: null, child: Text('⚙️  System')),
             ],
           ),
-          // Info / Impressum
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: l.infoTooltip,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InfoScreen()),
-              );
+          // Everything else lives in a single "⋮" overflow menu so the toolbar
+          // stays within ~4 trailing widgets and never clips on narrow phones.
+          // (Tooltip defaults to the localized "Show menu" string.)
+          PopupMenuButton<_HomeMenuAction>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (action) => _onHomeMenuAction(context, action),
+            itemBuilder: (ctx) {
+              final lm = AppLocalizations.of(ctx)!;
+              return [
+                PopupMenuItem(
+                  value: _HomeMenuAction.info,
+                  child: _menuRow(Icons.info_outline, lm.infoTooltip),
+                ),
+                if (AppFeatures.isAdmin)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.admin,
+                    child: _menuRow(Icons.admin_panel_settings, 'Admin'),
+                  ),
+                if (!widget.isGuestMode && _feedbackService != null)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.feedback,
+                    child: _menuRow(Icons.feedback_outlined, lm.feedbackTooltip),
+                  ),
+                if (widget.isGuestMode || widget.dbService != null)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.profile,
+                    child: _menuRow(Icons.person, lm.profileTooltip),
+                  ),
+                if (widget.isGuestMode)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.deleteGuestData,
+                    child: _menuRow(
+                        Icons.delete_outline, lm.deleteGuestDataTitle),
+                  ),
+                const PopupMenuDivider(),
+                if (widget.isGuestMode)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.signIn,
+                    child: _menuRow(Icons.login, lm.guestModeSignIn),
+                  )
+                else
+                  PopupMenuItem(
+                    value: _HomeMenuAction.logout,
+                    child: _menuRow(Icons.logout, lm.logoutTooltip),
+                  ),
+              ];
             },
           ),
-          // Profil / Ziel-Empfehlung
-          if (widget.isGuestMode)
-            IconButton(
-              icon: const Icon(Icons.person),
-              tooltip: l.profileTooltip,
-              onPressed: () async {
-                // Guest mode: navigate to GoalRecommendationScreen for profile/goal setup
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GoalRecommendationScreen(
-                      dbService: null,
-                    ),
-                  ),
-                );
-                _dietryHomeKey.currentState?._loadCurrentGoal();
-              },
-            )
-          else if (widget.dbService != null)
-            IconButton(
-              icon: const Icon(Icons.person),
-              tooltip: l.profileTooltip,
-              onPressed: () async {
-                // Remote mode: navigate to ProfileScreen
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProfileScreen(
-                      dbService: widget.dbService!,
-                      authService: widget.authService,
-                      isGuestMode: widget.isGuestMode,
-                    ),
-                  ),
-                );
-
-                // Nach Rückkehr: Goal neu laden (Ziel könnte geändert worden sein)
-                _dietryHomeKey.currentState?._loadCurrentGoal();
-              },
-            ),
-          // Delete guest data (guest mode only)
-          if (widget.isGuestMode)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: l.deleteGuestDataTitle,
-              onPressed: () async {
-                final l = AppLocalizations.of(context)!;
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(l.deleteGuestDataTitle),
-                    content: Text(l.deleteGuestDataConfirm),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: Text(l.cancel),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: Text(l.delete),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true && context.mounted) {
-                  try {
-                    await LocalDataService.instance.clearAll();
-                    await GuestModeService.disable();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.deleteGuestDataSuccess),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                      // Navigate to login screen
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const AuthApp()),
-                        (route) => false,
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.errorPrefix(e.toString())),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-            ),
-          // Sign in (guest mode) or Logout (remote mode)
-          if (widget.isGuestMode)
-            IconButton(
-              icon: const Icon(Icons.login),
-              tooltip: l.guestModeSignIn,
-              onPressed: () async {
-                await GuestModeService.disable();
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AuthApp()),
-                    (route) => false,
-                  );
-                }
-              },
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: l.logoutTooltip,
-              onPressed: () async {
-                // Explicit logout: drop this user's offline-mirror cache from
-                // the shared local DB (privacy on shared devices). Only here —
-                // NOT on transient token-expiry signOut(), which would need-
-                // lessly discard a cache the same user still benefits from.
-                final uid = widget.dbService?.userId;
-                if (uid != null) {
-                  await LocalDataService.instance.clearUser(uid);
-                }
-                await widget.authService.signOut();
-              },
-            ),
         ],
       ),
     );
@@ -4256,11 +4318,17 @@ class OverviewScreen extends StatelessWidget {
           const SizedBox(height: 8),
 
           // ── Streak + Cheat Day row ──────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Wrap (not Row) so the chips flow onto a second line instead of
+          // overflowing off the right edge when labels are long (e.g. the
+          // German streak label alongside the cheat-day chip).
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
             children: [
               // Streak chip — cloud only
-              if (AppFeatures.streaks) ...[
+              if (AppFeatures.streaks)
                 GestureDetector(
                   onTap: onShareProgress,
                   child: Tooltip(
@@ -4292,8 +4360,6 @@ class OverviewScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-              ],
               // Cheat Day toggle chip
               FilterChip(
                 avatar: Text(
