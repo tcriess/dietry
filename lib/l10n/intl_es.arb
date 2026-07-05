@@ -794,5 +794,12 @@
   "estimateLow": "Bastante seguro",
   "estimateMedium": "Aproximado",
   "estimateHigh": "Estimado",
+  "describeMealTitle": "Describe tu comida",
+  "describeMealIntro": "Describe lo que comiste: te sugeriremos entradas. Se registran como estimación.",
+  "describeMealHint": "p. ej. arroz con pimiento y guisantes, dos platos",
+  "describeMealSuggest": "Sugerir entradas",
+  "describeMealNoMatch": "Sin coincidencia",
+  "describeMealEmpty": "No se reconoció nada: nombra los alimentos.",
+  "describeMealAddAll": "Añadir al registro",
   "estimateProbUnderGoal": "≈ {pct}% probablemente bajo el objetivo"
 }

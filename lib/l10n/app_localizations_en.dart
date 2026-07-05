@@ -1792,6 +1792,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get estimateHigh => 'Guess';
 
   @override
+  String get describeMealTitle => 'Describe your meal';
+
+  @override
+  String get describeMealIntro =>
+      'Describe what you ate — we\'ll suggest matching entries. They\'re logged as estimates.';
+
+  @override
+  String get describeMealHint => 'e.g. rice with paprika and peas, two plates';
+
+  @override
+  String get describeMealSuggest => 'Suggest entries';
+
+  @override
+  String get describeMealNoMatch => 'No match';
+
+  @override
+  String get describeMealEmpty => 'Nothing recognized — try naming the foods.';
+
+  @override
+  String get describeMealAddAll => 'Add to log';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% likely under goal';
   }

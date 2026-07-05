@@ -794,5 +794,12 @@
   "estimateLow": "Fairly sure",
   "estimateMedium": "Rough",
   "estimateHigh": "Guess",
+  "describeMealTitle": "Describe your meal",
+  "describeMealIntro": "Describe what you ate — we'll suggest matching entries. They're logged as estimates.",
+  "describeMealHint": "e.g. rice with paprika and peas, two plates",
+  "describeMealSuggest": "Suggest entries",
+  "describeMealNoMatch": "No match",
+  "describeMealEmpty": "Nothing recognized — try naming the foods.",
+  "describeMealAddAll": "Add to log",
   "estimateProbUnderGoal": "≈ {pct}% likely under goal"
 }

@@ -58,6 +58,7 @@ import 'models/models.dart';
 import 'screens/goal_recommendation_screen.dart';
 import 'screens/food_entries_list_screen.dart';
 import 'screens/add_food_entry_screen.dart';
+import 'screens/meal_description_screen.dart';
 import 'widgets/quick_food_entry_sheet.dart';
 import 'widgets/quick_activity_entry_sheet.dart';
 import 'screens/activity_database_screen.dart';
@@ -3547,6 +3548,17 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ));
         }
 
+        // Pushes the "describe your meal" free-text → suggested-entries flow.
+        void openDescribeMeal() {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => MealDescriptionScreen(
+              dbService: db,
+              selectedDate: _selectedDay,
+              initialMealType: _suggestMealType(),
+            ),
+          ));
+        }
+
         // Pushes the full entry form with the label-scan OCR launched on open.
         void openScanLabel() {
           Navigator.of(context).push(MaterialPageRoute(
@@ -3585,6 +3597,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                   initialMealType: _suggestMealType(),
                   onOpenTemplates: hasMealTemplates ? openTemplates : null,
                   onManualEntry: openManualEntry,
+                  onDescribeMeal: openDescribeMeal,
                   onScanLabel:
                       AppFeatures.nutritionLabelScan ? openScanLabel : null,
                   onManageDatabase: () => Navigator.of(context).push(

@@ -37,10 +37,12 @@ class MealItemSuggestion {
     required String userId,
     required DateTime date,
     required MealType mealType,
+    double? gramsOverride,
   }) {
     final food = match;
-    if (food == null || grams <= 0) return null;
-    final f = grams / 100.0;
+    final g = gramsOverride ?? grams;
+    if (food == null || g <= 0) return null;
+    final f = g / 100.0;
     final now = DateTime.now();
     return FoodEntry(
       id: const Uuid().v4(),
@@ -49,7 +51,7 @@ class MealItemSuggestion {
       entryDate: date,
       mealType: mealType,
       name: food.name,
-      amount: grams,
+      amount: g,
       unit: food.isLiquid ? 'ml' : 'g',
       calories: food.calories * f,
       protein: food.protein * f,
@@ -60,7 +62,7 @@ class MealItemSuggestion {
       sodium: food.sodium != null ? food.sodium! * f : null,
       saturatedFat: food.saturatedFat != null ? food.saturatedFat! * f : null,
       isLiquid: food.isLiquid,
-      amountMl: food.isLiquid ? grams : null,
+      amountMl: food.isLiquid ? g : null,
       estimateLevel: estimateLevel,
       createdAt: now,
       updatedAt: now,

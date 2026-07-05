@@ -1798,6 +1798,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get estimateHigh => 'Geschätzt';
 
   @override
+  String get describeMealTitle => 'Mahlzeit beschreiben';
+
+  @override
+  String get describeMealIntro =>
+      'Beschreibe, was du gegessen hast – wir schlagen passende Einträge vor. Sie werden als Schätzung erfasst.';
+
+  @override
+  String get describeMealHint =>
+      'z. B. Reis mit Paprika und Erbsen, zwei Teller';
+
+  @override
+  String get describeMealSuggest => 'Vorschläge erstellen';
+
+  @override
+  String get describeMealNoMatch => 'Kein Treffer';
+
+  @override
+  String get describeMealEmpty => 'Nichts erkannt – nenne die Lebensmittel.';
+
+  @override
+  String get describeMealAddAll => 'Zum Tagebuch hinzufügen';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% unter deinem Ziel';
   }

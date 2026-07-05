@@ -816,6 +816,13 @@
   "estimateLow": "Ziemlich sicher",
   "estimateMedium": "Ungefähr",
   "estimateHigh": "Geschätzt",
+  "describeMealTitle": "Mahlzeit beschreiben",
+  "describeMealIntro": "Beschreibe, was du gegessen hast – wir schlagen passende Einträge vor. Sie werden als Schätzung erfasst.",
+  "describeMealHint": "z. B. Reis mit Paprika und Erbsen, zwei Teller",
+  "describeMealSuggest": "Vorschläge erstellen",
+  "describeMealNoMatch": "Kein Treffer",
+  "describeMealEmpty": "Nichts erkannt – nenne die Lebensmittel.",
+  "describeMealAddAll": "Zum Tagebuch hinzufügen",
   "estimateProbUnderGoal": "≈ {pct}% unter deinem Ziel",
   "@estimateProbUnderGoal": {"placeholders": {"pct": {"type": "int"}}}
 }

@@ -58,6 +58,10 @@ class QuickFoodEntrySheet extends StatefulWidget {
   /// Öffnet das vollständige Eingabe-Formular für die manuelle Erfassung.
   final VoidCallback onManualEntry;
 
+  /// Opens the "describe your meal" free-text flow. Null hides the button
+  /// (e.g. guest mode, where fuzzy DB search isn't available).
+  final VoidCallback? onDescribeMeal;
+
   /// Startet den Nährwertetikett-Scan (Cloud-Edition, mobil). Null = nicht
   /// verfügbar; dann wird der Etikett-Scan-Button ausgeblendet.
   final VoidCallback? onScanLabel;
@@ -87,6 +91,7 @@ class QuickFoodEntrySheet extends StatefulWidget {
     required this.initialMealType,
     required this.onAdd,
     required this.onManualEntry,
+    this.onDescribeMeal,
     this.onOpenTemplates,
     this.onScanLabel,
     this.onManageDatabase,
@@ -1024,6 +1029,15 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold)),
               ),
+              if (widget.onDescribeMeal != null)
+                IconButton(
+                  icon: const Icon(Icons.record_voice_over),
+                  tooltip: l.describeMealTitle,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onDescribeMeal!();
+                  },
+                ),
               if (widget.onManageDatabase != null)
                 IconButton(
                   icon: const Icon(Icons.edit_note),

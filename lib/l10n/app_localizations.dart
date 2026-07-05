@@ -3346,6 +3346,48 @@ abstract class AppLocalizations {
   /// **'Geschätzt'**
   String get estimateHigh;
 
+  /// No description provided for @describeMealTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Mahlzeit beschreiben'**
+  String get describeMealTitle;
+
+  /// No description provided for @describeMealIntro.
+  ///
+  /// In de, this message translates to:
+  /// **'Beschreibe, was du gegessen hast – wir schlagen passende Einträge vor. Sie werden als Schätzung erfasst.'**
+  String get describeMealIntro;
+
+  /// No description provided for @describeMealHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. Reis mit Paprika und Erbsen, zwei Teller'**
+  String get describeMealHint;
+
+  /// No description provided for @describeMealSuggest.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorschläge erstellen'**
+  String get describeMealSuggest;
+
+  /// No description provided for @describeMealNoMatch.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Treffer'**
+  String get describeMealNoMatch;
+
+  /// No description provided for @describeMealEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Nichts erkannt – nenne die Lebensmittel.'**
+  String get describeMealEmpty;
+
+  /// No description provided for @describeMealAddAll.
+  ///
+  /// In de, this message translates to:
+  /// **'Zum Tagebuch hinzufügen'**
+  String get describeMealAddAll;
+
   /// No description provided for @estimateProbUnderGoal.
   ///
   /// In de, this message translates to:
