@@ -3914,48 +3914,59 @@ class OverviewScreen extends StatelessWidget {
     if (!showCalorieBand || goal.calories <= 0) return bar;
     final lo = ((totalCalories - caloriesSigma) / goal.calories).clamp(0.0, 1.0);
     final hi = ((totalCalories + caloriesSigma) / goal.calories).clamp(0.0, 1.0);
+    final mu = barValue; // expectation position (= the fill edge)
+    // Error-bar overlay: a bold marker at the expectation (mu), whisker caps at
+    // mu±sigma, and a light range zone between — so it reads unambiguously as
+    // "the value is the centre marker, the light band is the ± uncertainty".
     return SizedBox(
-      height: 12,
+      height: 16,
       child: Stack(
+        alignment: Alignment.center,
         children: [
-          // Non-positioned: the LinearProgressIndicator sizes the Stack to the
-          // full width (an all-Positioned Stack would collapse to zero).
+          // Non-positioned so it sizes the Stack to the full width; centred so
+          // the caps can overhang the 12px bar a little.
           bar,
-          // Fractional [μ−σ, μ+σ] band. stretch → full bar height; conditional
-          // spacers avoid zero-flex Expanded children.
           Positioned.fill(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (lo > 0)
-                  Expanded(flex: (lo * 1000).round(), child: const SizedBox()),
-                Expanded(
-                  flex: ((hi - lo) * 1000).round().clamp(1, 1000),
-                  // Light fill + dark edges so the ±σ zone reads clearly over
-                  // both the grey track and the deep-purple fill.
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      border: Border.symmetric(
-                        vertical: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          width: 1.5,
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final w = c.maxWidth;
+                return Stack(
+                  children: [
+                    // ±sigma range zone (inset from top/bottom).
+                    Positioned(
+                      left: lo * w,
+                      width: (hi - lo) * w,
+                      top: 2,
+                      bottom: 2,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.12),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                if (hi < 1)
-                  Expanded(
-                      flex: ((1 - hi) * 1000).round().clamp(1, 1000),
-                      child: const SizedBox()),
-              ],
+                    // Whisker caps at mu-sigma and mu+sigma (full height).
+                    _barTick(lo * w, Colors.black54, 1.5),
+                    _barTick(hi * w, Colors.black54, 1.5),
+                    // Expectation marker at mu — bold; this is "the value".
+                    _barTick(mu * w, Colors.black, 3.0),
+                  ],
+                );
+              },
             ),
           ),
         ],
       ),
     );
   }
+
+  /// A full-height vertical marker at pixel [x] within the calorie-bar overlay.
+  Positioned _barTick(double x, Color color, double width) => Positioned(
+        left: x - width / 2,
+        top: 0,
+        bottom: 0,
+        width: width,
+        child: DecoratedBox(decoration: BoxDecoration(color: color)),
+      );
 
   // ✅ Berechne verbrannte Kalorien aus activities
   double get totalCaloriesBurned =>
