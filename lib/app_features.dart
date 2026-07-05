@@ -110,4 +110,14 @@ class AppFeatures {
     if (kIsWeb) return false;
     return io.Platform.isAndroid || io.Platform.isIOS;
   }
+
+  /// On-device AI parsing for the "describe your meal" flow (Pro, Android/iOS).
+  /// Uses a runtime-downloaded, opt-in GGUF model; the offline heuristic parser
+  /// stays the free tier and the fallback everywhere else. Being true only gates
+  /// *availability* — the model must also be downloaded & enabled at runtime.
+  static bool get aiMealParsing {
+    if (!isPaid) return false;
+    if (kIsWeb) return false;
+    return io.Platform.isAndroid || io.Platform.isIOS;
+  }
 }

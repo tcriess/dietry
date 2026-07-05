@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../models/food_entry.dart';
 import '../services/data_store.dart';
 import '../services/food_database_service.dart';
+import '../services/meal_parser.dart';
 import '../services/meal_suggestion_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/sync_service.dart';
@@ -137,12 +138,21 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     );
   }
 
+  /// Which parser to use. Phase 3c returns the Pro on-device LLM parser here
+  /// when [AppFeatures.aiMealParsing] is on and the model is downloaded &
+  /// enabled; it always falls back to the offline heuristic.
+  MealParser _resolveParser() {
+    // TODO(phase-3c): return the AI parser when available & ready.
+    return const HeuristicMealParser();
+  }
+
   Future<void> _suggest() async {
     final db = widget.dbService;
     if (db == null) return;
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
-    final service = MealSuggestionService(FoodDatabaseService(db));
+    final service =
+        MealSuggestionService(FoodDatabaseService(db), parser: _resolveParser());
     final suggestions = await service.suggest(_descCtrl.text);
     if (!mounted) return;
     for (final r in _rows) {

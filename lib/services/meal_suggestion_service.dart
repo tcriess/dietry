@@ -4,6 +4,7 @@ import '../models/food_entry.dart';
 import '../models/food_item.dart';
 import 'food_database_service.dart';
 import 'meal_description_parser.dart';
+import 'meal_parser.dart';
 
 /// One suggestion: a parsed item, its best fuzzy food match (or none), and the
 /// grams that match resolves to. The UI shows these for review before logging.
@@ -74,7 +75,15 @@ class MealItemSuggestion {
 /// fuzzy-match each item, and resolve a gram amount for each.
 class MealSuggestionService {
   final FoodDatabaseService _foods;
-  MealSuggestionService(this._foods);
+
+  /// How the description is parsed into items. Defaults to the offline
+  /// heuristic; an on-device LLM parser (Pro/mobile) is injected here later.
+  final MealParser _parser;
+
+  MealSuggestionService(
+    this._foods, {
+    MealParser parser = const HeuristicMealParser(),
+  }) : _parser = parser;
 
   /// Rough average grams per named portion — only a starting point; the whole
   /// entry is tagged uncertain and the user edits before logging.
@@ -91,7 +100,7 @@ class MealSuggestionService {
   };
 
   Future<List<MealItemSuggestion>> suggest(String description) async {
-    final items = MealDescriptionParser.parse(description);
+    final items = await _parser.parse(description);
     final out = <MealItemSuggestion>[];
     for (final item in items) {
       final results = await _foods.searchFoods(item.query, limit: 1);
