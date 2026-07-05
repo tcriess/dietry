@@ -1821,6 +1821,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get describeMealAddAll => 'Zum Tagebuch hinzufügen';
 
   @override
+  String get describeMealCreateFood => 'Neu anlegen';
+
+  @override
   String get describeMealVoice => 'Sprechen';
 
   @override

@@ -3388,6 +3388,12 @@ abstract class AppLocalizations {
   /// **'Zum Tagebuch hinzufügen'**
   String get describeMealAddAll;
 
+  /// No description provided for @describeMealCreateFood.
+  ///
+  /// In de, this message translates to:
+  /// **'Neu anlegen'**
+  String get describeMealCreateFood;
+
   /// No description provided for @describeMealVoice.
   ///
   /// In de, this message translates to:

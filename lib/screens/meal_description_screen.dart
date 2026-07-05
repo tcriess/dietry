@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../models/food_entry.dart';
+import '../models/food_item.dart';
 import '../services/ai_meal_parser.dart';
 import '../services/app_logger.dart';
 import '../services/data_store.dart';
@@ -14,6 +15,7 @@ import '../services/meal_parser.dart';
 import '../services/meal_suggestion_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/sync_service.dart';
+import 'food_database_screen.dart';
 
 /// "Describe your meal" — the user types (or dictates) a free-text meal, we
 /// parse + fuzzy-match it into draft entries (auto-tagged uncertain) and let
@@ -229,6 +231,48 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// Opens the food editor prefilled with the item's name to create a new DB
+  /// food, then makes this row a match for it. Available for unmatched items
+  /// (nothing was found) and matched ones (in case the match is wrong).
+  Future<void> _createFood(_Row row) async {
+    final db = widget.dbService;
+    if (db == null) return;
+    final created = await showDialog<FoodItem>(
+      context: context,
+      builder: (_) => FoodEditDialog(
+        food: null,
+        dbService: db,
+        initialName: row.suggestion.parsed.query,
+      ),
+    );
+    if (created == null || !mounted) return;
+    final FoodItem saved;
+    try {
+      saved = await FoodDatabaseService(db).createFood(created);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+      return;
+    }
+    if (!mounted) return;
+    final parsed = row.suggestion.parsed;
+    final grams = MealSuggestionService.resolveGrams(parsed, saved);
+    setState(() {
+      final idx = _rows.indexOf(row);
+      if (idx < 0) return;
+      row.gramsCtrl.dispose();
+      _rows[idx] = _Row(
+        suggestion:
+            MealItemSuggestion(parsed: parsed, match: saved, grams: grams),
+        gramsCtrl: TextEditingController(
+            text: grams > 0 ? grams.round().toString() : ''),
+        include: true,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -358,6 +402,11 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
             style: TextStyle(color: Colors.grey.shade500)),
         subtitle: Text(l.describeMealNoMatch,
             style: TextStyle(color: Colors.grey.shade400)),
+        trailing: TextButton.icon(
+          onPressed: () => _createFood(r),
+          icon: const Icon(Icons.add, size: 18),
+          label: Text(l.describeMealCreateFood),
+        ),
       );
     }
     final grams = _gramsOf(r);
@@ -366,6 +415,12 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
       value: r.include,
       onChanged: (v) => setState(() => r.include = v ?? false),
       controlAffinity: ListTileControlAffinity.leading,
+      // "Wrong match? create a new food instead."
+      secondary: IconButton(
+        icon: const Icon(Icons.add_circle_outline),
+        tooltip: l.describeMealCreateFood,
+        onPressed: () => _createFood(r),
+      ),
       title: Text(s.match!.name),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 6),

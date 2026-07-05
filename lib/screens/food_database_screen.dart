@@ -882,8 +882,15 @@ class FoodEditDialog extends StatefulWidget {
   final FoodItem? food;
   final NeonDatabaseService dbService;
 
+  /// Prefills the name field when creating a new food (food == null). Used by
+  /// the describe-your-meal flow to seed a new item from the extracted name.
+  final String? initialName;
+
   const FoodEditDialog(
-      {super.key, required this.food, required this.dbService});
+      {super.key,
+      required this.food,
+      required this.dbService,
+      this.initialName});
 
   @override
   State<FoodEditDialog> createState() => FoodEditDialogState();
@@ -930,7 +937,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     final f = widget.food;
     appLogger.d(
         'FoodEditDialogState.initState: food=${f?.name}, hasImage=${f?.hasImage}');
-    _nameController = TextEditingController(text: f?.name ?? '');
+    _nameController =
+        TextEditingController(text: f?.name ?? widget.initialName ?? '');
     _caloriesController = TextEditingController(
         text: f != null ? f.calories.toStringAsFixed(0) : '');
     _proteinController = TextEditingController(

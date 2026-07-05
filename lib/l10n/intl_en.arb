@@ -801,6 +801,7 @@
   "describeMealNoMatch": "No match",
   "describeMealEmpty": "Nothing recognized — try naming the foods.",
   "describeMealAddAll": "Add to log",
+  "describeMealCreateFood": "Create food",
   "describeMealVoice": "Speak",
   "voiceUnavailable": "Voice input isn't available on this device.",
   "aiMealTitle": "AI meal recognition",

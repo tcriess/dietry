@@ -801,6 +801,7 @@
   "describeMealNoMatch": "Sin coincidencia",
   "describeMealEmpty": "No se reconoció nada: nombra los alimentos.",
   "describeMealAddAll": "Añadir al registro",
+  "describeMealCreateFood": "Crear alimento",
   "describeMealVoice": "Hablar",
   "voiceUnavailable": "La entrada de voz no está disponible en este dispositivo.",
   "aiMealTitle": "Reconocimiento de comidas con IA",

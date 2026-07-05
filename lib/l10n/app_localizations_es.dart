@@ -1833,6 +1833,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get describeMealAddAll => 'Añadir al registro';
 
   @override
+  String get describeMealCreateFood => 'Crear alimento';
+
+  @override
   String get describeMealVoice => 'Hablar';
 
   @override
