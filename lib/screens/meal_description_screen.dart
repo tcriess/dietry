@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -63,6 +64,21 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     super.dispose();
   }
 
+  /// Platforms where speech_to_text has an implementation. Linux/Windows
+  /// desktop have none, so the mic button is hidden there (web-safe: uses
+  /// defaultTargetPlatform, never dart:io). Web browsers do support it.
+  bool get _voiceSupported {
+    if (kIsWeb) return true;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   /// Map the app locale to a speech recognizer locale for better accuracy.
   String _speechLocale() {
     switch (Localizations.localeOf(context).languageCode) {
@@ -88,16 +104,20 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
       return;
     }
     if (!_speechReady) {
-      _speechReady = await _speech.initialize(
-        onStatus: (s) {
-          if ((s == 'done' || s == 'notListening') && mounted) {
-            setState(() => _listening = false);
-          }
-        },
-        onError: (_) {
-          if (mounted) setState(() => _listening = false);
-        },
-      );
+      try {
+        _speechReady = await _speech.initialize(
+          onStatus: (s) {
+            if ((s == 'done' || s == 'notListening') && mounted) {
+              setState(() => _listening = false);
+            }
+          },
+          onError: (_) {
+            if (mounted) setState(() => _listening = false);
+          },
+        );
+      } catch (_) {
+        _speechReady = false; // no plugin/recognizer on this platform
+      }
     }
     if (!_speechReady) {
       messenger.showSnackBar(SnackBar(content: Text(l.voiceUnavailable)));
@@ -191,12 +211,14 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
                   decoration: InputDecoration(
                     hintText: l.describeMealHint,
                     border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: Icon(_listening ? Icons.stop : Icons.mic,
-                          color: _listening ? Colors.red : null),
-                      tooltip: l.describeMealVoice,
-                      onPressed: _toggleListen,
-                    ),
+                    suffixIcon: _voiceSupported
+                        ? IconButton(
+                            icon: Icon(_listening ? Icons.stop : Icons.mic,
+                                color: _listening ? Colors.red : null),
+                            tooltip: l.describeMealVoice,
+                            onPressed: _toggleListen,
+                          )
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 8),
