@@ -56,7 +56,12 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY INVOKER
 STABLE
-SET pg_trgm.word_similarity_threshold = 0.4
+-- NB: sql/31 embedded `SET pg_trgm.word_similarity_threshold = 0.4` here, but
+-- that requires elevated privilege at CREATE time (fails for a plain migration
+-- role). Set it DB-wide instead, once, as the DB owner:
+--   ALTER DATABASE <db> SET pg_trgm.word_similarity_threshold = 0.4;
+-- Without it, %> falls back to the stricter default (0.6) — search still works
+-- and stays index-accelerated, just a touch less typo-tolerant.
 AS $$
 #variable_conflict use_column
 DECLARE
