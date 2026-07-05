@@ -3960,6 +3960,23 @@ class OverviewScreen extends StatelessWidget {
     }
   }
 
+  /// A "consumed" table cell: the value, plus a small "± σ" line when the day
+  /// has meaningful uncertainty. [sigmaStr] is the pre-formatted σ.
+  Widget _consumedCell(String value, String sigmaStr) {
+    if (!showCalorieBand) {
+      return Text(value, overflow: TextOverflow.ellipsis);
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, overflow: TextOverflow.ellipsis),
+        Text('± $sigmaStr',
+            style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+      ],
+    );
+  }
+
   Widget _buildNutrientCard(
     BuildContext context,
     String label,
@@ -4146,7 +4163,9 @@ class OverviewScreen extends StatelessWidget {
               context,
               l.nutrientCalories,
               '${goal.calories.toStringAsFixed(0)} kcal',
-              '${totalCalories.toStringAsFixed(0)} kcal',
+              showCalorieBand
+                  ? '${totalCalories.toStringAsFixed(0)} ± ${caloriesSigma.toStringAsFixed(0)} kcal'
+                  : '${totalCalories.toStringAsFixed(0)} kcal',
               totalCaloriesBurned > 0
                   ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal'
                   : '-',
@@ -4157,7 +4176,9 @@ class OverviewScreen extends StatelessWidget {
             context,
             l.nutrientProtein,
             '${goal.protein.toStringAsFixed(1)} g',
-            '${totalProtein.toStringAsFixed(1)} g',
+            showCalorieBand
+                ? '${totalProtein.toStringAsFixed(1)} ± ${proteinSigma.toStringAsFixed(1)} g'
+                : '${totalProtein.toStringAsFixed(1)} g',
             '-',
             '${remainingProtein.toStringAsFixed(1)} g',
             Colors.red,
@@ -4169,7 +4190,9 @@ class OverviewScreen extends StatelessWidget {
               context,
               l.nutrientFat,
               '${goal.fat.toStringAsFixed(1)} g',
-              '${totalFat.toStringAsFixed(1)} g',
+              showCalorieBand
+                  ? '${totalFat.toStringAsFixed(1)} ± ${fatSigma.toStringAsFixed(1)} g'
+                  : '${totalFat.toStringAsFixed(1)} g',
               '-',
               '${remainingFat.toStringAsFixed(1)} g',
               Colors.orange,
@@ -4178,7 +4201,9 @@ class OverviewScreen extends StatelessWidget {
               context,
               l.nutrientCarbs,
               '${goal.carbs.toStringAsFixed(1)} g',
-              '${totalCarbs.toStringAsFixed(1)} g',
+              showCalorieBand
+                  ? '${totalCarbs.toStringAsFixed(1)} ± ${carbsSigma.toStringAsFixed(1)} g'
+                  : '${totalCarbs.toStringAsFixed(1)} g',
               '-',
               '${remainingCarbs.toStringAsFixed(1)} g',
               Colors.amber,
@@ -4206,8 +4231,8 @@ class OverviewScreen extends StatelessWidget {
                   Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
               DataCell(Text(goal.calories.toStringAsFixed(0),
                   overflow: TextOverflow.ellipsis)),
-              DataCell(Text(totalCalories.toStringAsFixed(0),
-                  overflow: TextOverflow.ellipsis)),
+              DataCell(_consumedCell(totalCalories.toStringAsFixed(0),
+                  caloriesSigma.toStringAsFixed(0))),
               DataCell(Text(
                 totalCaloriesBurned.toStringAsFixed(0),
                 overflow: TextOverflow.ellipsis,
@@ -4225,8 +4250,8 @@ class OverviewScreen extends StatelessWidget {
             DataCell(Text(l.nutrientProtein, overflow: TextOverflow.ellipsis)),
             DataCell(Text(goal.protein.toStringAsFixed(1),
                 overflow: TextOverflow.ellipsis)),
-            DataCell(Text(totalProtein.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
+            DataCell(_consumedCell(totalProtein.toStringAsFixed(1),
+                proteinSigma.toStringAsFixed(1))),
             const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
             DataCell(Text(remainingProtein.toStringAsFixed(1),
                 overflow: TextOverflow.ellipsis)),
@@ -4238,8 +4263,8 @@ class OverviewScreen extends StatelessWidget {
               DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
               DataCell(Text(goal.fat.toStringAsFixed(1),
                   overflow: TextOverflow.ellipsis)),
-              DataCell(Text(totalFat.toStringAsFixed(1),
-                  overflow: TextOverflow.ellipsis)),
+              DataCell(_consumedCell(totalFat.toStringAsFixed(1),
+                  fatSigma.toStringAsFixed(1))),
               const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
               DataCell(Text(remainingFat.toStringAsFixed(1),
                   overflow: TextOverflow.ellipsis)),
@@ -4248,8 +4273,8 @@ class OverviewScreen extends StatelessWidget {
               DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
               DataCell(Text(goal.carbs.toStringAsFixed(1),
                   overflow: TextOverflow.ellipsis)),
-              DataCell(Text(totalCarbs.toStringAsFixed(1),
-                  overflow: TextOverflow.ellipsis)),
+              DataCell(_consumedCell(totalCarbs.toStringAsFixed(1),
+                  carbsSigma.toStringAsFixed(1))),
               const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
               DataCell(Text(remainingCarbs.toStringAsFixed(1),
                   overflow: TextOverflow.ellipsis)),
