@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 7;  // Version 7: estimate_level on food_entries (nutrition uncertainty)
+  static const int _version = 8;  // Version 8: estimate_level on guest_foods (inherent food uncertainty)
 
   Database? _db;
   bool _initialized = false;
@@ -247,6 +247,7 @@ class LocalDataService {
           sugar REAL,
           sodium REAL,
           saturated_fat REAL,
+          estimate_level TEXT NOT NULL DEFAULT 'none',
           portions TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
@@ -454,6 +455,18 @@ class LocalDataService {
         appLogger.d('ℹ️ estimate_level column already exists: $e');
       }
       appLogger.i('✅ Migration 6→7 complete (estimate_level)');
+    }
+
+    if (oldVersion < 8) {
+      // Version 8: inherent per-food uncertainty on guest_foods (mirrors sql/33).
+      try {
+        await db.execute(
+            "ALTER TABLE guest_foods ADD COLUMN estimate_level TEXT NOT NULL DEFAULT 'none'");
+        appLogger.d('✅ Added estimate_level column to guest_foods');
+      } catch (e) {
+        appLogger.d('ℹ️ estimate_level column already exists: $e');
+      }
+      appLogger.i('✅ Migration 7→8 complete (guest_foods.estimate_level)');
     }
   }
 
@@ -1060,6 +1073,7 @@ class LocalDataService {
       'sugar': foodWithId.sugar,
       'sodium': foodWithId.sodium,
       'saturated_fat': foodWithId.saturatedFat,
+      'estimate_level': foodWithId.estimateLevel.toJson(),
       'portions': foodWithId.portions.isEmpty
           ? null
           : jsonEncode(foodWithId.portions.map((p) => {
@@ -1115,6 +1129,7 @@ class LocalDataService {
         sugar: (row['sugar'] as num?)?.toDouble(),
         sodium: (row['sodium'] as num?)?.toDouble(),
         saturatedFat: (row['saturated_fat'] as num?)?.toDouble(),
+        estimateLevel: EstimateLevel.fromJson(row['estimate_level'] as String?),
         portions: portions,
         isPublic: false,
         isApproved: false,

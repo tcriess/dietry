@@ -268,6 +268,7 @@ class FoodItem {
     bool? hasImage,
     List<Tag>? tags,
     String? source,
+    EstimateLevel? estimateLevel,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -296,6 +297,7 @@ class FoodItem {
       hasImage: hasImage ?? this.hasImage,
       tags: tags ?? this.tags,
       source: source ?? this.source,
+      estimateLevel: estimateLevel ?? this.estimateLevel,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

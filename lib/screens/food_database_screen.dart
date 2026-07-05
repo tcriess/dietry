@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart'
     if (dart.library.html) 'image_picker_web.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_item.dart';
+import '../models/food_entry.dart' show EstimateLevel;
 import '../models/food_portion.dart';
 import '../models/tag.dart';
 import '../services/food_database_service.dart';
@@ -906,6 +907,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       _portionRows = [];
   late bool _isPublic;
   late bool _isLiquid;
+  // Inherent uncertainty of this food (seeds a log entry's default).
+  late EstimateLevel _estimateLevel;
 
   // Image handling
   Uint8List? _selectedImageBytes;
@@ -959,6 +962,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     }
     _isPublic = f?.isPublic ?? false;
     _isLiquid = f?.isLiquid ?? false;
+    _estimateLevel = f?.estimateLevel ?? EstimateLevel.none;
 
     // Initialize image service and load existing image if editing
     _imageService = FoodImageService(widget.dbService);
@@ -1326,6 +1330,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       isLiquid: _isLiquid,
       hasImage: hasImage,
       source: widget.food?.source ?? 'Custom',
+      estimateLevel: _estimateLevel,
       createdAt: widget.food?.createdAt ?? now,
       updatedAt: now,
     );
@@ -1776,6 +1781,24 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                   _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
                   color: _isLiquid ? Colors.lightBlue : Colors.grey,
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Inherent uncertainty of this food — seeds a log entry's default
+              // (e.g. a homemade dish is variable; a packaged product is exact).
+              Text(l.estimateLabel,
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: EstimateLevel.values.map((lvl) {
+                  return ChoiceChip(
+                    label: Text(lvl.localizedName(l)),
+                    selected: _estimateLevel == lvl,
+                    onSelected: (_) =>
+                        setState(() => _estimateLevel = lvl),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 16),
 
