@@ -3915,58 +3915,72 @@ class OverviewScreen extends StatelessWidget {
     final lo = ((totalCalories - caloriesSigma) / goal.calories).clamp(0.0, 1.0);
     final hi = ((totalCalories + caloriesSigma) / goal.calories).clamp(0.0, 1.0);
     final mu = barValue; // expectation position (= the fill edge)
-    // Error-bar overlay: a bold marker at the expectation (mu), whisker caps at
-    // mu±sigma, and a light range zone between — so it reads unambiguously as
-    // "the value is the centre marker, the light band is the ± uncertainty".
-    return SizedBox(
-      height: 16,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Non-positioned so it sizes the Stack to the full width; centred so
-          // the caps can overhang the 12px bar a little.
-          bar,
-          Positioned.fill(
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final w = c.maxWidth;
-                return Stack(
-                  children: [
-                    // ±sigma range zone (inset from top/bottom).
-                    Positioned(
-                      left: lo * w,
-                      width: (hi - lo) * w,
+    final loKcal = (totalCalories - caloriesSigma).clamp(0.0, double.infinity);
+    final hiKcal = totalCalories + caloriesSigma;
+    // Plain progress bar, then a separate (roomier) error bar below it on the
+    // same 0→goal scale: a dot at the expectation, whisker caps at μ±σ, and the
+    // range in numbers — legible, unlike an overlay crammed into the 12px bar.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        bar,
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          height: 14,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final w = c.maxWidth;
+              return Stack(
+                children: [
+                  // The ±σ range line.
+                  Positioned(
+                    left: lo * w,
+                    width: (hi - lo) * w,
+                    top: 6,
+                    height: 2,
+                    child: const ColoredBox(color: Colors.deepPurple),
+                  ),
+                  // Whisker caps at μ−σ and μ+σ.
+                  Positioned(
+                      left: lo * w - 1,
                       top: 2,
-                      bottom: 2,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.12),
-                        ),
+                      height: 10,
+                      width: 2,
+                      child: const ColoredBox(color: Colors.deepPurple)),
+                  Positioned(
+                      left: hi * w - 1,
+                      top: 2,
+                      height: 10,
+                      width: 2,
+                      child: const ColoredBox(color: Colors.deepPurple)),
+                  // Expectation dot at μ (the value).
+                  Positioned(
+                    left: mu * w - 5,
+                    top: 2,
+                    width: 10,
+                    height: 10,
+                    child: const DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    // Whisker caps at mu-sigma and mu+sigma (full height).
-                    _barTick(lo * w, Colors.black54, 1.5),
-                    _barTick(hi * w, Colors.black54, 1.5),
-                    // Expectation marker at mu — bold; this is "the value".
-                    _barTick(mu * w, Colors.black, 3.0),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${loKcal.toStringAsFixed(0)} – ${hiKcal.toStringAsFixed(0)} kcal',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
+      ],
     );
   }
-
-  /// A full-height vertical marker at pixel [x] within the calorie-bar overlay.
-  Positioned _barTick(double x, Color color, double width) => Positioned(
-        left: x - width / 2,
-        top: 0,
-        bottom: 0,
-        width: width,
-        child: DecoratedBox(decoration: BoxDecoration(color: color)),
-      );
 
   // ✅ Berechne verbrannte Kalorien aus activities
   double get totalCaloriesBurned =>
@@ -4563,9 +4577,7 @@ class OverviewScreen extends StatelessWidget {
                 final stats = <({String label, String value, Color? color})>[
                   (
                     label: l.consumed,
-                    value: showCalorieBand
-                        ? '${totalCalories.toStringAsFixed(0)} ± ${caloriesSigma.toStringAsFixed(0)} kcal'
-                        : '${totalCalories.toStringAsFixed(0)} kcal',
+                    value: '${totalCalories.toStringAsFixed(0)} kcal',
                     color: null
                   ),
                   if (totalCaloriesBurned > 0)
