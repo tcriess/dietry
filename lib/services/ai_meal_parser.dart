@@ -52,10 +52,19 @@ Description: "${description.replaceAll('"', "'").trim()}"
   /// unknown units become null. Throws [FormatException] when nothing usable is
   /// found (→ caller falls back to the heuristic parser).
   static List<ParsedMealItem> parseResponse(String raw) {
-    // Reasoning models (e.g. Qwen3) may prepend a <think>...</think> monologue;
-    // drop everything up to the last closing tag so we parse the real answer.
+    // Reasoning models (e.g. Qwen3) may prepend a <think>...</think> monologue.
+    // Parse only the answer after it. If a <think> opened but never closed, the
+    // output was truncated mid-reasoning — bail cleanly rather than mistake a
+    // bracket in the monologue (or an echoed example) for the answer.
     final thinkEnd = raw.lastIndexOf('</think>');
-    final body = thinkEnd >= 0 ? raw.substring(thinkEnd + '</think>'.length) : raw;
+    final String body;
+    if (thinkEnd >= 0) {
+      body = raw.substring(thinkEnd + '</think>'.length);
+    } else if (raw.contains('<think>')) {
+      throw const FormatException('Model output was cut off during reasoning');
+    } else {
+      body = raw;
+    }
 
     final start = body.indexOf('[');
     final end = body.lastIndexOf(']');

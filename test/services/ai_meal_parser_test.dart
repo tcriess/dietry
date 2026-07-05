@@ -40,6 +40,15 @@ void main() {
           [const ParsedMealItem(query: 'rice', quantity: 2, portion: 'plate')]);
     });
 
+    test('bails on truncated reasoning instead of grabbing stray brackets', () {
+      // <think> opened, no </think>, contains a bracket [value] like the real
+      // truncated-output bug — must throw, not return garbage.
+      expect(
+          () => AiMealParser.parseResponse(
+              '<think>Okay, the quantity is [value] for rice...'),
+          throwsFormatException);
+    });
+
     test('throws when no array present', () {
       expect(() => AiMealParser.parseResponse('I could not understand that.'),
           throwsFormatException);
