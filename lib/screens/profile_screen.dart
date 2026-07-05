@@ -20,6 +20,7 @@ import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/app_features_utils.dart';
 import '../widgets/main_tutorial.dart';
+import '../widgets/ai_meal_model_tile.dart';
 import 'profile_setup_screen.dart';
 import 'add_body_measurement_screen.dart';
 import 'goal_recommendation_screen.dart';
@@ -718,6 +719,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                ],
+
+                // =======================================
+                // AI MEAL RECOGNITION (Pro, mobile; opt-in model download)
+                // =======================================
+                if (AppFeatures.aiMealParsing) ...[
+                  const AiMealModelTile(),
                   const SizedBox(height: 16),
                 ],
 

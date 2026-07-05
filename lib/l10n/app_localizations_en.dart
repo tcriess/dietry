@@ -1820,6 +1820,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceUnavailable => 'Voice input isn\'t available on this device.';
 
   @override
+  String get aiMealTitle => 'AI meal recognition';
+
+  @override
+  String get aiMealDescription =>
+      'Turn your description into entries with a private on-device model (beta).';
+
+  @override
+  String get aiMealEnable => 'Enable (~350 MB)';
+
+  @override
+  String get aiMealDownloading => 'Downloading…';
+
+  @override
+  String get aiMealReady => 'Ready';
+
+  @override
+  String get aiMealRemove => 'Remove';
+
+  @override
+  String get aiModelDownloadFailed => 'Download failed. Please try again.';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% likely under goal';
   }

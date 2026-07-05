@@ -14,6 +14,9 @@
     <!-- Voice input for the "describe your meal" flow -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- On-device LLM model download (Cloud/Pro; cactus runtime) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <!-- Health Connect: All required health data read permissions -->

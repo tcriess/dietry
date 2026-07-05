@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:dietry_cloud/dietry_cloud.dart' show premiumFeatures;
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../models/food_entry.dart';
+import '../services/ai_meal_parser.dart';
 import '../services/data_store.dart';
 import '../services/food_database_service.dart';
 import '../services/meal_parser.dart';
@@ -41,10 +44,18 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
   bool _speechReady = false;
   bool _listening = false;
 
+  /// Whether the Pro on-device LLM is downloaded & ready (checked once on open).
+  bool _aiReady = false;
+
   @override
   void initState() {
     super.initState();
     _mealType = widget.initialMealType ?? _mealForHour();
+    if (AppFeatures.aiMealParsing && premiumFeatures.hasLocalLlm) {
+      premiumFeatures.isModelDownloaded().then((ready) {
+        if (mounted && ready) setState(() => _aiReady = true);
+      });
+    }
   }
 
   static MealType _mealForHour() {
@@ -138,11 +149,13 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     );
   }
 
-  /// Which parser to use. Phase 3c returns the Pro on-device LLM parser here
-  /// when [AppFeatures.aiMealParsing] is on and the model is downloaded &
-  /// enabled; it always falls back to the offline heuristic.
+  /// Which parser to use: the Pro on-device LLM when it's available & the model
+  /// is downloaded, otherwise the offline heuristic (also the runtime fallback,
+  /// see [_suggest]).
   MealParser _resolveParser() {
-    // TODO(phase-3c): return the AI parser when available & ready.
+    if (_aiReady && AppFeatures.aiMealParsing && premiumFeatures.hasLocalLlm) {
+      return AiMealParser((prompt) => premiumFeatures.generateText(prompt: prompt));
+    }
     return const HeuristicMealParser();
   }
 
@@ -151,9 +164,15 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     if (db == null) return;
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
-    final service =
-        MealSuggestionService(FoodDatabaseService(db), parser: _resolveParser());
-    final suggestions = await service.suggest(_descCtrl.text);
+    final foods = FoodDatabaseService(db);
+    List<MealItemSuggestion> suggestions;
+    try {
+      suggestions = await MealSuggestionService(foods, parser: _resolveParser())
+          .suggest(_descCtrl.text);
+    } catch (_) {
+      // On-device LLM failed (or unparseable) → fall back to the heuristic.
+      suggestions = await MealSuggestionService(foods).suggest(_descCtrl.text);
+    }
     if (!mounted) return;
     for (final r in _rows) {
       r.gramsCtrl.dispose();

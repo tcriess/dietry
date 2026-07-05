@@ -3400,6 +3400,48 @@ abstract class AppLocalizations {
   /// **'Spracheingabe ist auf diesem Gerät nicht verfügbar.'**
   String get voiceUnavailable;
 
+  /// No description provided for @aiMealTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'KI-Mahlzeitenerkennung'**
+  String get aiMealTitle;
+
+  /// No description provided for @aiMealDescription.
+  ///
+  /// In de, this message translates to:
+  /// **'Wandelt deine Beschreibung mit einem privaten Modell direkt auf dem Gerät in Einträge um (Beta).'**
+  String get aiMealDescription;
+
+  /// No description provided for @aiMealEnable.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivieren (~350 MB)'**
+  String get aiMealEnable;
+
+  /// No description provided for @aiMealDownloading.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird geladen …'**
+  String get aiMealDownloading;
+
+  /// No description provided for @aiMealReady.
+  ///
+  /// In de, this message translates to:
+  /// **'Bereit'**
+  String get aiMealReady;
+
+  /// No description provided for @aiMealRemove.
+  ///
+  /// In de, this message translates to:
+  /// **'Entfernen'**
+  String get aiMealRemove;
+
+  /// No description provided for @aiModelDownloadFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Download fehlgeschlagen. Bitte erneut versuchen.'**
+  String get aiModelDownloadFailed;
+
   /// No description provided for @estimateProbUnderGoal.
   ///
   /// In de, this message translates to:

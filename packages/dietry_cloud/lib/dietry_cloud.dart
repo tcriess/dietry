@@ -444,6 +444,16 @@ abstract class PremiumFeatures {
     double? carbsGoal,
     int? waterGoalMl,
   });
+
+  // ── On-Device LLM (describe-your-meal AI parsing) ──────────────────────────
+
+  bool get hasLocalLlm;
+  Future<bool> isModelDownloaded();
+  Future<void> downloadModel({
+    required void Function(double progress) onProgress,
+  });
+  Future<void> deleteModel();
+  Future<String> generateText({required String prompt});
 }
 
 // ── Stub CloudLocalizations (Community Edition) ───────────────────────────────
@@ -662,4 +672,24 @@ class NullPremiumFeatures implements PremiumFeatures {
     int? waterGoalMl,
   }) async =>
       false;
+
+  // ── On-Device LLM (no-op in CE) ────────────────────────────────────────────
+
+  @override
+  bool get hasLocalLlm => false;
+
+  @override
+  Future<bool> isModelDownloaded() async => false;
+
+  @override
+  Future<void> downloadModel({
+    required void Function(double progress) onProgress,
+  }) async {}
+
+  @override
+  Future<void> deleteModel() async {}
+
+  @override
+  Future<String> generateText({required String prompt}) async =>
+      throw UnsupportedError('Local LLM is not available in this edition');
 }

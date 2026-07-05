@@ -1840,6 +1840,28 @@ class AppLocalizationsEs extends AppLocalizations {
       'La entrada de voz no está disponible en este dispositivo.';
 
   @override
+  String get aiMealTitle => 'Reconocimiento de comidas con IA';
+
+  @override
+  String get aiMealDescription =>
+      'Convierte tu descripción en entradas con un modelo privado en el dispositivo (beta).';
+
+  @override
+  String get aiMealEnable => 'Activar (~350 MB)';
+
+  @override
+  String get aiMealDownloading => 'Descargando…';
+
+  @override
+  String get aiMealReady => 'Listo';
+
+  @override
+  String get aiMealRemove => 'Quitar';
+
+  @override
+  String get aiModelDownloadFailed => 'Error de descarga. Inténtalo de nuevo.';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% probablemente bajo el objetivo';
   }

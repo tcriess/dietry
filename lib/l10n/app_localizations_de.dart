@@ -1828,6 +1828,29 @@ class AppLocalizationsDe extends AppLocalizations {
       'Spracheingabe ist auf diesem Gerät nicht verfügbar.';
 
   @override
+  String get aiMealTitle => 'KI-Mahlzeitenerkennung';
+
+  @override
+  String get aiMealDescription =>
+      'Wandelt deine Beschreibung mit einem privaten Modell direkt auf dem Gerät in Einträge um (Beta).';
+
+  @override
+  String get aiMealEnable => 'Aktivieren (~350 MB)';
+
+  @override
+  String get aiMealDownloading => 'Wird geladen …';
+
+  @override
+  String get aiMealReady => 'Bereit';
+
+  @override
+  String get aiMealRemove => 'Entfernen';
+
+  @override
+  String get aiModelDownloadFailed =>
+      'Download fehlgeschlagen. Bitte erneut versuchen.';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% unter deinem Ziel';
   }

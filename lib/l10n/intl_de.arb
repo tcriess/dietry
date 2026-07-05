@@ -825,6 +825,13 @@
   "describeMealAddAll": "Zum Tagebuch hinzufügen",
   "describeMealVoice": "Sprechen",
   "voiceUnavailable": "Spracheingabe ist auf diesem Gerät nicht verfügbar.",
+  "aiMealTitle": "KI-Mahlzeitenerkennung",
+  "aiMealDescription": "Wandelt deine Beschreibung mit einem privaten Modell direkt auf dem Gerät in Einträge um (Beta).",
+  "aiMealEnable": "Aktivieren (~350 MB)",
+  "aiMealDownloading": "Wird geladen …",
+  "aiMealReady": "Bereit",
+  "aiMealRemove": "Entfernen",
+  "aiModelDownloadFailed": "Download fehlgeschlagen. Bitte erneut versuchen.",
   "estimateProbUnderGoal": "≈ {pct}% unter deinem Ziel",
   "@estimateProbUnderGoal": {"placeholders": {"pct": {"type": "int"}}}
 }

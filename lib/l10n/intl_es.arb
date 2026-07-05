@@ -803,5 +803,12 @@
   "describeMealAddAll": "Añadir al registro",
   "describeMealVoice": "Hablar",
   "voiceUnavailable": "La entrada de voz no está disponible en este dispositivo.",
+  "aiMealTitle": "Reconocimiento de comidas con IA",
+  "aiMealDescription": "Convierte tu descripción en entradas con un modelo privado en el dispositivo (beta).",
+  "aiMealEnable": "Activar (~350 MB)",
+  "aiMealDownloading": "Descargando…",
+  "aiMealReady": "Listo",
+  "aiMealRemove": "Quitar",
+  "aiModelDownloadFailed": "Error de descarga. Inténtalo de nuevo.",
   "estimateProbUnderGoal": "≈ {pct}% probablemente bajo el objetivo"
 }
