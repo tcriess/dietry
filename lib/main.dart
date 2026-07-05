@@ -3918,30 +3918,37 @@ class OverviewScreen extends StatelessWidget {
       height: 12,
       child: Stack(
         children: [
-          Positioned.fill(child: bar),
-          // Fractional [μ−σ, μ+σ] band via flex weights (no pixel math).
+          // Non-positioned: the LinearProgressIndicator sizes the Stack to the
+          // full width (an all-Positioned Stack would collapse to zero).
+          bar,
+          // Fractional [μ−σ, μ+σ] band. stretch → full bar height; conditional
+          // spacers avoid zero-flex Expanded children.
           Positioned.fill(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: (lo * 1000).round(), child: const SizedBox()),
+                if (lo > 0)
+                  Expanded(flex: (lo * 1000).round(), child: const SizedBox()),
                 Expanded(
                   flex: ((hi - lo) * 1000).round().clamp(1, 1000),
                   // Light fill + dark edges so the ±σ zone reads clearly over
                   // both the grey track and the deep-purple fill.
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.45),
+                      color: Colors.white.withValues(alpha: 0.5),
                       border: Border.symmetric(
                         vertical: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.55),
+                          color: Colors.black.withValues(alpha: 0.6),
                           width: 1.5,
                         ),
                       ),
                     ),
                   ),
                 ),
-                Expanded(
-                    flex: ((1 - hi) * 1000).round(), child: const SizedBox()),
+                if (hi < 1)
+                  Expanded(
+                      flex: ((1 - hi) * 1000).round().clamp(1, 1000),
+                      child: const SizedBox()),
               ],
             ),
           ),
