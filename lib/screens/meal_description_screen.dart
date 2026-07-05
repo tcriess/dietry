@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/food_entry.dart';
@@ -34,6 +35,10 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
   bool _loading = false;
   bool _parsed = false;
 
+  final SpeechToText _speech = SpeechToText();
+  bool _speechReady = false;
+  bool _listening = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,11 +55,66 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
 
   @override
   void dispose() {
+    _speech.cancel();
     _descCtrl.dispose();
     for (final r in _rows) {
       r.gramsCtrl.dispose();
     }
     super.dispose();
+  }
+
+  /// Map the app locale to a speech recognizer locale for better accuracy.
+  String _speechLocale() {
+    switch (Localizations.localeOf(context).languageCode) {
+      case 'de':
+        return 'de_DE';
+      case 'es':
+        return 'es_ES';
+      default:
+        return 'en_US';
+    }
+  }
+
+  Future<void> _toggleListen() async {
+    // Capture context-derived refs up front so nothing touches context across
+    // the awaits below.
+    final messenger = ScaffoldMessenger.of(context);
+    final l = AppLocalizations.of(context)!;
+    final localeId = _speechLocale();
+
+    if (_listening) {
+      await _speech.stop();
+      if (mounted) setState(() => _listening = false);
+      return;
+    }
+    if (!_speechReady) {
+      _speechReady = await _speech.initialize(
+        onStatus: (s) {
+          if ((s == 'done' || s == 'notListening') && mounted) {
+            setState(() => _listening = false);
+          }
+        },
+        onError: (_) {
+          if (mounted) setState(() => _listening = false);
+        },
+      );
+    }
+    if (!_speechReady) {
+      messenger.showSnackBar(SnackBar(content: Text(l.voiceUnavailable)));
+      return;
+    }
+    if (!mounted) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _listening = true);
+    await _speech.listen(
+      listenOptions:
+          SpeechListenOptions(partialResults: true, localeId: localeId),
+      onResult: (r) {
+        _descCtrl.text = r.recognizedWords;
+        _descCtrl.selection =
+            TextSelection.collapsed(offset: _descCtrl.text.length);
+      },
+    );
   }
 
   Future<void> _suggest() async {
@@ -131,6 +191,12 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
                   decoration: InputDecoration(
                     hintText: l.describeMealHint,
                     border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(_listening ? Icons.stop : Icons.mic,
+                          color: _listening ? Colors.red : null),
+                      tooltip: l.describeMealVoice,
+                      onPressed: _toggleListen,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -68,6 +68,10 @@ dependencies:
   flutter_timezone: ^5.1.0
   logger: ^2.0.0
 
+  # Voice input for the "describe your meal" flow (on-device speech-to-text).
+  # Needs mic permission (Android RECORD_AUDIO, iOS NSMicrophone/Speech usage).
+  speech_to_text: ^7.0.0
+
   shared_preferences: ^2.3.5
 
   # Health Connect (Android) / HealthKit (iOS)

@@ -3388,6 +3388,18 @@ abstract class AppLocalizations {
   /// **'Zum Tagebuch hinzufügen'**
   String get describeMealAddAll;
 
+  /// No description provided for @describeMealVoice.
+  ///
+  /// In de, this message translates to:
+  /// **'Sprechen'**
+  String get describeMealVoice;
+
+  /// No description provided for @voiceUnavailable.
+  ///
+  /// In de, this message translates to:
+  /// **'Spracheingabe ist auf diesem Gerät nicht verfügbar.'**
+  String get voiceUnavailable;
+
   /// No description provided for @estimateProbUnderGoal.
   ///
   /// In de, this message translates to:

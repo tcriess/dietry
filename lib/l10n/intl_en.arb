@@ -801,5 +801,7 @@
   "describeMealNoMatch": "No match",
   "describeMealEmpty": "Nothing recognized — try naming the foods.",
   "describeMealAddAll": "Add to log",
+  "describeMealVoice": "Speak",
+  "voiceUnavailable": "Voice input isn't available on this device.",
   "estimateProbUnderGoal": "≈ {pct}% likely under goal"
 }

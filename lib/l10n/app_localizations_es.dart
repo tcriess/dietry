@@ -1833,6 +1833,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get describeMealAddAll => 'Añadir al registro';
 
   @override
+  String get describeMealVoice => 'Hablar';
+
+  @override
+  String get voiceUnavailable =>
+      'La entrada de voz no está disponible en este dispositivo.';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% probablemente bajo el objetivo';
   }

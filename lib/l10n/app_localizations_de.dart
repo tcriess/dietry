@@ -1821,6 +1821,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get describeMealAddAll => 'Zum Tagebuch hinzufügen';
 
   @override
+  String get describeMealVoice => 'Sprechen';
+
+  @override
+  String get voiceUnavailable =>
+      'Spracheingabe ist auf diesem Gerät nicht verfügbar.';
+
+  @override
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% unter deinem Ziel';
   }

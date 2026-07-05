@@ -823,6 +823,8 @@
   "describeMealNoMatch": "Kein Treffer",
   "describeMealEmpty": "Nichts erkannt – nenne die Lebensmittel.",
   "describeMealAddAll": "Zum Tagebuch hinzufügen",
+  "describeMealVoice": "Sprechen",
+  "voiceUnavailable": "Spracheingabe ist auf diesem Gerät nicht verfügbar.",
   "estimateProbUnderGoal": "≈ {pct}% unter deinem Ziel",
   "@estimateProbUnderGoal": {"placeholders": {"pct": {"type": "int"}}}
 }

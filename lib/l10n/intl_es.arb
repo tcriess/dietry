@@ -801,5 +801,7 @@
   "describeMealNoMatch": "Sin coincidencia",
   "describeMealEmpty": "No se reconoció nada: nombra los alimentos.",
   "describeMealAddAll": "Añadir al registro",
+  "describeMealVoice": "Hablar",
+  "voiceUnavailable": "La entrada de voz no está disponible en este dispositivo.",
   "estimateProbUnderGoal": "≈ {pct}% probablemente bajo el objetivo"
 }
