@@ -7,6 +7,7 @@ import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../models/food_entry.dart';
 import '../services/ai_meal_parser.dart';
+import '../services/app_logger.dart';
 import '../services/data_store.dart';
 import '../services/food_database_service.dart';
 import '../services/meal_parser.dart';
@@ -39,6 +40,10 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
   final List<_Row> _rows = [];
   bool _loading = false;
   bool _parsed = false;
+
+  /// Whether the last parse actually used the on-device LLM (vs the heuristic
+  /// / fallback) — surfaced as a small badge so it's visible which ran.
+  bool _usedAi = false;
 
   final SpeechToText _speech = SpeechToText();
   bool _speechReady = false;
@@ -165,12 +170,18 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     final foods = FoodDatabaseService(db);
+    final parser = _resolveParser();
+    final wantAi = parser is AiMealParser;
+    appLogger.i('🍽️ describe-meal parse via ${wantAi ? "on-device LLM" : "heuristic"}');
     List<MealItemSuggestion> suggestions;
+    var usedAi = false;
     try {
-      suggestions = await MealSuggestionService(foods, parser: _resolveParser())
-          .suggest(_descCtrl.text);
-    } catch (_) {
+      suggestions =
+          await MealSuggestionService(foods, parser: parser).suggest(_descCtrl.text);
+      usedAi = wantAi;
+    } catch (e) {
       // On-device LLM failed (or unparseable) → fall back to the heuristic.
+      appLogger.w('⚠️ AI meal parse failed → heuristic fallback: $e');
       suggestions = await MealSuggestionService(foods).suggest(_descCtrl.text);
     }
     if (!mounted) return;
@@ -188,6 +199,7 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     setState(() {
       _loading = false;
       _parsed = true;
+      _usedAi = usedAi;
     });
   }
 
@@ -309,11 +321,31 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
         ),
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _rows.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, i) => _buildRow(l, _rows[i]),
+    return Column(
+      children: [
+        if (_usedAi)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.auto_awesome,
+                    size: 16, color: Colors.deepPurple),
+                const SizedBox(width: 6),
+                Text(l.aiMealTitle,
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.deepPurple)),
+              ],
+            ),
+          ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: _rows.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, i) => _buildRow(l, _rows[i]),
+          ),
+        ),
+      ],
     );
   }
 
