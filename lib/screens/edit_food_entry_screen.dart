@@ -53,6 +53,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
   late MealType _selectedMealType;
   late bool _isLiquid;
+  late EstimateLevel _estimateLevel;
 
   FoodItem? _foodItem;
   FoodPortion? _selectedPortion;
@@ -87,6 +88,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     _saturatedFatController = TextEditingController();
     _selectedMealType = e.mealType;
     _isLiquid = e.isLiquid;
+    _estimateLevel = e.estimateLevel;
     _customUnit = e.unit;
 
     final unit = e.unit;
@@ -321,6 +323,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         isLiquid: _isLiquid,
         amountMl: amountMl,
         isMeal: widget.entry.isMeal,
+        estimateLevel: _estimateLevel,
         updatedAt: DateTime.now(),
       );
 
@@ -371,6 +374,31 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   }
 
   /// Unit selector — only shown in per-100g mode.
+  /// "How sure?" picker — lets the user set/correct this entry's uncertainty.
+  Widget _buildEstimatePicker(AppLocalizations l) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.estimateLabel,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Colors.grey.shade700)),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          children: EstimateLevel.values.map((lvl) {
+            return ChoiceChip(
+              label: Text(lvl.localizedName(l)),
+              selected: _estimateLevel == lvl,
+              onSelected: (_) => setState(() => _estimateLevel = lvl),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildUnitSelector() {
     final portions = <FoodPortion>[];
     final seenNames = <String>{};
@@ -734,6 +762,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                 }
               },
             ),
+            const SizedBox(height: 16),
+
+            // How sure? — nutrition uncertainty (drives the daily band).
+            _buildEstimatePicker(l),
             const SizedBox(height: 24),
 
             // Nutrition section

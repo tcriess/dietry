@@ -98,7 +98,6 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   EstimateLevel _estimateLevel = EstimateLevel.none;
   bool _userSetEstimate = false;
   EstimateLevel _autoEstimate() => EstimateLevel.defaultForLog(
-        isNamedPortion: _selectedPortion != null,
         foodLevel: _selectedFood?.estimateLevel ?? EstimateLevel.none,
       );
   EstimateLevel get _effectiveEstimate =>

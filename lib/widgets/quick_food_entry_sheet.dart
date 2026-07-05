@@ -2190,7 +2190,6 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
 
   /// Auto default for the current selection.
   EstimateLevel _autoEstimate() => EstimateLevel.defaultForLog(
-        isNamedPortion: !_isGramMl,
         foodLevel: widget.food?.estimateLevel ?? EstimateLevel.none,
       );
 
