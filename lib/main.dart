@@ -3931,15 +3931,33 @@ class OverviewScreen extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, c) {
               final w = c.maxWidth;
+              // Peak the gradient exactly at μ within [μ−σ, μ+σ] (μ is the
+              // midpoint unless clamping at 0/goal shifts it).
+              final peak =
+                  hi > lo ? ((mu - lo) / (hi - lo)).clamp(0.05, 0.95) : 0.5;
               return Stack(
                 children: [
-                  // The ±σ range line.
+                  // Two-sided gradient band: opaque at μ, fading to transparent
+                  // toward μ±σ — a Gaussian-ish density cue.
                   Positioned(
                     left: lo * w,
                     width: (hi - lo) * w,
-                    top: 6,
-                    height: 2,
-                    child: const ColoredBox(color: Colors.deepPurple),
+                    top: 3,
+                    height: 8,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Colors.deepPurple.withValues(alpha: 0.0),
+                            Colors.deepPurple.withValues(alpha: 0.55),
+                            Colors.deepPurple.withValues(alpha: 0.0),
+                          ],
+                          stops: [0.0, peak, 1.0],
+                        ),
+                      ),
+                    ),
                   ),
                   // Whisker caps at μ−σ and μ+σ.
                   Positioned(
