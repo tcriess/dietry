@@ -17,8 +17,9 @@ Future<void> ensureLocalTimezone() async {
   if (_tzInitialized) return;
   tz_data.initializeTimeZones();
   try {
-    final name = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(name));
+    // flutter_timezone 5 returns a TimezoneInfo; .identifier is the IANA name.
+    final tzInfo = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
     _tzInitialized = true;
   } catch (e) {
     // Leave tz.local at UTC; better than crashing. Don't mark initialized so a
