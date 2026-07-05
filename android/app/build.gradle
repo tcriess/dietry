@@ -40,12 +40,15 @@ android {
 
     compileOptions {
         coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        // Java 17: required by the plus_plugins majors (share_plus 13,
+        // package_info_plus 10, device_info_plus 13) whose Android modules
+        // compile at jvmTarget = JVM_17.
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = '17'
     }
 
     sourceSets {

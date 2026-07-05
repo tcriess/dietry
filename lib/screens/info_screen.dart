@@ -48,9 +48,9 @@ class InfoScreen extends StatelessWidget {
                 FutureBuilder<PackageInfo>(
                   future: PackageInfo.fromPlatform(),
                   builder: (context, snap) {
-                    final version = snap.data != null
-                        ? '${snap.data!.version}+${snap.data!.buildNumber}'
-                        : '…';
+                    // Show just the semantic version (e.g. "1.1.7"); the build
+                    // number (+254) is noise for users.
+                    final version = snap.data != null ? snap.data!.version : '…';
                     final hash = AppConfig.gitHash;
                     final date = AppConfig.buildDate;
                     final edition = AppConfig.isCloudEdition ? 'Cloud' : 'CE';

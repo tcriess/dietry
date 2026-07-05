@@ -20,9 +20,10 @@ Future<void> exportCsvFiles({
     // Let user pick the destination directory; fall back to Downloads on error/cancel.
     String? selectedDir;
     try {
-      selectedDir = await getDirectoryPath(
-        confirmButtonText: 'Exportverzeichnis wählen',
-      );
+      // No custom button label — the native folder picker uses the OS's own
+      // localized "Select"/"Choose" label (avoids a hard-coded, untranslated
+      // string). file_selector's getDirectoryPath has no dialog-title option.
+      selectedDir = await getDirectoryPath();
     } catch (_) {}
 
     if (selectedDir == null) {
