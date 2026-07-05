@@ -52,12 +52,17 @@ Description: "${description.replaceAll('"', "'").trim()}"
   /// unknown units become null. Throws [FormatException] when nothing usable is
   /// found (→ caller falls back to the heuristic parser).
   static List<ParsedMealItem> parseResponse(String raw) {
-    final start = raw.indexOf('[');
-    final end = raw.lastIndexOf(']');
+    // Reasoning models (e.g. Qwen3) may prepend a <think>...</think> monologue;
+    // drop everything up to the last closing tag so we parse the real answer.
+    final thinkEnd = raw.lastIndexOf('</think>');
+    final body = thinkEnd >= 0 ? raw.substring(thinkEnd + '</think>'.length) : raw;
+
+    final start = body.indexOf('[');
+    final end = body.lastIndexOf(']');
     if (start < 0 || end <= start) {
       throw const FormatException('No JSON array in model output');
     }
-    final decoded = jsonDecode(raw.substring(start, end + 1));
+    final decoded = jsonDecode(body.substring(start, end + 1));
     if (decoded is! List) {
       throw const FormatException('Model output is not a JSON array');
     }

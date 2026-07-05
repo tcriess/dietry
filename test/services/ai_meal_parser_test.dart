@@ -32,6 +32,14 @@ void main() {
       expect(r, [const ParsedMealItem(query: 'oats', quantity: 1, portion: 'cup')]);
     });
 
+    test('strips a <think> reasoning block before the JSON', () {
+      final r = AiMealParser.parseResponse(
+          '<think>Okay, the user said rice. Let me [reason] about units...</think>\n'
+          '[{"food":"rice","quantity":2,"unit":"plate"}]');
+      expect(r,
+          [const ParsedMealItem(query: 'rice', quantity: 2, portion: 'plate')]);
+    });
+
     test('throws when no array present', () {
       expect(() => AiMealParser.parseResponse('I could not understand that.'),
           throwsFormatException);
