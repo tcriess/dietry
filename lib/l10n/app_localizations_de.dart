@@ -1835,7 +1835,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wandelt deine Beschreibung mit einem privaten Modell direkt auf dem Gerät in Einträge um (Beta).';
 
   @override
-  String get aiMealEnable => 'Aktivieren (~350 MB)';
+  String get aiMealEnable => 'Aktivieren (~230 MB)';
 
   @override
   String get aiMealDownloading => 'Wird geladen …';

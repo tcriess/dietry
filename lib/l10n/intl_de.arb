@@ -827,7 +827,7 @@
   "voiceUnavailable": "Spracheingabe ist auf diesem Gerät nicht verfügbar.",
   "aiMealTitle": "KI-Mahlzeitenerkennung",
   "aiMealDescription": "Wandelt deine Beschreibung mit einem privaten Modell direkt auf dem Gerät in Einträge um (Beta).",
-  "aiMealEnable": "Aktivieren (~350 MB)",
+  "aiMealEnable": "Aktivieren (~230 MB)",
   "aiMealDownloading": "Wird geladen …",
   "aiMealReady": "Bereit",
   "aiMealRemove": "Entfernen",

@@ -1827,7 +1827,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Turn your description into entries with a private on-device model (beta).';
 
   @override
-  String get aiMealEnable => 'Enable (~350 MB)';
+  String get aiMealEnable => 'Enable (~230 MB)';
 
   @override
   String get aiMealDownloading => 'Downloading…';

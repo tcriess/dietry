@@ -3415,7 +3415,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiMealEnable.
   ///
   /// In de, this message translates to:
-  /// **'Aktivieren (~350 MB)'**
+  /// **'Aktivieren (~230 MB)'**
   String get aiMealEnable;
 
   /// No description provided for @aiMealDownloading.
