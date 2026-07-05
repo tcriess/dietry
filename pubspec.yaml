@@ -54,7 +54,7 @@ dependencies:
   # Web: routes sqflite through an IndexedDB/WASM-backed factory so the same
   # LocalDataService SQL runs in the browser (offline mirror, all platforms).
   # Requires web assets copied via `dart run sqflite_common_ffi_web:setup`.
-  sqflite_common_ffi_web: ^0.4.0
+  sqflite_common_ffi_web: ^1.1.0
   file_selector: ^1.0.3
   flutter_image_compress: ^2.3.0
   image_picker: ^1.1.2
