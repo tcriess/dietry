@@ -16,6 +16,7 @@ class PhysicalActivity {
   final String? notes; // Notizen
   final DataSource source; // Manuell oder Health Connect
   final String? healthConnectRecordId; // ID von Health Connect für Sync
+  final String? gearId; // Optional: Referenz zu gear (Laufschuhe, Rad, …)
 
   PhysicalActivity({
     this.id,
@@ -32,6 +33,7 @@ class PhysicalActivity {
     this.notes,
     this.source = DataSource.manual,
     this.healthConnectRecordId,
+    this.gearId,
   });
   
   /// Hole den Anzeige-Namen (activity_name hat Vorrang vor activityType)
@@ -55,6 +57,9 @@ class PhysicalActivity {
     if (notes != null) 'notes': notes,
     'source': source.name,
     if (healthConnectRecordId != null) 'health_connect_record_id': healthConnectRecordId,
+    // Emitted even when null, unlike the fields above: updateActivity PATCHes
+    // the full row, so an omitted gear_id could never be cleared once set.
+    'gear_id': gearId,
   };
 
   factory PhysicalActivity.fromJson(Map<String, dynamic> json) => PhysicalActivity(
@@ -78,6 +83,7 @@ class PhysicalActivity {
       orElse: () => DataSource.manual,
     ),
     healthConnectRecordId: json['health_connect_record_id'] as String?,
+    gearId: json['gear_id'] as String?,
   );
 
   /// Returns a copy with the given fields replaced. Used e.g. when moving an
@@ -100,6 +106,8 @@ class PhysicalActivity {
     String? notes,
     DataSource? source,
     String? healthConnectRecordId,
+    String? gearId,
+    bool clearGearId = false,
   }) {
     return PhysicalActivity(
       id: id ?? this.id,
@@ -117,6 +125,7 @@ class PhysicalActivity {
       source: source ?? this.source,
       healthConnectRecordId:
           healthConnectRecordId ?? this.healthConnectRecordId,
+      gearId: clearGearId ? null : (gearId ?? this.gearId),
     );
   }
 }
@@ -221,6 +230,35 @@ extension ActivityTypeExtension on ActivityType {
       case ActivityType.other:
         return const [];
     }
+  }
+
+  /// Inverse of [dbActivityCandidates]: maps an `activity_database` row name
+  /// back onto an [ActivityType]. Needed because the manual add form always
+  /// writes `activity_type = 'other'` and keeps the real identity in
+  /// `activity_id`/`activity_name` — so gear defaults, which are keyed by
+  /// [ActivityType], have no type to match against otherwise.
+  /// Returns null when no type claims the name.
+  ///
+  /// Falls back to the name with its intensity qualifier stripped, so the whole
+  /// seeded family resolves — `dbActivityCandidates` lists 'Laufen (moderat)'
+  /// but not 'Laufen (schnell)', and both should mean [ActivityType.running].
+  static ActivityType? fromDbActivityName(String? name) {
+    if (name == null) return null;
+    final target = name.toLowerCase().trim();
+    final base = target.replaceAll(RegExp(r'\s*\(.*\)$'), '').trim();
+
+    for (final probe in [target, if (base != target) base]) {
+      for (final type in ActivityType.values) {
+        for (final candidate in type.dbActivityCandidates) {
+          final c = candidate.toLowerCase();
+          if (c == probe) return type;
+          if (c.replaceAll(RegExp(r'\s*\(.*\)$'), '').trim() == probe) {
+            return type;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   IconData get icon {

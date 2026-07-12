@@ -5,6 +5,7 @@ export 'user_body_data.dart';
 export 'cheat_day.dart';
 export 'streak_record.dart';
 export 'physical_activity.dart';
+export 'gear.dart';
 export 'tracking_method.dart';
 
 import 'tracking_method.dart';

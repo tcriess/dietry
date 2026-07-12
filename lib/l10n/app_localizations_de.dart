@@ -1857,4 +1857,91 @@ class AppLocalizationsDe extends AppLocalizations {
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% unter deinem Ziel';
   }
+
+  @override
+  String get gearTitle => 'Ausrüstung';
+
+  @override
+  String get gearAdd => 'Ausrüstung hinzufügen';
+
+  @override
+  String get gearEdit => 'Ausrüstung bearbeiten';
+
+  @override
+  String get gearEmpty =>
+      'Noch keine Ausrüstung. Lege ein Paar Laufschuhe oder ein Rad an, um Kilometer und Zeit dafür zu sammeln.';
+
+  @override
+  String get gearNameLabel => 'Name';
+
+  @override
+  String get gearNameHint => 'z. B. Nike Pegasus 41';
+
+  @override
+  String get gearCategory => 'Kategorie';
+
+  @override
+  String get gearCategoryShoes => 'Schuhe';
+
+  @override
+  String get gearCategoryBike => 'Fahrrad';
+
+  @override
+  String get gearCategoryOther => 'Sonstiges';
+
+  @override
+  String get gearDefaultActivity => 'Automatisch zuordnen bei';
+
+  @override
+  String get gearDefaultActivityHelp =>
+      'Importierte Workouts dieses Typs bekommen diese Ausrüstung automatisch.';
+
+  @override
+  String get gearInitialDistance => 'Vorhandene Distanz (optional)';
+
+  @override
+  String get gearInitialDistanceHelp =>
+      'Kilometer, die schon vor dem Tracking darauf waren.';
+
+  @override
+  String get gearRetireAt => 'Austauschen bei (optional)';
+
+  @override
+  String get gearRetireAtHelp => 'Laufschuhe halten typischerweise 600–800 km.';
+
+  @override
+  String get gearRetired => 'Ausgemustert';
+
+  @override
+  String get gearRetire => 'Ausmustern';
+
+  @override
+  String get gearUnretire => 'Wieder aktivieren';
+
+  @override
+  String get gearNone => 'Keine';
+
+  @override
+  String get gearFieldLabel => 'Ausrüstung (optional)';
+
+  @override
+  String gearStats(String km, String hours, int count) {
+    return '$km km · $hours h · $count Aktivitäten';
+  }
+
+  @override
+  String gearWearBudget(String used, String total) {
+    return '$used von $total km';
+  }
+
+  @override
+  String get gearDeleteTitle => 'Ausrüstung löschen?';
+
+  @override
+  String get gearDeleteMessage =>
+      'Die damit erfassten Aktivitäten bleiben erhalten, verlieren aber die Zuordnung.';
+
+  @override
+  String get gearOfflineHint =>
+      'Ausrüstung kann offline nicht geändert werden.';
 }

@@ -32,6 +32,7 @@ import 'services/nutrition_goal_service.dart';
 import 'services/food_entry_service.dart';
 import 'services/physical_activity_service.dart';
 import 'services/activity_database_service.dart';
+import 'services/gear_service.dart';
 import 'services/user_body_data_service.dart';
 import 'models/activity_item.dart';
 import 'services/jwt_helper.dart';
@@ -65,6 +66,7 @@ import 'screens/activity_database_screen.dart';
 import 'screens/food_database_screen.dart';
 import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
+import 'screens/gear_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/health_connect_service.dart';
 import 'services/health_connect_prefs.dart';
@@ -2088,6 +2090,7 @@ enum _HomeMenuAction {
   admin,
   feedback,
   profile,
+  gear,
   deleteGuestData,
   signIn,
   logout,
@@ -2205,6 +2208,14 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
         }
         // Nach Rückkehr: Ziel könnte geändert worden sein → neu laden.
         _dietryHomeKey.currentState?._loadCurrentGoal();
+        break;
+      case _HomeMenuAction.gear:
+        // Works in both modes: SyncService routes gear to the local store for
+        // guests and to Neon for logged-in users.
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const GearScreen()),
+        );
         break;
       case _HomeMenuAction.deleteGuestData:
         await _confirmAndDeleteGuestData(context);
@@ -2436,6 +2447,11 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                   PopupMenuItem(
                     value: _HomeMenuAction.profile,
                     child: _menuRow(Icons.person, lm.profileTooltip),
+                  ),
+                if (widget.isGuestMode || widget.dbService != null)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.gear,
+                    child: _menuRow(Icons.directions_run, lm.gearTitle),
                   ),
                 if (widget.isGuestMode)
                   PopupMenuItem(
@@ -2823,12 +2839,26 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         activityService.getMyActivities(),
         activityService.getPublicActivities(),
         UserBodyDataService(db).getCurrentBodyData(),
+        GearService(db).getGear(includeRetired: false),
       ]);
       final myActivities = results[0] as List<ActivityItem>;
       final publicActivities = results[1] as List<ActivityItem>;
       final bodyData = results[2] as UserBodyData?;
+      final gear = results[3] as List<Gear>;
       final allActivities = [...myActivities, ...publicActivities];
       final weightKg = bodyData?.weight;
+
+      // Gear the user marked as their default for a given activity type. Most
+      // runs arrive here, not through the manual form — without this auto-
+      // attach, a shoe's mileage would stay at zero unless every imported
+      // workout were edited by hand.
+      final defaultGearByType = <ActivityType, String>{};
+      for (final g in gear) {
+        final type = g.defaultActivityType;
+        if (type != null && g.id != null) {
+          defaultGearByType.putIfAbsent(type, () => g.id!);
+        }
+      }
 
       ActivityItem? findMatch(ActivityType type) {
         for (final candidate in type.dbActivityCandidates) {
@@ -2841,8 +2871,14 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       }
 
       return imported.map((a) {
+        final gearId = a.gearId ?? defaultGearByType[a.activityType];
+
         final match = findMatch(a.activityType);
-        if (match == null) return a;
+        // No activity-database row for this type, but the gear default keys off
+        // the activity type alone — so still attach it.
+        if (match == null) {
+          return gearId == null ? a : a.copyWith(gearId: gearId);
+        }
 
         double? calories = a.caloriesBurned;
         final duration = a.durationMinutes ?? a.calculatedDuration;
@@ -2868,6 +2904,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           notes: a.notes,
           source: a.source,
           healthConnectRecordId: a.healthConnectRecordId,
+          gearId: gearId,
         );
       }).toList();
     } catch (e) {

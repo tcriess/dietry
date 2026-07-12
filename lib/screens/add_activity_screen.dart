@@ -3,6 +3,7 @@ import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/physical_activity.dart';
 import '../models/activity_item.dart';
+import '../models/gear.dart';
 import '../services/user_body_measurements_service.dart';
 import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
@@ -13,6 +14,7 @@ import '../services/app_logger.dart';
 import '../services/anonymous_auth_service.dart';
 import '../app_config.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/gear_dropdown.dart';
 import 'activity_database_screen.dart';
 
 /// Screen zum Hinzufügen einer Aktivität
@@ -42,21 +44,60 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
   ActivityItem? _selectedActivity;
   List<ActivityItem> _searchResults = [];
   String? _lastAutoCalcCalories;  // Letzter automatisch berechneter Kalorienwert
-  
+
+  List<Gear> _gear = [];
+  Gear? _selectedGear;
+  /// True once the user has touched the gear dropdown. Blocks
+  /// [_applyDefaultGear] from overriding a deliberate choice (including a
+  /// deliberate "none") on a later activity change.
+  bool _gearTouchedByUser = false;
+
   TimeOfDay _startTime = TimeOfDay.now();
   bool _isSaving = false;
   double? _userWeight;  // ✅ Nur Gewicht speichern (von Measurement)
-  
+
   @override
   void initState() {
     super.initState();
     _loadWeight();
     _loadActivities();  // Lade Activities aus DB
-    
+    _loadGear();
+
     // Listener für Dauer-Änderungen → Auto-Kalorien-Berechnung
     _durationController.addListener(_calculateCaloriesIfNeeded);
   }
-  
+
+  Future<void> _loadGear() async {
+    final gear = await SyncService.instance.getGear();
+    if (!mounted) return;
+    setState(() {
+      _gear = gear.where((g) => !g.retired).toList();
+    });
+    _applyDefaultGear();
+  }
+
+  /// Pre-selects the gear the user marked as the default for this kind of
+  /// activity. The manual form always writes `activity_type = 'other'` and
+  /// keeps the real identity in `activity_id`/`activity_name`, so the type has
+  /// to be recovered from the selected activity-database row's name.
+  void _applyDefaultGear() {
+    if (_gearTouchedByUser || _gear.isEmpty) return;
+    final type =
+        ActivityTypeExtension.fromDbActivityName(_selectedActivity?.name);
+    if (type == null) {
+      if (_selectedGear != null) setState(() => _selectedGear = null);
+      return;
+    }
+    Gear? match;
+    for (final g in _gear) {
+      if (g.defaultActivityType == type) {
+        match = g;
+        break;
+      }
+    }
+    if (match != _selectedGear) setState(() => _selectedGear = match);
+  }
+
   /// Lade alle Activities (public + eigene) aus Datenbank
   Future<void> _loadActivities() async {
     try {
@@ -191,6 +232,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
       _metValueController.text = activity.metValue.toStringAsFixed(1);
     });
     _calculateCaloriesIfNeeded();
+    _applyDefaultGear();
   }
   
   @override
@@ -255,6 +297,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             : null,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         source: DataSource.manual,
+        gearId: _selectedGear?.id,
       );
 
       final saved = await SyncService.instance.saveActivity(activity);
@@ -368,6 +411,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                       _metValueController.text = value.metValue.toStringAsFixed(1);
                     });
                     _calculateCaloriesIfNeeded();
+                    _applyDefaultGear();
                   }
                 },
               )
@@ -537,7 +581,20 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
+            // Ausrüstung (nur wenn welche angelegt ist)
+            if (_gear.isNotEmpty) ...[
+              GearDropdown(
+                gear: _gear,
+                selected: _selectedGear,
+                onChanged: (value) => setState(() {
+                  _selectedGear = value;
+                  _gearTouchedByUser = true;
+                }),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Notizen (optional)
             TextFormField(
               controller: _notesController,

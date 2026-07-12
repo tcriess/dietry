@@ -3453,6 +3453,162 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'≈ {pct}% unter deinem Ziel'**
   String estimateProbUnderGoal(int pct);
+
+  /// No description provided for @gearTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung'**
+  String get gearTitle;
+
+  /// No description provided for @gearAdd.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung hinzufügen'**
+  String get gearAdd;
+
+  /// No description provided for @gearEdit.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung bearbeiten'**
+  String get gearEdit;
+
+  /// No description provided for @gearEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch keine Ausrüstung. Lege ein Paar Laufschuhe oder ein Rad an, um Kilometer und Zeit dafür zu sammeln.'**
+  String get gearEmpty;
+
+  /// No description provided for @gearNameLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Name'**
+  String get gearNameLabel;
+
+  /// No description provided for @gearNameHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. Nike Pegasus 41'**
+  String get gearNameHint;
+
+  /// No description provided for @gearCategory.
+  ///
+  /// In de, this message translates to:
+  /// **'Kategorie'**
+  String get gearCategory;
+
+  /// No description provided for @gearCategoryShoes.
+  ///
+  /// In de, this message translates to:
+  /// **'Schuhe'**
+  String get gearCategoryShoes;
+
+  /// No description provided for @gearCategoryBike.
+  ///
+  /// In de, this message translates to:
+  /// **'Fahrrad'**
+  String get gearCategoryBike;
+
+  /// No description provided for @gearCategoryOther.
+  ///
+  /// In de, this message translates to:
+  /// **'Sonstiges'**
+  String get gearCategoryOther;
+
+  /// No description provided for @gearDefaultActivity.
+  ///
+  /// In de, this message translates to:
+  /// **'Automatisch zuordnen bei'**
+  String get gearDefaultActivity;
+
+  /// No description provided for @gearDefaultActivityHelp.
+  ///
+  /// In de, this message translates to:
+  /// **'Importierte Workouts dieses Typs bekommen diese Ausrüstung automatisch.'**
+  String get gearDefaultActivityHelp;
+
+  /// No description provided for @gearInitialDistance.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorhandene Distanz (optional)'**
+  String get gearInitialDistance;
+
+  /// No description provided for @gearInitialDistanceHelp.
+  ///
+  /// In de, this message translates to:
+  /// **'Kilometer, die schon vor dem Tracking darauf waren.'**
+  String get gearInitialDistanceHelp;
+
+  /// No description provided for @gearRetireAt.
+  ///
+  /// In de, this message translates to:
+  /// **'Austauschen bei (optional)'**
+  String get gearRetireAt;
+
+  /// No description provided for @gearRetireAtHelp.
+  ///
+  /// In de, this message translates to:
+  /// **'Laufschuhe halten typischerweise 600–800 km.'**
+  String get gearRetireAtHelp;
+
+  /// No description provided for @gearRetired.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausgemustert'**
+  String get gearRetired;
+
+  /// No description provided for @gearRetire.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausmustern'**
+  String get gearRetire;
+
+  /// No description provided for @gearUnretire.
+  ///
+  /// In de, this message translates to:
+  /// **'Wieder aktivieren'**
+  String get gearUnretire;
+
+  /// No description provided for @gearNone.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine'**
+  String get gearNone;
+
+  /// No description provided for @gearFieldLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung (optional)'**
+  String get gearFieldLabel;
+
+  /// No description provided for @gearStats.
+  ///
+  /// In de, this message translates to:
+  /// **'{km} km · {hours} h · {count} Aktivitäten'**
+  String gearStats(String km, String hours, int count);
+
+  /// No description provided for @gearWearBudget.
+  ///
+  /// In de, this message translates to:
+  /// **'{used} von {total} km'**
+  String gearWearBudget(String used, String total);
+
+  /// No description provided for @gearDeleteTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung löschen?'**
+  String get gearDeleteTitle;
+
+  /// No description provided for @gearDeleteMessage.
+  ///
+  /// In de, this message translates to:
+  /// **'Die damit erfassten Aktivitäten bleiben erhalten, verlieren aber die Zuordnung.'**
+  String get gearDeleteMessage;
+
+  /// No description provided for @gearOfflineHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung kann offline nicht geändert werden.'**
+  String get gearOfflineHint;
 }
 
 class _AppLocalizationsDelegate

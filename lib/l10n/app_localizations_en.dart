@@ -1848,4 +1848,90 @@ class AppLocalizationsEn extends AppLocalizations {
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% likely under goal';
   }
+
+  @override
+  String get gearTitle => 'Gear';
+
+  @override
+  String get gearAdd => 'Add gear';
+
+  @override
+  String get gearEdit => 'Edit gear';
+
+  @override
+  String get gearEmpty =>
+      'No gear yet. Add a pair of running shoes or a bike to start collecting distance and time on it.';
+
+  @override
+  String get gearNameLabel => 'Name';
+
+  @override
+  String get gearNameHint => 'e.g. Nike Pegasus 41';
+
+  @override
+  String get gearCategory => 'Category';
+
+  @override
+  String get gearCategoryShoes => 'Shoes';
+
+  @override
+  String get gearCategoryBike => 'Bike';
+
+  @override
+  String get gearCategoryOther => 'Other';
+
+  @override
+  String get gearDefaultActivity => 'Auto-attach to';
+
+  @override
+  String get gearDefaultActivityHelp =>
+      'Imported workouts of this type get this gear automatically.';
+
+  @override
+  String get gearInitialDistance => 'Existing distance (optional)';
+
+  @override
+  String get gearInitialDistanceHelp =>
+      'Kilometres already on it before you started tracking.';
+
+  @override
+  String get gearRetireAt => 'Replace at (optional)';
+
+  @override
+  String get gearRetireAtHelp => 'Running shoes typically last 600–800 km.';
+
+  @override
+  String get gearRetired => 'Retired';
+
+  @override
+  String get gearRetire => 'Retire';
+
+  @override
+  String get gearUnretire => 'Reactivate';
+
+  @override
+  String get gearNone => 'None';
+
+  @override
+  String get gearFieldLabel => 'Gear (optional)';
+
+  @override
+  String gearStats(String km, String hours, int count) {
+    return '$km km · $hours h · $count activities';
+  }
+
+  @override
+  String gearWearBudget(String used, String total) {
+    return '$used of $total km';
+  }
+
+  @override
+  String get gearDeleteTitle => 'Delete gear?';
+
+  @override
+  String get gearDeleteMessage =>
+      'The activities logged with it are kept, but lose the attribution.';
+
+  @override
+  String get gearOfflineHint => 'Gear can\'t be changed while offline.';
 }

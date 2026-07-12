@@ -150,6 +150,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
           avgHeartRate: activity.avgHeartRate,
           notes: activity.notes,
           source: DataSource.manual,
+          gearId: activity.gearId,
         ));
       } else {
         await sync.updateActivity(

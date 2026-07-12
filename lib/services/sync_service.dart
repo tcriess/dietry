@@ -3,8 +3,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/food_entry.dart';
+import '../models/gear.dart';
 import '../models/physical_activity.dart';
 import 'food_entry_service.dart';
+import 'gear_service.dart';
 import 'physical_activity_service.dart';
 import 'neon_database_service.dart';
 import 'local_data_service.dart';
@@ -299,6 +301,88 @@ class SyncService extends ChangeNotifier {
       );
       await _refreshPendingCount();
     }
+  }
+
+  // ── Gear ──────────────────────────────────────────────────────────────────
+  // Gear mutations are rare (you buy shoes once) and are not offline-queued —
+  // an offline create simply fails and is reported. Reads still work offline
+  // from the mirror, which is what matters for attaching gear to a workout.
+
+  Future<List<Gear>> getGear() async {
+    if (_local != null) return _local!.getGear();
+    if (_db == null) return [];
+    try {
+      final gear = await GearService(_db!).getGear();
+      _markOnline();
+      // Refresh the mirror so the gear picker keeps working offline.
+      await _mirrorToCache((c) => c.replaceCachedGear(gear));
+      return gear;
+    } catch (_) {
+      _markOffline();
+      // Fall back to the last mirrored list rather than showing "no gear".
+      final cache = _cache;
+      if (cache == null) return <Gear>[];
+      return cache.getGear();
+    }
+  }
+
+  /// Lifetime totals per gear id. Guest mode sums the local store (which holds
+  /// the full history); logged-in goes to the server, because the local mirror
+  /// only keeps ~30 days and would under-report.
+  Future<Map<String, GearTotals>> getGearTotals() async {
+    if (_local != null) return _local!.getGearTotals();
+    if (_db == null) return {};
+    return GearService(_db!).getTotals();
+  }
+
+  Future<Gear?> saveGear(Gear gear) async {
+    final g = (gear.id == null || gear.id!.isEmpty)
+        ? gear.copyWith(id: const Uuid().v4())
+        : gear;
+
+    if (_local != null) {
+      try {
+        return await _local!.createGear(g);
+      } catch (e) {
+        appLogger.e('❌ Error saving gear locally: $e');
+        return null;
+      }
+    }
+    if (_db == null) return null;
+
+    final created = await GearService(_db!).createGear(g);
+    _markOnline();
+    await _mirrorToCache((c) => c.createGear(created));
+    return created;
+  }
+
+  Future<Gear?> updateGear(Gear gear) async {
+    if (_local != null) {
+      try {
+        return await _local!.updateGear(gear);
+      } catch (e) {
+        appLogger.e('❌ Error updating gear locally: $e');
+        return null;
+      }
+    }
+    if (_db == null) return null;
+
+    final updated = await GearService(_db!).updateGear(gear);
+    _markOnline();
+    await _mirrorToCache((c) => c.updateGear(updated));
+    return updated;
+  }
+
+  Future<void> deleteGear(String id) async {
+    if (_local != null) {
+      await _local!.deleteGear(id);
+      return;
+    }
+    if (_db == null) return;
+
+    await GearService(_db!).deleteGear(id);
+    _markOnline();
+    await _mirrorToCache((c) => c.deleteGear(id));
   }
 
   // ── Queue processing ──────────────────────────────────────────────────────

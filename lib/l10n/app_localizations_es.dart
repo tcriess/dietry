@@ -1868,4 +1868,92 @@ class AppLocalizationsEs extends AppLocalizations {
   String estimateProbUnderGoal(int pct) {
     return '≈ $pct% probablemente bajo el objetivo';
   }
+
+  @override
+  String get gearTitle => 'Equipamiento';
+
+  @override
+  String get gearAdd => 'Añadir equipamiento';
+
+  @override
+  String get gearEdit => 'Editar equipamiento';
+
+  @override
+  String get gearEmpty =>
+      'Aún no hay equipamiento. Añade unas zapatillas o una bicicleta para acumular distancia y tiempo.';
+
+  @override
+  String get gearNameLabel => 'Nombre';
+
+  @override
+  String get gearNameHint => 'p. ej. Nike Pegasus 41';
+
+  @override
+  String get gearCategory => 'Categoría';
+
+  @override
+  String get gearCategoryShoes => 'Zapatillas';
+
+  @override
+  String get gearCategoryBike => 'Bicicleta';
+
+  @override
+  String get gearCategoryOther => 'Otro';
+
+  @override
+  String get gearDefaultActivity => 'Asignar automáticamente a';
+
+  @override
+  String get gearDefaultActivityHelp =>
+      'Los entrenamientos importados de este tipo reciben este equipamiento automáticamente.';
+
+  @override
+  String get gearInitialDistance => 'Distancia previa (opcional)';
+
+  @override
+  String get gearInitialDistanceHelp =>
+      'Kilómetros que ya tenía antes de empezar a registrarlo.';
+
+  @override
+  String get gearRetireAt => 'Sustituir a los (opcional)';
+
+  @override
+  String get gearRetireAtHelp =>
+      'Las zapatillas suelen durar entre 600 y 800 km.';
+
+  @override
+  String get gearRetired => 'Retirado';
+
+  @override
+  String get gearRetire => 'Retirar';
+
+  @override
+  String get gearUnretire => 'Reactivar';
+
+  @override
+  String get gearNone => 'Ninguno';
+
+  @override
+  String get gearFieldLabel => 'Equipamiento (opcional)';
+
+  @override
+  String gearStats(String km, String hours, int count) {
+    return '$km km · $hours h · $count actividades';
+  }
+
+  @override
+  String gearWearBudget(String used, String total) {
+    return '$used de $total km';
+  }
+
+  @override
+  String get gearDeleteTitle => '¿Eliminar el equipamiento?';
+
+  @override
+  String get gearDeleteMessage =>
+      'Las actividades registradas con él se conservan, pero pierden la atribución.';
+
+  @override
+  String get gearOfflineHint =>
+      'No se puede modificar el equipamiento sin conexión.';
 }

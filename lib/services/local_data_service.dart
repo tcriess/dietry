@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 8;  // Version 8: estimate_level on guest_foods (inherent food uncertainty)
+  static const int _version = 9;  // Version 9: gear table + physical_activities.gear_id
 
   Database? _db;
   bool _initialized = false;
@@ -176,6 +176,24 @@ class LocalDataService {
           notes TEXT,
           source TEXT NOT NULL DEFAULT 'manual',
           health_connect_record_id TEXT,
+          gear_id TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+
+      // gear table (running shoes, bikes, …). Mirrors sql/34_gear.sql.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS gear (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          category TEXT NOT NULL DEFAULT 'shoes',
+          default_activity_type TEXT,
+          initial_distance_km REAL NOT NULL DEFAULT 0,
+          retire_at_km REAL,
+          retired INTEGER NOT NULL DEFAULT 0,
+          notes TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -468,6 +486,40 @@ class LocalDataService {
       }
       appLogger.i('✅ Migration 7→8 complete (guest_foods.estimate_level)');
     }
+
+    if (oldVersion < 9) {
+      // Version 9: gear (mirrors sql/34_gear.sql). Attaching a workout to a
+      // pair of shoes / a bike so its lifetime km and minutes can be summed.
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS gear (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'shoes',
+            default_activity_type TEXT,
+            initial_distance_km REAL NOT NULL DEFAULT 0,
+            retire_at_km REAL,
+            retired INTEGER NOT NULL DEFAULT 0,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        ''');
+        appLogger.d('✅ Created gear table');
+      } catch (e) {
+        appLogger.d('ℹ️ gear table already exists: $e');
+      }
+
+      try {
+        await db.execute(
+            'ALTER TABLE physical_activities ADD COLUMN gear_id TEXT');
+        appLogger.d('✅ Added gear_id column to physical_activities');
+      } catch (e) {
+        appLogger.d('ℹ️ gear_id column already exists: $e');
+      }
+      appLogger.i('✅ Migration 8→9 complete (gear)');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -693,6 +745,7 @@ class LocalDataService {
         notes: activity.notes,
         source: activity.source,
         healthConnectRecordId: activity.healthConnectRecordId,
+        gearId: activity.gearId,
       );
 
       // Add user_id and timestamps which are required in the local schema
@@ -740,6 +793,117 @@ class LocalDataService {
     } catch (e) {
       appLogger.e('❌ Error deleting activity: $e');
       rethrow;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Gear
+  // ─────────────────────────────────────────────────────────────────────────
+  // Guest mode: this is the only store. Logged-in: an offline mirror of the
+  // `gear` table so the gear picker still works without a connection.
+
+  Future<List<Gear>> getGear() async {
+    if (!_initialized || _db == null) return [];
+    try {
+      final results = await _db!.query('gear',
+          where: 'user_id = ?', whereArgs: [_userId], orderBy: 'name');
+      return results.map((json) => Gear.fromJson(json)).toList();
+    } catch (e) {
+      appLogger.e('❌ Error fetching gear: $e');
+      return [];
+    }
+  }
+
+  Future<Gear> createGear(Gear gear) async {
+    if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
+    final id = (gear.id == null || gear.id!.isEmpty) ? const Uuid().v4() : gear.id!;
+    final withId = gear.copyWith(id: id);
+    final now = DateTime.now().toIso8601String();
+
+    final data = withId.toJson();
+    data['user_id'] = _userId;
+    data['retired'] = withId.retired ? 1 : 0; // SQLite has no bool
+    data['created_at'] = now;
+    data['updated_at'] = now;
+
+    await _db!.insert('gear', data, conflictAlgorithm: ConflictAlgorithm.replace);
+    appLogger.d('✅ Created gear: $id');
+    return withId;
+  }
+
+  Future<Gear> updateGear(Gear gear) async {
+    if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
+    final data = gear.toJson()..remove('id');
+    data['user_id'] = _userId;
+    data['retired'] = gear.retired ? 1 : 0;
+    data['updated_at'] = DateTime.now().toIso8601String();
+
+    await _db!.update('gear', data,
+        where: 'id = ? AND user_id = ?', whereArgs: [gear.id, _userId]);
+    return gear;
+  }
+
+  Future<void> deleteGear(String id) async {
+    if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
+    await _db!.transaction((txn) async {
+      await txn.delete('gear',
+          where: 'id = ? AND user_id = ?', whereArgs: [id, _userId]);
+      // No FKs in the local schema, so emulate ON DELETE SET NULL by hand —
+      // otherwise the activities would keep pointing at a gear row that's gone.
+      await txn.update('physical_activities', {'gear_id': null},
+          where: 'gear_id = ? AND user_id = ?', whereArgs: [id, _userId]);
+    });
+    appLogger.d('✅ Deleted gear: $id');
+  }
+
+  /// Mirrors [GearService.getTotals] for guest mode, where the local DB holds
+  /// the user's complete history. Do NOT use this for a logged-in user: their
+  /// local mirror only carries ~30 days of activities, so the sums would
+  /// under-report lifetime mileage — go to `get_gear_totals()` instead.
+  Future<Map<String, GearTotals>> getGearTotals() async {
+    if (!_initialized || _db == null) return {};
+    try {
+      final rows = await _db!.rawQuery('''
+        SELECT g.id                                            AS gear_id,
+               g.initial_distance_km + COALESCE(SUM(a.distance_km), 0) AS total_distance_km,
+               COALESCE(SUM(a.duration_minutes), 0)            AS total_minutes,
+               COUNT(a.id)                                     AS activity_count,
+               MAX(a.start_time)                               AS last_used
+        FROM gear g
+        LEFT JOIN physical_activities a
+          ON a.gear_id = g.id AND a.user_id = g.user_id
+        WHERE g.user_id = ?
+        GROUP BY g.id, g.initial_distance_km
+      ''', [_userId]);
+
+      return {
+        for (final row in rows) row['gear_id'] as String: GearTotals.fromJson(row),
+      };
+    } catch (e) {
+      appLogger.e('❌ Error computing gear totals: $e');
+      return {};
+    }
+  }
+
+  /// Replaces the cached gear list for the active user (logged-in mirror).
+  Future<void> replaceCachedGear(List<Gear> gear) async {
+    if (_db == null) return;
+    final now = DateTime.now().toIso8601String();
+    try {
+      await _db!.transaction((txn) async {
+        await txn.delete('gear', where: 'user_id = ?', whereArgs: [_userId]);
+        for (final g in gear) {
+          final data = g.toJson();
+          data['user_id'] = _userId;
+          data['retired'] = g.retired ? 1 : 0;
+          data['created_at'] = now;
+          data['updated_at'] = now;
+          await txn.insert('gear', data,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+    } catch (e) {
+      appLogger.w('⚠️ Cache replace gear failed: $e');
     }
   }
 
@@ -1315,6 +1479,7 @@ class LocalDataService {
       'food_entries',
       'nutrition_goals',
       'physical_activities',
+      'gear',
       'water_intake',
       'cheat_days',
       'user_profile',
@@ -1345,6 +1510,7 @@ class LocalDataService {
         'food_entries',
         'nutrition_goals',
         'physical_activities',
+        'gear',
         'water_intake',
         'cheat_days',
         'user_profile',

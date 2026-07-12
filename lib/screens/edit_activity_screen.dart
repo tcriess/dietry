@@ -3,12 +3,14 @@ import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/physical_activity.dart';
 import '../models/activity_item.dart';
+import '../models/gear.dart';
 import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/gear_dropdown.dart';
 
 /// Screen zum Bearbeiten einer Aktivität
 class EditActivityScreen extends StatefulWidget {
@@ -37,13 +39,16 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
   late TimeOfDay _startTime;
   bool _isSaving = false;
   bool _isLoadingActivities = true;  // Neu: Loading-State
-  
+
+  List<Gear> _gear = [];
+  Gear? _selectedGear;
+
   @override
   void initState() {
     super.initState();
-    
+
     _startTime = TimeOfDay.fromDateTime(widget.activity.startTime);
-    
+
     _durationController = TextEditingController(
       text: (widget.activity.durationMinutes ?? widget.activity.calculatedDuration).toString(),
     );
@@ -59,8 +64,30 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
     
     // Lade Activities aus DB
     _loadActivities();
+    _loadGear();
   }
-  
+
+  /// Loads the gear list and re-selects whatever this activity is attached to.
+  /// Retired gear is kept in the list when it's the one already attached —
+  /// otherwise editing an old run would silently drop its (retired) shoes.
+  Future<void> _loadGear() async {
+    final all = await SyncService.instance.getGear();
+    if (!mounted) return;
+    setState(() {
+      _gear = all
+          .where((g) => !g.retired || g.id == widget.activity.gearId)
+          .toList();
+      Gear? current;
+      for (final g in _gear) {
+        if (g.id == widget.activity.gearId) {
+          current = g;
+          break;
+        }
+      }
+      _selectedGear = current;
+    });
+  }
+
   /// Lade alle Activities aus Datenbank
   Future<void> _loadActivities() async {
     try {
@@ -187,6 +214,9 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         source: widget.activity.source,  // Behalte Original-Source
         healthConnectRecordId: widget.activity.healthConnectRecordId,
+        // Null when the user picked "none" — PhysicalActivity.toJson always
+        // emits gear_id, so the PATCH really does clear the attribution.
+        gearId: _selectedGear?.id,
       );
       
       // Optimistic update — immediately visible in all tabs.
@@ -379,7 +409,17 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
+            // Ausrüstung
+            if (_gear.isNotEmpty) ...[
+              GearDropdown(
+                gear: _gear,
+                selected: _selectedGear,
+                onChanged: (value) => setState(() => _selectedGear = value),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Notizen
             TextFormField(
               controller: _notesController,
