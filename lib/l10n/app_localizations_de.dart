@@ -1944,4 +1944,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get gearOfflineHint =>
       'Ausrüstung kann offline nicht geändert werden.';
+
+  @override
+  String get describeMealApproximate => 'ungefähr';
+
+  @override
+  String get describeMealSubstituteHint =>
+      'Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen.';
 }

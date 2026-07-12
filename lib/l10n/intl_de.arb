@@ -602,7 +602,6 @@
   "serverConfigAuthBaseUrl": "Auth-Basis-URL",
   "serverConfigCustomActive": "Eigener Server aktiv – es werden Ihre eigenen Endpunkte verwendet.",
   "serverConfigReset": "Auf Standardwerte zurücksetzen",
-
   "feedbackTitle": "Feedback senden",
   "feedbackTooltip": "Feedback senden",
   "feedbackEarlyAccessNote": "Du nutzt eine Early-Access-Version. Dein Feedback hilft uns, die App zu verbessern!",
@@ -616,7 +615,6 @@
   "feedbackMessageTooShort": "Bitte mindestens 10 Zeichen eingeben.",
   "feedbackSubmit": "Absenden",
   "feedbackThankYou": "Vielen Dank für dein Feedback!",
-
   "reportsTitle": "Berichte",
   "reportsRangeWeek": "Woche",
   "reportsRangeMonth": "Monat",
@@ -649,7 +647,9 @@
   "reportsExportError": "Export fehlgeschlagen: {error}",
   "@reportsExportError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "macroOnlyMode": "Nur Makros tracken (kein Kalorienziel)",
@@ -681,7 +681,7 @@
   "shareDailyCaption": "✅ Heute meine Ernährungsziele erreicht!",
   "shareSuccessful": "✅ Erfolgreich geteilt!",
   "shareFailed": "❌ Teilen fehlgeschlagen. Bitte versuche es erneut.",
-  "logFood": "Lebensmittel eintragen",
+  "logFood": "Eintragen",
   "nutritionInfo": "Nährwertinfo",
   "per100g": "pro 100g",
   "tags": "Tags",
@@ -731,7 +731,6 @@
   "upgradeProTitle": "Dietry Pro",
   "upgradeProReportsDescription": "Erweiterte Analysen freischalten: Aktivitätsbilanz, Zieleinhaltung, Mahlzeiten-Timing und mehr.",
   "upgradeProProfileDescription": "Erhalte Zugang zu erweiterten Analysen, detaillierten Reports und allen Pro-Funktionen.",
-
   "sortBy": "Sortieren",
   "sortAlphabetical": "Alphabetisch",
   "sortNewest": "Neueste zuerst",
@@ -740,11 +739,11 @@
   "noSearchResults": "Keine Ergebnisse für \"{query}\"",
   "@noSearchResults": {
     "placeholders": {
-      "query": { "type": "String" }
+      "query": {
+        "type": "String"
+      }
     }
   },
-  "logFood": "Eintragen",
-
   "barcodeScanTitle": "Barcode scannen",
   "barcodeField": "Barcode",
   "barcodeHint": "z.B. 4006381333931",
@@ -770,7 +769,9 @@
   "shortcutSaved": "Kurzbefehl „{label}“ gespeichert",
   "@shortcutSaved": {
     "placeholders": {
-      "label": { "type": "String" }
+      "label": {
+        "type": "String"
+      }
     }
   },
   "shortcut": "Kurzbefehl",
@@ -791,7 +792,9 @@
   "activityAdded": "„{name}\" hinzugefügt",
   "@activityAdded": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "durationMinutes": "Dauer (Min)",
@@ -834,7 +837,13 @@
   "aiMealRemove": "Entfernen",
   "aiModelDownloadFailed": "Download fehlgeschlagen. Bitte erneut versuchen.",
   "estimateProbUnderGoal": "≈ {pct}% unter deinem Ziel",
-  "@estimateProbUnderGoal": {"placeholders": {"pct": {"type": "int"}}},
+  "@estimateProbUnderGoal": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
   "gearTitle": "Ausrüstung",
   "gearAdd": "Ausrüstung hinzufügen",
   "gearEdit": "Ausrüstung bearbeiten",
@@ -857,10 +866,33 @@
   "gearNone": "Keine",
   "gearFieldLabel": "Ausrüstung (optional)",
   "gearStats": "{km} km · {hours} h · {count} Aktivitäten",
-  "@gearStats": {"placeholders": {"km": {"type": "String"}, "hours": {"type": "String"}, "count": {"type": "int"}}},
+  "@gearStats": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "gearWearBudget": "{used} von {total} km",
-  "@gearWearBudget": {"placeholders": {"used": {"type": "String"}, "total": {"type": "String"}}},
+  "@gearWearBudget": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
   "gearDeleteTitle": "Ausrüstung löschen?",
   "gearDeleteMessage": "Die damit erfassten Aktivitäten bleiben erhalten, verlieren aber die Zuordnung.",
-  "gearOfflineHint": "Ausrüstung kann offline nicht geändert werden."
+  "gearOfflineHint": "Ausrüstung kann offline nicht geändert werden.",
+  "describeMealApproximate": "ungefähr",
+  "describeMealSubstituteHint": "Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen."
 }

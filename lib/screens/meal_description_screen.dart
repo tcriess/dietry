@@ -178,8 +178,15 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     List<MealItemSuggestion> suggestions;
     var usedAi = false;
     try {
-      suggestions =
-          await MealSuggestionService(foods, parser: parser).suggest(_descCtrl.text);
+      suggestions = await MealSuggestionService(
+        foods,
+        parser: parser,
+        // Second chance for items the food database cannot match. Only with the
+        // on-device model: the search matches spelling, not meaning, so it can
+        // never get from "gaspaccho" to a tomato soup — but the model knows what
+        // gazpacho is. Without a model, an unmatched item just stays unmatched.
+        aliasResolver: parser is AiMealParser ? parser.resolveAliases : null,
+      ).suggest(_descCtrl.text);
       usedAi = wantAi;
     } catch (e) {
       // On-device LLM failed (or unparseable) → fall back to the heuristic.
@@ -421,28 +428,72 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
         tooltip: l.describeMealCreateFood,
         onPressed: () => _createFood(r),
       ),
-      title: Text(s.match!.name),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 88,
-              child: TextField(
-                controller: r.gramsCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  suffixText: 'g',
-                  isDense: true,
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (_) => setState(() {}),
+      title: Row(
+        children: [
+          Flexible(child: Text(s.match!.name, overflow: TextOverflow.ellipsis)),
+          // The food as typed was NOT found; this is a stand-in the model
+          // suggested. Say so — logging "tomato soup" under the silent belief it
+          // is gazpacho would misreport what the user actually ate.
+          if (s.isSubstitute) ...[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: l.describeMealSubstituteHint,
+              child: Chip(
+                label: Text(l.describeMealApproximate,
+                    style: const TextStyle(fontSize: 11)),
+                avatar: const Icon(Icons.auto_awesome, size: 14),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: EdgeInsets.zero,
               ),
             ),
-            const SizedBox(width: 12),
-            Text('$kcal kcal · “${s.parsed.query}”',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          ],
+        ],
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (s.isSubstitute)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '“${s.parsed.query}” → ${s.matchedVia}',
+                  style: TextStyle(
+                      color: Colors.orange.shade800,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic),
+                ),
+              ),
+            Row(
+              children: [
+                SizedBox(
+                  width: 88,
+                  child: TextField(
+                    controller: r.gramsCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      suffixText: 'g',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    s.isSubstitute
+                        ? '$kcal kcal'
+                        : '$kcal kcal · “${s.parsed.query}”',
+                    style:
+                        TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

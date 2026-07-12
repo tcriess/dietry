@@ -602,7 +602,6 @@
   "serverConfigAuthBaseUrl": "Auth base URL",
   "serverConfigCustomActive": "Custom server active — using your own endpoints.",
   "serverConfigReset": "Reset to defaults",
-
   "feedbackTitle": "Send Feedback",
   "feedbackTooltip": "Send feedback",
   "feedbackEarlyAccessNote": "You're using an early access version. Your feedback helps us improve!",
@@ -616,7 +615,6 @@
   "feedbackMessageTooShort": "Please enter at least 10 characters.",
   "feedbackSubmit": "Submit",
   "feedbackThankYou": "Thank you for your feedback!",
-
   "reportsTitle": "Reports",
   "reportsRangeWeek": "Week",
   "reportsRangeMonth": "Month",
@@ -649,7 +647,9 @@
   "reportsExportError": "Export failed: {error}",
   "@reportsExportError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "macroOnlyMode": "Track macros only (no calorie goal)",
@@ -714,7 +714,6 @@
   "upgradeProTitle": "Dietry Pro",
   "upgradeProReportsDescription": "Unlock advanced analytics: activity balance, goal compliance, meal timing, and more.",
   "upgradeProProfileDescription": "Get access to advanced analytics, detailed reports, and all Pro features.",
-
   "sortBy": "Sort",
   "sortAlphabetical": "Alphabetical",
   "sortNewest": "Newest first",
@@ -723,11 +722,11 @@
   "noSearchResults": "No results for \"{query}\"",
   "@noSearchResults": {
     "placeholders": {
-      "query": { "type": "String" }
+      "query": {
+        "type": "String"
+      }
     }
   },
-  "logFood": "Log Food",
-
   "barcodeScanTitle": "Scan Barcode",
   "barcodeField": "Barcode",
   "barcodeHint": "e.g. 4006381333931",
@@ -769,7 +768,9 @@
   "activityAdded": "\"{name}\" added",
   "@activityAdded": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "durationMinutes": "Duration (min)",
@@ -837,5 +838,7 @@
   "gearWearBudget": "{used} of {total} km",
   "gearDeleteTitle": "Delete gear?",
   "gearDeleteMessage": "The activities logged with it are kept, but lose the attribution.",
-  "gearOfflineHint": "Gear can't be changed while offline."
+  "gearOfflineHint": "Gear can't be changed while offline.",
+  "describeMealApproximate": "approximate",
+  "describeMealSubstituteHint": "This food wasn't found. The model suggested a close stand-in — please check it."
 }

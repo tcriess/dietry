@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/food_entry.dart';
 import '../models/food_item.dart';
+import 'app_logger.dart';
 import 'food_database_service.dart';
 import 'meal_description_parser.dart';
 import 'meal_parser.dart';
@@ -17,20 +18,36 @@ class MealItemSuggestion {
   /// Grams the parsed quantity/portion resolves to against [match] (0 if none).
   final double grams;
 
+  /// The term that actually produced [match], when the food as typed found
+  /// nothing and an LLM-suggested alias did ("gaspaccho" → "cold tomato soup").
+  /// Null for a direct hit. The UI surfaces this — a silent substitution would
+  /// be a lie about what the user ate.
+  final String? matchedVia;
+
   const MealItemSuggestion({
     required this.parsed,
     this.match,
     this.grams = 0,
+    this.matchedVia,
   });
 
   bool get matched => match != null;
 
+  /// True when [match] is a stand-in rather than the food as typed.
+  bool get isSubstitute => matchedVia != null;
+
   /// A described meal is a rough estimate: a stated weight is only *medium*
   /// sure, a vague portion or bare count is *high*.
-  EstimateLevel get estimateLevel =>
-      (parsed.portion == 'g' || parsed.portion == 'ml')
-          ? EstimateLevel.medium
-          : EstimateLevel.high;
+  ///
+  /// A substitution is uncertain about *what* was eaten, not merely how much, so
+  /// it is never better than [EstimateLevel.high] however precisely the amount
+  /// was stated. (Levels combine by taking the max — see [EstimateLevel.orHigher].)
+  EstimateLevel get estimateLevel {
+    final fromPortion = (parsed.portion == 'g' || parsed.portion == 'ml')
+        ? EstimateLevel.medium
+        : EstimateLevel.high;
+    return isSubstitute ? fromPortion.orHigher(EstimateLevel.high) : fromPortion;
+  }
 
   /// Build a draft log entry (grams-based, so nutrition is exact-per-gram) for
   /// the matched food. Returns null when there is no match. Caller confirms it.
@@ -71,6 +88,12 @@ class MealItemSuggestion {
   }
 }
 
+/// Given a food name the database could not match, produce alternative search
+/// terms to try (other names for the dish, then its main ingredients).
+/// Implemented by the on-device LLM; injected so this service stays testable and
+/// works unchanged when there is no model.
+typedef AliasResolver = Future<List<String>> Function(String foodName);
+
 /// Ties the offline [MealDescriptionParser] to the food DB: parse a description,
 /// fuzzy-match each item, and resolve a gram amount for each.
 class MealSuggestionService {
@@ -80,10 +103,17 @@ class MealSuggestionService {
   /// heuristic; an on-device LLM parser (Pro/mobile) is injected here later.
   final MealParser _parser;
 
+  /// Optional second chance for items the database could not match. Null (the
+  /// default, and always the case without an on-device model) simply means an
+  /// unmatched item stays unmatched, exactly as before.
+  final AliasResolver? _resolveAliases;
+
   MealSuggestionService(
     this._foods, {
     MealParser parser = const HeuristicMealParser(),
-  }) : _parser = parser;
+    AliasResolver? aliasResolver,
+  })  : _parser = parser,
+        _resolveAliases = aliasResolver;
 
   /// Rough average grams per named portion — only a starting point; the whole
   /// entry is tagged uncertain and the user edits before logging.
@@ -103,15 +133,48 @@ class MealSuggestionService {
     final items = await _parser.parse(description);
     final out = <MealItemSuggestion>[];
     for (final item in items) {
-      final results = await _foods.searchFoods(item.query, limit: 1);
-      final match = results.isNotEmpty ? results.first : null;
+      var match = await _bestMatch(item.query);
+      String? via;
+
+      // Nothing found. The food search matches spelling, not meaning, so it can
+      // never get from "gaspaccho" to a tomato soup (word_similarity 0.357 — far
+      // below any threshold that does not also flood the results with junk). Ask
+      // the model what the food *is* and search for that instead.
+      if (match == null && _resolveAliases != null) {
+        for (final alias in await _aliasesFor(item.query)) {
+          final hit = await _bestMatch(alias);
+          if (hit != null) {
+            match = hit;
+            via = alias;
+            break;
+          }
+        }
+      }
+
       out.add(MealItemSuggestion(
         parsed: item,
         match: match,
+        matchedVia: via,
         grams: match == null ? 0 : resolveGrams(item, match),
       ));
     }
     return out;
+  }
+
+  Future<FoodItem?> _bestMatch(String query) async {
+    final results = await _foods.searchFoods(query, limit: 1);
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  /// Never throws: a failed alias lookup (model error, timeout, garbage output)
+  /// just means the item stays unmatched, which is where it already was.
+  Future<List<String>> _aliasesFor(String query) async {
+    try {
+      return await _resolveAliases!(query);
+    } catch (e) {
+      appLogger.w('⚠️ Alias lookup failed for "$query" → leaving unmatched: $e');
+      return const [];
+    }
   }
 
   /// Resolve a parsed quantity/portion to grams against a matched food.

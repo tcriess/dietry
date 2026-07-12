@@ -602,7 +602,6 @@
   "serverConfigAuthBaseUrl": "URL base de autenticación",
   "serverConfigCustomActive": "Servidor personalizado activo — se usan sus propios endpoints.",
   "serverConfigReset": "Restablecer valores predeterminados",
-
   "feedbackTitle": "Enviar comentarios",
   "feedbackTooltip": "Enviar comentarios",
   "feedbackEarlyAccessNote": "Estás usando una versión de acceso anticipado. ¡Tu opinión nos ayuda a mejorar!",
@@ -616,7 +615,6 @@
   "feedbackMessageTooShort": "Por favor, escribe al menos 10 caracteres.",
   "feedbackSubmit": "Enviar",
   "feedbackThankYou": "¡Gracias por tus comentarios!",
-
   "reportsTitle": "Informes",
   "reportsRangeWeek": "Semana",
   "reportsRangeMonth": "Mes",
@@ -649,7 +647,9 @@
   "reportsExportError": "Error al exportar: {error}",
   "@reportsExportError": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "macroOnlyMode": "Solo macros (sin objetivo calórico)",
@@ -681,7 +681,7 @@
   "shareDailyCaption": "✅ ¡Alcancé mis objetivos nutricionales hoy!",
   "shareSuccessful": "✅ ¡Compartido exitosamente!",
   "shareFailed": "❌ Error al compartir. Por favor intenta de nuevo.",
-  "logFood": "Registrar alimento",
+  "logFood": "Registrar",
   "nutritionInfo": "Información nutricional",
   "per100g": "por 100g",
   "tags": "Etiquetas",
@@ -714,7 +714,6 @@
   "upgradeProTitle": "Dietry Pro",
   "upgradeProReportsDescription": "Desbloquea análisis avanzados: balance de actividad, cumplimiento de objetivos, horario de comidas y más.",
   "upgradeProProfileDescription": "Accede a análisis avanzados, informes detallados y todas las funciones Pro.",
-
   "sortBy": "Ordenar",
   "sortAlphabetical": "Alfabético",
   "sortNewest": "Más recientes",
@@ -723,11 +722,11 @@
   "noSearchResults": "Sin resultados para \"{query}\"",
   "@noSearchResults": {
     "placeholders": {
-      "query": { "type": "String" }
+      "query": {
+        "type": "String"
+      }
     }
   },
-  "logFood": "Registrar",
-
   "barcodeScanTitle": "Escanear código",
   "barcodeField": "Código de barras",
   "barcodeHint": "p.ej. 4006381333931",
@@ -769,7 +768,9 @@
   "activityAdded": "«{name}» añadida",
   "@activityAdded": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "durationMinutes": "Duración (min)",
@@ -837,5 +838,7 @@
   "gearWearBudget": "{used} de {total} km",
   "gearDeleteTitle": "¿Eliminar el equipamiento?",
   "gearDeleteMessage": "Las actividades registradas con él se conservan, pero pierden la atribución.",
-  "gearOfflineHint": "No se puede modificar el equipamiento sin conexión."
+  "gearOfflineHint": "No se puede modificar el equipamiento sin conexión.",
+  "describeMealApproximate": "aproximado",
+  "describeMealSubstituteHint": "No se encontró este alimento. El modelo sugirió un sustituto parecido — compruébalo."
 }

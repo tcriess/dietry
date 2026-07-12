@@ -1956,4 +1956,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get gearOfflineHint =>
       'No se puede modificar el equipamiento sin conexión.';
+
+  @override
+  String get describeMealApproximate => 'aproximado';
+
+  @override
+  String get describeMealSubstituteHint =>
+      'No se encontró este alimento. El modelo sugirió un sustituto parecido — compruébalo.';
 }

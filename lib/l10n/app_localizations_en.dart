@@ -1934,4 +1934,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gearOfflineHint => 'Gear can\'t be changed while offline.';
+
+  @override
+  String get describeMealApproximate => 'approximate';
+
+  @override
+  String get describeMealSubstituteHint =>
+      'This food wasn\'t found. The model suggested a close stand-in — please check it.';
 }
