@@ -57,6 +57,14 @@ BEGIN
     )
     AND (
       filter_tags IS NULL OR
+      -- An EMPTY array means "no tag filter", same as NULL. Without this branch
+      -- it means "match nothing": array_length('{}', 1) is NULL (not 0), so
+      -- `count(*) = array_length(...)` evaluates to NULL, which is not TRUE, and
+      -- every food is filtered out. The Dart client currently converts an empty
+      -- list to NULL before calling (food_database_service.dart), which is the
+      -- only reason this has never bitten — but any caller passing '{}' would
+      -- silently get zero results for every query.
+      array_length(filter_tags, 1) IS NULL OR
       (
         SELECT count(*) = array_length(filter_tags, 1)
         FROM (
