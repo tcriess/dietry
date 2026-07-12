@@ -138,8 +138,16 @@ an empty database fails twice:
 
 `V1__baseline.sql` is therefore generated from the **live production schema**, not
 from replaying history. It was verified: CE baseline + cloud baseline reproduces
-production statement-for-statement, and a fresh install converges byte-for-byte with
-a migrated production database.
+production statement-for-statement, and a fresh install converges with a migrated
+production database — semantically identical across all 1038 objects (columns,
+constraints, indexes, policies, functions, grants, view options).
+
+One cosmetic difference remains and is expected: the physical **column order** of
+`food_entries` differs. The cloud baseline appends `meal_template_id` with an
+`ALTER`, whereas production has it mid-table for historical reasons. Ordinal
+position is never observed — PostgREST returns named JSON keys and inserts with an
+explicit column list — so this affects nothing but a `pg_dump` text diff. Compare
+schemas semantically, not with `diff` on a dump.
 
 The legacy files are kept for archaeology. They are not in `flyway.locations` and
 will never run again.
