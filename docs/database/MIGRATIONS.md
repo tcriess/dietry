@@ -46,6 +46,15 @@ whenever you edit it.
    `ALTER DEFAULT PRIVILEGES … GRANT … TO authenticated` configured on the project,
    which is invisible in this repo. A self-hoster does not get it, and their
    PostgREST will 404 on any table you forget to grant.
+3. **That same default privilege is a trap.** *Every* table the migration role
+   creates in `public` is automatically `SELECT/INSERT/UPDATE/DELETE`-able by
+   `authenticated`, with RLS **off** — and `public` is the schema PostgREST
+   exposes. So any new table is world-writable over the Data API from the moment
+   it exists unless you enable RLS and add policies. This is exactly how Flyway's
+   own history tables ended up writable by any user who signed up; see
+   `sql/callbacks/afterMigrate__10_secure_flyway_history.sql`. If a migration
+   creates a table that users must NOT touch, `REVOKE` and `ENABLE ROW LEVEL
+   SECURITY` on it in the same migration.
 
 ## Lifecycle
 
