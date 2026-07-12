@@ -29,7 +29,11 @@
 #
 set -euo pipefail
 
-FLYWAY_IMAGE="${FLYWAY_IMAGE:-flyway/flyway:11-alpine}"
+# Pinned exactly, not to a floating `12-alpine`: this tool rewrites the production
+# schema, so CI and every developer must run the identical binary. Bump
+# deliberately (and re-run the verification in docs/database/MIGRATIONS.md).
+# Override ad hoc with FLYWAY_IMAGE=... if you need to test a new version.
+FLYWAY_IMAGE="${FLYWAY_IMAGE:-flyway/flyway:12.11.0-alpine}"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "error: DATABASE_URL is not set." >&2
