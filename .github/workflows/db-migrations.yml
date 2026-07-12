@@ -1,0 +1,100 @@
+name: DB Migrations
+
+# ── What this guards ──────────────────────────────────────────────────────────
+# The Community Edition schema must build STANDALONE — no reference to any
+# Cloud-only object. That promise was quietly broken for a long time: migration
+# 18 added a foreign key from food_entries to meal_templates, a table only the
+# private cloud repo creates, so a fresh CE database could not be built at all.
+#
+# This job builds CE, alone, against an empty database on every PR. If a CE
+# migration ever again names a cloud object, it goes red the same day.
+#
+# It also proves the migrations still replay from scratch, which the old
+# hand-numbered sql/00..34 chain had silently stopped doing.
+#
+# Required secrets:
+#   NEON_API_KEY     — Neon personal API key (Account settings → API keys)
+#   NEON_PROJECT_ID  — the Neon project to create the throwaway branch in
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ['sql/**', 'flyway.conf', 'flyway.sh', '.github/workflows/db-migrations.yml']
+  pull_request:
+    paths: ['sql/**', 'flyway.conf', 'flyway.sh', '.github/workflows/db-migrations.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrations-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ce-standalone:
+    name: CE schema builds standalone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # An ephemeral Neon branch: real Postgres, the real extensions (pg_trgm,
+      # unaccent, pg_session_jwt) and the real roles (authenticated, anonymous).
+      # A stock postgres container cannot stand in — it has no pg_session_jwt,
+      # which provides the auth.uid() the RLS policies call.
+      - name: Create throwaway Neon branch
+        id: branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: ci-migrations-${{ github.run_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      # A brand-new branch already carries production's schema, so start from a
+      # genuinely empty database on it.
+      - name: Create an empty database on the branch
+        run: |
+          psql "${{ steps.branch.outputs.db_url }}" -v ON_ERROR_STOP=1 \
+            -c 'CREATE DATABASE ci_ce_standalone;'
+
+      - name: Build the CE schema from scratch
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: |
+          export DATABASE_URL="${DATABASE_URL/\/neondb/\/ci_ce_standalone}"
+          ./flyway.sh bootstrap
+
+      - name: Assert no Cloud object leaked into CE
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: |
+          export DATABASE_URL="${DATABASE_URL/\/neondb/\/ci_ce_standalone}"
+          leaked=$(psql "$DATABASE_URL" -tAc "
+            SELECT coalesce(string_agg(tablename, ', '), '')
+            FROM pg_tables WHERE schemaname='public' AND tablename IN
+              ('meal_templates','meal_template_ingredients','meal_template_tags',
+               'meal_images','food_entry_micros','food_database_micros',
+               'user_streaks','user_roles','play_subscriptions');")
+          col=$(psql "$DATABASE_URL" -tAc "
+            SELECT count(*) FROM information_schema.columns
+            WHERE table_name='food_entries' AND column_name='meal_template_id';")
+          if [ -n "$leaked" ] || [ "$col" != "0" ]; then
+            echo "::error::CE schema contains Cloud-only objects: [$leaked] meal_template_id_columns=$col"
+            echo "A CE migration is referencing something only the private cloud repo creates."
+            exit 1
+          fi
+          echo "✅ CE builds standalone — no cloud objects present."
+
+      # Flyway re-verifies every applied migration's checksum. This is what makes
+      # editing an already-applied file a loud failure instead of silent drift.
+      - name: Validate checksums
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url }}
+        run: |
+          export DATABASE_URL="${DATABASE_URL/\/neondb/\/ci_ce_standalone}"
+          ./flyway.sh validate
+
+      - name: Delete throwaway Neon branch
+        if: always()
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ci-migrations-${{ github.run_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
