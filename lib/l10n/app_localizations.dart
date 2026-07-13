@@ -3621,6 +3621,12 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen.'**
   String get describeMealSubstituteHint;
+
+  /// No description provided for @gearAssignPrompt.
+  ///
+  /// In de, this message translates to:
+  /// **'Welche Ausrüstung?'**
+  String get gearAssignPrompt;
 }
 
 class _AppLocalizationsDelegate

@@ -1951,4 +1951,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get describeMealSubstituteHint =>
       'Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen.';
+
+  @override
+  String get gearAssignPrompt => 'Welche Ausrüstung?';
 }

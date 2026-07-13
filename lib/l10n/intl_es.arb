@@ -840,5 +840,6 @@
   "gearDeleteMessage": "Las actividades registradas con él se conservan, pero pierden la atribución.",
   "gearOfflineHint": "No se puede modificar el equipamiento sin conexión.",
   "describeMealApproximate": "aproximado",
-  "describeMealSubstituteHint": "No se encontró este alimento. El modelo sugirió un sustituto parecido — compruébalo."
+  "describeMealSubstituteHint": "No se encontró este alimento. El modelo sugirió un sustituto parecido — compruébalo.",
+  "gearAssignPrompt": "¿Qué equipamiento?"
 }

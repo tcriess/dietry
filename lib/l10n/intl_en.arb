@@ -840,5 +840,6 @@
   "gearDeleteMessage": "The activities logged with it are kept, but lose the attribution.",
   "gearOfflineHint": "Gear can't be changed while offline.",
   "describeMealApproximate": "approximate",
-  "describeMealSubstituteHint": "This food wasn't found. The model suggested a close stand-in — please check it."
+  "describeMealSubstituteHint": "This food wasn't found. The model suggested a close stand-in — please check it.",
+  "gearAssignPrompt": "Which gear?"
 }

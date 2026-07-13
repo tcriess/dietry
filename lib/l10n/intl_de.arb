@@ -894,5 +894,6 @@
   "gearDeleteMessage": "Die damit erfassten Aktivitäten bleiben erhalten, verlieren aber die Zuordnung.",
   "gearOfflineHint": "Ausrüstung kann offline nicht geändert werden.",
   "describeMealApproximate": "ungefähr",
-  "describeMealSubstituteHint": "Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen."
+  "describeMealSubstituteHint": "Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen.",
+  "gearAssignPrompt": "Welche Ausrüstung?"
 }

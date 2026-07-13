@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/gear.dart';
 import '../models/physical_activity.dart';
 import '../models/food_entry.dart' show MealType;
 import '../services/neon_database_service.dart';
@@ -63,10 +64,73 @@ class ActivitiesListScreen extends StatefulWidget {
 class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
   final _store = DataStore.instance;
 
+  /// Non-retired gear, for the one-tap picker on each activity row.
+  List<Gear> _gear = [];
+
   @override
   void initState() {
     super.initState();
     _store.addListener(_onStoreChanged);
+    _loadGear();
+  }
+
+  Future<void> _loadGear() async {
+    final gear = await SyncService.instance.getGear();
+    if (!mounted) return;
+    setState(() => _gear = gear.where((g) => !g.retired).toList());
+  }
+
+  /// Assign (or clear) the gear on an activity, straight from the list.
+  ///
+  /// This exists because the alternating-shoes case makes correcting an import
+  /// a routine act, not an exception: with two pairs both set to auto-attach to
+  /// running, no default can be right more than half the time. Doing it through
+  /// the edit screen — open, scroll, change dropdown, save — is far too much
+  /// friction for something you do after every run.
+  Future<void> _pickGear(PhysicalActivity activity) async {
+    final l = AppLocalizations.of(context)!;
+    final chosen = await showModalBottomSheet<({Gear? gear})>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(l.gearTitle,
+                  style: Theme.of(ctx).textTheme.titleMedium),
+            ),
+            ListTile(
+              leading: const Icon(Icons.not_interested),
+              title: Text(l.gearNone),
+              selected: activity.gearId == null,
+              onTap: () => Navigator.of(ctx).pop((gear: null)),
+            ),
+            for (final g in _gear)
+              ListTile(
+                leading: Icon(g.category.icon),
+                title: Text(g.name),
+                selected: g.id == activity.gearId,
+                trailing: g.id == activity.gearId
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () => Navigator.of(ctx).pop((gear: g)),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+
+    // copyWith cannot set a field back to null, hence the explicit clear flag.
+    final updated = chosen.gear == null
+        ? activity.copyWith(clearGearId: true)
+        : activity.copyWith(gearId: chosen.gear!.id);
+
+    _store.replaceActivity(updated); // optimistic — the row updates immediately
+    final saved = await SyncService.instance.updateActivity(updated);
+    if (saved != null) _store.replaceActivity(saved);
   }
 
   @override
@@ -167,6 +231,57 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
             ? l.activityCopied
             : l.activityMoved),
         backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  /// The gear currently on [activity], as a tappable chip. Unassigned runs show
+  /// a dashed "which shoes?" affordance rather than nothing — an imported run
+  /// with no gear is the case that needs fixing, so it must be the visible one.
+  Widget _buildGearChip(AppLocalizations l, PhysicalActivity activity) {
+    Gear? gear;
+    for (final g in _gear) {
+      if (g.id == activity.gearId) {
+        gear = g;
+        break;
+      }
+    }
+    final assigned = gear != null;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: InkWell(
+        onTap: () => _pickGear(activity),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: assigned ? Colors.blue.shade200 : Colors.orange.shade300,
+            ),
+            color: assigned ? Colors.blue.shade50 : Colors.transparent,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                assigned ? gear.category.icon : Icons.help_outline,
+                size: 13,
+                color: assigned ? Colors.blue.shade700 : Colors.orange.shade800,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                assigned ? gear.name : l.gearAssignPrompt,
+                style: TextStyle(
+                  fontSize: 11,
+                  color:
+                      assigned ? Colors.blue.shade800 : Colors.orange.shade800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -360,11 +475,22 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                   child: const Icon(Icons.fitness_center, color: Colors.blue),
                                 ),
                                 title: Text(activity.displayName),
-                                subtitle: Text(
-                                  '${timeFormat.format(activity.startTime)} • '
-                                  '${_formatDuration(activity.durationMinutes ?? activity.calculatedDuration)}'
-                                  '${activity.distanceKm != null ? ' • ${activity.distanceKm!.toStringAsFixed(1)} km' : ''}'
-                                  '${activity.caloriesBurned != null ? ' • ${activity.caloriesBurned!.toStringAsFixed(0)} kcal' : ''}',
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${timeFormat.format(activity.startTime)} • '
+                                      '${_formatDuration(activity.durationMinutes ?? activity.calculatedDuration)}'
+                                      '${activity.distanceKm != null ? ' • ${activity.distanceKm!.toStringAsFixed(1)} km' : ''}'
+                                      '${activity.caloriesBurned != null ? ' • ${activity.caloriesBurned!.toStringAsFixed(0)} kcal' : ''}',
+                                    ),
+                                    // Gear, one tap away. Only where gear is a
+                                    // thing — an activity with a distance — and
+                                    // only once some gear exists to pick from.
+                                    if (_gear.isNotEmpty && activity.distanceKm != null)
+                                      _buildGearChip(l, activity),
+                                  ],
                                 ),
                                 trailing: IconButton(
                                   icon: const Icon(Icons.delete_outline, size: 20),

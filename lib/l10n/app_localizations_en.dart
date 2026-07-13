@@ -1941,4 +1941,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get describeMealSubstituteHint =>
       'This food wasn\'t found. The model suggested a close stand-in — please check it.';
+
+  @override
+  String get gearAssignPrompt => 'Which gear?';
 }

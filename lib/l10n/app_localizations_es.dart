@@ -1963,4 +1963,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get describeMealSubstituteHint =>
       'No se encontró este alimento. El modelo sugirió un sustituto parecido — compruébalo.';
+
+  @override
+  String get gearAssignPrompt => '¿Qué equipamiento?';
 }

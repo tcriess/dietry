@@ -2852,11 +2852,28 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       // runs arrive here, not through the manual form — without this auto-
       // attach, a shoe's mileage would stay at zero unless every imported
       // workout were edited by hand.
-      final defaultGearByType = <ActivityType, String>{};
+      // Auto-attach ONLY when the choice is unambiguous: exactly one piece of
+      // gear claims that activity type. Two pairs of running shoes used in
+      // rotation is the normal case, not an edge case — and then no default can
+      // be right more than half the time. Silently stamping one of them onto
+      // every imported run would quietly corrupt both shoes' mileage whenever
+      // the user forgot to correct it. Better to attach nothing and let the
+      // one-tap picker in the activity list do the job (see _buildGearChip).
+      final byType = <ActivityType, List<String>>{};
       for (final g in gear) {
         final type = g.defaultActivityType;
         if (type != null && g.id != null) {
-          defaultGearByType.putIfAbsent(type, () => g.id!);
+          (byType[type] ??= <String>[]).add(g.id!);
+        }
+      }
+      final defaultGearByType = <ActivityType, String>{
+        for (final e in byType.entries)
+          if (e.value.length == 1) e.key: e.value.single,
+      };
+      for (final e in byType.entries) {
+        if (e.value.length > 1) {
+          appLogger.i('ℹ️ ${e.value.length} gear items default to '
+              '${e.key.name} — not guessing; imported activities stay unassigned');
         }
       }
 
