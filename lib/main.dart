@@ -3490,6 +3490,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                   builder: (_) => ActivityDatabaseScreen(dbService: db),
                 ),
               ),
+              onManageGear: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GearScreen()),
+              ),
               onAdd: (activity) async {
                 final saved = await _sync.saveActivity(activity);
                 _store.addActivity(saved ?? activity);

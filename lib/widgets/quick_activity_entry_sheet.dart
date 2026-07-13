@@ -41,6 +41,12 @@ class QuickActivityEntrySheet extends StatefulWidget {
   /// there's no remote database to manage.
   final VoidCallback? onManageDatabase;
 
+  /// Opens the gear screen (running shoes, bikes — their lifetime km and hours).
+  /// This sheet is the first thing you see when adding an activity, so it is the
+  /// one place gear has to be reachable from; it was originally only in the home
+  /// overflow menu, where nobody looking for it in Activities would ever find it.
+  final VoidCallback? onManageGear;
+
   const QuickActivityEntrySheet({
     super.key,
     required this.dbService,
@@ -48,6 +54,7 @@ class QuickActivityEntrySheet extends StatefulWidget {
     required this.onAdd,
     required this.onManualEntry,
     this.onManageDatabase,
+    this.onManageGear,
   });
 
   @override
@@ -432,6 +439,15 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
                   onPressed: () {
                     Navigator.of(context).pop();
                     widget.onManageDatabase!();
+                  },
+                ),
+              if (widget.onManageGear != null)
+                IconButton(
+                  icon: const Icon(Icons.directions_run),
+                  tooltip: l.gearTitle,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onManageGear!();
                   },
                 ),
               IconButton(

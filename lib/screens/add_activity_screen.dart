@@ -16,6 +16,7 @@ import '../app_config.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/gear_dropdown.dart';
 import 'activity_database_screen.dart';
+import 'gear_screen.dart';
 
 /// Screen zum Hinzufügen einer Aktivität
 class AddActivityScreen extends StatefulWidget {
@@ -74,6 +75,15 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
       _gear = gear.where((g) => !g.retired).toList();
     });
     _applyDefaultGear();
+  }
+
+  /// Manage gear, then pick up anything that was created while we were away.
+  Future<void> _openGearScreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const GearScreen()),
+    );
+    if (!mounted) return;
+    await _loadGear();
   }
 
   /// Pre-selects the gear the user marked as the default for this kind of
@@ -358,6 +368,14 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 }
               },
             ),
+          // Gear lives here, next to the activity database, because this is where
+          // people look for it — not in the home overflow menu, where it was
+          // originally (and unfindable).
+          IconButton(
+            icon: const Icon(Icons.directions_run),
+            tooltip: l.gearTitle,
+            onPressed: _openGearScreen,
+          ),
         ],
       ),
       body: Form(
@@ -582,7 +600,11 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Ausrüstung (nur wenn welche angelegt ist)
+            // Ausrüstung. When none exists yet the form used to show nothing at
+            // all, so there was no way to get from "I want to track my shoes" to
+            // creating a pair — the only entry point was buried in the home
+            // overflow menu. Offer the way in right here instead, for the
+            // activities where gear is actually a thing (anything with a distance).
             if (_gear.isNotEmpty) ...[
               GearDropdown(
                 gear: _gear,
@@ -591,6 +613,16 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                   _selectedGear = value;
                   _gearTouchedByUser = true;
                 }),
+              ),
+              const SizedBox(height: 16),
+            ] else if (_selectedActivity?.avgSpeedKmh != null) ...[
+              OutlinedButton.icon(
+                onPressed: _openGearScreen,
+                icon: const Icon(Icons.directions_run),
+                label: Text(l.gearAdd),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.all(12),
+                ),
               ),
               const SizedBox(height: 16),
             ],
