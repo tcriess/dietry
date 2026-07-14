@@ -1,321 +1,199 @@
-# Dietry First Public Release Guide
+# Releasing Dietry
 
-This document provides a step-by-step checklist for preparing Dietry for its first public release (`v1.0.0`).
+The repeatable release process for both repos. Dietry ships from **two** repositories that
+stay on the **same version number**:
 
-## Pre-Release Checklist
+| Repo | Contains | Public? |
+|---|---|---|
+| `dietry` (this one) | Community Edition, the app itself, `CHANGELOG.md` | yes |
+| `dietry-cloud` (`../dietry-cloud`) | Cloud-only features, importers, cloud schema | no |
 
-### Code & Quality
-- [ ] Run `flutter analyze` — fix all warnings and errors
-- [ ] Run `flutter test --coverage` — ensure all tests pass
-- [ ] Run `flutter format lib/` — apply consistent code formatting
-- [ ] Review recent commits for any debug code, console logs, or TODOs
-- [ ] Test on all platforms: web (Chrome), Android device/emulator, iOS (if applicable), Linux desktop
-- [ ] Test offline mode — queue writes and verify sync on reconnect
-- [ ] Test OAuth flow end-to-end (Google login, token refresh)
-- [ ] Verify RLS policies work as expected (user can only see their own data)
-
-### Database & Migrations
-- [ ] All migrations in `sql/` are numbered sequentially (no gaps)
-- [ ] Test migration from `00_init.sql` to latest on a fresh database
-- [ ] Verify RLS policies are correctly applied to all tables
-- [ ] Confirm no test data is left in production database
-- [ ] Document any manual setup steps needed for deployment
-
-### Documentation
-- [ ] Update README.md with accurate badges and links
-- [ ] Update CLAUDE.md with complete getting-started instructions
-- [ ] Add CHANGELOG.md with version history and breaking changes (if any)
-- [ ] Verify all code comments are up-to-date and helpful
-- [ ] Document API endpoints used by the app in `docs/` (if not already done)
-
-### Configuration & Secrets
-- [ ] Production config files are documented but NOT committed (use `.example` templates)
-- [ ] All environment-specific values are externalized (`--dart-define-from-file`)
-- [ ] No secrets (API keys, JWT test tokens) in version control
-- [ ] Verify `.gitignore` prevents sensitive files from being accidentally committed
-
-### Build & Deployment
-- [ ] Run `./build.sh ce dev` successfully
-- [ ] Verify APK builds: `flutter build apk --release --dart-define-from-file=config/ce-dev.json`
-- [ ] Verify web build: `flutter build web --dart-define-from-file=config/ce-dev.json`
-- [ ] Verify Linux build: `flutter build linux --release --dart-define-from-file=config/ce-dev.json`
-- [ ] Test deployed artifacts on actual device/emulator
-- [ ] Verify app icon appears correctly on all platforms
-
-### Marketing & Community
-- [ ] Update landing page (dietry-hp) with correct links
-- [ ] Add badges to README (Flutter version, Dart version, License)
-- [ ] Create CONTRIBUTORS.md if applicable
-- [ ] Add code of conduct (CODE_OF_CONDUCT.md)
+Both must be released. A CE-only release quietly ships **nothing** to the Play Store.
 
 ---
 
-## Setting Version Numbers
+## What a release actually triggers
 
-### Update `pubspec.yaml`
+Publishing a GitHub release fires `Build & Release` (`.github/workflows/build.yml`) in that
+repo with `event_name == release`, which means **production** keystore, **production** config
+and the real app name (a push to `develop` builds the same thing with dev secrets and the
+"Dietry Dev" label). On a release it:
 
-The version format is `MAJOR.MINOR.PATCH+BUILD`:
+- builds web, Linux, Android APK **and** the Play Store App Bundle (`.aab`),
+- **deploys the web app to the production host** (`ce.dietry.de` / `app.dietry.de`),
+- attaches every artifact to the GitHub release.
 
-```yaml
-version: 1.0.0+1
-```
+Two things are **not** automatic:
 
-**For the first release**, use:
+- **The Play Store upload.** Nothing pushes to Google Play. Download the `.aab` from the
+  *cloud* release and upload it in the Play Console by hand.
+- **Database migrations.** Apply them *before* the release builds, or the new app meets an old
+  schema. See below.
 
-```yaml
-version: 1.0.0+1
-```
-
-**After first release** (when making changes), use semantic versioning:
-- `1.0.1+2` — bug fix (patch)
-- `1.1.0+3` — new feature (minor)
-- `2.0.0+4` — breaking change (major)
-
-### Update Version Across Platforms
-
-1. **Android** (`android/app/build.gradle`):
-   - `versionName "1.0.0"` (must match pubspec.yaml)
-   - `versionCode 1` (increments by 1 each release)
-
-2. **iOS** (`ios/Runner.xcodeproj/project.pbxproj` or via Xcode):
-   - Bundle version = `1.0.0`
-   - Build number = `1`
-
-3. **Web** (automatically derived from pubspec.yaml)
-
-### Create a Release Commit
-
-```bash
-# Update version
-# Edit pubspec.yaml: version: 1.0.0+1
-
-git add pubspec.yaml android/app/build.gradle
-git commit -m "chore: bump version to 1.0.0 for first public release"
-git push origin develop
-```
+Expect **three** workflow runs per repo after a release (push-to-`main`, push-to-`develop`,
+and the release itself). Only the release run deploys production and attaches artifacts; the
+other two are CI checks.
 
 ---
 
-## Creating a GitHub Release
+## Version numbers
 
-### Prerequisites
-- Repository is public on GitHub (`https://github.com/tcriess/dietry`)
-- You have push access
-- `gh` CLI is installed (`brew install gh` or from https://github.com/cli/cli)
+`pubspec.yaml` is the **single source of truth** — `MAJOR.MINOR.PATCH+BUILD`.
 
-### Step 1: Create a Release Tag
+**Do not edit `android/app/build.gradle`.** Its `versionCode`/`versionName` are read from
+`local.properties`, which Flutter fills in from `pubspec.yaml`. Likewise **never pass
+`--build-number`** to a build script: that once desynced the Play Store versionCode, and Play
+refuses a build number it has already seen (the store's high-water mark is 203 — every future
+build must exceed it, which `+256` and up comfortably does).
 
-```bash
-# On main branch (after PR merge from develop)
-git checkout main
-git pull origin main
-
-# Create and push a tag
-git tag -a v1.0.0 -m "Release v1.0.0: First public release
-
-Features:
-- Full nutrition tracking with macros and calories
-- Food database with Open Food Facts integration
-- Activity tracking with Health Connect/HealthKit
-- Body measurements and progress tracking
-- Community Edition: self-hosted, fully open source
-
-See CHANGELOG.md for details."
-
-git push origin v1.0.0
-```
-
-### Step 2: Create Release on GitHub
-
-```bash
-# Using GitHub CLI (recommended)
-gh release create v1.0.0 \
-  --title "Dietry v1.0.0 — First Public Release" \
-  --notes-file CHANGELOG.md \
-  --draft=false
-
-# Or create manually at: https://github.com/tcriess/dietry/releases/new
-# - Tag: v1.0.0
-# - Title: "Dietry v1.0.0 — First Public Release"
-# - Description: Copy from CHANGELOG.md
-```
-
-### Step 3: Attach Build Artifacts (Optional)
-
-If you want to provide pre-built APKs or Linux binaries:
-
-```bash
-# Build artifacts
-flutter build apk --release --dart-define-from-file=config/ce-dev.json
-flutter build linux --release --dart-define-from-file=config/ce-dev.json
-
-# Upload to release
-gh release upload v1.0.0 \
-  build/app/outputs/flutter-app.apk \
-  build/linux/x64/release/bundle/dietry
-```
+- The build number **only ever increases** and is never reused, even for a re-cut release.
+- CE and cloud carry the **same** version.
+- **minor** for anything users gain, **patch** for fixes only. How recently the last release
+  went out is irrelevant — semver keys off *what changed*, not the calendar. Version numbers
+  are free; a misleading one is not.
 
 ---
 
-## Updating Landing Page
+## Before you start
 
-### Landing Page Location
-File: `/home/spanz/WebstormProjects/dietry-hp/index.html`
+- [ ] `flutter analyze` — no errors
+- [ ] `flutter test` — all pass
+- [ ] Everything new has been **manually verified** in the running app
+- [ ] **Database migrations are applied to production** — `./flyway.sh info` shows nothing
+      pending. Deploy order for a cloud database is always **CE first, then cloud**
+      (`docs/database/MIGRATIONS.md`)
+- [ ] `git status` is clean apart from intentional changes
 
-### Current Dev Links (to update)
+### The `pubspec.lock` trap
 
-The landing page currently points to development URLs. For first release, update these sections:
+If `pubspec_overrides.yaml` exists in this repo (the local link to `../dietry-cloud`), then
+**any** `flutter` command — including the `flutter analyze` a commit hook may run — rewrites
+`pubspec.lock` to resolve `dietry_cloud` to `../dietry-cloud`, dragging in cloud-only
+dependencies.
 
-#### 1. **Open App Button** (hero section)
-Change: `https://cloud-dev.dietry.de` → appropriate URL:
-- **Community Edition (self-hosted)**: `https://ce.dietry.de` (or your domain)
-- **Cloud Edition**: `https://app.dietry.de`
+**That lock must never be committed to CE.** The committed lock resolves `dietry_cloud` to
+`packages/dietry_cloud` (the public stub). Check before every release commit:
 
-#### 2. **GitHub Links**
-These are correct: `https://github.com/tcriess/dietry`
-
-#### 3. **Download Buttons** (in Downloads section)
-- **iOS**: `https://apps.apple.com` (update when App Store listing is ready)
-- **Android**: `https://play.google.com/store/apps/details?id=de.dietry` (update when Play Store ready)
-- **Web**: Point to appropriate domain
-- **Linux**: Keep as-is (GitHub builds)
-
-#### 4. **WIP Banner** (line 632)
-Current:
-```html
-wipBanner: '<strong>🚧 Work in Progress</strong> — Only the web app is currently set up...'
+```bash
+grep -A4 "^  dietry_cloud:" pubspec.lock | grep path:   # must be packages/dietry_cloud
+git checkout -- pubspec.lock                            # if it says ../dietry-cloud
 ```
 
-For v1.0.0, update to:
-```html
-wipBanner: '<strong>✅ v1.0.0 Released</strong> — Full Flutter app with Web, Android, iOS, and Linux support'
-```
-
-### Quick Search & Replace Guide
-
-```html
-<!-- Change these lines in index.html -->
-
-<!-- Line ~351: GitHub ribbon (correct) -->
-<!-- Line ~385, 399, 510, 530, 585: Open App URL -->
-https://cloud-dev.dietry.de → https://app.dietry.de
-
-<!-- Line ~632: WIP Banner -->
-wipBanner: '<strong>🚧 Work in Progress</strong>...' 
-→ wipBanner: '<strong>✅ v1.0.0 Released</strong> — Full multi-platform support'
-
-<!-- Line ~632: wipBanner English/Deutsch/Español translations -->
-Update all three language versions
-```
-
-### Example Minimal Edits
-
-Before:
-```html
-<a href="https://cloud-dev.dietry.de" class="btn btn-primary">
-  <i class="icon-rocket"></i>
-  <span data-i18n="heroOpenApp">Open Cloud App</span>
-</a>
-```
-
-After:
-```html
-<a href="https://app.dietry.de" class="btn btn-primary">
-  <i class="icon-rocket"></i>
-  <span data-i18n="heroOpenApp">Open Cloud App</span>
-</a>
-```
+It re-dirties itself after each commit while the override is in place, and a dirty lock also
+blocks `git checkout main` mid-release.
 
 ---
 
-## Updating CLAUDE.md
+## The release
 
-Add a new section at the top to document the release process:
+`X.Y.Z` is the new version, `N` the next build number.
+
+### 1. Changelog (CE only — cloud has no `CHANGELOG.md`)
+
+Add a section above the previous release, written for **users**, not from the commit log:
 
 ```markdown
-## Releasing a New Version
+## [X.Y.Z] — YYYY-MM-DD
 
-### Pre-Release Checklist
-See `RELEASE.md` for comprehensive pre-release steps including:
-- Code quality checks (`flutter analyze`, `flutter test`)
-- Platform testing (web, Android, iOS, Linux)
-- Database migration validation
-- Build artifact generation
+### Added
+- **Short bold claim** — what it does for you, in plain language.
 
-### Versioning
-- Version format: `MAJOR.MINOR.PATCH+BUILD`
-- Location: `pubspec.yaml` (primary source of truth)
-- Update `android/app/build.gradle` versionName/versionCode when building for Android
-
-### Creating a GitHub Release
-1. Merge develop → main via PR
-2. Create annotated tag: `git tag -a v1.0.0 -m "Release notes"`
-3. Push tag: `git push origin v1.0.0`
-4. Create release on GitHub with CHANGELOG.md
-5. Optionally attach pre-built APK/Linux binaries
-
-### Updating Landing Page
-Landing page: `/home/spanz/WebstormProjects/dietry-hp/index.html`
-
-Update these links for each release:
-- App URL buttons: `cloud-dev.dietry.de` → production URL
-- WIP banner: Update version and feature status
-- App Store buttons: Update when iOS/Android apps are published
-
-Use find-and-replace to update all instances across HTML.
+### Changed
+### Fixed
+### Security
+- Disclose real exposures plainly, and say what self-hosters must do about them.
 ```
+
+### 2. Bump the version in **both** repos
+
+```bash
+sed -i 's/^version: .*/version: X.Y.Z+N/' pubspec.yaml
+sed -i 's/^version: .*/version: X.Y.Z+N/' ../dietry-cloud/pubspec.yaml
+```
+
+### 3. Release commit on `develop`, in both repos
+
+```bash
+git add pubspec.yaml CHANGELOG.md && git commit -m "chore: release vX.Y.Z"
+git -C ../dietry-cloud add pubspec.yaml
+git -C ../dietry-cloud commit -m "chore: release vX.Y.Z"
+```
+
+Re-check `pubspec.lock` here — a commit hook may have just rewritten it.
+
+### 4. Fast-forward `main`, then tag it
+
+`main` only ever fast-forwards from `develop` — no merge commits.
+
+```bash
+git checkout main && git pull --ff-only origin main
+git merge --ff-only develop
+git tag -a vX.Y.Z -m "Release vX.Y.Z
+
+<summary — features, then any security fixes and what self-hosters must run>
+
+See CHANGELOG.md for details."
+```
+
+Tag from `main`, **after** the fast-forward. An annotated tag's SHA is the tag object, not the
+commit — verify with the peeled ref:
+
+```bash
+git rev-parse vX.Y.Z^{commit}   # must equal `git rev-parse main`
+```
+
+### 5. Push and publish — **CE first, then cloud**
+
+```bash
+git push origin main && git push origin vX.Y.Z && git push origin develop
+gh release create vX.Y.Z --title "Dietry vX.Y.Z — <headline>" --notes-file <notes>
+```
+
+Then repeat steps 4–5 in `../dietry-cloud`; `gh release create` there is what triggers the
+Play Store AAB build.
+
+### 6. Ship the Android build
+
+Wait for `Build & Release (Cloud Edition)` on the **release** run to go green, then:
+
+```bash
+gh release download vX.Y.Z --repo tcriess/dietry-cloud --pattern '*.aab'
+```
+
+Upload the `.aab` in the Play Console. Nothing does this for you.
+
+### 7. Afterwards
+
+- Both repos back on `develop`.
+- Check `ce.dietry.de` and `app.dietry.de` are serving the new build.
+- Update the landing page (`/home/spanz/WebstormProjects/dietry-hp/index.html`) if the release
+  changes what it advertises — version banner and download links, in **all three** languages
+  (en, de, es).
 
 ---
 
-## Release Timeline Example
-
-### Week 1: Final Testing
-- Run through pre-release checklist
-- Test on actual devices
-- Gather feedback from testers
-
-### Week 2: Prepare Release
-- Update version in pubspec.yaml
-- Write CHANGELOG.md
-- Update landing page links
-- Create PR: develop → main
-
-### Week 3: Release
-- Merge PR to main
-- Create git tag `v1.0.0`
-- Create GitHub release with artifacts
-- Deploy to production domains
-- Announce on social media / communities
-
----
-
-## Checklist Summary
+## Checklist
 
 ```
-Pre-Release:
-  ☐ flutter analyze (no errors)
-  ☐ flutter test (all pass)
-  ☐ flutter format lib/
-  ☐ Test on web, Android, iOS, Linux
-  ☐ Review database migrations
-  ☐ Update README.md, CLAUDE.md, CHANGELOG.md
+Pre-flight:
+  ☐ flutter analyze / flutter test clean
+  ☐ new features manually verified
+  ☐ prod migrations applied (CE first, then cloud)
+  ☐ pubspec.lock points at packages/dietry_cloud
 
-Version:
-  ☐ Update pubspec.yaml to 1.0.0+1
-  ☐ Update android/app/build.gradle
-  ☐ Create commit: "chore: bump version to 1.0.0"
+Release:
+  ☐ CHANGELOG.md — new section (CE)
+  ☐ pubspec.yaml bumped in BOTH repos, build number increased
+  ☐ "chore: release vX.Y.Z" on develop in both
+  ☐ main fast-forwarded, annotated tag on main, peeled SHA verified
+  ☐ push main + tag + develop, both repos
+  ☐ gh release create — CE first, then cloud
 
-GitHub Release:
-  ☐ Create annotated tag: v1.0.0
-  ☐ Push tag to GitHub
-  ☐ Create release with CHANGELOG.md
-  ☐ (Optional) Attach APK/Linux binaries
-
-Landing Page:
-  ☐ Update dev URLs to production URLs
-  ☐ Update WIP banner to release status
-  ☐ Update all language versions (en, de, es)
-  ☐ Test links work correctly
+After:
+  ☐ release workflow green in both repos
+  ☐ .aab downloaded from the cloud release, uploaded to the Play Console
+  ☐ ce.dietry.de / app.dietry.de serving the new build
+  ☐ landing page updated if needed
 ```
 
 ---
@@ -323,6 +201,5 @@ Landing Page:
 ## Resources
 
 - [Semantic Versioning](https://semver.org/)
-- [Flutter Build Documentation](https://docs.flutter.dev/deployment)
-- [GitHub Releases Documentation](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
-- [Android Versioning Guide](https://developer.android.com/studio/publish/versioning)
+- [Keep a Changelog](https://keepachangelog.com/)
+- Migrations runbook: `docs/database/MIGRATIONS.md`
