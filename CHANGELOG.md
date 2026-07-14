@@ -27,6 +27,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] — 2026-07-14
+
+### Added
+- **Gear tracking** — keep track of the shoes, bikes and other equipment you train with. Attach gear to an activity by hand or let it attach itself: give a pair of shoes a default activity type and every imported run picks them up automatically. Set a replacement budget ("replace at 700 km") and Dietry counts down to it, including any distance the item had before you started tracking.
+- **Gear on the Reports page** — a new card showing what you actually trained on in the selected period, and how far each item is through its wear budget. Retired gear stays out of the way unless you used it.
+- **Describe your meal** — log a meal by describing it in plain language ("a bowl of porridge with a banana and a coffee") instead of searching for each item in turn. Type it or dictate it; Dietry breaks the description into separate entries with portions, and you review them before anything is saved.
+- **On-device AI meal parsing** (Pro, mobile) — an optional language model, downloaded once (~230 MB), takes over the descriptions the built-in parser cannot make sense of, and can add an unrecognised food to the database for you. It runs entirely on your phone: no part of what you eat is sent anywhere.
+- **Nutrition uncertainty** — a logged entry now records how precisely it is known (a weighed portion is not a guessed one), and the Overview draws the resulting ± range as an error bar over the calorie and macro figures. An estimate now looks like an estimate instead of a hard number.
+
+### Changed
+- **Food search survives typos and accents** — "brokoli" finds broccoli, "jalapeno" finds jalapeño.
+- **Search results are ranked by specificity** — searching for a plain ingredient no longer buries it under elaborate dishes that merely contain it ("brokoli" used to return a BBQ salmon meal).
+- **Under the hood** — the database schema is now managed with Flyway instead of hand-numbered scripts, so a self-hosted instance can be brought up to date with one command and its state verified against the repo.
+
+### Fixed
+- **Guest mode was broken in production** — the anonymous role was missing its grants, so trying the app without an account failed instead of just working.
+- **German portion words leaked into the food search** — describing "eine Scheibe Brot" searched for "Scheibe Brot" rather than for bread.
+
+### Security
+- **Four database views bypassed row-level security** — created without `security_invoker`, they ran as their owner rather than as the querying user, which allowed a logged-in user to read rows belonging to other users through those views. The views now run as the caller, and RLS applies to them as it always did to the underlying tables. Self-hosters should apply the pending migrations (`./flyway.sh migrate`) — this one is not optional.
+- **Flyway's own history tables were writable by any logged-in user** — a user could have rewritten or deleted the migration history. They are now owned by the migration role and readable only where necessary.
+
+---
+
 ## [1.2.0] — 2026-07-05
 
 ### Fixed
