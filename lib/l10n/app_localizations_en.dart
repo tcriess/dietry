@@ -1407,6 +1407,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportsUpsellPro => 'Available for Pro users';
 
   @override
+  String get reportsGear => 'Gear';
+
+  @override
+  String get reportsGearUnused => 'Not used in this period';
+
+  @override
+  String reportsGearLifetime(Object km) {
+    return '$km km lifetime';
+  }
+
+  @override
+  String reportsGearWear(Object total, Object used) {
+    return '$used of $total km lifetime';
+  }
+
+  @override
   String get reportsLoading => 'Loading reports…';
 
   @override

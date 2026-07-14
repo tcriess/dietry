@@ -35,6 +35,24 @@ extension _RangeExt on ReportRange {
     };
   }
 
+  /// Same length of window as [dates], but ending today instead of yesterday.
+  ///
+  /// Excluding today is right for the daily curves — a half-finished day drags
+  /// the average down and makes the chart lie. It is wrong for cards that total
+  /// discrete, completed events: a run logged this morning belongs in "this
+  /// week's gear usage". The window is *shifted*, not extended, so a "week"
+  /// stays seven days and the totals stay comparable between reloads.
+  (DateTime?, DateTime) get datesThroughToday {
+    final now = DateTime.now();
+    final to = DateTime(now.year, now.month, now.day);
+    return switch (this) {
+      ReportRange.week => (to.subtract(const Duration(days: 6)), to),
+      ReportRange.month => (to.subtract(const Duration(days: 29)), to),
+      ReportRange.year => (to.subtract(const Duration(days: 364)), to),
+      ReportRange.allTime => (null, to),
+    };
+  }
+
   /// Group daily points into display buckets.
   /// Week/month → daily; year → weekly avg; allTime → monthly avg.
   String bucketKey(DateTime d) => switch (this) {
@@ -83,6 +101,9 @@ class _ReportsData {
   final List<FoodFrequencyItem> mostEatenFoods;
   final List<NutritionGoal> goalHistory;
 
+  /// Empty when the user owns no gear — the card is then not rendered at all.
+  final List<GearReportItem> gear;
+
   /// Current body data — used to compute the true energy-balance maintenance
   /// base (BMR/TDEE) for the cloud "Kalorienbilanz" chart. Null in CE, guest
   /// mode, or when the user hasn't entered body data.
@@ -94,6 +115,7 @@ class _ReportsData {
     required this.weight,
     this.mostEatenFoods = const [],
     this.goalHistory = const [],
+    this.gear = const [],
     this.bodyData,
   });
 }
@@ -191,6 +213,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     final (from, to) = _range.dates;
+    final (gearFrom, gearTo) = _range.datesThroughToday;
     final now = DateTime.now();
     final todayDate = DateTime(now.year, now.month, now.day);
 
@@ -205,6 +228,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         UserBodyDataService(widget.dbService!).getCurrentBodyData()
       else
         Future<UserBodyData?>.value(null),
+      // Gear counts today: it totals completed activities, not a daily curve.
+      _svc.getGearReport(gearFrom, gearTo),
     ]);
 
     final result = _ReportsData(
@@ -214,6 +239,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       mostEatenFoods: results[3] as List<FoodFrequencyItem>,
       goalHistory: results[4] as List<NutritionGoal>,
       bodyData: results[5] as UserBodyData?,
+      gear: results[6] as List<GearReportItem>,
     );
     _lastData = result;
     return result;
@@ -457,6 +483,14 @@ class _ReportsBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _MostEatenFoodsCard(foods: data.mostEatenFoods),
+        // Users without gear never see this card.
+        if (data.gear.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _ReportCard(
+            title: l.reportsGear,
+            child: _GearReportList(items: data.gear),
+          ),
+        ],
 
         // ── Cloud-only charts (activity, balance, meal timing, goal compliance)
         const SizedBox(height: 20),
@@ -532,6 +566,122 @@ class _ReportCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Gear ──────────────────────────────────────────────────────────────────────
+
+/// Per gear item: what it did in the selected range (headline), and where its
+/// lifetime distance stands against its wear budget (bar + caption).
+class _GearReportList extends StatelessWidget {
+  final List<GearReportItem> items;
+
+  const _GearReportList({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (i, item) in items.indexed) ...[
+          if (i > 0) const Divider(height: 24),
+          Row(
+            children: [
+              Icon(item.gear.category.icon,
+                  size: 20, color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  item.gear.name,
+                  style: theme.textTheme.titleSmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (item.gear.retired)
+                Text(l.gearRetired,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    )),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.usedInRange
+                ? l.gearStats(
+                    item.rangeKm.toStringAsFixed(1),
+                    (item.rangeMinutes / 60).toStringAsFixed(1),
+                    item.rangeCount,
+                  )
+                : l.reportsGearUnused,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: item.usedInRange
+                  ? null
+                  : theme.colorScheme.onSurfaceVariant,
+              fontStyle: item.usedInRange ? null : FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 6),
+          _GearLifetime(item: item),
+        ],
+      ],
+    );
+  }
+}
+
+class _GearLifetime extends StatelessWidget {
+  final GearReportItem item;
+
+  const _GearLifetime({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final km = item.lifetime.totalDistanceKm;
+    final wear = item.lifetime.wearFraction(item.gear.retireAtKm);
+
+    // No wear budget set — nothing to measure against, so just state the total.
+    if (wear == null) {
+      return Text(
+        l.reportsGearLifetime(km.toStringAsFixed(0)),
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LinearProgressIndicator(
+          value: wear.clamp(0.0, 1.0),
+          minHeight: 6,
+          // Same thresholds as the gear screen: orange approaching the budget,
+          // red once it is spent.
+          color: wear >= 1.0
+              ? Colors.red
+              : wear >= 0.8
+                  ? Colors.orange
+                  : theme.colorScheme.primary,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          // Not the gear screen's `gearWearBudget`: on a page with a range
+          // selector a bare "480 of 700 km" reads as a figure for the selected
+          // range, and directly contradicts the "not used in this period" line
+          // above it. The wear budget is always a lifetime number and has to
+          // say so here.
+          l.reportsGearWear(
+            km.toStringAsFixed(0),
+            item.gear.retireAtKm!.toStringAsFixed(0),
+          ),
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }

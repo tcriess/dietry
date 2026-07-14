@@ -1,3 +1,5 @@
+import '../models/gear.dart';
+import 'gear_service.dart';
 import 'neon_database_service.dart';
 
 // ── Data classes ──────────────────────────────────────────────────────────────
@@ -51,6 +53,28 @@ class WeightEntry {
   final double? bodyFatPct;
 
   const WeightEntry({required this.date, required this.weight, this.bodyFatPct});
+}
+
+/// One gear item on the reports page: what it did in the selected range, and
+/// what it has done in its life. The two are deliberately kept apart — the
+/// range answers "what did I train on", the lifetime answers "when do I replace
+/// this", and only the latter may include [Gear.initialDistanceKm].
+class GearReportItem {
+  final Gear gear;
+  final GearTotals lifetime;
+  final double rangeKm;
+  final int rangeMinutes;
+  final int rangeCount;
+
+  const GearReportItem({
+    required this.gear,
+    required this.lifetime,
+    this.rangeKm = 0,
+    this.rangeMinutes = 0,
+    this.rangeCount = 0,
+  });
+
+  bool get usedInRange => rangeCount > 0;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -213,4 +237,105 @@ class ReportsService {
         .toList();
   }
 
+  // ── Gear (CE) ──────────────────────────────────────────────────────────────
+
+  /// Per-gear usage in [from]..[to], paired with lifetime totals.
+  ///
+  /// The range half is aggregated here rather than in SQL (same as
+  /// [getMostEatenFoods]); the lifetime half comes from the `get_gear_totals()`
+  /// RPC, because it must span the user's whole history and include the
+  /// pre-tracking `initial_distance_km`.
+  ///
+  /// Empty when the user owns no gear — the reports page then omits the card
+  /// entirely instead of showing an empty one.
+  Future<List<GearReportItem>> getGearReport(
+      DateTime? from, DateTime to) async {
+    if (!await _tok()) return [];
+    final uid = _uid;
+    if (uid == null) return [];
+
+    final gearSvc = GearService(_db);
+    final gear = await gearSvc.getGear();
+    if (gear.isEmpty) return [];
+
+    // `to` is an inclusive date, start_time a timestamp — bound with the
+    // exclusive next midnight so the last day's activities are not cut off.
+    final toExclusive = DateTime(to.year, to.month, to.day)
+        .add(const Duration(days: 1));
+
+    var q = _db.client
+        .from('physical_activities')
+        .select('gear_id,distance_km,duration_minutes')
+        .eq('user_id', uid)
+        .not('gear_id', 'is', null)
+        .lt('start_time', _ds(toExclusive));
+    if (from != null) q = q.gte('start_time', _ds(from));
+
+    final results = await Future.wait<dynamic>([gearSvc.getTotals(), q]);
+
+    return buildGearReport(
+      gear: gear,
+      lifetime: results[0] as Map<String, GearTotals>,
+      activityRows: (results[1] as List).cast<Map<String, dynamic>>(),
+    );
+  }
+
+}
+
+// ── Gear report assembly (pure) ───────────────────────────────────────────────
+
+/// Folds the raw ingredients of the gear report into the rows the card renders:
+/// the user's [gear], their [lifetime] totals keyed by gear id, and the
+/// [activityRows] of the selected range (`gear_id`, `distance_km`,
+/// `duration_minutes` — exactly the columns [ReportsService.getGearReport]
+/// selects).
+///
+/// Pure and separated from the fetch so the aggregation, the retired-gear rule
+/// and the sort order can be tested without a database.
+List<GearReportItem> buildGearReport({
+  required List<Gear> gear,
+  required Map<String, GearTotals> lifetime,
+  required Iterable<Map<String, dynamic>> activityRows,
+}) {
+  final Map<String, ({double km, int minutes, int count})> agg = {};
+  for (final row in activityRows) {
+    final gid = row['gear_id'] as String?;
+    if (gid == null) continue;
+    final cur = agg[gid] ?? (km: 0.0, minutes: 0, count: 0);
+    agg[gid] = (
+      // Distance is null for gym work; such an activity still counts as a use.
+      km: cur.km + ((row['distance_km'] as num?)?.toDouble() ?? 0),
+      minutes: cur.minutes + ((row['duration_minutes'] as num?)?.toInt() ?? 0),
+      count: cur.count + 1,
+    );
+  }
+
+  final items = <GearReportItem>[];
+  for (final g in gear) {
+    final id = g.id;
+    if (id == null) continue;
+    final r = agg[id];
+    // Retired gear only earns a row if it was actually used in the range;
+    // otherwise the card fills up with things the user has already replaced.
+    if (g.retired && r == null) continue;
+    items.add(GearReportItem(
+      gear: g,
+      lifetime: lifetime[id] ?? GearTotals(gearId: id),
+      rangeKm: r?.km ?? 0,
+      rangeMinutes: r?.minutes ?? 0,
+      rangeCount: r?.count ?? 0,
+    ));
+  }
+
+  // Used-in-range first (a gym item with 0 km but 5 sessions still outranks an
+  // untouched pair of shoes), then by distance, then by time, then by lifetime.
+  items.sort((a, b) {
+    if (a.usedInRange != b.usedInRange) return a.usedInRange ? -1 : 1;
+    final byKm = b.rangeKm.compareTo(a.rangeKm);
+    if (byKm != 0) return byKm;
+    final byMin = b.rangeMinutes.compareTo(a.rangeMinutes);
+    if (byMin != 0) return byMin;
+    return b.lifetime.totalDistanceKm.compareTo(a.lifetime.totalDistanceKm);
+  });
+  return items;
 }

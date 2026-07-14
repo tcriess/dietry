@@ -2674,6 +2674,30 @@ abstract class AppLocalizations {
   /// **'Verfügbar für Pro-Nutzer'**
   String get reportsUpsellPro;
 
+  /// No description provided for @reportsGear.
+  ///
+  /// In de, this message translates to:
+  /// **'Ausrüstung'**
+  String get reportsGear;
+
+  /// No description provided for @reportsGearUnused.
+  ///
+  /// In de, this message translates to:
+  /// **'In diesem Zeitraum nicht genutzt'**
+  String get reportsGearUnused;
+
+  /// No description provided for @reportsGearLifetime.
+  ///
+  /// In de, this message translates to:
+  /// **'{km} km gesamt'**
+  String reportsGearLifetime(Object km);
+
+  /// No description provided for @reportsGearWear.
+  ///
+  /// In de, this message translates to:
+  /// **'{used} von {total} km gesamt'**
+  String reportsGearWear(Object total, Object used);
+
   /// No description provided for @reportsLoading.
   ///
   /// In de, this message translates to:
