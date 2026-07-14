@@ -44,7 +44,10 @@ class GearService {
       final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
       if (!tokenValid) return {};
 
-      final response = await _db.client.rpc('get_gear_totals');
+      // `params: {}` is required even though the function takes no arguments:
+      // without it postgrest posts a literal `null` body, which PostgREST
+      // rejects with PGRST102 ("invalid type: null, expected a map").
+      final response = await _db.client.rpc('get_gear_totals', params: const {});
       final rows = (response as List).cast<Map<String, dynamic>>();
       return {
         for (final row in rows)
