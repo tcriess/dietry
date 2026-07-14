@@ -27,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] — 2026-07-14
+
+### Fixed
+- **Cloud Edition web app** — the on-device AI meal parser is a native runtime, and it was being compiled into the web build, which cannot load it. The web build failed, so 1.3.0 never reached the Cloud web app. On the web the AI parser is simply not offered now, and "describe your meal" uses the built-in parser instead.
+
+The Community Edition is unaffected in every respect — it never bundled that runtime. The version bump only keeps both editions in lockstep.
+
+---
+
 ## [1.3.0] — 2026-07-14
 
 ### Added
