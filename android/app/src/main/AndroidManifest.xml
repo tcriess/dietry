@@ -13,6 +13,11 @@
 
     <!-- Voice input for the "describe your meal" flow -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- RECORD_AUDIO makes Google Play imply a *required* microphone feature,
+         which filters the app off devices Play deems mic-less (and hides it from
+         search + blocks updates there). Voice input degrades gracefully, so mark
+         the feature optional to keep the app available everywhere. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- On-device LLM model download (Cloud/Pro; cactus runtime) -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
