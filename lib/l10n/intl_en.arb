@@ -645,6 +645,7 @@
   "reportsGearUnused": "Not used in this period",
   "reportsGearLifetime": "{km} km lifetime",
   "reportsGearWear": "{used} of {total} km lifetime",
+  "reportsGearWearOver": "Wear budget used up — {km} km lifetime (budget {total} km)",
   "reportsLoading": "Loading reports…",
   "reportsExportTooltip": "Export as CSV",
   "reportsExportSuccess": "Export successful",

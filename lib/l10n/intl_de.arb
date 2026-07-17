@@ -645,6 +645,7 @@
   "reportsGearUnused": "In diesem Zeitraum nicht genutzt",
   "reportsGearLifetime": "{km} km gesamt",
   "reportsGearWear": "{used} von {total} km gesamt",
+  "reportsGearWearOver": "Verschleißbudget aufgebraucht — {km} km gesamt (Budget {total} km)",
   "reportsLoading": "Berichte werden geladen…",
   "reportsExportTooltip": "Als CSV exportieren",
   "reportsExportSuccess": "Export erfolgreich",

@@ -2698,6 +2698,12 @@ abstract class AppLocalizations {
   /// **'{used} von {total} km gesamt'**
   String reportsGearWear(Object total, Object used);
 
+  /// No description provided for @reportsGearWearOver.
+  ///
+  /// In de, this message translates to:
+  /// **'Verschleißbudget aufgebraucht — {km} km gesamt (Budget {total} km)'**
+  String reportsGearWearOver(Object km, Object total);
+
   /// No description provided for @reportsLoading.
   ///
   /// In de, this message translates to:

@@ -1438,6 +1438,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String reportsGearWearOver(Object km, Object total) {
+    return 'Presupuesto de desgaste agotado — $km km en total (presupuesto $total km)';
+  }
+
+  @override
   String get reportsLoading => 'Cargando informes…';
 
   @override

@@ -1423,6 +1423,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String reportsGearWearOver(Object km, Object total) {
+    return 'Wear budget used up — $km km lifetime (budget $total km)';
+  }
+
+  @override
   String get reportsLoading => 'Loading reports…';
 
   @override

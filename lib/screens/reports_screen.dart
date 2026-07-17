@@ -673,11 +673,18 @@ class _GearLifetime extends StatelessWidget {
           // selector a bare "480 of 700 km" reads as a figure for the selected
           // range, and directly contradicts the "not used in this period" line
           // above it. The wear budget is always a lifetime number and has to
-          // say so here.
-          l.reportsGearWear(
-            km.toStringAsFixed(0),
-            item.gear.retireAtKm!.toStringAsFixed(0),
-          ),
+          // say so here. And once lifetime distance has passed the budget,
+          // "1000 of 500 km" reads as an inverted "used of total"; say the
+          // budget is spent instead of showing a nonsensical fraction.
+          wear >= 1.0
+              ? l.reportsGearWearOver(
+                  km.toStringAsFixed(0),
+                  item.gear.retireAtKm!.toStringAsFixed(0),
+                )
+              : l.reportsGearWear(
+                  km.toStringAsFixed(0),
+                  item.gear.retireAtKm!.toStringAsFixed(0),
+                ),
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),

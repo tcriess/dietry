@@ -1428,6 +1428,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String reportsGearWearOver(Object km, Object total) {
+    return 'Verschleißbudget aufgebraucht — $km km gesamt (Budget $total km)';
+  }
+
+  @override
   String get reportsLoading => 'Berichte werden geladen…';
 
   @override
