@@ -476,7 +476,206 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         return Colors.green.shade100;
     }
   }
-  
+
+  // Bar colors — kept in sync with the daily nutrition overview (calories /
+  // protein / fat / carbs) so the whole app reads as one system.
+  static const Color _calorieColor = Colors.deepPurple;
+  static const Color _proteinColor = Colors.red;
+  static const Color _fatColor = Colors.orange;
+  static const Color _carbsColor = Colors.amber;
+
+  /// One food entry rendered as a card: the name spans the full first row, a
+  /// prominent full-width calories bar comes next (the headline metric), and the
+  /// last row carries the amount plus the thinner P/F/C macro bars. Every bar is
+  /// filled to this entry's share of the day's goal for that nutrient.
+  /// [interactive] adds tap-to-edit, long-press move/copy and the trailing action
+  /// buttons; the read-only guest list passes false.
+  Widget _buildEntryCard(BuildContext context, FoodEntry entry,
+      {required bool interactive}) {
+    final l = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final macroOnly = _store.goal?.macroOnly == true;
+
+    final content = Padding(
+      padding: EdgeInsets.fromLTRB(12, 10, interactive ? 4 : 12, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildEntryLeading(entry, entry.mealType),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Row 1: full-width name.
+                Text(
+                  entry.name,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                // Row 2: the prominent calories bar (hidden in macro-only mode).
+                if (!macroOnly) ...[
+                  const SizedBox(height: 8),
+                  _labeledBar(
+                    context,
+                    '${entry.calories.toStringAsFixed(0)} kcal',
+                    entry.calories,
+                    _store.goal?.calories,
+                    _calorieColor,
+                    height: 7,
+                    labelStyle: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _calorieColor,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                // Row 3: amount + macro bars (+ trailing actions if interactive).
+                Row(
+                  children: [
+                    Text(
+                      _formatEntryAmount(entry),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.hintColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildMacroBars(context, entry)),
+                    if (interactive) ...[
+                      if (AppFeatures.microNutrients)
+                        IconButton(
+                          icon: const Icon(Icons.science_outlined, size: 20),
+                          onPressed: () {
+                            final db = widget.dbService;
+                            if (db == null) return;
+                            final jwt = db.jwt;
+                            final userId = db.userId;
+                            if (jwt == null || userId == null) return;
+                            premiumFeatures.showMicroNutrientsSheet(
+                              context: context,
+                              entryId: entry.id,
+                              entryName: entry.name,
+                              userId: userId,
+                              authToken: jwt,
+                              apiUrl: NeonDatabaseService.dataApiUrl,
+                            );
+                          },
+                          tooltip: 'Mikronährstoffe',
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(
+                              minWidth: 32, minHeight: 32),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        color: Colors.red.shade400,
+                        onPressed: () => _deleteEntry(entry),
+                        tooltip: l.delete,
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        constraints:
+                            const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      clipBehavior: Clip.antiAlias,
+      child: interactive
+          ? InkWell(
+              onTap: () => _editEntry(entry),
+              onLongPress: () => _moveCopyEntry(entry),
+              child: content,
+            )
+          : content,
+    );
+  }
+
+  /// The macro bars for one entry. When a daily goal exists each bar is filled
+  /// to the entry's fraction of that macro's target; without a goal (or a zero
+  /// target) the macro shows its value over an empty bar. Fat and carbs are
+  /// hidden in protein-only mode.
+  Widget _buildMacroBars(BuildContext context, FoodEntry entry) {
+    final goal = _store.goal;
+    final proteinOnly = goal?.proteinOnlyEffective == true;
+
+    final bars = <Widget>[
+      _macroBar(context, 'P', entry.protein, goal?.protein, _proteinColor),
+      if (!proteinOnly) ...[
+        _macroBar(context, 'F', entry.fat, goal?.fat, _fatColor),
+        _macroBar(context, 'C', entry.carbs, goal?.carbs, _carbsColor),
+      ],
+    ];
+
+    return Row(
+      children: [
+        for (var i = 0; i < bars.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(child: bars[i]),
+        ],
+      ],
+    );
+  }
+
+  /// A single labeled macro bar: `letter + grams` over a thin progress bar
+  /// filled to [grams] / [goalGrams] (empty when no positive goal is set).
+  Widget _macroBar(BuildContext context, String letter, double grams,
+      double? goalGrams, Color color) {
+    return _labeledBar(
+      context,
+      '$letter ${grams.toStringAsFixed(0)}g',
+      grams,
+      goalGrams,
+      color,
+    );
+  }
+
+  /// A labeled progress bar: [label] over a rounded bar filled to
+  /// [value] / [goal] (empty when no positive goal is set). Shared by the
+  /// calories bar and the macro bars so they stay visually consistent.
+  Widget _labeledBar(BuildContext context, String label, double value,
+      double? goal, Color color,
+      {double height = 5, TextStyle? labelStyle}) {
+    final theme = Theme.of(context);
+    final double fraction =
+        (goal != null && goal > 0) ? (value / goal).clamp(0.0, 1.0) : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.clip,
+          style: labelStyle ??
+              theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+        ),
+        const SizedBox(height: 3),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: height,
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -555,11 +754,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                   itemCount: entries.length,
                   itemBuilder: (context, index) {
                     final entry = entries[index];
-                    return ListTile(
-                      title: Text(entry.name),
-                      subtitle: Text('${entry.amount} ${entry.unit}'),
-                      trailing: Text('${entry.calories.toStringAsFixed(0)} kcal'),
-                    );
+                    return _buildEntryCard(context, entry, interactive: false);
                   },
                 ),
             ],
@@ -757,81 +952,8 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                   onDismissed: (direction) {
                                     _deleteEntry(entry);
                                   },
-                                  child: Card(
-                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                    child: ListTile(
-                                      leading: _buildEntryLeading(entry, mealType),
-                                      title: Text(entry.name),
-                                      subtitle: Text(
-                                        _store.goal?.macroOnly == true
-                                            ? _formatEntryAmount(entry)
-                                            : '${_formatEntryAmount(entry)} • ${entry.calories.toStringAsFixed(0)} kcal',
-                                      ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // Makros
-                                          Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment: CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                'P: ${entry.protein.toStringAsFixed(0)}g',
-                                                style: Theme.of(context).textTheme.bodySmall,
-                                              ),
-                                              Text(
-                                                'F: ${entry.fat.toStringAsFixed(0)}g',
-                                                style: Theme.of(context).textTheme.bodySmall,
-                                              ),
-                                              Text(
-                                                'C: ${entry.carbs.toStringAsFixed(0)}g',
-                                                style: Theme.of(context).textTheme.bodySmall,
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 4),
-                                          // Mikronährstoffe (Premium)
-                                          if (AppFeatures.microNutrients)
-                                            IconButton(
-                                              icon: const Icon(Icons.science_outlined, size: 20),
-                                              onPressed: () {
-                                                final db = widget.dbService;
-                                                if (db == null) return;
-                                                final jwt = db.jwt;
-                                                final userId = db.userId;
-                                                if (jwt == null || userId == null) return;
-                                                premiumFeatures.showMicroNutrientsSheet(
-                                                  context: context,
-                                                  entryId: entry.id,
-                                                  entryName: entry.name,
-                                                  userId: userId,
-                                                  authToken: jwt,
-                                                  apiUrl: NeonDatabaseService.dataApiUrl,
-                                                );
-                                              },
-                                              tooltip: 'Mikronährstoffe',
-                                              padding: EdgeInsets.zero,
-                                              constraints: const BoxConstraints(
-                                                minWidth: 32, minHeight: 32,
-                                              ),
-                                            ),
-                                          // Löschen-Button
-                                          IconButton(
-                                            icon: const Icon(Icons.delete_outline, size: 20),
-                                            color: Colors.red.shade400,
-                                            onPressed: () => _deleteEntry(entry),
-                                            tooltip: l.delete,
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(
-                                              minWidth: 32, minHeight: 32,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      onTap: () => _editEntry(entry),
-                                      onLongPress: () => _moveCopyEntry(entry),
-                                    ),
-                                  ),
+                                  child: _buildEntryCard(context, entry,
+                                      interactive: true),
                                 )),
 
                                 // Repeat chips — also offered when the section
