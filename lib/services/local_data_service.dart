@@ -642,6 +642,29 @@ class LocalDataService {
     }
   }
 
+  /// Earliest tracked day for this user across goals, food entries and
+  /// activities, or null if nothing is tracked yet. Used to bound how far back
+  /// day-navigation may go. `valid_from`/`entry_date` are `YYYY-MM-DD` and
+  /// `start_time` is a full timestamp, but the date prefix dominates the string
+  /// comparison so MIN still yields the earliest day.
+  Future<DateTime?> getFirstTrackedDate() async {
+    if (!_initialized || _db == null) return null;
+    try {
+      final rows = await _db!.rawQuery('''
+        SELECT MIN(d) AS first FROM (
+          SELECT MIN(valid_from) AS d FROM nutrition_goals WHERE user_id = ?
+          UNION ALL SELECT MIN(entry_date) FROM food_entries WHERE user_id = ?
+          UNION ALL SELECT MIN(start_time) FROM physical_activities WHERE user_id = ?
+        )
+      ''', [_userId, _userId, _userId]);
+      final value = rows.isNotEmpty ? rows.first['first'] as String? : null;
+      return value == null ? null : DateTime.tryParse(value);
+    } catch (e) {
+      appLogger.e('❌ Error computing first tracked date: $e');
+      return null;
+    }
+  }
+
   Future<NutritionGoal> upsertGoal(NutritionGoal goal) async {
     if (!_initialized) throw Exception('LocalDataService not initialized');
     try {

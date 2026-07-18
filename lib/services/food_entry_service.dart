@@ -46,6 +46,31 @@ class FoodEntryService {
     }
   }
 
+  /// Earliest `entry_date` across all of the user's food entries, or null if
+  /// none. Used to bound how far back day-navigation may go.
+  Future<DateTime?> getEarliestEntryDate() async {
+    try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return null;
+      final userId = _db.userId;
+      if (userId == null) return null;
+
+      final response = await _db.client
+          .from('food_entries')
+          .select('entry_date')
+          .eq('user_id', userId)
+          .order('entry_date', ascending: true)
+          .limit(1)
+          .maybeSingle();
+
+      final value = response?['entry_date'] as String?;
+      return value == null ? null : DateTime.tryParse(value);
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Ermitteln des frühesten Entry-Datums: $e');
+      return null;
+    }
+  }
+
   /// Holt leichte Stubs (id + updated_at) für Delta-Sync-Vergleich.
   /// Deutlich weniger Daten als ein voller Fetch.
   Future<List<({String id, DateTime updatedAt})>> getFoodEntryStubs(

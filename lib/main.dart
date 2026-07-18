@@ -2541,11 +2541,17 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   final _tabReportsKey = GlobalKey();
   final _fabAddFoodKey = GlobalKey();
 
-  /// True when navigating back one day would land on a date that has a
-  /// nutrition goal — i.e. when the back-chevron should be shown. Computed
-  /// asynchronously by [_refreshCanGoBack]; defaults to false until the
+  /// True when navigating back one day would land on a date at or after the
+  /// user's first tracked day — i.e. when the back-chevron should be shown.
+  /// Computed asynchronously by [_refreshCanGoBack]; defaults to false until the
   /// first check completes.
   bool _canGoBack = false;
+
+  /// Earliest day the user has any data (goal, food entry or activity),
+  /// normalized to midnight. Back-navigation is bounded by this: you can browse
+  /// empty days within your history but not before you started tracking. Null
+  /// until [_ensureFirstTrackedDay] resolves it (or when nothing is tracked).
+  DateTime? _firstTrackedDay;
 
   // Day-precise snapshot of *today's* state, used to decide whether the
   // food/water reminders should fire. Reminders are always about today, so this
@@ -2707,6 +2713,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         _reportsRefreshTrigger.value++;
       }
     }
+    // New data (HC imports, flushed offline writes) may predate the current
+    // earliest tracked day — recompute the back-navigation floor.
+    _invalidateFirstTrackedDay();
+    await _refreshCanGoBack();
   }
 
   void _showWaterReminder(String title, String body) {
@@ -3233,24 +3243,66 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     await _refreshCanGoBack();
   }
 
-  /// Recomputes [_canGoBack] for the current [_selectedDay]: true iff a
-  /// nutrition goal exists for the previous day. Mirrors the validation in
-  /// [_changeDay] so that the back-chevron is hidden exactly when navigating
-  /// back would have been refused.
+  /// Recomputes [_canGoBack] for the current [_selectedDay]: true iff the
+  /// previous day is at or after the user's first tracked day. Mirrors the
+  /// validation in [_changeDay] so that the back-chevron is hidden exactly when
+  /// navigating back would have been refused.
   Future<void> _refreshCanGoBack() async {
-    final previousDay = _selectedDay.subtract(const Duration(days: 1));
-    bool hasGoal;
-    if (widget.dbService != null) {
-      hasGoal = await NutritionGoalService(widget.dbService!)
-          .hasGoalForDate(previousDay);
-    } else {
-      hasGoal =
-          (await LocalDataService.instance.getGoalForDate(previousDay)) != null;
-    }
+    await _ensureFirstTrackedDay();
+    final first = _firstTrackedDay;
+    final previousDay = DateUtils.dateOnly(
+        _selectedDay.subtract(const Duration(days: 1)));
+    // Nothing tracked yet → nowhere to go back to.
+    final canGoBack = first != null && !previousDay.isBefore(first);
     if (!mounted) return;
-    if (_canGoBack != hasGoal) {
-      setState(() => _canGoBack = hasGoal);
+    if (_canGoBack != canGoBack) {
+      setState(() => _canGoBack = canGoBack);
     }
+  }
+
+  /// Resolves [_firstTrackedDay] once (cached). It only shrinks when data is
+  /// added to an earlier day than any seen so far; callers that create such
+  /// data reset it via [_invalidateFirstTrackedDay].
+  Future<void> _ensureFirstTrackedDay() async {
+    if (_firstTrackedDay != null) return;
+    _firstTrackedDay = await _computeFirstTrackedDay();
+  }
+
+  /// Forces [_firstTrackedDay] to be recomputed on the next check. Call after
+  /// creating data (a goal, entry or activity) that may predate the current
+  /// earliest day.
+  void _invalidateFirstTrackedDay() => _firstTrackedDay = null;
+
+  /// The earliest day (normalized to midnight) the user has any goal, food
+  /// entry or activity — or null when nothing is tracked yet.
+  Future<DateTime?> _computeFirstTrackedDay() async {
+    DateTime? earliest;
+    DateTime? earlier(DateTime? a, DateTime? b) {
+      if (a == null) return b;
+      if (b == null) return a;
+      return a.isBefore(b) ? a : b;
+    }
+
+    try {
+      final db = widget.dbService;
+      if (db != null) {
+        final results = await Future.wait([
+          NutritionGoalService(db).getEarliestGoalDate(),
+          FoodEntryService(db).getEarliestEntryDate(),
+          PhysicalActivityService(db).getEarliestActivityDate(),
+        ]);
+        for (final d in results) {
+          earliest = earlier(earliest, d);
+        }
+      } else {
+        earliest = await LocalDataService.instance.getFirstTrackedDate();
+      }
+    } catch (e) {
+      appLogger.w('⚠️ Could not compute first tracked day: $e');
+      return null;
+    }
+
+    return earliest == null ? null : DateUtils.dateOnly(earliest);
   }
 
   Future<void> _toggleCheatDay() async {
@@ -3356,37 +3408,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       return;
     }
 
-    // ✅ Beschränkung 2: Prüfe ob Goal für neuen Tag existiert (beim Zurückblättern)
+    // ✅ Beschränkung 2: Nicht vor den ersten getrackten Tag zurückblättern.
+    // (Empty days *within* the tracked range are reachable; days before the
+    // first goal/entry/activity are not.)
     if (offset < 0) {
-      bool hasGoal = false;
-
-      if (widget.dbService != null) {
-        // Remote mode: check with NutritionGoalService
-        final goalService = NutritionGoalService(widget.dbService!);
-        hasGoal = await goalService.hasGoalForDate(newDay);
-      } else {
-        // Guest mode: check with LocalDataService
-        final localGoal =
-            await LocalDataService.instance.getGoalForDate(newDay);
-        hasGoal = localGoal != null;
-      }
-
+      await _ensureFirstTrackedDay();
       if (!mounted) return; // ✅ Prüfe nach async Operation
 
-      if (!hasGoal) {
+      final first = _firstTrackedDay;
+      if (first == null || newDayNormalized.isBefore(first)) {
+        // The back-chevron is hidden at the floor (see _refreshCanGoBack), so
+        // this only guards programmatic calls — no snackbar needed.
         appLogger.w(
-            '⚠️ Kein Goal für ${newDay.toIso8601String().split('T')[0]} gefunden');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.noGoalForDate(
-                DateFormat.yMd(Localizations.localeOf(context).toString())
-                    .format(newDay),
-              ),
-            ),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+            '⚠️ Kein getrackter Tag vor ${newDay.toIso8601String().split('T')[0]}');
         return;
       }
     }

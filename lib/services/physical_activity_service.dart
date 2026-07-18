@@ -48,6 +48,31 @@ class PhysicalActivityService {
     }
   }
 
+  /// Earliest activity day (`start_time`) across all of the user's activities,
+  /// or null if none. Used to bound how far back day-navigation may go.
+  Future<DateTime?> getEarliestActivityDate() async {
+    try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return null;
+      final userId = _userId;
+      if (userId == null) return null;
+
+      final response = await _db.client
+          .from('physical_activities')
+          .select('start_time')
+          .eq('user_id', userId)
+          .order('start_time', ascending: true)
+          .limit(1)
+          .maybeSingle();
+
+      final value = response?['start_time'] as String?;
+      return value == null ? null : DateTime.tryParse(value);
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Ermitteln des frühesten Aktivitäts-Datums: $e');
+      return null;
+    }
+  }
+
   /// Holt leichte Stubs (id + updated_at) für Delta-Sync-Vergleich.
   Future<List<({String id, DateTime updatedAt})>> getActivityStubs(
       DateTime date) async {
