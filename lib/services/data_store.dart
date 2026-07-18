@@ -54,6 +54,13 @@ class DataStore extends ChangeNotifier {
   DateTime? _lastEntriesSync;
   DateTime? _lastActivitiesSync;
 
+  /// The day (y/m/d) for which an *authoritative server fetch* last completed.
+  /// A cache hydrate does NOT set this — only a real reconcile does. The startup
+  /// loader retries until this matches the selected day, so entries still load
+  /// when the very first fetch was skipped because the token wasn't valid yet
+  /// (common now that paint-first mounts Home before the token refresh lands).
+  DateTime? _serverReconciledDate;
+
   List<FoodEntry> get foodEntries => _foodEntries;
   List<PhysicalActivity> get activities => _activities;
   NutritionGoal? get goal => _goal;
@@ -77,6 +84,17 @@ class DataStore extends ChangeNotifier {
   /// Whether the goal state is authoritative — see [_goalConfirmed].
   /// The UI must gate the "no goal" empty state on this, never on `goal == null`.
   bool get goalConfirmed => _goalConfirmed;
+
+  /// True when an authoritative server fetch has completed for [date] this
+  /// session — i.e. entries/activities/goal reflect the backend, not just the
+  /// local cache. See [_serverReconciledDate].
+  bool serverReconciledFor(DateTime date) {
+    final d = _serverReconciledDate;
+    return d != null &&
+        d.year == date.year &&
+        d.month == date.month &&
+        d.day == date.day;
+  }
 
   void init(NeonDatabaseService db) {
     _db = db;
@@ -128,6 +146,7 @@ class DataStore extends ChangeNotifier {
     _pendingMilestones = [];
     _lastEntriesSync = null;
     _lastActivitiesSync = null;
+    _serverReconciledDate = null;
     notifyListeners();
   }
 
@@ -231,6 +250,8 @@ class DataStore extends ChangeNotifier {
       await _writeThroughToCache(date);
     }
 
+    // Reached only when canFetch was true, so this day now reflects the server.
+    _serverReconciledDate = date;
     _isLoading = false;
     _isInitialLoading = false;
     notifyListeners();

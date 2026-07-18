@@ -3194,14 +3194,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
 
     await _store.loadDay(_selectedDay);
 
-    // The very first query often races a cold database (Neon compute
-    // resuming) or an in-flight token refresh, so loadDay() can return
-    // without an authoritative goal result. Keep retrying — quietly, with
-    // backoff — until the goal state is confirmed. Until then build() keeps
-    // the loading spinner up instead of flashing the "no goal" empty state.
-    // (If all retries are exhausted the 60 s periodic refresh keeps trying.)
+    // The very first query often races a cold database (Neon compute resuming)
+    // or an in-flight token refresh, so loadDay() can bail before it fetches —
+    // it paints whatever the local cache holds (possibly stale or empty for this
+    // day) and returns. Keep retrying — quietly, with backoff — until an
+    // authoritative server fetch has actually completed for this day, not merely
+    // until a *cached* goal made goalConfirmed true (which would leave entries
+    // never reconciled: the "empty entries until pull-to-refresh" bug). If all
+    // retries are exhausted the 60 s periodic refresh keeps trying.
     int retry = 0;
-    while (!_store.goalConfirmed && mounted && retry < 12) {
+    while (!_store.serverReconciledFor(_selectedDay) && mounted && retry < 12) {
       final step = retry < 4 ? retry : 4; // cap backoff at ~6.4 s
       await Future.delayed(Duration(milliseconds: 400 * (1 << step)));
       if (!mounted) return;
