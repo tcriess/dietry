@@ -681,9 +681,13 @@ class _GearLifetime extends StatelessWidget {
                   km.toStringAsFixed(0),
                   item.gear.retireAtKm!.toStringAsFixed(0),
                 )
+              // gen_l10n orders placeholders alphabetically, so the generated
+              // signature is reportsGearWear(total, used) — budget first, then
+              // lifetime. Passing them the other way round rendered "1000 von
+              // 10 km" (used/total inverted).
               : l.reportsGearWear(
-                  km.toStringAsFixed(0),
-                  item.gear.retireAtKm!.toStringAsFixed(0),
+                  item.gear.retireAtKm!.toStringAsFixed(0), // total (budget)
+                  km.toStringAsFixed(0), // used (lifetime)
                 ),
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
