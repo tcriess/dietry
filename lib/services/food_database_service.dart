@@ -26,36 +26,54 @@ class FoodDatabaseService {
     int limit = 50,
     List<String> filterTags = const [],  // tag slugs to filter by
   }) async {
-    try {
-      appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit${filterTags.isNotEmpty ? ', Tags: ${filterTags.join(", ")}' : ''})');
+    appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit${filterTags.isNotEmpty ? ', Tags: ${filterTags.join(", ")}' : ''})');
 
-      // Token prüfen
-      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
-      if (!tokenValid) {
-        appLogger.w('⚠️ Token ungültig');
+    // Retry once on a *transient* failure — a token refresh still in flight
+    // (common right after app launch) or a cold Neon compute timing out both
+    // otherwise return an empty list that looks exactly like "no matches". A
+    // genuine empty result (no exception) returns immediately without retrying.
+    // This is what made a repeated search — e.g. adding a trailing space —
+    // suddenly succeed.
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        // Token prüfen
+        final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+        if (!tokenValid) {
+          if (attempt == 0) {
+            appLogger.w('⚠️ Token noch nicht bereit — kurzer Retry der Suche');
+            await Future.delayed(const Duration(milliseconds: 400));
+            continue;
+          }
+          appLogger.w('⚠️ Token ungültig');
+          return [];
+        }
+
+        // Rufe RPC-Funktion auf
+        final response = await _db.client.rpc(
+          'search_food_database',
+          params: {
+            'query': query,
+            'filter_tags': filterTags.isEmpty ? null : filterTags,
+            'max_results': limit,
+          },
+        );
+
+        final foods = (response as List)
+          .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
+          .toList();
+
+        appLogger.i('✅ ${foods.length} Lebensmittel gefunden');
+        return foods;
+      } catch (e) {
+        appLogger.e('❌ Fehler bei Food-Suche (Versuch ${attempt + 1}): $e');
+        if (attempt == 0) {
+          await Future.delayed(const Duration(milliseconds: 400));
+          continue;
+        }
         return [];
       }
-
-      // Rufe RPC-Funktion auf
-      final response = await _db.client.rpc(
-        'search_food_database',
-        params: {
-          'query': query,
-          'filter_tags': filterTags.isEmpty ? null : filterTags,
-          'max_results': limit,
-        },
-      );
-
-      final foods = (response as List)
-        .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
-        .toList();
-
-      appLogger.i('✅ ${foods.length} Lebensmittel gefunden');
-      return foods;
-    } catch (e) {
-      appLogger.e('❌ Fehler bei Food-Suche: $e');
-      return [];
     }
+    return [];
   }
   
   /// Hole Lebensmittel per ID

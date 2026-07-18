@@ -185,6 +185,10 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     _consumedProtein = widget.initialConsumedProtein;
     _consumedFat = widget.initialConsumedFat;
     _consumedCarbs = widget.initialConsumedCarbs;
+    // Wake a possibly-sleeping Neon compute now, while the user is still reading
+    // the sheet, so the first food search doesn't pay the cold-start latency.
+    // Fire-and-forget; the searchFoods retry still covers a miss.
+    widget.dbService.warmUp();
     _loadAll();
   }
 
