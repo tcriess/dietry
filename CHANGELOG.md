@@ -27,6 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.2] — 2026-07-18
+
+### Changed
+- **Faster startup** — the app now opens straight to your data from its on-device copy instead of waiting for the server to answer, so it's ready in a moment rather than after a long spinner. It also stays usable when you open it offline instead of dropping you back to the login screen.
+- **Clearer food entries** — each logged food now shows its name in full across the top of its card, with a prominent calories bar and slimmer protein/fat/carbs bars underneath, each showing how much of that day's goal the entry uses.
+- **Browse earlier days** — stepping back through days is now bounded by when you actually started tracking (your first goal, food entry or activity) rather than requiring a nutrition goal on each day, so you can review days that only have entries or activities.
+
+### Fixed
+- **Food search sometimes found nothing on the first try** — a search made right after opening the app, or while a sleeping server was waking up, could come back empty until you searched again; it now retries automatically and pre-warms the connection when the quick-add sheet opens.
+- **Reports: gear past its wear budget** — a piece of gear that has passed its replacement budget now reads "budget used up" instead of a misleading remaining value.
+- **Microphone is no longer a required feature** — the app only uses the microphone for optional voice meal entry, so it no longer declares it as required and installs on devices without one.
+
+---
+
 ## [1.3.1] — 2026-07-14
 
 ### Fixed
