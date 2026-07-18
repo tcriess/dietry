@@ -119,19 +119,17 @@ void main() async {
         'dietry_auth_base_url', ServerConfigService.effectiveAuthBaseUrl);
   }
 
-  try {
-    await WaterReminderService.initialize();
-  } catch (e) {
-    appLogger.d('⚠️ WaterReminderService init failed: $e');
-  }
-
-  try {
-    await FoodLogReminderService.initialize();
-  } catch (e) {
-    appLogger.d('⚠️ FoodLogReminderService init failed: $e');
-  }
-
   runApp(const AuthApp());
+
+  // Notification setup (plugin init + timezone + scheduling) is not needed for
+  // the first frame, so run it AFTER runApp() to avoid delaying startup. Both
+  // services guard every other method with an `_initialized` check, so a
+  // slightly-late init only defers notification scheduling by a few frames.
+  // Fire-and-forget with error logging.
+  unawaited(WaterReminderService.initialize().catchError(
+      (e) => appLogger.d('⚠️ WaterReminderService init failed: $e')));
+  unawaited(FoodLogReminderService.initialize().catchError(
+      (e) => appLogger.d('⚠️ FoodLogReminderService init failed: $e')));
 }
 
 // Widget für den Auth-Dialog mit WebView (für OAuth-Redirect-URL)
@@ -1346,6 +1344,19 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     await db.init();
     appLogger.d('[_initDatabaseService] ✓ db.init() completed');
 
+    // Paint-first: db.init() has loaded the stored user id from secure storage
+    // (no network), so a returning user already has a usable local session.
+    // Rebuild now so build() mounts Home from the on-disk mirror immediately,
+    // instead of blocking the whole UI behind the token refresh below (a network
+    // round-trip to Neon Auth that wakes a cold serverless compute and can take
+    // many seconds on mobile). The refresh keeps running in the background and
+    // syncs the fresh JWT via setJWT() once it lands.
+    if (db.userId != null && mounted) {
+      appLogger.d(
+          '[_initDatabaseService] Local session present — painting Home before auth refresh');
+      setState(() {});
+    }
+
     // Wait for auth service to finish loading (includes expired-token refresh on startup).
     // Must complete before syncing JWT, otherwise we'd sync an expired token or null.
     appLogger.d('[_initDatabaseService] Waiting for auth service...');
@@ -1964,12 +1975,18 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       });
     }
 
+    // Returning user: a local session (stored user id + on-disk mirror) is
+    // present, so Home can paint from local data with no network. Don't gate
+    // first paint on the auth token refresh — it reconciles in the background
+    // and syncs the fresh JWT when it lands.
+    final hasLocalSession = !isGuestMode && db != null && db.userId != null;
+
     final authServiceLoading = _authService.isLoading;
     final remoteNeedsDb = !isGuestMode &&
         (db == null || (_authService.isLoggedIn && !_dbInitialized));
     final guestNeedsDb = isGuestMode && !_dbInitialized;
-    final isWaitingForInit =
-        authServiceLoading || remoteNeedsDb || guestNeedsDb;
+    final isWaitingForInit = !hasLocalSession &&
+        (authServiceLoading || remoteNeedsDb || guestNeedsDb);
 
     appLogger.d('[build] isWaitingForInit=$isWaitingForInit: '
         'authServiceLoading=$authServiceLoading, remoteNeedsDb=$remoteNeedsDb, guestNeedsDb=$guestNeedsDb');
@@ -2015,8 +2032,13 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
     }
 
     final rawJwt = _authService.jwt;
-    if (rawJwt != null && JwtHelper.isTokenExpired(rawJwt)) {
-      // Token expired and refresh failed — treat as logged out immediately.
+    if (!hasLocalSession &&
+        rawJwt != null &&
+        JwtHelper.isTokenExpired(rawJwt)) {
+      // Token expired and no local session to fall back on — treat as logged out.
+      // (With a local session we keep showing Home from the mirror while the
+      // background refresh runs; a genuine auth rejection clears db.userId, which
+      // drops hasLocalSession and falls through to the login screen.)
       // Trigger background cleanup without waiting (signOut has no timeout).
       _authService.signOut().ignore();
       return MaterialApp(
@@ -2039,7 +2061,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       );
     }
 
-    if (!_authService.isLoggedIn) {
+    if (!hasLocalSession && !_authService.isLoggedIn) {
       return MaterialApp(
         theme: _lightTheme,
         darkTheme: _darkTheme,
@@ -2066,7 +2088,12 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       themeMode: _themeMode,
       locale: _locale,
       home: DietryHomeWithLogout(
-        key: ValueKey(_authService.session?['user']?['id'] ?? _authService.jwt),
+        // Key on the stable user id (set from storage, unchanged across the
+        // background token refresh) so the paint-first → authed transition
+        // reuses the same State instead of remounting and reloading.
+        key: ValueKey(db!.userId ??
+            _authService.session?['user']?['id'] ??
+            _authService.jwt),
         authService: _authService,
         dbService: db,
         isGuestMode: false,

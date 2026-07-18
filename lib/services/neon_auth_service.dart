@@ -155,12 +155,15 @@ class NeonAuthService extends ChangeNotifier {
         // Retry bei Startup: Netzwerk kann kurzzeitig unavailable sein
         final success = await refreshTokenWithRetry(maxAttempts: 3);
         if (!success) {
-          appLogger.d('❌ Token-Refresh nach Startup fehlgeschlagen - Logout erforderlich');
-          if (_jwt != jwtAtStart) {
-            appLogger.d('⚠️ JWT geändert während Retry — kein Logout');
-            return;
-          }
-          await signOut();
+          // Kein forced logout mehr bei transientem Fehlschlag (offline / 5xx):
+          // refreshToken() loggt bereits intern aus, wenn der Server die Session
+          // echt ablehnt (401 / leere Session) — das nullt _jwt. Ist _jwt danach
+          // noch vorhanden, war es ein Netzwerkfehler. Wir behalten dann die
+          // (abgelaufene) Session, damit die App offline aus dem lokalen Mirror
+          // weiterläuft; der Token wird bei App-Resume und beim nächsten 401
+          // (DB-Interceptor) erneut refreshed.
+          appLogger.d(
+              '⚠️ Token-Refresh beim Start fehlgeschlagen — Session bleibt (offline-fähig), Retry bei Resume/401');
         }
       } else {
         // Prüfe wann Token abläuft
