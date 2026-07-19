@@ -74,10 +74,19 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     _loadGear();
   }
 
+  /// Guards against overlapping reloads triggered by rapid store changes.
+  bool _loadingGear = false;
+
   Future<void> _loadGear() async {
-    final gear = await SyncService.instance.getGear();
-    if (!mounted) return;
-    setState(() => _gear = gear.where((g) => !g.retired).toList());
+    if (_loadingGear) return;
+    _loadingGear = true;
+    try {
+      final gear = await SyncService.instance.getGear();
+      if (!mounted) return;
+      setState(() => _gear = gear.where((g) => !g.retired).toList());
+    } finally {
+      _loadingGear = false;
+    }
   }
 
   /// Assign (or clear) the gear on an activity, straight from the list.
@@ -140,7 +149,15 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
   }
 
   void _onStoreChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // On a cold start this screen can mount and call _loadGear() before
+    // SyncService has its db/local/cache wired, so getGear() returns [] and the
+    // chips never appear. The store fills in shortly after (local mirror, then
+    // server reconcile) and fires this callback — take that as our cue to retry
+    // the gear load until we actually have some. Cheap: getGear() is a local
+    // query and this only fires while _gear is still empty.
+    if (_gear.isEmpty) _loadGear();
+    setState(() {});
   }
 
   Future<void> _deleteActivity(PhysicalActivity activity) async {
