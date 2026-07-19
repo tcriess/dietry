@@ -2114,6 +2114,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
 // toolbar never overflows (and silently clips its icons) on narrow phones.
 enum _HomeMenuAction {
   info,
+  manual,
   admin,
   feedback,
   profile,
@@ -2191,6 +2192,12 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const InfoScreen()),
+        );
+        break;
+      case _HomeMenuAction.manual:
+        await launchUrl(
+          Uri.parse('https://dietry.de/manual.html'),
+          mode: LaunchMode.externalApplication,
         );
         break;
       case _HomeMenuAction.admin:
@@ -2459,6 +2466,10 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                 PopupMenuItem(
                   value: _HomeMenuAction.info,
                   child: _menuRow(Icons.info_outline, lm.infoTooltip),
+                ),
+                PopupMenuItem(
+                  value: _HomeMenuAction.manual,
+                  child: _menuRow(Icons.menu_book_outlined, lm.userManual),
                 ),
                 if (AppFeatures.isAdmin)
                   PopupMenuItem(

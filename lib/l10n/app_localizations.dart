@@ -2086,6 +2086,12 @@ abstract class AppLocalizations {
   /// **'Info & Impressum'**
   String get infoTooltip;
 
+  /// No description provided for @userManual.
+  ///
+  /// In de, this message translates to:
+  /// **'Handbuch'**
+  String get userManual;
+
   /// No description provided for @languageTooltip.
   ///
   /// In de, this message translates to:

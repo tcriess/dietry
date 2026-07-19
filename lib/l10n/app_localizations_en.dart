@@ -1083,6 +1083,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get infoTooltip => 'Info & Legal Notice';
 
   @override
+  String get userManual => 'User manual';
+
+  @override
   String get languageTooltip => 'Change language';
 
   @override

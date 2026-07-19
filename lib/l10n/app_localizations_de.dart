@@ -1087,6 +1087,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get infoTooltip => 'Info & Impressum';
 
   @override
+  String get userManual => 'Handbuch';
+
+  @override
   String get languageTooltip => 'Sprache wechseln';
 
   @override
