@@ -642,6 +642,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   }
 
   Widget _buildTotalsPreview() {
+    final l = AppLocalizations.of(context)!;
     final totals = _computeTotals();
     final rawAmount = tryParseDouble(_amountController.text) ?? 0;
     if (rawAmount <= 0) return const SizedBox.shrink();
@@ -659,7 +660,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Gesamt für $amountStr$unitLabel:',
+              l.totalForAmount('$amountStr$unitLabel'),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
@@ -667,9 +668,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _PreviewMacro('kcal', totals['calories']!.toStringAsFixed(0)),
-                _PreviewMacro('P', '${totals['protein']!.toStringAsFixed(1)}g'),
-                _PreviewMacro('F', '${totals['fat']!.toStringAsFixed(1)}g'),
-                _PreviewMacro('KH', '${totals['carbs']!.toStringAsFixed(1)}g'),
+                _PreviewMacro(l.macroProteinShort,
+                    '${totals['protein']!.toStringAsFixed(1)}g'),
+                _PreviewMacro(
+                    l.macroFatShort, '${totals['fat']!.toStringAsFixed(1)}g'),
+                _PreviewMacro(l.macroCarbsShort,
+                    '${totals['carbs']!.toStringAsFixed(1)}g'),
               ],
             ),
           ],
@@ -680,6 +684,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
   /// Dropdown zur Portionsauswahl (benannte Portionen + g/ml)
   Widget _buildPortionSelector() {
+    final l = AppLocalizations.of(context)!;
     final food = _selectedFood;
     var portions = food?.portions ?? [];
 
@@ -714,9 +719,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
     return DropdownButtonFormField<String>(
       initialValue: currentKey,
-      decoration: const InputDecoration(
-        labelText: 'Einheit',
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: l.unit,
+        border: const OutlineInputBorder(),
       ),
       items: items,
       onChanged: (value) {
@@ -1283,7 +1288,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           if (widget.dbService != null)
             IconButton(
               icon: const Icon(Icons.edit_note),
-              tooltip: 'Datenbank verwalten',
+              tooltip: l.manageDatabase,
               onPressed: () async {
                 await Navigator.of(context).push(
                   MaterialPageRoute(
@@ -1305,7 +1310,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           if (!_showManualEntry && AppFeatures.nutritionLabelScan)
             IconButton(
               icon: const Icon(Icons.document_scanner_outlined),
-              tooltip: 'Etikett scannen',
+              tooltip: l.scanNutritionLabel,
               onPressed: _scanNutritionLabel,
             ),
           if (!_showManualEntry)
@@ -1318,7 +1323,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 });
               },
               icon: const Icon(Icons.edit),
-              label: const Text('Manuell'),
+              label: Text(l.manualEntry),
             ),
         ],
       ),
@@ -1335,8 +1340,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        labelText: 'Lebensmittel suchen',
-                        hintText: 'z.B. Apfel, Reis, Hähnchen...',
+                        labelText: l.searchFood,
+                        hintText: l.searchHint,
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: _searchController.text.isNotEmpty
                             ? IconButton(
@@ -1354,7 +1359,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         border: const OutlineInputBorder(),
                         // Bei OFF: Suche erst bei Enter, nicht beim Tippen
                         helperText: _useOpenFoodFacts
-                            ? 'Enter drücken zum Suchen'
+                            ? l.searchEnterHint
                             : null,
                       ),
                       textInputAction: TextInputAction.search,
@@ -1399,7 +1404,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     Row(
                       children: [
                         ChoiceChip(
-                          label: const Text('Eigene DB'),
+                          label: Text(l.myDatabase),
                           selected: !_useOpenFoodFacts,
                           onSelected: (_) => setState(() {
                             _useOpenFoodFacts = false;
@@ -1409,7 +1414,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         const SizedBox(width: 8),
                         ChoiceChip(
                           avatar: const Text('🌐'),
-                          label: const Text('Online-Suche'),
+                          label: Text(l.onlineSearch),
                           selected: _useOpenFoodFacts,
                           onSelected: (_) => setState(() {
                             _useOpenFoodFacts = true;
@@ -1474,7 +1479,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                     size: 48, color: Colors.grey.shade400),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Noch keine Lebensmittel in der Datenbank',
+                                  l.foodDatabaseEmpty,
                                   style: TextStyle(color: Colors.grey.shade600),
                                   textAlign: TextAlign.center,
                                 ),
@@ -1487,7 +1492,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                           padding: const EdgeInsets.all(16),
                           child: Center(
                             child: Text(
-                              'Keine Ergebnisse',
+                              l.noResults,
                               style: TextStyle(color: Colors.grey.shade600),
                             ),
                           ),
@@ -1567,7 +1572,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                     else
                                       PopupMenuButton<String>(
                                         icon: const Icon(Icons.more_vert),
-                                        tooltip: 'Optionen',
+                                        tooltip: l.options,
                                         onSelected: (action) async {
                                           if (action == 'use') {
                                             _selectFood(food);
@@ -1578,32 +1583,32 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                           }
                                         },
                                         itemBuilder: (context) => [
-                                          const PopupMenuItem(
+                                          PopupMenuItem(
                                             value: 'use',
                                             child: ListTile(
-                                              leading: Icon(
+                                              leading: const Icon(
                                                   Icons.check_circle_outline),
-                                              title: Text('Verwenden'),
+                                              title: Text(l.useFood),
                                               contentPadding: EdgeInsets.zero,
                                             ),
                                           ),
-                                          const PopupMenuItem(
+                                          PopupMenuItem(
                                             value: 'edit',
                                             child: ListTile(
-                                              leading:
-                                                  Icon(Icons.edit_outlined),
-                                              title: Text('Bearbeiten'),
+                                              leading: const Icon(
+                                                  Icons.edit_outlined),
+                                              title: Text(l.edit),
                                               contentPadding: EdgeInsets.zero,
                                             ),
                                           ),
-                                          const PopupMenuItem(
+                                          PopupMenuItem(
                                             value: 'delete',
                                             child: ListTile(
-                                              leading: Icon(
+                                              leading: const Icon(
                                                   Icons.delete_outline,
                                                   color: Colors.red),
-                                              title: Text('Löschen',
-                                                  style: TextStyle(
+                                              title: Text(l.delete,
+                                                  style: const TextStyle(
                                                       color: Colors.red)),
                                               contentPadding: EdgeInsets.zero,
                                             ),
@@ -1628,7 +1633,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             Padding(
                               padding: const EdgeInsets.all(12),
                               child: Text(
-                                '${_searchResults.length} Ergebnisse',
+                                l.resultsCount(_searchResults.length),
                                 style: Theme.of(context).textTheme.titleSmall,
                               ),
                             ),
@@ -1717,7 +1722,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                       else
                                         PopupMenuButton<String>(
                                           icon: const Icon(Icons.more_vert),
-                                          tooltip: 'Optionen',
+                                          tooltip: l.options,
                                           onSelected: (action) async {
                                             if (action == 'use') {
                                               _selectFood(food,
@@ -1729,32 +1734,32 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                             }
                                           },
                                           itemBuilder: (context) => [
-                                            const PopupMenuItem(
+                                            PopupMenuItem(
                                               value: 'use',
                                               child: ListTile(
-                                                leading: Icon(
+                                                leading: const Icon(
                                                     Icons.check_circle_outline),
-                                                title: Text('Verwenden'),
+                                                title: Text(l.useFood),
                                                 contentPadding: EdgeInsets.zero,
                                               ),
                                             ),
-                                            const PopupMenuItem(
+                                            PopupMenuItem(
                                               value: 'edit',
                                               child: ListTile(
-                                                leading:
-                                                    Icon(Icons.edit_outlined),
-                                                title: Text('Bearbeiten'),
+                                                leading: const Icon(
+                                                    Icons.edit_outlined),
+                                                title: Text(l.edit),
                                                 contentPadding: EdgeInsets.zero,
                                               ),
                                             ),
-                                            const PopupMenuItem(
+                                            PopupMenuItem(
                                               value: 'delete',
                                               child: ListTile(
-                                                leading: Icon(
+                                                leading: const Icon(
                                                     Icons.delete_outline,
                                                     color: Colors.red),
-                                                title: Text('Löschen',
-                                                    style: TextStyle(
+                                                title: Text(l.delete,
+                                                    style: const TextStyle(
                                                         color: Colors.red)),
                                                 contentPadding: EdgeInsets.zero,
                                               ),
@@ -1779,7 +1784,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Center(
                           child: Text(
-                            'Keine Ergebnisse',
+                            l.noResults,
                             style: TextStyle(color: Colors.grey.shade600),
                           ),
                         ),
@@ -1805,7 +1810,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Tipp: Zur Datenbank hinzufügen',
+                                      l.addToDbTip,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         color: Colors.blue.shade900,
@@ -1813,7 +1818,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Nach dem Ausfüllen kannst du dieses Lebensmittel für die Zukunft speichern!',
+                                      l.addToDbTipBody,
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.blue.shade800,
@@ -1870,13 +1875,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     if (_showManualEntry)
                       TextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Name',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l.foodName,
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Bitte Name eingeben';
+                            return l.enterName;
                           }
                           return null;
                         },
@@ -1891,9 +1896,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                           flex: 2,
                           child: TextFormField(
                             controller: _amountController,
-                            decoration: const InputDecoration(
-                              labelText: 'Menge',
-                              border: OutlineInputBorder(),
+                            decoration: InputDecoration(
+                              labelText: l.amount,
+                              border: const OutlineInputBorder(),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
@@ -1903,11 +1908,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             ],
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Bitte Menge eingeben';
+                                return l.enterAmount;
                               }
                               final amount = tryParseDouble(value);
                               if (amount == null || amount <= 0) {
-                                return 'Ungültige Menge';
+                                return l.invalidAmount;
                               }
                               return null;
                             },
@@ -1940,9 +1945,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     // Meal Type
                     DropdownButtonFormField<MealType>(
                       initialValue: _selectedMealType,
-                      decoration: const InputDecoration(
-                        labelText: 'Mahlzeit',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l.mealType,
+                        border: const OutlineInputBorder(),
                       ),
                       items: MealType.values.map((type) {
                         return DropdownMenuItem(
@@ -1952,7 +1957,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                               Text(type.icon,
                                   style: const TextStyle(fontSize: 20)),
                               const SizedBox(width: 8),
-                              Text(type.displayName),
+                              Text(type.localizedName(l)),
                             ],
                           ),
                         );
@@ -2003,7 +2008,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Alle Nährwerte pro 100g bzw. 100ml angeben',
+                                l.enterNutritionPer100,
                                 style: TextStyle(
                                   color: Colors.orange.shade900,
                                   fontWeight: FontWeight.bold,
@@ -2019,7 +2024,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
                     // Nährwerte
                     Text(
-                      'Nährwerte',
+                      l.nutritionalValues,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 12),
@@ -2029,10 +2034,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _caloriesController,
-                            decoration: const InputDecoration(
-                              labelText: 'Kalorien',
+                            decoration: InputDecoration(
+                              labelText: l.caloriesLabel,
                               suffixText: 'kcal',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
@@ -2040,7 +2045,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             onChanged: (_) => setState(() {}),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Erforderlich';
+                                return l.requiredField;
                               }
                               return null;
                             },
@@ -2050,10 +2055,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _proteinController,
-                            decoration: const InputDecoration(
-                              labelText: 'Protein',
+                            decoration: InputDecoration(
+                              labelText: l.proteinLabel,
                               suffixText: 'g',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
@@ -2061,7 +2066,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             onChanged: (_) => setState(() {}),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Erforderlich';
+                                return l.requiredField;
                               }
                               return null;
                             },
@@ -2077,10 +2082,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _fatController,
-                            decoration: const InputDecoration(
-                              labelText: 'Fett',
+                            decoration: InputDecoration(
+                              labelText: l.fatLabel,
                               suffixText: 'g',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
@@ -2088,7 +2093,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             onChanged: (_) => setState(() {}),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Erforderlich';
+                                return l.requiredField;
                               }
                               return null;
                             },
@@ -2098,10 +2103,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _carbsController,
-                            decoration: const InputDecoration(
-                              labelText: 'Kohlenhydrate',
+                            decoration: InputDecoration(
+                              labelText: l.carbsLabel,
                               suffixText: 'g',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
@@ -2109,7 +2114,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             onChanged: (_) => setState(() {}),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Erforderlich';
+                                return l.requiredField;
                               }
                               return null;
                             },
@@ -2121,7 +2126,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     const SizedBox(height: 24),
 
                     // Optional: Saturated Fat, Sugar, Fiber, Salt
-                    Text('Optional',
+                    Text(l.optionalSection,
                         style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 12),
                     Row(
@@ -2247,8 +2252,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                                       : null,
                                                   icon: const Icon(
                                                       Icons.add_circle_outline),
-                                                  label: const Text(
-                                                      'Zur Datenbank hinzufügen'),
+                                                  label:
+                                                      Text(l.saveToDatabase),
                                                   style:
                                                       OutlinedButton.styleFrom(
                                                     padding:
@@ -2259,7 +2264,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                               ),
                                               const SizedBox(height: 8),
                                               Text(
-                                                'Speichere dieses Lebensmittel für zukünftige Verwendung',
+                                                l.saveFoodForFuture,
                                                 style: Theme.of(context)
                                                     .textTheme
                                                     .bodySmall
@@ -2306,8 +2311,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                         strokeWidth: 2, color: Colors.white),
                                   )
                                 : const Icon(Icons.check),
-                            label:
-                                Text(_isSaving ? 'Speichere...' : 'Speichern'),
+                            label: Text(_isSaving ? l.saving : l.save),
                             style: FilledButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,

@@ -388,10 +388,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               // Show dropdown if activities are available (both authenticated and guest mode)
               DropdownButtonFormField<ActivityItem>(
                 initialValue: _selectedActivity,
-                decoration: const InputDecoration(
-                  labelText: 'Aktivität',
-                  border: OutlineInputBorder(),
-                  helperText: '🌍 öffentlich  🕐 ausstehend  👤 privat',
+                decoration: InputDecoration(
+                  labelText: l.activityLabel,
+                  border: const OutlineInputBorder(),
+                  helperText: l.activityVisibilityLegend,
                 ),
                 isExpanded: true,
                 items: _searchResults.map((activity) {
@@ -525,10 +525,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             InkWell(
               onTap: _selectStartTime,
               child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Startzeit',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.access_time),
+                decoration: InputDecoration(
+                  labelText: l.startTime,
+                  border: const OutlineInputBorder(),
+                  suffixIcon: const Icon(Icons.access_time),
                 ),
                 child: Text(_startTime.format(context)),
               ),
@@ -539,11 +539,11 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             // Dauer
             TextFormField(
               controller: _durationController,
-              decoration: const InputDecoration(
-                labelText: 'Dauer',
-                suffixText: 'Minuten',
-                border: OutlineInputBorder(),
-                helperText: 'Wie lange war die Aktivität?',
+              decoration: InputDecoration(
+                labelText: l.duration,
+                suffixText: l.minutes,
+                border: const OutlineInputBorder(),
+                helperText: l.durationHelp,
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [
@@ -567,12 +567,12 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             TextFormField(
               controller: _caloriesController,
               decoration: InputDecoration(
-                labelText: 'Kalorien (optional)',
+                labelText: l.caloriesOptional,
                 suffixText: 'kcal',
                 border: const OutlineInputBorder(),
-                helperText: _userWeight != null 
-                    ? 'Wird automatisch geschätzt (${_userWeight!.toStringAsFixed(0)}kg)'
-                    : 'Geschätzte verbrannte Kalorien',
+                helperText: _userWeight != null
+                    ? l.autoEstimatedWeight(_userWeight!.toStringAsFixed(0))
+                    : l.estimatedBurnedCalories,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
@@ -586,11 +586,11 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             if (_selectedActivity?.avgSpeedKmh != null) ...[
               TextFormField(
                 controller: _distanceController,
-                decoration: const InputDecoration(
-                  labelText: 'Distanz (optional)',
+                decoration: InputDecoration(
+                  labelText: l.distanceOptional,
                   suffixText: 'km',
-                  border: OutlineInputBorder(),
-                  helperText: 'Zurückgelegte Distanz',
+                  border: const OutlineInputBorder(),
+                  helperText: l.distanceCovered,
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
@@ -630,10 +630,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
             // Notizen (optional)
             TextFormField(
               controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notizen (optional)',
-                border: OutlineInputBorder(),
-                hintText: 'z.B. Ort, Intensität, Besonderheiten...',
+              decoration: InputDecoration(
+                labelText: l.notesOptional,
+                border: const OutlineInputBorder(),
+                hintText: l.activityNotesHint,
               ),
               maxLines: 3,
             ),

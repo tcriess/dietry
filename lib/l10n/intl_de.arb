@@ -900,5 +900,53 @@
   "gearOfflineHint": "Ausrüstung kann offline nicht geändert werden.",
   "describeMealApproximate": "ungefähr",
   "describeMealSubstituteHint": "Dieses Lebensmittel wurde nicht gefunden. Das Modell hat einen ähnlichen Ersatz vorgeschlagen — bitte prüfen.",
-  "gearAssignPrompt": "Welche Ausrüstung?"
+  "gearAssignPrompt": "Welche Ausrüstung?",
+  "activityLabel": "Aktivität",
+  "activityVisibilityLegend": "🌍 öffentlich  🕐 ausstehend  👤 privat",
+  "startTime": "Startzeit",
+  "duration": "Dauer",
+  "minutes": "Minuten",
+  "durationHelp": "Wie lange war die Aktivität?",
+  "caloriesOptional": "Kalorien (optional)",
+  "autoEstimatedWeight": "Wird automatisch geschätzt ({weight} kg)",
+  "@autoEstimatedWeight": {
+    "placeholders": {
+      "weight": {
+        "type": "String"
+      }
+    }
+  },
+  "estimatedBurnedCalories": "Geschätzte verbrannte Kalorien",
+  "distanceOptional": "Distanz (optional)",
+  "distanceCovered": "Zurückgelegte Distanz",
+  "activityNotesHint": "z.B. Ort, Intensität, Besonderheiten...",
+  "totalForAmount": "Gesamt für {amount}:",
+  "@totalForAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "manageDatabase": "Datenbank verwalten",
+  "searchFood": "Lebensmittel suchen",
+  "noResults": "Keine Ergebnisse",
+  "options": "Optionen",
+  "resultsCount": "{count} Ergebnisse",
+  "@resultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addToDbTip": "Tipp: Zur Datenbank hinzufügen",
+  "addToDbTipBody": "Nach dem Ausfüllen kannst du dieses Lebensmittel für die Zukunft speichern!",
+  "enterName": "Bitte Name eingeben",
+  "enterAmount": "Bitte Menge eingeben",
+  "invalidAmount": "Ungültige Menge",
+  "enterNutritionPer100": "Alle Nährwerte pro 100g bzw. 100ml angeben",
+  "nutritionalValues": "Nährwerte",
+  "optionalSection": "Optional",
+  "saveFoodForFuture": "Speichere dieses Lebensmittel für zukünftige Verwendung"
 }

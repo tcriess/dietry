@@ -3657,6 +3657,168 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Welche Ausrüstung?'**
   String get gearAssignPrompt;
+
+  /// No description provided for @activityLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Aktivität'**
+  String get activityLabel;
+
+  /// No description provided for @activityVisibilityLegend.
+  ///
+  /// In de, this message translates to:
+  /// **'🌍 öffentlich  🕐 ausstehend  👤 privat'**
+  String get activityVisibilityLegend;
+
+  /// No description provided for @startTime.
+  ///
+  /// In de, this message translates to:
+  /// **'Startzeit'**
+  String get startTime;
+
+  /// No description provided for @duration.
+  ///
+  /// In de, this message translates to:
+  /// **'Dauer'**
+  String get duration;
+
+  /// No description provided for @minutes.
+  ///
+  /// In de, this message translates to:
+  /// **'Minuten'**
+  String get minutes;
+
+  /// No description provided for @durationHelp.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie lange war die Aktivität?'**
+  String get durationHelp;
+
+  /// No description provided for @caloriesOptional.
+  ///
+  /// In de, this message translates to:
+  /// **'Kalorien (optional)'**
+  String get caloriesOptional;
+
+  /// No description provided for @autoEstimatedWeight.
+  ///
+  /// In de, this message translates to:
+  /// **'Wird automatisch geschätzt ({weight} kg)'**
+  String autoEstimatedWeight(String weight);
+
+  /// No description provided for @estimatedBurnedCalories.
+  ///
+  /// In de, this message translates to:
+  /// **'Geschätzte verbrannte Kalorien'**
+  String get estimatedBurnedCalories;
+
+  /// No description provided for @distanceOptional.
+  ///
+  /// In de, this message translates to:
+  /// **'Distanz (optional)'**
+  String get distanceOptional;
+
+  /// No description provided for @distanceCovered.
+  ///
+  /// In de, this message translates to:
+  /// **'Zurückgelegte Distanz'**
+  String get distanceCovered;
+
+  /// No description provided for @activityNotesHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z.B. Ort, Intensität, Besonderheiten...'**
+  String get activityNotesHint;
+
+  /// No description provided for @totalForAmount.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt für {amount}:'**
+  String totalForAmount(String amount);
+
+  /// No description provided for @manageDatabase.
+  ///
+  /// In de, this message translates to:
+  /// **'Datenbank verwalten'**
+  String get manageDatabase;
+
+  /// No description provided for @searchFood.
+  ///
+  /// In de, this message translates to:
+  /// **'Lebensmittel suchen'**
+  String get searchFood;
+
+  /// No description provided for @noResults.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine Ergebnisse'**
+  String get noResults;
+
+  /// No description provided for @options.
+  ///
+  /// In de, this message translates to:
+  /// **'Optionen'**
+  String get options;
+
+  /// No description provided for @resultsCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Ergebnisse'**
+  String resultsCount(int count);
+
+  /// No description provided for @addToDbTip.
+  ///
+  /// In de, this message translates to:
+  /// **'Tipp: Zur Datenbank hinzufügen'**
+  String get addToDbTip;
+
+  /// No description provided for @addToDbTipBody.
+  ///
+  /// In de, this message translates to:
+  /// **'Nach dem Ausfüllen kannst du dieses Lebensmittel für die Zukunft speichern!'**
+  String get addToDbTipBody;
+
+  /// No description provided for @enterName.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte Name eingeben'**
+  String get enterName;
+
+  /// No description provided for @enterAmount.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte Menge eingeben'**
+  String get enterAmount;
+
+  /// No description provided for @invalidAmount.
+  ///
+  /// In de, this message translates to:
+  /// **'Ungültige Menge'**
+  String get invalidAmount;
+
+  /// No description provided for @enterNutritionPer100.
+  ///
+  /// In de, this message translates to:
+  /// **'Alle Nährwerte pro 100g bzw. 100ml angeben'**
+  String get enterNutritionPer100;
+
+  /// No description provided for @nutritionalValues.
+  ///
+  /// In de, this message translates to:
+  /// **'Nährwerte'**
+  String get nutritionalValues;
+
+  /// No description provided for @optionalSection.
+  ///
+  /// In de, this message translates to:
+  /// **'Optional'**
+  String get optionalSection;
+
+  /// No description provided for @saveFoodForFuture.
+  ///
+  /// In de, this message translates to:
+  /// **'Speichere dieses Lebensmittel für zukünftige Verwendung'**
+  String get saveFoodForFuture;
 }
 
 class _AppLocalizationsDelegate

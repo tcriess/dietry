@@ -1975,4 +1975,95 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get gearAssignPrompt => 'Welche Ausrüstung?';
+
+  @override
+  String get activityLabel => 'Aktivität';
+
+  @override
+  String get activityVisibilityLegend =>
+      '🌍 öffentlich  🕐 ausstehend  👤 privat';
+
+  @override
+  String get startTime => 'Startzeit';
+
+  @override
+  String get duration => 'Dauer';
+
+  @override
+  String get minutes => 'Minuten';
+
+  @override
+  String get durationHelp => 'Wie lange war die Aktivität?';
+
+  @override
+  String get caloriesOptional => 'Kalorien (optional)';
+
+  @override
+  String autoEstimatedWeight(String weight) {
+    return 'Wird automatisch geschätzt ($weight kg)';
+  }
+
+  @override
+  String get estimatedBurnedCalories => 'Geschätzte verbrannte Kalorien';
+
+  @override
+  String get distanceOptional => 'Distanz (optional)';
+
+  @override
+  String get distanceCovered => 'Zurückgelegte Distanz';
+
+  @override
+  String get activityNotesHint => 'z.B. Ort, Intensität, Besonderheiten...';
+
+  @override
+  String totalForAmount(String amount) {
+    return 'Gesamt für $amount:';
+  }
+
+  @override
+  String get manageDatabase => 'Datenbank verwalten';
+
+  @override
+  String get searchFood => 'Lebensmittel suchen';
+
+  @override
+  String get noResults => 'Keine Ergebnisse';
+
+  @override
+  String get options => 'Optionen';
+
+  @override
+  String resultsCount(int count) {
+    return '$count Ergebnisse';
+  }
+
+  @override
+  String get addToDbTip => 'Tipp: Zur Datenbank hinzufügen';
+
+  @override
+  String get addToDbTipBody =>
+      'Nach dem Ausfüllen kannst du dieses Lebensmittel für die Zukunft speichern!';
+
+  @override
+  String get enterName => 'Bitte Name eingeben';
+
+  @override
+  String get enterAmount => 'Bitte Menge eingeben';
+
+  @override
+  String get invalidAmount => 'Ungültige Menge';
+
+  @override
+  String get enterNutritionPer100 =>
+      'Alle Nährwerte pro 100g bzw. 100ml angeben';
+
+  @override
+  String get nutritionalValues => 'Nährwerte';
+
+  @override
+  String get optionalSection => 'Optional';
+
+  @override
+  String get saveFoodForFuture =>
+      'Speichere dieses Lebensmittel für zukünftige Verwendung';
 }

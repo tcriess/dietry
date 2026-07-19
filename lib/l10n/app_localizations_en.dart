@@ -1965,4 +1965,93 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gearAssignPrompt => 'Which gear?';
+
+  @override
+  String get activityLabel => 'Activity';
+
+  @override
+  String get activityVisibilityLegend => '🌍 public  🕐 pending  👤 private';
+
+  @override
+  String get startTime => 'Start time';
+
+  @override
+  String get duration => 'Duration';
+
+  @override
+  String get minutes => 'Minutes';
+
+  @override
+  String get durationHelp => 'How long was the activity?';
+
+  @override
+  String get caloriesOptional => 'Calories (optional)';
+
+  @override
+  String autoEstimatedWeight(String weight) {
+    return 'Auto-estimated ($weight kg)';
+  }
+
+  @override
+  String get estimatedBurnedCalories => 'Estimated calories burned';
+
+  @override
+  String get distanceOptional => 'Distance (optional)';
+
+  @override
+  String get distanceCovered => 'Distance covered';
+
+  @override
+  String get activityNotesHint => 'e.g. location, intensity, notes...';
+
+  @override
+  String totalForAmount(String amount) {
+    return 'Total for $amount:';
+  }
+
+  @override
+  String get manageDatabase => 'Manage database';
+
+  @override
+  String get searchFood => 'Search food';
+
+  @override
+  String get noResults => 'No results';
+
+  @override
+  String get options => 'Options';
+
+  @override
+  String resultsCount(int count) {
+    return '$count results';
+  }
+
+  @override
+  String get addToDbTip => 'Tip: Add to database';
+
+  @override
+  String get addToDbTipBody =>
+      'After filling in the details you can save this food for future use!';
+
+  @override
+  String get enterName => 'Please enter a name';
+
+  @override
+  String get enterAmount => 'Please enter an amount';
+
+  @override
+  String get invalidAmount => 'Invalid amount';
+
+  @override
+  String get enterNutritionPer100 =>
+      'Enter all nutritional values per 100 g / 100 ml';
+
+  @override
+  String get nutritionalValues => 'Nutritional values';
+
+  @override
+  String get optionalSection => 'Optional';
+
+  @override
+  String get saveFoodForFuture => 'Save this food for future use';
 }
