@@ -89,8 +89,16 @@ class NeonDatabaseService {
             if (newToken != null) {
               appLogger.i('✅ Token refreshed, wiederhole Request...');
 
-              // Update JWT
+              // Update JWT — and keep BOTH clients' auth in lockstep. The
+              // PostgrestClient (_db.client) carries a snapshot Authorization
+              // header, not the per-request injection the Dio interceptor does.
+              // Every other refresh path recreates it with the fresh token, but
+              // this 401 path did not — so after a rotation every _db.client
+              // read/write kept sending the expired token, RLS answered with
+              // zero rows, and reports/services silently showed "no data".
               _jwt = newToken;
+              _dio.options.headers['Authorization'] = 'Bearer $newToken';
+              _postgrestClient.headers['Authorization'] = 'Bearer $newToken';
 
               // Wiederhole Request mit neuem Token
               final options = error.requestOptions;
