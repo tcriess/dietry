@@ -2384,15 +2384,20 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         Wrap(
           spacing: 6,
           children: EstimateLevel.values.map((lvl) {
-            return ChoiceChip(
-              label: Text(lvl.localizedName(l),
-                  style: const TextStyle(fontSize: 12)),
-              selected: _estimateLevel == lvl,
-              visualDensity: VisualDensity.compact,
-              onSelected: (_) => setState(() {
-                _estimateLevel = lvl;
-                _userSetEstimate = true;
-              }),
+            // ExcludeFocus: keep the chip from stealing focus so tapping it
+            // doesn't dismiss the keyboard and drop the tap. See
+            // add_food_entry_screen for the full explanation.
+            return ExcludeFocus(
+              child: ChoiceChip(
+                label: Text(lvl.localizedName(l),
+                    style: const TextStyle(fontSize: 12)),
+                selected: _estimateLevel == lvl,
+                visualDensity: VisualDensity.compact,
+                onSelected: (_) => setState(() {
+                  _estimateLevel = lvl;
+                  _userSetEstimate = true;
+                }),
+              ),
             );
           }).toList(),
         ),

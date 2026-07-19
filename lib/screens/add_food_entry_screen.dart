@@ -627,13 +627,21 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         Wrap(
           spacing: 8,
           children: EstimateLevel.values.map((lvl) {
-            return ChoiceChip(
-              label: Text(lvl.localizedName(l)),
-              selected: _effectiveEstimate == lvl,
-              onSelected: (_) => setState(() {
-                _estimateLevel = lvl;
-                _userSetEstimate = true;
-              }),
+            // ExcludeFocus: a bare ChoiceChip requests focus when tapped, which
+            // unfocuses the amount/nutrition field, dismisses the keyboard and
+            // resizes the sheet mid-gesture — so the chip slides out from under
+            // the finger and the tap is dropped (the chips look "unselectable"
+            // whenever the keyboard is up). Not taking focus keeps the keyboard
+            // open and the layout stable, so the tap lands.
+            return ExcludeFocus(
+              child: ChoiceChip(
+                label: Text(lvl.localizedName(l)),
+                selected: _effectiveEstimate == lvl,
+                onSelected: (_) => setState(() {
+                  _estimateLevel = lvl;
+                  _userSetEstimate = true;
+                }),
+              ),
             );
           }).toList(),
         ),

@@ -1800,11 +1800,16 @@ class FoodEditDialogState extends State<FoodEditDialog> {
               Wrap(
                 spacing: 8,
                 children: EstimateLevel.values.map((lvl) {
-                  return ChoiceChip(
-                    label: Text(lvl.localizedName(l)),
-                    selected: _estimateLevel == lvl,
-                    onSelected: (_) =>
-                        setState(() => _estimateLevel = lvl),
+                  // ExcludeFocus: keep the chip from stealing focus so tapping
+                  // it doesn't dismiss the keyboard and drop the tap. See
+                  // add_food_entry_screen for the full explanation.
+                  return ExcludeFocus(
+                    child: ChoiceChip(
+                      label: Text(lvl.localizedName(l)),
+                      selected: _estimateLevel == lvl,
+                      onSelected: (_) =>
+                          setState(() => _estimateLevel = lvl),
+                    ),
                   );
                 }).toList(),
               ),
