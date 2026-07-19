@@ -948,5 +948,14 @@
   "enterNutritionPer100": "Alle Nährwerte pro 100g bzw. 100ml angeben",
   "nutritionalValues": "Nährwerte",
   "optionalSection": "Optional",
-  "saveFoodForFuture": "Speichere dieses Lebensmittel für zukünftige Verwendung"
+  "saveFoodForFuture": "Speichere dieses Lebensmittel für zukünftige Verwendung",
+  "activityTotal": "Gesamt",
+  "measuredOn": "Gemessen am: {date}",
+  "@measuredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

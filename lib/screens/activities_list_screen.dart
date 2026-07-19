@@ -384,7 +384,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                       const SizedBox(height: 4),
                       Text(_formatDuration(totalDuration),
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      Text('Gesamt', style: Theme.of(context).textTheme.bodySmall),
+                      Text(l.activityTotal, style: Theme.of(context).textTheme.bodySmall),
                     ]),
                     if (totalCalories > 0)
                       Column(children: [

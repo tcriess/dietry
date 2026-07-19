@@ -873,5 +873,7 @@
   "enterNutritionPer100": "Introduzca todos los valores nutricionales por 100 g / 100 ml",
   "nutritionalValues": "Valores nutricionales",
   "optionalSection": "Opcional",
-  "saveFoodForFuture": "Guarda este alimento para uso futuro"
+  "saveFoodForFuture": "Guarda este alimento para uso futuro",
+  "activityTotal": "Total",
+  "measuredOn": "Medido el: {date}"
 }

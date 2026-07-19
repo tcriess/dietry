@@ -2066,4 +2066,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get saveFoodForFuture =>
       'Speichere dieses Lebensmittel für zukünftige Verwendung';
+
+  @override
+  String get activityTotal => 'Gesamt';
+
+  @override
+  String measuredOn(String date) {
+    return 'Gemessen am: $date';
+  }
 }

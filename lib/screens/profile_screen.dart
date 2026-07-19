@@ -837,7 +837,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Padding(
                             padding: const EdgeInsets.only(left: 36),
                             child: Text(
-                              'Gemessen am: ${_currentMeasurement!.measuredAt.day}.${_currentMeasurement!.measuredAt.month}.${_currentMeasurement!.measuredAt.year}',
+                              AppLocalizations.of(context)!.measuredOn(
+                                  '${_currentMeasurement!.measuredAt.day}.${_currentMeasurement!.measuredAt.month}.${_currentMeasurement!.measuredAt.year}'),
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: Colors.grey.shade600,
                               ),

@@ -3819,6 +3819,18 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Speichere dieses Lebensmittel für zukünftige Verwendung'**
   String get saveFoodForFuture;
+
+  /// No description provided for @activityTotal.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt'**
+  String get activityTotal;
+
+  /// No description provided for @measuredOn.
+  ///
+  /// In de, this message translates to:
+  /// **'Gemessen am: {date}'**
+  String measuredOn(String date);
 }
 
 class _AppLocalizationsDelegate
