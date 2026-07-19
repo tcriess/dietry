@@ -88,6 +88,28 @@ class ReportsService {
   String? get _uid => _db.userId;
   Future<bool> _tok() => _db.ensureValidToken(minMinutesValid: 5);
 
+  /// GET a PostgREST resource through the Dio client. Reports read through Dio
+  /// rather than the PostgrestClient because Dio's interceptor injects the
+  /// current JWT on every request and refreshes it on 401. The PostgrestClient
+  /// carries an Authorization header snapshotted at construction, so after a
+  /// background token rotation its requests fall through to the anon role — RLS
+  /// then answers with zero rows and the reports silently show "no data".
+  Future<List<Map<String, dynamic>>> _get(String pathWithQuery) async {
+    final resp = await _db.dioClient.get<dynamic>(pathWithQuery);
+    final data = resp.data;
+    return data is List ? data.cast<Map<String, dynamic>>() : const [];
+  }
+
+  /// PostgREST date-range filter for [col]: an upper bound (inclusive `lte`, or
+  /// exclusive `lt` when [exclusiveTo]) and an optional `gte` lower bound.
+  /// Repeated `col=` params are ANDed by PostgREST.
+  String _range(String col, DateTime? from, DateTime to,
+      {bool exclusiveTo = false}) {
+    final buf = StringBuffer('&$col=${exclusiveTo ? 'lt' : 'lte'}.${_ds(to)}');
+    if (from != null) buf.write('&$col=gte.${_ds(from)}');
+    return buf.toString();
+  }
+
   // ── Nutrition (CE) ─────────────────────────────────────────────────────────
 
   Future<List<DailyNutritionData>> getNutritionTrend(
@@ -96,30 +118,22 @@ class ReportsService {
     final uid = _uid;
     if (uid == null) return [];
 
-    var qN = _db.client
-        .from('daily_nutrition_summary')
-        .select('entry_date,total_calories,total_protein,total_fat,total_carbs')
-        .eq('user_id', uid)
-        .lte('entry_date', _ds(to));
-    if (from != null) qN = qN.gte('entry_date', _ds(from));
-    final rN = await qN.order('entry_date', ascending: true);
+    final rN = await _get('/daily_nutrition_summary'
+        '?select=entry_date,total_calories,total_protein,total_fat,total_carbs'
+        '&user_id=eq.$uid&order=entry_date.asc${_range('entry_date', from, to)}');
 
-    var qA = _db.client
-        .from('daily_activity_summary')
-        .select('activity_date,total_calories')
-        .eq('user_id', uid)
-        .lte('activity_date', _ds(to));
-    if (from != null) qA = qA.gte('activity_date', _ds(from));
-    final rA = await qA;
+    final rA = await _get('/daily_activity_summary'
+        '?select=activity_date,total_calories'
+        '&user_id=eq.$uid${_range('activity_date', from, to)}');
 
     final burnedByDate = <String, double>{};
-    for (final row in rA as List) {
+    for (final row in rA) {
       final ds = (row['activity_date'] as String).split('T')[0];
       burnedByDate[ds] =
           (row['total_calories'] as num?)?.toDouble() ?? 0;
     }
 
-    return (rN as List).map((row) {
+    return rN.map((row) {
       final ds = (row['entry_date'] as String).split('T')[0];
       return DailyNutritionData(
         date: DateTime.parse(row['entry_date'] as String),
@@ -140,15 +154,9 @@ class ReportsService {
     final uid = _uid;
     if (uid == null) return [];
 
-    var q = _db.client
-        .from('water_intake')
-        .select('date,amount_ml')
-        .eq('user_id', uid)
-        .lte('date', _ds(to));
-    if (from != null) q = q.gte('date', _ds(from));
-
-    final r = await q.order('date', ascending: true);
-    return (r as List)
+    final r = await _get('/water_intake?select=date,amount_ml'
+        '&user_id=eq.$uid&order=date.asc${_range('date', from, to)}');
+    return r
         .map((row) => DailyWaterData(
               date: DateTime.parse(row['date'] as String),
               amountMl: (row['amount_ml'] as num?)?.toInt() ?? 0,
@@ -164,19 +172,12 @@ class ReportsService {
     final uid = _uid;
     if (uid == null) return [];
 
-    var q = _db.client
-        .from('food_entries')
-        .select('name,food_id,amount,unit,calories')
-        .eq('user_id', uid)
-        .eq('is_liquid', false)
-        .eq('is_meal', false)
-        .lte('entry_date', _ds(to));
-    if (from != null) q = q.gte('entry_date', _ds(from));
-
-    final r = await q;
+    final r = await _get('/food_entries?select=name,food_id,amount,unit,calories'
+        '&user_id=eq.$uid&is_liquid=eq.false&is_meal=eq.false'
+        '${_range('entry_date', from, to)}');
     final Map<String, ({String name, String? foodId, int count, double totalCal, double totalWeightG})> agg = {};
 
-    for (final row in r as List) {
+    for (final row in r) {
       final fid = row['food_id'] as String?;
       final name = row['name'] as String;
       final key = fid ?? name;
@@ -218,15 +219,10 @@ class ReportsService {
     final uid = _uid;
     if (uid == null) return [];
 
-    var q = _db.client
-        .from('user_body_measurements')
-        .select('measured_at,weight,body_fat_percentage')
-        .eq('user_id', uid)
-        .lte('measured_at', _ds(to));
-    if (from != null) q = q.gte('measured_at', _ds(from));
-
-    final r = await q.order('measured_at', ascending: true);
-    return (r as List)
+    final r = await _get('/user_body_measurements'
+        '?select=measured_at,weight,body_fat_percentage'
+        '&user_id=eq.$uid&order=measured_at.asc${_range('measured_at', from, to)}');
+    return r
         .map((row) => WeightEntry(
               date: DateTime.parse(row['measured_at'] as String),
               weight: (row['weight'] as num).toDouble(),
@@ -263,15 +259,12 @@ class ReportsService {
     final toExclusive = DateTime(to.year, to.month, to.day)
         .add(const Duration(days: 1));
 
-    var q = _db.client
-        .from('physical_activities')
-        .select('gear_id,distance_km,duration_minutes')
-        .eq('user_id', uid)
-        .not('gear_id', 'is', null)
-        .lt('start_time', _ds(toExclusive));
-    if (from != null) q = q.gte('start_time', _ds(from));
-
-    final results = await Future.wait<dynamic>([gearSvc.getTotals(), q]);
+    final results = await Future.wait<dynamic>([
+      gearSvc.getTotals(),
+      _get('/physical_activities?select=gear_id,distance_km,duration_minutes'
+          '&user_id=eq.$uid&gear_id=not.is.null'
+          '${_range('start_time', from, toExclusive, exclusiveTo: true)}'),
+    ]);
 
     return buildGearReport(
       gear: gear,
