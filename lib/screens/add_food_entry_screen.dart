@@ -27,6 +27,8 @@ import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/barcode_scanner_sheet.dart';
+import '../widgets/cooked_factor_dialog.dart';
+import '../widgets/cooked_weight_nudge.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/cooking_yield.dart';
 import 'food_database_screen.dart';
@@ -103,10 +105,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final level = EstimateLevel.defaultForLog(
       foodLevel: _selectedFood?.estimateLevel ?? EstimateLevel.none,
     );
-    // Converting a cooked weight with a generic yield factor adds spread on top
-    // of whatever the food itself carries.
+    // Converting a cooked weight with a *generic* yield factor adds spread on
+    // top of whatever the food itself carries. A factor the user measured
+    // themselves does not — that is as good as weighing.
     final yield_ = _cookedYield;
-    if (yield_ != null && _isCookedUnitSelected) {
+    if (yield_ != null && _isCookedUnitSelected && _userCookedFactor == null) {
       return level.orHigher(yield_.uncertainty);
     }
     return level;
@@ -129,6 +132,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     return _yieldCacheInfo;
   }
 
+  /// The user's own measured factor for the selected food, if they have one.
+  /// Beats the generic table — most of the published spread in cooking yields
+  /// is how a given person cooks, not measurement error.
+  double? _userCookedFactor;
+
+  double? get _effectiveCookedFactor =>
+      _userCookedFactor ?? _cookedYield?.factor;
+
   /// The custom unit, falling back to plain grams when a stale `g_cooked`
   /// selection survives a food change that leaves us without a yield factor.
   String get _effectiveCustomUnit =>
@@ -138,6 +149,82 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
   bool get _isCookedUnitSelected =>
       _selectedPortion == null && _effectiveCustomUnit == kUnitGramCooked;
+
+  /// Set once the user picks any unit — the raw/cooked nudge is a question, and
+  /// touching the dropdown answers it either way.
+  bool _unitTouched = false;
+
+  /// Whether to point out that the values are for the raw/dry product. Limited
+  /// to water-absorbing dry goods, where the factor is 2–3× and the conversion
+  /// is exact; the ±25% meat case is not worth interrupting for.
+  bool get _showCookedNudge =>
+      !_unitTouched &&
+      _selectedPortion == null &&
+      _effectiveCustomUnit == kUnitGram &&
+      _cookedYield?.kind == YieldKind.absorption;
+
+  /// Loads the user's measured factor for [food], if any. Fire-and-forget: on
+  /// failure (offline — user_food_prefs is not in the local mirror) the generic
+  /// factor stands, which is the same behaviour as never having measured.
+  Future<void> _loadCookedFactor(FoodItem food) async {
+    final db = widget.dbService;
+    if (db == null || food.id.isEmpty) return;
+    if (CookingYield.defaultFor(food) == null) return; // nothing to override
+    final prefs = await UserFoodPrefsService(db).getForFoodIds([food.id]);
+    final factor = prefs[food.id]?.cookedFactor;
+    // The user may have moved on to another food while this was in flight.
+    if (!mounted || factor == null || !identical(_selectedFood, food)) return;
+    setState(() => _userCookedFactor = factor);
+  }
+
+  Future<void> _openCookedCalibration() async {
+    final food = _selectedFood;
+    final generic = _cookedYield;
+    if (food == null || generic == null) return;
+
+    final result = await showCookedFactorDialog(
+      context,
+      defaultFactor: generic.factor,
+      currentFactor: _userCookedFactor,
+    );
+    if (result == null || !mounted) return;
+
+    setState(() => _userCookedFactor = result.factor);
+
+    // Guest mode / unsaved food: the factor still applies to this entry, it
+    // just can't be remembered.
+    final db = widget.dbService;
+    if (db == null || food.id.isEmpty) return;
+
+    final ok = await UserFoodPrefsService(db).upsertCookedFactor(
+      foodId: food.id,
+      factor: result.factor,
+      amount: tryParseDouble(_amountController.text) ?? 100,
+      unit: _effectiveCustomUnit,
+    );
+    if (!mounted) return;
+    final l = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? l.cookedCalibrateSaved : l.cookedCalibrateFailed),
+    ));
+  }
+
+  void _switchToCookedUnit() {
+    final yield_ = _cookedYield;
+    if (yield_ == null) return;
+    setState(() {
+      _unitTouched = true;
+      _selectedPortion = null;
+      _customUnit = kUnitGramCooked;
+      final current = tryParseDouble(_amountController.text);
+      if (current != null && current > 0) {
+        // The amount on screen is a raw weight — show what it becomes cooked,
+        // so the switch doesn't silently change how much food was logged.
+        _amountController.text =
+            (current * _effectiveCookedFactor!).round().toString();
+      }
+    });
+  }
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
@@ -431,6 +518,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       _selectedFood = food;
       _selectedMicros = micros;
       _nameController.text = food.name;
+      // New food, new question — the unit choice made for the previous one says
+      // nothing about this one.
+      _unitTouched = false;
+      _userCookedFactor = null;
 
       // Per-100g-Werte aus FoodItem in die Controller schreiben — NICHT skalieren.
       _caloriesController.text = food.calories.toStringAsFixed(0);
@@ -484,6 +575,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       _searchResults = [];
       _showManualEntry = false;
     });
+
+    unawaited(_loadCookedFactor(food));
   }
 
   /// Öffnet den OCR-Scan-Flow (Premium, mobile) und prefillt die
@@ -630,7 +723,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           rawAmount,
           _effectiveCustomUnit,
           portion: _selectedPortion,
-          cookedFactor: _cookedYield?.factor,
+          cookedFactor: _effectiveCookedFactor,
         ) ??
         0;
   }
@@ -719,7 +812,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             // weight the nutrition values are actually being scaled from.
             if (_isCookedUnitSelected)
               Text(
-                l.cookedHintRaw(formatAmount(_currentGrams())),
+                _userCookedFactor != null
+                    ? '${l.cookedHintRaw(formatAmount(_currentGrams()))} · ${l.cookedFactorOwn}'
+                    : l.cookedHintRaw(formatAmount(_currentGrams())),
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             const SizedBox(height: 8),
@@ -800,6 +895,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       onChanged: (value) {
         if (value == null) return;
         setState(() {
+          _unitTouched = true;
           if (value.startsWith('p:')) {
             final name = value.substring(2);
             _selectedPortion = food?.portions.firstWhere((p) => p.name == name);
@@ -813,7 +909,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             } else if (serving != null && value == kUnitGramCooked) {
               // The serving size is a raw weight — show what it becomes cooked.
               _amountController.text =
-                  (serving * yield_!.factor).round().toString();
+                  (serving * _effectiveCookedFactor!).round().toString();
             }
           }
           // setState rebuilds the totals preview; nutrition controllers stay per-100g.
@@ -2004,6 +2100,30 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         ),
                       ],
                     ),
+
+                    if (_showCookedNudge) ...[
+                      const SizedBox(height: 8),
+                      CookedWeightNudge(onSwitchToCooked: _switchToCookedUnit),
+                    ],
+
+                    // Let the user replace the generic factor with their own —
+                    // most of the published spread in cooking yields is how a
+                    // given person cooks, not measurement error.
+                    if (_isCookedUnitSelected && _selectedFood != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _openCookedCalibration,
+                          icon: const Icon(Icons.straighten, size: 16),
+                          label: Text(l.cookedCalibrateOpen,
+                              style: const TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 12),
 

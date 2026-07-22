@@ -19,6 +19,7 @@ import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
+import 'cooked_weight_nudge.dart';
 import 'repeat_meal_picker.dart';
 import '../screens/add_food_entry_screen.dart' show createFoodFromScannedBarcode;
 
@@ -950,6 +951,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         isMeal: isMeal,
         userId: widget.dbService.userId!,
         date: widget.date,
+        userCookedFactor:
+            foodId != null ? _portionPrefs[foodId]?.cookedFactor : null,
         onMealTypeChanged: (mt) => setState(() => _mealType = mt),
         onSaveAsShortcut: _saveAsShortcut,
       ),
@@ -2145,6 +2148,11 @@ class _ConfirmDialog extends StatefulWidget {
 
   final String userId;
   final DateTime date;
+
+  /// The user's own measured cooked/raw factor for this food, if they have one.
+  /// Overrides the generic factor from [CookingYield].
+  final double? userCookedFactor;
+
   final void Function(MealType) onMealTypeChanged;
   final Future<void> Function({
     required String label,
@@ -2186,6 +2194,7 @@ class _ConfirmDialog extends StatefulWidget {
     this.amountMl,
     required this.isMeal,
     required this.userId,
+    this.userCookedFactor,
     required this.date,
     required this.onMealTypeChanged,
     required this.onSaveAsShortcut,
@@ -2213,8 +2222,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     final level = EstimateLevel.defaultForLog(
       foodLevel: widget.food?.estimateLevel ?? EstimateLevel.none,
     );
+    // A generic factor adds spread; one the user measured themselves does not.
     final yield_ = _cookedYield;
-    if (yield_ != null && _selectedUnit == kUnitGramCooked) {
+    if (yield_ != null &&
+        _selectedUnit == kUnitGramCooked &&
+        widget.userCookedFactor == null) {
       return level.orHigher(yield_.uncertainty);
     }
     return level;
@@ -2239,11 +2251,15 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   /// Grams the current selection represents, on the food's label basis — null
   /// when the unit can't be resolved to a gram weight (unknown portion, or a
   /// cooked weight without a yield factor).
+  /// A factor the user measured beats the generic table.
+  double? get _effectiveCookedFactor =>
+      widget.userCookedFactor ?? _cookedYield?.factor;
+
   double? _currentAmountG() => unitToGrams(
         _currentAmount,
         _selectedUnit,
         portion: _selectedPortion,
-        cookedFactor: _cookedYield?.factor,
+        cookedFactor: _effectiveCookedFactor,
       );
 
   @override
@@ -2293,9 +2309,37 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     return units;
   }
 
+  /// Set once the user picks any unit — the raw/cooked nudge is a question, and
+  /// touching the dropdown answers it either way.
+  bool _unitTouched = false;
+
+  /// Whether to point out that the values are for the raw/dry product. Limited
+  /// to water-absorbing dry goods, where the factor is 2–3× and the conversion
+  /// is exact; the ±25% meat case is not worth interrupting for.
+  bool get _showCookedNudge =>
+      !_unitTouched &&
+      _selectedUnit == kUnitGram &&
+      _cookedYield?.kind == YieldKind.absorption;
+
+  void _switchToCookedUnit() {
+    final yield_ = _cookedYield;
+    if (yield_ == null) return;
+    final current = _currentAmount;
+    _onUnitChanged(kUnitGramCooked);
+    if (current > 0) {
+      // The amount on screen is a raw weight — show what it becomes cooked, so
+      // the switch doesn't silently change how much food was logged.
+      setState(() {
+        _amountCtrl.text =
+            (current * _effectiveCookedFactor!).round().toString();
+      });
+    }
+  }
+
   void _onUnitChanged(String unit) {
     final food = widget.food;
     setState(() {
+      _unitTouched = true;
       _selectedUnit = unit;
       _selectedPortion = food?.portions.cast<FoodPortion?>().firstWhere(
             (p) => p!.name == unit,
@@ -2311,7 +2355,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         // The serving size is a raw weight — show what it becomes cooked.
         final servingSize = food?.servingSize ?? 100.0;
         _amountCtrl.text =
-            (servingSize * _cookedYield!.factor).round().toString();
+            (servingSize * _effectiveCookedFactor!).round().toString();
       }
       // Follow the portion type unless the user has explicitly overridden.
       if (!_userSetEstimate) _estimateLevel = _autoEstimate();
@@ -2492,6 +2536,10 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 ),
             ],
           ),
+          if (_showCookedNudge) ...[
+            const SizedBox(height: 8),
+            CookedWeightNudge(onSwitchToCooked: _switchToCookedUnit),
+          ],
           // Make the raw↔cooked conversion visible: the user should see which
           // weight the nutrition values are actually being scaled from.
           if (_selectedUnit == kUnitGramCooked && _currentAmountG() != null)

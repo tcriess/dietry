@@ -351,6 +351,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unit => 'Unit';
 
   @override
+  String get cookedCalibrateTitle => 'Measure cooking factor';
+
+  @override
+  String get cookedCalibrateIntro =>
+      'How much does this food become when cooked? Measure once — your own factor is used from then on.';
+
+  @override
+  String get cookedCalibrateRaw => 'Weighed raw/dry (g)';
+
+  @override
+  String get cookedCalibrateCooked => 'Weighed cooked (g)';
+
+  @override
+  String cookedCalibrateResult(String factor, String fallback) {
+    return 'Factor $factor (default: $fallback)';
+  }
+
+  @override
+  String get cookedCalibrateOpen => 'Measure cooking factor…';
+
+  @override
+  String get cookedCalibrateSaved => 'Cooking factor saved';
+
+  @override
+  String get cookedCalibrateFailed => 'Could not save the cooking factor';
+
+  @override
+  String get cookedCalibrateReset => 'Reset to default';
+
+  @override
+  String get cookedFactorOwn => 'your factor';
+
+  @override
+  String get cookedNudgeText => 'These values are for the raw/dry product.';
+
+  @override
+  String get cookedNudgeAction => 'Weighed it cooked?';
+
+  @override
   String get unitGramsRaw => 'g (raw/dry)';
 
   @override

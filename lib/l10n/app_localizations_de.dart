@@ -351,6 +351,47 @@ class AppLocalizationsDe extends AppLocalizations {
   String get unit => 'Einheit';
 
   @override
+  String get cookedCalibrateTitle => 'Kochfaktor messen';
+
+  @override
+  String get cookedCalibrateIntro =>
+      'Wie viel wird aus diesem Lebensmittel beim Kochen? Einmal messen — danach wird dein eigener Faktor verwendet.';
+
+  @override
+  String get cookedCalibrateRaw => 'Roh/trocken gewogen (g)';
+
+  @override
+  String get cookedCalibrateCooked => 'Gekocht gewogen (g)';
+
+  @override
+  String cookedCalibrateResult(String factor, String fallback) {
+    return 'Faktor $factor (Standard: $fallback)';
+  }
+
+  @override
+  String get cookedCalibrateOpen => 'Kochfaktor messen…';
+
+  @override
+  String get cookedCalibrateSaved => 'Kochfaktor gespeichert';
+
+  @override
+  String get cookedCalibrateFailed =>
+      'Kochfaktor konnte nicht gespeichert werden';
+
+  @override
+  String get cookedCalibrateReset => 'Auf Standard zurücksetzen';
+
+  @override
+  String get cookedFactorOwn => 'dein Faktor';
+
+  @override
+  String get cookedNudgeText =>
+      'Die Nährwerte gelten für die rohe/trockene Ware.';
+
+  @override
+  String get cookedNudgeAction => 'Gekocht gewogen?';
+
+  @override
   String get unitGramsRaw => 'g (roh/trocken)';
 
   @override

@@ -169,6 +169,28 @@
   "myDatabase": "Meine Datenbank",
   "amount": "Menge",
   "unit": "Einheit",
+  "cookedCalibrateTitle": "Kochfaktor messen",
+  "cookedCalibrateIntro": "Wie viel wird aus diesem Lebensmittel beim Kochen? Einmal messen — danach wird dein eigener Faktor verwendet.",
+  "cookedCalibrateRaw": "Roh/trocken gewogen (g)",
+  "cookedCalibrateCooked": "Gekocht gewogen (g)",
+  "cookedCalibrateResult": "Faktor {factor} (Standard: {fallback})",
+  "cookedCalibrateOpen": "Kochfaktor messen…",
+  "cookedCalibrateSaved": "Kochfaktor gespeichert",
+  "cookedCalibrateFailed": "Kochfaktor konnte nicht gespeichert werden",
+  "cookedCalibrateReset": "Auf Standard zurücksetzen",
+  "cookedFactorOwn": "dein Faktor",
+  "@cookedCalibrateResult": {
+    "placeholders": {
+      "factor": {
+        "type": "String"
+      },
+      "fallback": {
+        "type": "String"
+      }
+    }
+  },
+  "cookedNudgeText": "Die Nährwerte gelten für die rohe/trockene Ware.",
+  "cookedNudgeAction": "Gekocht gewogen?",
   "unitGramsRaw": "g (roh/trocken)",
   "unitGramsCooked": "g (gekocht)",
   "cookedHintRaw": "≈ {grams} g roh",

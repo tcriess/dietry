@@ -12,7 +12,15 @@ class UserFoodPref {
   final double amount;
   final String unit;
 
-  const UserFoodPref({required this.amount, required this.unit});
+  /// User-measured cooked weight ÷ raw weight for this food. Null = fall back
+  /// to the app's generic factor from [CookingYield].
+  final double? cookedFactor;
+
+  const UserFoodPref({
+    required this.amount,
+    required this.unit,
+    this.cookedFactor,
+  });
 }
 
 class UserFoodPrefsService {
@@ -34,7 +42,7 @@ class UserFoodPrefsService {
       final inList = foodIds.map((id) => '"$id"').join(',');
       final response = await _db.client
           .from('user_food_prefs')
-          .select('food_id,last_amount,last_unit')
+          .select('food_id,last_amount,last_unit,cooked_factor')
           .eq('user_id', userId)
           .filter('food_id', 'in', '($inList)');
       final out = <String, UserFoodPref>{};
@@ -43,6 +51,7 @@ class UserFoodPrefsService {
         out[m['food_id'] as String] = UserFoodPref(
           amount: (m['last_amount'] as num).toDouble(),
           unit: m['last_unit'] as String,
+          cookedFactor: (m['cooked_factor'] as num?)?.toDouble(),
         );
       }
       return out;
@@ -52,9 +61,55 @@ class UserFoodPrefsService {
     }
   }
 
+  /// Stores a user-measured cooked/raw yield factor for [foodId].
+  ///
+  /// [amount] and [unit] are required because the row may not exist yet and
+  /// both columns are NOT NULL — on insert they seed the portion memory, on
+  /// conflict they are refreshed alongside the factor.
+  ///
+  /// Unlike [upsert] this is user-initiated, so it reports success: the caller
+  /// shows the result of an explicit action rather than silently dropping it.
+  /// A null [factor] clears the measurement and falls back to the generic one.
+  Future<bool> upsertCookedFactor({
+    required String foodId,
+    required double? factor,
+    required double amount,
+    required String unit,
+  }) async {
+    try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return false;
+      final userId = _db.userId;
+      if (userId == null) return false;
+      await _db.dioClient.post(
+        '/user_food_prefs',
+        data: {
+          'user_id': userId,
+          'food_id': foodId,
+          'last_amount': amount,
+          'last_unit': unit,
+          'cooked_factor': factor,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        options: Options(headers: {
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        }),
+      );
+      return true;
+    } catch (e) {
+      appLogger.w('UserFoodPrefsService.upsertCookedFactor failed: $e');
+      return false;
+    }
+  }
+
   /// Upserts the user's preference for [foodId] with the [amount] and [unit]
   /// they just logged. Fire-and-forget from callers — failures are logged
   /// but never thrown, so a pref hiccup can't break the food-add flow.
+  ///
+  /// NOTE: deliberately omits `cooked_factor`. PostgREST builds the
+  /// `ON CONFLICT DO UPDATE SET` list from the payload's keys, so a column that
+  /// isn't sent is left untouched — otherwise every ordinary food log would
+  /// wipe the user's measured factor.
   Future<void> upsert({
     required String foodId,
     required double amount,

@@ -742,6 +742,78 @@ abstract class AppLocalizations {
   /// **'Einheit'**
   String get unit;
 
+  /// No description provided for @cookedCalibrateTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Kochfaktor messen'**
+  String get cookedCalibrateTitle;
+
+  /// No description provided for @cookedCalibrateIntro.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie viel wird aus diesem Lebensmittel beim Kochen? Einmal messen — danach wird dein eigener Faktor verwendet.'**
+  String get cookedCalibrateIntro;
+
+  /// No description provided for @cookedCalibrateRaw.
+  ///
+  /// In de, this message translates to:
+  /// **'Roh/trocken gewogen (g)'**
+  String get cookedCalibrateRaw;
+
+  /// No description provided for @cookedCalibrateCooked.
+  ///
+  /// In de, this message translates to:
+  /// **'Gekocht gewogen (g)'**
+  String get cookedCalibrateCooked;
+
+  /// No description provided for @cookedCalibrateResult.
+  ///
+  /// In de, this message translates to:
+  /// **'Faktor {factor} (Standard: {fallback})'**
+  String cookedCalibrateResult(String factor, String fallback);
+
+  /// No description provided for @cookedCalibrateOpen.
+  ///
+  /// In de, this message translates to:
+  /// **'Kochfaktor messen…'**
+  String get cookedCalibrateOpen;
+
+  /// No description provided for @cookedCalibrateSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Kochfaktor gespeichert'**
+  String get cookedCalibrateSaved;
+
+  /// No description provided for @cookedCalibrateFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Kochfaktor konnte nicht gespeichert werden'**
+  String get cookedCalibrateFailed;
+
+  /// No description provided for @cookedCalibrateReset.
+  ///
+  /// In de, this message translates to:
+  /// **'Auf Standard zurücksetzen'**
+  String get cookedCalibrateReset;
+
+  /// No description provided for @cookedFactorOwn.
+  ///
+  /// In de, this message translates to:
+  /// **'dein Faktor'**
+  String get cookedFactorOwn;
+
+  /// No description provided for @cookedNudgeText.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Nährwerte gelten für die rohe/trockene Ware.'**
+  String get cookedNudgeText;
+
+  /// No description provided for @cookedNudgeAction.
+  ///
+  /// In de, this message translates to:
+  /// **'Gekocht gewogen?'**
+  String get cookedNudgeAction;
+
   /// No description provided for @unitGramsRaw.
   ///
   /// In de, this message translates to:

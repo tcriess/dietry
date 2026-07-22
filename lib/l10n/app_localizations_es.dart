@@ -352,6 +352,46 @@ class AppLocalizationsEs extends AppLocalizations {
   String get unit => 'Unidad';
 
   @override
+  String get cookedCalibrateTitle => 'Medir factor de cocción';
+
+  @override
+  String get cookedCalibrateIntro =>
+      '¿Cuánto resulta de este alimento al cocinarlo? Mídelo una vez y a partir de entonces se usará tu propio factor.';
+
+  @override
+  String get cookedCalibrateRaw => 'Pesado crudo/seco (g)';
+
+  @override
+  String get cookedCalibrateCooked => 'Pesado cocido (g)';
+
+  @override
+  String cookedCalibrateResult(String factor, String fallback) {
+    return 'Factor $factor (predeterminado: $fallback)';
+  }
+
+  @override
+  String get cookedCalibrateOpen => 'Medir factor de cocción…';
+
+  @override
+  String get cookedCalibrateSaved => 'Factor de cocción guardado';
+
+  @override
+  String get cookedCalibrateFailed => 'No se pudo guardar el factor de cocción';
+
+  @override
+  String get cookedCalibrateReset => 'Restablecer al predeterminado';
+
+  @override
+  String get cookedFactorOwn => 'tu factor';
+
+  @override
+  String get cookedNudgeText =>
+      'Los valores corresponden al producto crudo/seco.';
+
+  @override
+  String get cookedNudgeAction => '¿Lo pesaste cocido?';
+
+  @override
   String get unitGramsRaw => 'g (crudo/seco)';
 
   @override

@@ -1,5 +1,11 @@
 # Cooked-Weight Entry — Implementation Plan
 
+**Status:** all three phases implemented (2026-07-22). Phase 1 manually verified
+(barcode scan + raw/cooked unit switching). Phases 2 and 3 not yet manually
+verified. `V8__user_food_prefs_cooked_factor.sql` must be applied before the
+calibration dialog can persist anything — until then it degrades to the generic
+factor, because `getForFoodIds` swallows the PostgREST error and returns empty.
+
 ## Problem
 
 Nutrition labels are legally declared for the food **as sold**, not as eaten
