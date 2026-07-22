@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../utils/number_utils.dart';
+import '../utils/unit_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 import '../models/food_item.dart';
@@ -27,6 +28,7 @@ import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/barcode_scanner_sheet.dart';
 import '../services/barcode_lookup_service.dart';
+import '../services/cooking_yield.dart';
 import 'food_database_screen.dart';
 
 /// Screen zum Hinzufügen eines Food-Entries
@@ -97,11 +99,45 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   // once the user taps a chip we honour their choice.
   EstimateLevel _estimateLevel = EstimateLevel.none;
   bool _userSetEstimate = false;
-  EstimateLevel _autoEstimate() => EstimateLevel.defaultForLog(
-        foodLevel: _selectedFood?.estimateLevel ?? EstimateLevel.none,
-      );
+  EstimateLevel _autoEstimate() {
+    final level = EstimateLevel.defaultForLog(
+      foodLevel: _selectedFood?.estimateLevel ?? EstimateLevel.none,
+    );
+    // Converting a cooked weight with a generic yield factor adds spread on top
+    // of whatever the food itself carries.
+    final yield_ = _cookedYield;
+    if (yield_ != null && _isCookedUnitSelected) {
+      return level.orHigher(yield_.uncertainty);
+    }
+    return level;
+  }
+
   EstimateLevel get _effectiveEstimate =>
       _userSetEstimate ? _estimateLevel : _autoEstimate();
+
+  // Raw→cooked yield for the selected food, memoized per food instance — the
+  // lookup runs regexes and is read several times per build.
+  FoodItem? _yieldCacheFood;
+  CookingYieldInfo? _yieldCacheInfo;
+  CookingYieldInfo? get _cookedYield {
+    final food = _selectedFood;
+    if (food == null) return null;
+    if (!identical(_yieldCacheFood, food)) {
+      _yieldCacheFood = food;
+      _yieldCacheInfo = CookingYield.defaultFor(food);
+    }
+    return _yieldCacheInfo;
+  }
+
+  /// The custom unit, falling back to plain grams when a stale `g_cooked`
+  /// selection survives a food change that leaves us without a yield factor.
+  String get _effectiveCustomUnit =>
+      (_customUnit == kUnitGramCooked && _cookedYield == null)
+          ? kUnitGram
+          : _customUnit;
+
+  bool get _isCookedUnitSelected =>
+      _selectedPortion == null && _effectiveCustomUnit == kUnitGramCooked;
   bool _isSaving = false;
   bool _useOpenFoodFacts = false;
   bool _isLiquid = false;
@@ -583,14 +619,20 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
   }
 
-  /// Grams equivalent of the current amount+unit (used for scaling per-100g values).
-  /// For portions: amount × portion.amountG. For custom g/ml units: amount directly.
+  /// Grams equivalent of the current amount+unit, on the food's label basis
+  /// (used for scaling per-100g values). For portions: amount × portion.amountG.
+  /// For custom g/ml units: amount directly. For a cooked weight: converted back
+  /// to the raw/dry weight the label declares.
   double _currentGrams() {
     final rawAmount = tryParseDouble(_amountController.text) ?? 0;
     if (rawAmount <= 0) return 0;
-    return _selectedPortion != null
-        ? rawAmount * _selectedPortion!.amountG
-        : rawAmount;
+    return unitToGrams(
+          rawAmount,
+          _effectiveCustomUnit,
+          portion: _selectedPortion,
+          cookedFactor: _cookedYield?.factor,
+        ) ??
+        0;
   }
 
   /// Compute total nutrition for the current amount from per-100g values in the
@@ -658,7 +700,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final amountStr = rawAmount == rawAmount.truncateToDouble()
         ? rawAmount.toInt().toString()
         : rawAmount.toStringAsFixed(1);
-    final unitLabel = _selectedPortion?.name ?? _customUnit;
+    final unitText = _selectedPortion?.name ??
+        unitLabel(_effectiveCustomUnit, l,
+            distinguishRaw: _cookedYield != null);
 
     return Card(
       color: Colors.blue.shade50,
@@ -668,9 +712,16 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l.totalForAmount('$amountStr$unitLabel'),
+              l.totalForAmount('$amountStr$unitText'),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
+            // Make the raw↔cooked conversion visible: the user should see which
+            // weight the nutrition values are actually being scaled from.
+            if (_isCookedUnitSelected)
+              Text(
+                l.cookedHintRaw(formatAmount(_currentGrams())),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -707,8 +758,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }).toList();
 
     // Berechne den aktuellen Schlüssel
-    final currentKey =
-        _selectedPortion != null ? 'p:${_selectedPortion!.name}' : _customUnit;
+    final currentKey = _selectedPortion != null
+        ? 'p:${_selectedPortion!.name}'
+        : _effectiveCustomUnit;
+
+    // Packaged/label values are declared for the food as sold — raw or dry.
+    // Offer a cooked weight only where cooking actually moves the number.
+    final yield_ = _cookedYield;
 
     final items = <DropdownMenuItem<String>>[];
 
@@ -722,8 +778,17 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
 
     // Immer: g und ml
-    items.add(const DropdownMenuItem(value: 'g', child: Text('g')));
-    items.add(const DropdownMenuItem(value: 'ml', child: Text('ml')));
+    items.add(DropdownMenuItem(
+      value: kUnitGram,
+      child: Text(unitLabel(kUnitGram, l, distinguishRaw: yield_ != null)),
+    ));
+    if (yield_ != null) {
+      items.add(DropdownMenuItem(
+        value: kUnitGramCooked,
+        child: Text(unitLabel(kUnitGramCooked, l)),
+      ));
+    }
+    items.add(DropdownMenuItem(value: kUnitMl, child: Text(unitLabel(kUnitMl, l))));
 
     return DropdownButtonFormField<String>(
       initialValue: currentKey,
@@ -742,8 +807,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           } else {
             _selectedPortion = null;
             _customUnit = value;
-            if (food?.servingSize != null && value == 'g') {
-              _amountController.text = food!.servingSize!.toInt().toString();
+            final serving = food?.servingSize;
+            if (serving != null && value == kUnitGram) {
+              _amountController.text = serving.toInt().toString();
+            } else if (serving != null && value == kUnitGramCooked) {
+              // The serving size is a raw weight — show what it becomes cooked.
+              _amountController.text =
+                  (serving * yield_!.factor).round().toString();
             }
           }
           // setState rebuilds the totals preview; nutrition controllers stay per-100g.
@@ -774,18 +844,16 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         if (_selectedPortion != null) {
           // Portion: amount * portion.amountG (treating G as ml for liquid foods)
           amountMl = rawAmount * _selectedPortion!.amountG;
-        } else if (_customUnit == 'ml') {
+        } else if (_effectiveCustomUnit == kUnitMl) {
           // Direct ml entry
           amountMl = rawAmount;
         }
       }
 
       // Nutrition controllers are ALWAYS per-100g (both manual entry and selected
-      // food). Scale to totals by actual grams (portion amount × amountG, or
-      // raw amount for g/ml).
-      final grams = _selectedPortion != null
-          ? rawAmount * _selectedPortion!.amountG
-          : rawAmount;
+      // food). Scale to totals by actual grams — same resolution the live preview
+      // uses, so the saved entry can never disagree with what the user saw.
+      final grams = _currentGrams();
       final scale = grams / 100.0;
 
       final entry = FoodEntry(
@@ -797,7 +865,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         mealType: _selectedMealType,
         name: _nameController.text,
         amount: rawAmount,
-        unit: _selectedPortion?.name ?? _customUnit,
+        unit: _selectedPortion?.name ?? _effectiveCustomUnit,
         calories: parseDouble(_caloriesController.text) * scale,
         protein: parseDouble(_proteinController.text) * scale,
         fat: parseDouble(_fatController.text) * scale,

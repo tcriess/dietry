@@ -742,6 +742,24 @@ abstract class AppLocalizations {
   /// **'Einheit'**
   String get unit;
 
+  /// No description provided for @unitGramsRaw.
+  ///
+  /// In de, this message translates to:
+  /// **'g (roh/trocken)'**
+  String get unitGramsRaw;
+
+  /// No description provided for @unitGramsCooked.
+  ///
+  /// In de, this message translates to:
+  /// **'g (gekocht)'**
+  String get unitGramsCooked;
+
+  /// No description provided for @cookedHintRaw.
+  ///
+  /// In de, this message translates to:
+  /// **'≈ {grams} g roh'**
+  String cookedHintRaw(String grams);
+
   /// No description provided for @mealType.
   ///
   /// In de, this message translates to:

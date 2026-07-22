@@ -352,6 +352,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get unit => 'Unidad';
 
   @override
+  String get unitGramsRaw => 'g (crudo/seco)';
+
+  @override
+  String get unitGramsCooked => 'g (cocido)';
+
+  @override
+  String cookedHintRaw(String grams) {
+    return '≈ $grams g crudo';
+  }
+
+  @override
   String get mealType => 'Comida';
 
   @override

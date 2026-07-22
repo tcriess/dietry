@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/number_utils.dart';
+import '../utils/unit_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
@@ -12,6 +13,7 @@ import '../models/models.dart' show NutritionGoal;
 import '../services/food_database_service.dart';
 import '../services/food_shortcuts_service.dart';
 import '../services/barcode_lookup_service.dart';
+import '../services/cooking_yield.dart';
 import '../services/neon_database_service.dart';
 import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
@@ -2207,23 +2209,42 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   bool _userSetEstimate = false;
 
   /// Auto default for the current selection.
-  EstimateLevel _autoEstimate() => EstimateLevel.defaultForLog(
-        foodLevel: widget.food?.estimateLevel ?? EstimateLevel.none,
-      );
+  EstimateLevel _autoEstimate() {
+    final level = EstimateLevel.defaultForLog(
+      foodLevel: widget.food?.estimateLevel ?? EstimateLevel.none,
+    );
+    final yield_ = _cookedYield;
+    if (yield_ != null && _selectedUnit == kUnitGramCooked) {
+      return level.orHigher(yield_.uncertainty);
+    }
+    return level;
+  }
+
+  // Raw→cooked yield for this food; the widget's food never changes, so a
+  // single lazy lookup is enough.
+  bool _yieldResolved = false;
+  CookingYieldInfo? _yieldInfo;
+  CookingYieldInfo? get _cookedYield {
+    if (!_yieldResolved) {
+      _yieldResolved = true;
+      final food = widget.food;
+      _yieldInfo = food == null ? null : CookingYield.defaultFor(food);
+    }
+    return _yieldInfo;
+  }
 
   double get _currentAmount =>
       tryParseDouble(_amountCtrl.text) ?? widget.initialAmount;
 
-  bool get _isGramMl => _selectedUnit == 'g' || _selectedUnit == 'ml';
-
-  /// Grams the current selection represents — null when the unit is a
-  /// portion that can't be resolved to a gram weight.
-  double? _currentAmountG() {
-    final amount = _currentAmount;
-    if (_isGramMl) return amount;
-    if (_selectedPortion != null) return amount * _selectedPortion!.amountG;
-    return null;
-  }
+  /// Grams the current selection represents, on the food's label basis — null
+  /// when the unit can't be resolved to a gram weight (unknown portion, or a
+  /// cooked weight without a yield factor).
+  double? _currentAmountG() => unitToGrams(
+        _currentAmount,
+        _selectedUnit,
+        portion: _selectedPortion,
+        cookedFactor: _cookedYield?.factor,
+      );
 
   @override
   void initState() {
@@ -2255,9 +2276,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     for (final p in food.portions) {
       units.add(p.name);
     }
-    units.add('g');
-    if (food.isLiquid || widget.unit == 'ml') {
-      units.add('ml');
+    units.add(kUnitGram);
+    // Label values are declared for the food as sold — raw or dry. Offer a
+    // cooked weight only where cooking actually moves the number.
+    if (_cookedYield != null) {
+      units.add(kUnitGramCooked);
+    }
+    if (food.isLiquid || widget.unit == kUnitMl) {
+      units.add(kUnitMl);
     }
     // The stored unit may no longer match a portion (renamed/removed) — keep
     // it selectable so the DropdownButton always has a valid current value.
@@ -2278,9 +2304,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       // Reset amount: 1 for named portions, servingSize or 100 for g/ml
       if (_selectedPortion != null) {
         _amountCtrl.text = '1';
-      } else if (unit == 'g' || unit == 'ml') {
+      } else if (isDirectWeightUnit(unit)) {
         final servingSize = food?.servingSize ?? 100.0;
         _amountCtrl.text = servingSize.toStringAsFixed(0);
+      } else if (unit == kUnitGramCooked) {
+        // The serving size is a raw weight — show what it becomes cooked.
+        final servingSize = food?.servingSize ?? 100.0;
+        _amountCtrl.text =
+            (servingSize * _cookedYield!.factor).round().toString();
       }
       // Follow the portion type unless the user has explicitly overridden.
       if (!_userSetEstimate) _estimateLevel = _autoEstimate();
@@ -2298,14 +2329,13 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     double? fiber, sugar, sodium, saturatedFat, scaledAmountMl;
     String unitToStore = _selectedUnit;
 
-    // Per-100g scaling only when grams are known: g/ml unit, or a portion
-    // that resolved against the food. Otherwise fall through to ratio scaling
-    // so a "2 pieces" entry is never mistaken for "2 grams".
-    if (food != null && (_selectedPortion != null || _isGramMl)) {
-      // Calculate grams from selected unit
-      final grams = _selectedPortion != null
-          ? amount * _selectedPortion!.amountG // named portion → grams
-          : amount; // g or ml directly
+    // Per-100g scaling only when grams are known: a direct g/ml unit, a cooked
+    // weight we can convert, or a portion that resolved against the food.
+    // Otherwise fall through to ratio scaling so a "2 pieces" entry is never
+    // mistaken for "2 grams".
+    final resolvedGrams = food != null ? _currentAmountG() : null;
+    if (food != null && resolvedGrams != null) {
+      final grams = resolvedGrams;
       final f = grams / 100.0;
       calories = food.calories * f;
       protein = food.protein * f;
@@ -2315,7 +2345,9 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       sugar = food.sugar != null ? food.sugar! * f : null;
       sodium = food.sodium != null ? food.sodium! * f : null;
       saturatedFat = food.saturatedFat != null ? food.saturatedFat! * f : null;
-      if (food.isLiquid) {
+      // A cooked weight resolves to the *raw* gram basis, which is not the
+      // volume the user drank — never derive ml from it.
+      if (food.isLiquid && _selectedUnit != kUnitGramCooked) {
         scaledAmountMl = grams; // grams ≈ ml for liquids
       }
     } else if (re != null) {
@@ -2442,7 +2474,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   items: _availableUnits()
                       .map((unit) => DropdownMenuItem(
                             value: unit,
-                            child: Text(unit, style: const TextStyle(fontSize: 13)),
+                            child: Text(
+                              unitLabel(unit, l,
+                                  distinguishRaw: _cookedYield != null),
+                              style: const TextStyle(fontSize: 13),
+                            ),
                           ))
                       .toList(),
                   onChanged: (newUnit) {
@@ -2451,11 +2487,21 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 )
               else
                 Text(
-                  _selectedUnit,
+                  unitLabel(_selectedUnit, l),
                   style: const TextStyle(fontSize: 13),
                 ),
             ],
           ),
+          // Make the raw↔cooked conversion visible: the user should see which
+          // weight the nutrition values are actually being scaled from.
+          if (_selectedUnit == kUnitGramCooked && _currentAmountG() != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                l.cookedHintRaw(formatAmount(_currentAmountG()!)),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
           const SizedBox(height: 12),
           // Nutrition preview
           _NutritionPreview(entry: _buildEntry()),

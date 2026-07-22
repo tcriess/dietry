@@ -169,6 +169,16 @@
   "myDatabase": "Meine Datenbank",
   "amount": "Menge",
   "unit": "Einheit",
+  "unitGramsRaw": "g (roh/trocken)",
+  "unitGramsCooked": "g (gekocht)",
+  "cookedHintRaw": "≈ {grams} g roh",
+  "@cookedHintRaw": {
+    "placeholders": {
+      "grams": {
+        "type": "String"
+      }
+    }
+  },
   "mealType": "Mahlzeit",
   "manualEntry": "Manuell",
   "useFood": "Verwenden",
