@@ -159,8 +159,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   /// is exact; the ±25% meat case is not worth interrupting for.
   bool get _showCookedNudge =>
       !_unitTouched &&
-      _selectedPortion == null &&
-      _effectiveCustomUnit == kUnitGram &&
+      !_isCookedUnitSelected &&
       _cookedYield?.kind == YieldKind.absorption;
 
   /// Loads the user's measured factor for [food], if any. Fire-and-forget: on
@@ -212,16 +211,18 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   void _switchToCookedUnit() {
     final yield_ = _cookedYield;
     if (yield_ == null) return;
+    // Grams the current selection represents on the raw/dry basis — resolves a
+    // named portion too, so the switch works from whatever unit was selected.
+    final rawGrams = _currentGrams();
     setState(() {
       _unitTouched = true;
       _selectedPortion = null;
       _customUnit = kUnitGramCooked;
-      final current = tryParseDouble(_amountController.text);
-      if (current != null && current > 0) {
-        // The amount on screen is a raw weight — show what it becomes cooked,
-        // so the switch doesn't silently change how much food was logged.
+      if (rawGrams > 0) {
+        // Show what that raw weight becomes cooked, so the switch doesn't
+        // silently change how much food was logged.
         _amountController.text =
-            (current * _effectiveCookedFactor!).round().toString();
+            (rawGrams * _effectiveCookedFactor!).round().toString();
       }
     });
   }
