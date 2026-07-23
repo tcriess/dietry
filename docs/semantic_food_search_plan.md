@@ -1,6 +1,47 @@
 # Semantic meal-description search — implementation plan
 
-Status: **PLANNING** (no code/DB changes yet). Written 2026-07-23.
+Status: **PARKED 2026-07-23** — see "Why parked" below. Written 2026-07-23.
+
+## Why parked (read this first)
+
+The design hinged on **in-database, local embedding generation** to satisfy the
+hard constraint "no backend but Neon." On investigation that path is dead:
+
+- **`pgrag` is deprecated / unmaintained** (its own repo says so). It was Neon's
+  only *local* in-DB embedding generator (bge-small-en via fastembed-rs).
+- Its embedding worker **does not run reliably on Neon's serverless compute** —
+  `embedding_for_query()` fails with *"Couldn't connect worker stream
+  /tmp/.s.pgrag…: No such file or directory"*. This is a known, unresolved Neon
+  issue; the only mooted workaround is disabling scale-to-zero (keep the compute
+  hot 24/7), which we will not do. Confirmed live on our dev DB 2026-07-23.
+- **No maintained replacement exists** for *local* in-DB embeddings. lakebase
+  does not generate embeddings itself — it expects you to bring vectors (its
+  examples use Databricks/OpenAI model serving, i.e. an external call).
+
+So **"Neon-only + all-tiers + true semantic" is not simultaneously achievable**
+right now — the only tool that closed the triangle (pgrag) is gone. The *index*
+side is fine and maintained (`pgvector`, `lakebase_vector`/ANN,
+`lakebase_text`/BM25); the missing piece is purely embedding **generation**.
+
+**Decision (user, 2026-07-23): park** until Neon/Databricks ships a maintained
+in-DB local embedding option, rather than relax a constraint now.
+
+**Unpark trigger / next-time decision** — pick one when revisited:
+1. **On-device embeddings, stay Neon-only** → semantic becomes Pro + mobile only
+   (reuse the cactus stack; batch-embed the corpus with the same model; store
+   vectors in Neon). Not all-tiers.
+2. **External embedding API** (e.g. OpenAI text-embedding-3-small — multilingual,
+   maintained) → all-tiers + best de/es quality, but relaxes "only Neon."
+3. **BM25 only** (`lakebase_text`) → in-Neon, all-tiers, maintained, but keyword
+   not meaning (won't reach "gaspaccho" → tomato soup); marginal over pg_trgm.
+4. A future maintained in-DB local embedder → the original all-tiers plan below.
+
+The insertion point, matcher analysis, and phased build below remain valid for
+whichever embedding source we later choose — only Phase 0/1 change.
+
+---
+
+Original plan (retained for when unparked):
 
 ## Goal
 
@@ -190,6 +231,36 @@ Record the spike results in this doc before proceeding.
   small metadata row) so a mismatch is detectable.
 - **Fallback swap** — if `lakebase_vector` is troublesome, switch the index to
   pgvector HNSW with no schema/RPC change.
+
+## Appendix — the removed V9 extension migration (preserved)
+
+`sql/migrations/V9__semantic_search_extensions.sql` was written, applied to dev,
+then **removed** when we parked (it broke the stock-Postgres CE-isolation CI and
+would install deprecated pgrag on prod at the next migrate). Kept here verbatim
+so unparking with option 3/4 doesn't start from scratch. Do **not** re-add pgrag
+unless the worker issue is fixed and it's no longer deprecated.
+
+```sql
+SET neon.allow_unstable_extensions = 'true';
+
+-- Deprecated + worker broken on Neon serverless — DO NOT REVIVE without checking:
+CREATE EXTENSION IF NOT EXISTS rag CASCADE;
+CREATE EXTENSION IF NOT EXISTS rag_bge_small_en_v15 CASCADE;
+
+-- Maintained; the index/BM25 side is fine to keep if we bring vectors elsewhere:
+CREATE EXTENSION IF NOT EXISTS lakebase_vector CASCADE;
+CREATE EXTENSION IF NOT EXISTS lakebase_text CASCADE;
+
+-- NB: on Neon the Flyway role can't GRANT on pgrag's functions (SQLSTATE 01007,
+-- "no privileges were granted") — an INVOKER RPC calling embedding_for_query
+-- would need the functions' owner to grant, or a DEFINER RPC. Unresolved.
+GRANT USAGE ON SCHEMA rag_bge_small_en_v15 TO authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rag_bge_small_en_v15 TO authenticated;
+```
+
+Dev already has V9 applied (schema at v9) with the extensions installed but
+unused. Harmless to leave; to fully undo on dev, drop the extensions and remove
+the v9 row from the CE Flyway history.
 
 ## Related
 
