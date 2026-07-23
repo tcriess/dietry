@@ -11,6 +11,7 @@ import '../services/food_image_service.dart';
 import '../services/food_entry_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/unit_utils.dart';
 import '../widgets/repeat_meal_picker.dart';
 import '../widgets/move_copy_sheet.dart';
 import 'edit_food_entry_screen.dart';
@@ -442,11 +443,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   
   /// Formatiert Menge + Einheit für die Anzeige.
   /// g/ml: "150g", "250ml" — benannte Portion: "1 Scheibe (30g)"
-  String _formatEntryAmount(FoodEntry entry) {
+  String _formatEntryAmount(FoodEntry entry, AppLocalizations l) {
     final unit = entry.unit;
-    if (unit == 'g' || unit == 'ml') {
-      return '${entry.amount.toStringAsFixed(0)}$unit';
-    }
+    final weight = formatWeightAmount(entry.amount, unit, l);
+    if (weight != null) return weight;
     // Meal template entries: amount is portion count.
     if (unit == 'Portion') {
       final count = entry.amount;
@@ -536,7 +536,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                 Row(
                   children: [
                     Text(
-                      _formatEntryAmount(entry),
+                      _formatEntryAmount(entry, AppLocalizations.of(context)!),
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: theme.hintColor),
                     ),

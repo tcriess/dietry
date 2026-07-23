@@ -32,6 +32,19 @@ String unitLabel(
   return unit;
 }
 
+/// Compact "amount + unit" label for a weight/volume/cooked entry, e.g.
+/// "150g", "250ml", "220 g (gekocht)". Returns null for portion or meal units,
+/// which every caller formats as a count ("2 × Scheibe") itself.
+String? formatWeightAmount(double amount, String unit, AppLocalizations l) {
+  if (unit == kUnitGram || unit == kUnitMl) {
+    return '${amount.toStringAsFixed(0)}$unit';
+  }
+  if (unit == kUnitGramCooked) {
+    return '${amount.toStringAsFixed(0)} ${l.unitGramsCooked}';
+  }
+  return null;
+}
+
 /// Converts [amount] of [unit] into grams **on the food's label basis** — i.e.
 /// the number the per-100g values may be scaled by.
 ///

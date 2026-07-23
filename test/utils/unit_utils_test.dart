@@ -1,8 +1,27 @@
+import 'package:dietry/l10n/app_localizations_en.dart';
 import 'package:dietry/models/food_portion.dart';
 import 'package:dietry/utils/unit_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('formatWeightAmount', () {
+    final l = AppLocalizationsEn();
+
+    test('g and ml render tight, with no space', () {
+      expect(formatWeightAmount(150, kUnitGram, l), '150g');
+      expect(formatWeightAmount(250, kUnitMl, l), '250ml');
+    });
+
+    test('a cooked weight renders the localized "cooked" label', () {
+      expect(formatWeightAmount(220, kUnitGramCooked, l), '220 g (cooked)');
+    });
+
+    test('portion and meal units are left to the caller', () {
+      expect(formatWeightAmount(2, 'Scheibe', l), isNull);
+      expect(formatWeightAmount(1, 'Portion', l), isNull);
+    });
+  });
+
   group('unitToGrams', () {
     test('direct weight units pass through', () {
       expect(unitToGrams(150, kUnitGram), 150);

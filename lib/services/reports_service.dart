@@ -184,7 +184,12 @@ class ReportsService {
       final cal = (row['calories'] as num?)?.toDouble() ?? 0;
       final amount = (row['amount'] as num?)?.toDouble() ?? 0;
       final unit = (row['unit'] as String?) ?? '';
-      final weightG = (unit == 'g' || unit == 'gram' || unit == 'grams') ? amount : 0.0;
+      // 'g_cooked' stores the as-eaten (cooked) weight — count it as consumed
+      // weight rather than dropping the entry to zero.
+      final weightG =
+          (unit == 'g' || unit == 'gram' || unit == 'grams' || unit == 'g_cooked')
+              ? amount
+              : 0.0;
 
       if (agg.containsKey(key)) {
         final prev = agg[key]!;

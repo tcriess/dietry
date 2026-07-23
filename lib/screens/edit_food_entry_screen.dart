@@ -10,6 +10,7 @@ import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/unit_utils.dart';
 
 /// Screen zum Bearbeiten eines Food-Entries.
 ///
@@ -96,8 +97,11 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       // Meal entry: totals mode, scaled by portion count.
       _per100gMode = false;
       _applyTotalsFromEntry();
-    } else if (unit == 'g' || unit == 'ml') {
-      // Weight/volume entry: per-100g mode, grams == amount.
+    } else if (unit == 'g' || unit == 'ml' || unit == kUnitGramCooked) {
+      // Weight/volume entry: per-100g mode, grams == amount. A cooked-weight
+      // entry rides the same path — its stored totals already reflect the
+      // raw/dry basis, so scaling by the (cooked) amount round-trips exactly;
+      // we just keep the "g (cooked)" label so it stays editable and readable.
       _per100gMode = true;
       _originalGrams = e.amount;
       _applyPer100gFromEntry(e.amount);
@@ -405,12 +409,14 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   }
 
   Widget _buildUnitSelector() {
+    final l = AppLocalizations.of(context)!;
     final portions = <FoodPortion>[];
     final seenNames = <String>{};
     for (final p in _foodItem?.portions ?? const <FoodPortion>[]) {
       if (seenNames.add(p.name)) portions.add(p);
     }
 
+    final isCooked = _selectedPortion == null && _customUnit == kUnitGramCooked;
     final currentKey = _selectedPortion != null
         ? 'p:${_selectedPortion!.name}'
         : _customUnit;
@@ -421,11 +427,17 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
           value: 'p:${p.name}',
           child: Text('${p.name} (${formatAmount(p.amountG)}g)'),
         ),
-      const DropdownMenuItem(value: 'g', child: Text('g')),
+      DropdownMenuItem(
+          value: 'g', child: Text(unitLabel('g', l, distinguishRaw: isCooked))),
       const DropdownMenuItem(value: 'ml', child: Text('ml')),
+      // Only offered when the entry was logged as a cooked weight — the dropdown
+      // needs an item matching the current value, and switching a plain g/ml
+      // entry to a cooked basis would need a yield factor we don't have here.
+      if (isCooked)
+        DropdownMenuItem(
+            value: kUnitGramCooked, child: Text(unitLabel(kUnitGramCooked, l))),
     ];
 
-    final l = AppLocalizations.of(context)!;
     return DropdownButtonFormField<String>(
       initialValue: currentKey,
       decoration: InputDecoration(
@@ -479,13 +491,17 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
     final amount = tryParseDouble(_amountController.text) ?? 0;
     final amountStr = formatAmount(amount);
-    final unitLabel = _per100gMode
+    final rawUnit = _per100gMode
         ? (_selectedPortion?.name ?? _customUnit)
         : widget.entry.unit;
+    // Cooked weight reads "220 g (gekocht)"; g/ml keep the tight "220g".
+    final unitText = rawUnit == kUnitGramCooked
+        ? ' ${AppLocalizations.of(context)!.unitGramsCooked}'
+        : rawUnit;
 
     final label = widget.entry.isMeal
         ? 'Nährwerte für $amountStr Portion${amount != 1.0 ? 'en' : ''}:'
-        : 'Gesamt für $amountStr$unitLabel:';
+        : 'Gesamt für $amountStr$unitText:';
 
     return Card(
       color: Colors.blue.shade50,

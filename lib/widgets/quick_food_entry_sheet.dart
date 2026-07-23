@@ -20,6 +20,7 @@ import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 import 'cooked_weight_nudge.dart';
+import 'cooked_factor_dialog.dart';
 import 'repeat_meal_picker.dart';
 import '../screens/add_food_entry_screen.dart' show createFoodFromScannedBarcode;
 
@@ -951,6 +952,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         isMeal: isMeal,
         userId: widget.dbService.userId!,
         date: widget.date,
+        dbService: widget.dbService,
         userCookedFactor:
             foodId != null ? _portionPrefs[foodId]?.cookedFactor : null,
         onMealTypeChanged: (mt) => setState(() => _mealType = mt),
@@ -1839,11 +1841,10 @@ class _RecentTab extends StatelessWidget {
               final eCountStr = eCount == eCount.truncateToDouble()
                   ? eCount.toInt().toString()
                   : eCount.toStringAsFixed(1);
-              final amountStr = e.unit == 'g' || e.unit == 'ml'
-                  ? '${e.amount.toStringAsFixed(0)}${e.unit}'
-                  : e.unit == 'Portion'
+              final amountStr = formatWeightAmount(e.amount, e.unit, l) ??
+                  (e.unit == 'Portion'
                       ? '$eCountStr ${eCount == 1.0 ? l.portion : l.portions}'
-                      : '$eCountStr × ${e.unit}';
+                      : '$eCountStr × ${e.unit}');
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.orange.shade50,
@@ -2149,6 +2150,10 @@ class _ConfirmDialog extends StatefulWidget {
   final String userId;
   final DateTime date;
 
+  /// Used to persist a freshly measured cooked/raw factor. Null in guest mode,
+  /// where the factor still applies to this entry but can't be remembered.
+  final NeonDatabaseService dbService;
+
   /// The user's own measured cooked/raw factor for this food, if they have one.
   /// Overrides the generic factor from [CookingYield].
   final double? userCookedFactor;
@@ -2194,6 +2199,7 @@ class _ConfirmDialog extends StatefulWidget {
     this.amountMl,
     required this.isMeal,
     required this.userId,
+    required this.dbService,
     this.userCookedFactor,
     required this.date,
     required this.onMealTypeChanged,
@@ -2211,6 +2217,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   FoodPortion? _selectedPortion;
   bool _savingShortcut = false;
 
+  /// The user's own measured factor. Seeded from the widget (loaded from prefs)
+  /// and updated in place when they calibrate here, so this entry — and the
+  /// preview — use it immediately.
+  late double? _userCookedFactor = widget.userCookedFactor;
+
   // Auto-derived uncertainty (weighed g/ml → exact, named portion → rougher,
   // seeded by the food's own level). Re-derived on unit change until the user
   // overrides it via the picker.
@@ -2226,7 +2237,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     final yield_ = _cookedYield;
     if (yield_ != null &&
         _selectedUnit == kUnitGramCooked &&
-        widget.userCookedFactor == null) {
+        _userCookedFactor == null) {
       return level.orHigher(yield_.uncertainty);
     }
     return level;
@@ -2253,7 +2264,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   /// cooked weight without a yield factor).
   /// A factor the user measured beats the generic table.
   double? get _effectiveCookedFactor =>
-      widget.userCookedFactor ?? _cookedYield?.factor;
+      _userCookedFactor ?? _cookedYield?.factor;
 
   double? _currentAmountG() => unitToGrams(
         _currentAmount,
@@ -2318,22 +2329,58 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   /// is exact; the ±25% meat case is not worth interrupting for.
   bool get _showCookedNudge =>
       !_unitTouched &&
-      _selectedUnit == kUnitGram &&
+      _selectedUnit != kUnitGramCooked &&
       _cookedYield?.kind == YieldKind.absorption;
 
   void _switchToCookedUnit() {
     final yield_ = _cookedYield;
     if (yield_ == null) return;
-    final current = _currentAmount;
+    // Grams the current selection represents on the raw/dry label basis —
+    // resolves g/ml *and* a named portion, so the switch works from whatever
+    // unit the food happened to default to.
+    final rawGrams = _currentAmountG();
     _onUnitChanged(kUnitGramCooked);
-    if (current > 0) {
-      // The amount on screen is a raw weight — show what it becomes cooked, so
-      // the switch doesn't silently change how much food was logged.
+    if (rawGrams != null && rawGrams > 0) {
+      // Show what that raw weight becomes cooked, so the switch doesn't
+      // silently change how much food was logged.
       setState(() {
         _amountCtrl.text =
-            (current * _effectiveCookedFactor!).round().toString();
+            (rawGrams * _effectiveCookedFactor!).round().toString();
       });
     }
+  }
+
+  Future<void> _openCalibration() async {
+    final generic = _cookedYield;
+    final food = widget.food;
+    if (generic == null || food == null) return;
+
+    final result = await showCookedFactorDialog(
+      context,
+      defaultFactor: generic.factor,
+      currentFactor: _userCookedFactor,
+    );
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _userCookedFactor = result.factor;
+      if (!_userSetEstimate) _estimateLevel = _autoEstimate();
+    });
+
+    // Guest mode / unsaved food: the factor still applies to this entry, it
+    // just can't be remembered.
+    if (food.id.isEmpty) return;
+    final ok = await UserFoodPrefsService(widget.dbService).upsertCookedFactor(
+      foodId: food.id,
+      factor: result.factor,
+      amount: tryParseDouble(_amountCtrl.text) ?? widget.initialAmount,
+      unit: _selectedUnit,
+    );
+    if (!mounted) return;
+    final l = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? l.cookedCalibrateSaved : l.cookedCalibrateFailed),
+    ));
   }
 
   void _onUnitChanged(String unit) {
@@ -2546,8 +2593,27 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                l.cookedHintRaw(formatAmount(_currentAmountG()!)),
+                _userCookedFactor != null
+                    ? '${l.cookedHintRaw(formatAmount(_currentAmountG()!))} · ${l.cookedFactorOwn}'
+                    : l.cookedHintRaw(formatAmount(_currentAmountG()!)),
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          // Let the user replace the generic factor with their own — most of the
+          // published spread in cooking yields is how a given person cooks.
+          if (_selectedUnit == kUnitGramCooked && widget.food != null)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _openCalibration,
+                icon: const Icon(Icons.straighten, size: 16),
+                label: Text(l.cookedCalibrateOpen,
+                    style: const TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ),
           const SizedBox(height: 12),

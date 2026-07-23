@@ -21,6 +21,7 @@ import 'services/web_database_init_web.dart'
     if (dart.library.io) 'services/web_database_init_stub.dart';
 import 'platform_utils.dart' as platform;
 import 'l10n/app_localizations.dart';
+import 'utils/unit_utils.dart';
 import 'package:dietry_cloud/dietry_cloud.dart';
 
 // Services
@@ -5079,7 +5080,7 @@ class AddFoodScreen extends StatelessWidget {
                             child: ListTile(
                               title: Text(entry.name),
                               subtitle: Text(
-                                '${entry.unit == 'g' || entry.unit == 'ml' ? '${entry.amount.toStringAsFixed(0)}${entry.unit}' : '${entry.amount == entry.amount.truncateToDouble() ? entry.amount.toInt() : entry.amount.toStringAsFixed(1)} × ${entry.unit}'} | '
+                                '${formatWeightAmount(entry.amount, entry.unit, l) ?? '${entry.amount == entry.amount.truncateToDouble() ? entry.amount.toInt() : entry.amount.toStringAsFixed(1)} × ${entry.unit}'} | '
                                 'Kcal: ${entry.calories.toStringAsFixed(0)}',
                               ),
                               trailing: entry.isLiquid && entry.unit == 'ml'

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/food_entry.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/unit_utils.dart';
 
 /// Shows a checkbox picker letting the user choose which entries of a meal to
 /// repeat. All entries are pre-selected (repeating the whole meal is the common
@@ -62,9 +63,8 @@ class _RepeatMealPickerDialogState extends State<_RepeatMealPickerDialog> {
   /// Compact amount string mirroring the Recent-tab formatting: raw grams/ml,
   /// localized portion count, or "N × unit" for everything else.
   String _amountLabel(FoodEntry e, AppLocalizations l) {
-    if (e.unit == 'g' || e.unit == 'ml') {
-      return '${e.amount.toStringAsFixed(0)}${e.unit}';
-    }
+    final weight = formatWeightAmount(e.amount, e.unit, l);
+    if (weight != null) return weight;
     final count = e.amount;
     final countStr = count == count.truncateToDouble()
         ? count.toInt().toString()
