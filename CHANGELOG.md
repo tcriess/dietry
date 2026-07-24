@@ -27,6 +27,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] — 2026-07-24
+
+### Added
+- **Log what you actually weigh** — pasta, rice and other foods are labelled raw or dry, but you weigh them cooked. You can now log the cooked weight directly and the app converts it back to the label basis, so a plate of pasta no longer counts as more than double what you ate.
+- **Your own cooking factor** — the published raw→cooked ranges are wide because yield depends on how *you* cook. Weigh a batch once ("250 g dry became 560 g") and the app remembers your factor for that food and uses it from then on.
+- **The user manual is a tap away** — the overflow menu now links straight to the online manual.
+
+### Changed
+- **A nudge toward cooked weight** — when you log a food whose label values are raw or dry, the app now points this out and offers the cooked-weight option, consistently in both the quick-add sheet and the full add screen.
+
+### Fixed
+- **English mode really is English** — the food-logging and add-activity screens, the meal-template and micronutrient screens, and stray "Gesamt" / "Gemessen am" labels no longer fall back to German.
+- **Reports came up empty for some sessions** — reports and the food search now use the same authenticated connection as the rest of the app, so a refreshed login no longer leaves them looking at stale credentials and returning nothing.
+- **"How sure are you?" chips were unreachable** — with the keyboard open, the estimate chips could not be tapped.
+- **Gear chips missing right after opening the app** — they now appear once your gear has loaded, instead of staying blank until the next visit.
+- **Entries missing on a cached day** — days that already had a saved goal skipped fetching newer entries from the server; they now reconcile too.
+- **Reports: inverted gear distance** — a gear's usage read as "1000 von 10 km" instead of the other way round.
+
+### Notes for self-hosters
+- This release adds migration `V8__user_food_prefs_cooked_factor.sql` (a per-user `cooked_factor` on `user_food_prefs`). Apply migrations before deploying the new app.
+
+---
+
 ## [1.3.2] — 2026-07-18
 
 ### Changed
