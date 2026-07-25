@@ -491,6 +491,8 @@
   "offlineMode": "Offline – changes will sync when connection is restored",
   "pendingSyncCount": "changes pending sync",
   "syncNow": "Sync now",
+  "sessionExpired": "Session expired – please sign in again",
+  "signInAgain": "Sign in",
   "refreshTooltip": "Refresh",
   "appBarTitle": "Dietry",
   "profileTooltip": "Profile",

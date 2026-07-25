@@ -491,6 +491,8 @@
   "offlineMode": "Sin conexión – los cambios se sincronizarán al restaurar la conexión",
   "pendingSyncCount": "cambios pendientes de sincronización",
   "syncNow": "Sincronizar",
+  "sessionExpired": "Sesión caducada – inicia sesión de nuevo",
+  "signInAgain": "Iniciar sesión",
   "refreshTooltip": "Actualizar",
   "appBarTitle": "Dietry",
   "profileTooltip": "Perfil",

@@ -1341,6 +1341,11 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
       }
     };
 
+    // A failed refresh on top of an auth-rejected request means the session is
+    // dead, not that we are offline. Surfacing it lets the UI offer a sign-in
+    // instead of showing "offline — will sync later" forever.
+    db.onAuthRecoveryFailed = SyncService.instance.markSessionExpired;
+
     appLogger.d('[_initDatabaseService] Calling db.init()...');
     await db.init();
     appLogger.d('[_initDatabaseService] ✓ db.init() completed');
@@ -2676,7 +2681,79 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       // Re-evaluate today's reminders — the date may have rolled over while the
       // app was backgrounded, and the selected day may differ from today.
       _syncTodayReminderSnapshot(force: true);
+      // Coming back from a background is the most likely moment for the network
+      // to have changed. Re-probe instead of waiting up to 30s for the poll.
+      if (!widget.isGuestMode && widget.dbService != null) {
+        _sync.checkConnectivity();
+      }
     }
+  }
+
+  /// The status bar above the tab content.
+  ///
+  /// Three states the old single banner conflated into "offline":
+  ///  - session expired — the server is reachable and rejecting us. Nothing
+  ///    syncs by waiting, so offer the only thing that helps: signing in again.
+  ///  - offline — no connection; queued changes replay on their own.
+  ///  - pending — online with a backlog, offer to flush it now.
+  Widget _buildSyncBar(BuildContext context, AppLocalizations l) {
+    const textStyle = TextStyle(color: Colors.white, fontSize: 12);
+
+    if (_sync.sessionExpired) {
+      return Material(
+        color: Colors.red.shade700,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: [
+              const Icon(Icons.lock_outline, color: Colors.white, size: 16),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l.sessionExpired, style: textStyle)),
+              TextButton(
+                // signOut() clears the stored user id, which drops the app back
+                // to the login screen instead of a Home that can never load.
+                onPressed: () => widget.authService.signOut(),
+                child: Text(l.signInAgain, style: textStyle),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_sync.isOnline && _sync.pendingCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Material(
+      color: _sync.isOnline ? Colors.orange.shade700 : Colors.red.shade700,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(
+          children: [
+            Icon(
+              _sync.isOnline ? Icons.sync : Icons.wifi_off,
+              color: Colors.white,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _sync.isOnline
+                    ? '${_sync.pendingCount} ${l.pendingSyncCount}'
+                    : l.offlineMode,
+                style: textStyle,
+              ),
+            ),
+            if (_sync.isOnline && _sync.pendingCount > 0)
+              TextButton(
+                onPressed: _sync.processPendingQueue,
+                child: Text(l.syncNow, style: textStyle),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Reload current day without showing a full-screen spinner.
@@ -3789,8 +3866,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     return Scaffold(
       appBar: widget.appBar,
       floatingActionButton: fab,
-      body: Stack(
+      body: Column(
         children: [
+          // Sync status bar. Laid out above the content, not stacked over it:
+          // as an overlay it covered the day navigation row, so whenever it was
+          // visible the user could not switch days — the bar swallowed the taps
+          // on the back chevron.
+          ListenableBuilder(
+            listenable: _sync,
+            builder: (context, _) => _buildSyncBar(context, l),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
           IndexedStack(
             index: _selectedIndex,
             children: [
@@ -3868,54 +3956,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          // Offline-Banner
-          ListenableBuilder(
-            listenable: _sync,
-            builder: (context, _) {
-              if (_sync.isOnline && _sync.pendingCount == 0) {
-                return const SizedBox.shrink();
-              }
-              return Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Material(
-                  color: _sync.isOnline
-                      ? Colors.orange.shade700
-                      : Colors.red.shade700,
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _sync.isOnline ? Icons.sync : Icons.wifi_off,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _sync.isOnline
-                                ? '${_sync.pendingCount} ${l.pendingSyncCount}'
-                                : l.offlineMode,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12),
-                          ),
-                        ),
-                        if (_sync.isOnline && _sync.pendingCount > 0)
-                          TextButton(
-                            onPressed: _sync.processPendingQueue,
-                            child: Text(l.syncNow,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 12)),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+              ],
+            ),
           ),
         ],
       ),

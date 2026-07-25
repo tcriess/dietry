@@ -1127,6 +1127,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get syncNow => 'Jetzt sync';
 
   @override
+  String get sessionExpired => 'Sitzung abgelaufen – bitte neu anmelden';
+
+  @override
+  String get signInAgain => 'Anmelden';
+
+  @override
   String get refreshTooltip => 'Aktualisieren';
 
   @override

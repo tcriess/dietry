@@ -13,6 +13,20 @@ import 'local_data_service.dart';
 import 'offline_queue.dart';
 import 'app_logger.dart';
 
+/// What a single queue replay attempt tells us to do with the operation.
+enum _ReplayOutcome {
+  /// Reached the server and was accepted (or had already been applied).
+  applied,
+
+  /// Transient failure — offline, 5xx, rate limited, or an auth problem that a
+  /// later sign-in can resolve. Keep the operation and try again next cycle.
+  retry,
+
+  /// The server rejected the operation on its merits. Replaying it will never
+  /// succeed, so it must be dropped rather than block the queue.
+  rejected,
+}
+
 /// Monitors connectivity and replays queued offline operations.
 /// Also exposes [isOnline] and [pendingCount] for UI display.
 class SyncService extends ChangeNotifier {
@@ -28,6 +42,7 @@ class SyncService extends ChangeNotifier {
   /// the next background refresh. Attached via [attachCache].
   LocalDataService? _cache;
   bool _isOnline = true;
+  bool _sessionExpired = false;
   int _pendingCount = 0;
   bool _isSyncing = false;
   Timer? _pollTimer;
@@ -35,6 +50,16 @@ class SyncService extends ChangeNotifier {
   bool get isOnline => _isOnline;
   int get pendingCount => _pendingCount;
   bool get isSyncing => _isSyncing;
+
+  /// The server is reachable but rejects us, and a token refresh did not help.
+  /// This is not an offline state — the UI must offer a fresh sign-in here
+  /// instead of promising "changes will sync when the connection is back".
+  bool get sessionExpired => _sessionExpired;
+
+  /// How often an operation may be replayed before it is considered hopeless
+  /// and dropped. Stops a single entry from blocking the queue — and with it
+  /// the sync indicator — forever.
+  static const int _maxReplayAttempts = 25;
 
   /// Call once after [NeonDatabaseService] is ready.
   Future<void> init(NeonDatabaseService db) async {
@@ -48,12 +73,15 @@ class SyncService extends ChangeNotifier {
     // Re-attached per session in _initializeAndLoadData() once the user id
     // resolves; clear any stale cache from a previous login.
     _cache = null;
+    _isOnline = true;
+    _sessionExpired = false;
     _pendingCount = await OfflineQueue.instance.pendingCount();
     notifyListeners();
 
-    // Poll connectivity by attempting a lightweight HEAD request every 30s.
-    // connectivity_plus is not used to keep dependencies minimal; instead we
-    // rely on catching DioExceptions in _tryRequest to detect offline state.
+    // Every 30s: check reachability first, then drain the queue.
+    // connectivity_plus is deliberately not used (no extra dependency) —
+    // [checkConnectivity] asks the Data API itself, which is the only question
+    // that actually matters here.
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _periodicSync());
   }
 
@@ -67,6 +95,7 @@ class SyncService extends ChangeNotifier {
     // guest mode _local is already the source of truth.
     _cache = null;
     _isOnline = true;  // Always online in local mode (no queue)
+    _sessionExpired = false;  // No server session to expire in guest mode
     _pendingCount = 0;  // No offline queue in local mode
     notifyListeners();
   }
@@ -388,8 +417,32 @@ class SyncService extends ChangeNotifier {
   // ── Queue processing ──────────────────────────────────────────────────────
 
   Future<void> _periodicSync() async {
-    if (_isSyncing || _db == null) return;
+    if (_db == null) return;
+    // Probe reachability while we still believe we are offline. Without this
+    // step [_isOnline] could never become true again: the only way back was a
+    // *successful* write, and with an empty queue nothing happened here at all.
+    // A single network hiccup therefore pinned the app in "offline" forever —
+    // across restarts too, because the next failing request followed
+    // immediately on startup.
+    if (!_isOnline) await checkConnectivity();
+    if (_isSyncing) return;
     await processPendingQueue();
+  }
+
+  /// Fragt die Data API, ob sie erreichbar ist, und aktualisiert [isOnline].
+  /// Jede HTTP-Antwort zählt als "online" — auch eine ablehnende: dass der
+  /// Server antwortet, ist die Aussage, um die es dem Offline-Banner geht.
+  Future<bool> checkConnectivity() async {
+    final db = _db;
+    if (db == null) return _isOnline;
+
+    final reachable = await db.ping();
+    if (reachable) {
+      _markReachable();
+    } else {
+      _markOffline();
+    }
+    return reachable;
   }
 
   /// Attempt to replay all queued operations in order.
@@ -402,21 +455,42 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
 
     for (final op in pending) {
-      final success = await _replay(op);
-      if (success) {
+      final outcome = await _replay(op);
+
+      if (outcome == _ReplayOutcome.applied) {
         await OfflineQueue.instance.remove(op.id);
-      } else {
-        await OfflineQueue.instance.incrementRetry(op.id);
-        // If the server is unreachable, stop retrying further ops this cycle.
-        break;
+        continue;
       }
+
+      if (outcome == _ReplayOutcome.rejected) {
+        // The server rejected this operation on its merits (malformed payload,
+        // violated constraint, row already gone). Retrying changes nothing.
+        // Such an operation used to sit at the head of the queue forever,
+        // failing every sync cycle and keeping the red offline banner up for
+        // good — drop it and move on.
+        appLogger.w(
+            '🗑️ Dropping permanently rejected sync operation: ${op.table.name}/${op.operation.name} (${op.id})');
+        await OfflineQueue.instance.remove(op.id);
+        continue;
+      }
+
+      // Transient failure (network, 5xx, auth). Bump the counter and stop this
+      // cycle, which preserves the ordering of the remaining operations.
+      await OfflineQueue.instance.incrementRetry(op.id);
+      if (op.retryCount + 1 >= _maxReplayAttempts) {
+        appLogger.w(
+            '🗑️ Giving up on sync operation after ${op.retryCount + 1} attempts: ${op.table.name}/${op.operation.name} (${op.id})');
+        await OfflineQueue.instance.remove(op.id);
+        continue;
+      }
+      break;
     }
 
     _isSyncing = false;
     await _refreshPendingCount();
   }
 
-  Future<bool> _replay(PendingOperation op) async {
+  Future<_ReplayOutcome> _replay(PendingOperation op) async {
     try {
       if (op.table == QueueTable.foodEntries) {
         final svc = FoodEntryService(_db!);
@@ -442,24 +516,55 @@ class SyncService extends ChangeNotifier {
         }
       }
       _markOnline();
-      return true;
+      return _ReplayOutcome.applied;
     } on DioException catch (e) {
       // A queued create whose HTTP response was lost may already have committed
       // server-side; the replay then hits a duplicate-key (409 Conflict) on the
       // client-supplied id. Now that ids are client-generated this is the
       // "already applied" case — treat it as success so the op drains instead
-      // of wedging the queue on every cycle. Any other error → still offline.
+      // of wedging the queue on every cycle.
       if (op.operation == QueueOperation.create &&
           e.response?.statusCode == 409) {
         appLogger.i('↩️ Replay: create already applied (409) — treating as done');
         _markOnline();
-        return true;
+        return _ReplayOutcome.applied;
       }
-      _markOffline();
-      return false;
+
+      final status = e.response?.statusCode;
+
+      // No response at all → transport failure, i.e. genuinely offline.
+      if (status == null) {
+        _markOffline();
+        return _ReplayOutcome.retry;
+      }
+
+      // The server answered, so the network is fine.
+      _markReachable();
+
+      // Auth failure: the Dio interceptor already tried to refresh and failed,
+      // otherwise the request would have been retried transparently. Keep the
+      // operation — it becomes replayable again after a fresh sign-in.
+      if (NeonDatabaseService.isAuthFailureResponse(e.response)) {
+        return _ReplayOutcome.retry;
+      }
+
+      // 5xx and 429: the server is unhappy right now, not with this payload.
+      if (status >= 500 || status == 429) {
+        return _ReplayOutcome.retry;
+      }
+
+      // Any other 4xx is a verdict on the operation itself (malformed payload,
+      // constraint violation, row already deleted). Replaying it will fail
+      // identically forever, so let the caller drop it.
+      if (status >= 400) {
+        appLogger.w('⚠️ Replay rejected with $status: ${e.response?.data}');
+        return _ReplayOutcome.rejected;
+      }
+
+      return _ReplayOutcome.retry;
     } catch (_) {
       _markOffline();
-      return false;
+      return _ReplayOutcome.retry;
     }
   }
 
@@ -480,7 +585,18 @@ class SyncService extends ChangeNotifier {
 
   // ── State helpers ─────────────────────────────────────────────────────────
 
+  /// A request went through and was accepted: we are online *and* authenticated.
   void _markOnline() {
+    if (!_isOnline || _sessionExpired) {
+      _isOnline = true;
+      _sessionExpired = false;
+      notifyListeners();
+    }
+  }
+
+  /// The server answered — whatever it said. That settles connectivity but says
+  /// nothing about our session, so [_sessionExpired] is left alone.
+  void _markReachable() {
     if (!_isOnline) {
       _isOnline = true;
       notifyListeners();
@@ -492,6 +608,20 @@ class SyncService extends ChangeNotifier {
       _isOnline = false;
       notifyListeners();
     }
+  }
+
+  /// The server is reachable but rejects our token and a refresh could not fix
+  /// it. Called from the database service's auth-recovery hook.
+  ///
+  /// Reaching the server at all proves connectivity, so this also clears the
+  /// offline flag — showing "offline, will sync later" here would be a lie, and
+  /// it is exactly what left the app looking permanently disconnected while the
+  /// network was fine.
+  void markSessionExpired() {
+    if (_sessionExpired && _isOnline) return;
+    _sessionExpired = true;
+    _isOnline = true;
+    notifyListeners();
   }
 
   Future<void> _refreshPendingCount() async {

@@ -1135,6 +1135,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get syncNow => 'Sincronizar';
 
   @override
+  String get sessionExpired => 'Sesión caducada – inicia sesión de nuevo';
+
+  @override
+  String get signInAgain => 'Iniciar sesión';
+
+  @override
   String get refreshTooltip => 'Actualizar';
 
   @override

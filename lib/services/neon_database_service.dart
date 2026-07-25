@@ -21,11 +21,52 @@ class NeonDatabaseService {
   
   // Callback für Token-Refresh (wird von außen gesetzt)
   Future<String?> Function()? onTokenExpired;
-  
+
+  /// Called when a request failed authentication and [onTokenExpired] could not
+  /// obtain a new token — so the session is genuinely dead rather than merely
+  /// offline. The UI responds by offering a fresh sign-in.
+  void Function()? onAuthRecoveryFailed;
+
+  /// Marker on [RequestOptions.extra]: this request is already the retry that
+  /// followed a token refresh and must not trigger a second one.
+  static const String _authRetryKey = 'dietry.authRetry';
+
   bool _initialized = false;
   String? _userId;
   String? _jwt;
-  
+
+  /// True when [response] is the backend saying "the token is missing, broken
+  /// or unverifiable".
+  ///
+  /// Neon's Data API answers all of these with **400**, not 401 — verified
+  /// against production:
+  ///   no token      → 400 "missing authentication credentials: required
+  ///                        authorization bearer token in JWT format"
+  ///   garbage token → 400 "Provided authentication token is not a valid JWT encoding"
+  ///   foreign key   → 400 "jwk not found"
+  ///
+  /// While this only checked for 401, the refresh path in the Dio interceptor
+  /// was dead code: after an expired token was discarded on startup every
+  /// request failed with 400, nothing ever refreshed, and the app hung
+  /// permanently in "offline" — across restarts too.
+  static bool isAuthFailureResponse(Response? response) {
+    final status = response?.statusCode;
+    if (status == null) return false;
+    if (status == 401 || status == 403) return true;
+    if (status != 400) return false;
+
+    final data = response?.data;
+    final message = data is Map
+        ? (data['message'] ?? data['msg'] ?? '').toString()
+        : (data?.toString() ?? '');
+    final m = message.toLowerCase();
+    return m.contains('authentication') ||
+        m.contains('authorization') ||
+        m.contains('jwt') ||
+        m.contains('jwk') ||
+        m.contains('token');
+  }
+
   NeonDatabaseService() {
     _postgrestClient = PostgrestClient(
       dataApiUrl,
@@ -78,13 +119,27 @@ class NeonDatabaseService {
         appLogger.e('   Response Body: ${error.response?.data}');
         appLogger.e('   Request Path: ${error.requestOptions.path}');
 
-        // Bei 401 (Unauthorized) → Token ist abgelaufen, versuche Refresh
-        if (error.response?.statusCode == 401 && onTokenExpired != null) {
-          appLogger.w('⚠️ 401 Unauthorized - Token abgelaufen, versuche Refresh...');
+        // Auth failure (401 OR Neon's 400 variants) → refresh the token.
+        // _authRetryKey prevents an endless loop: the retried request passes
+        // through this interceptor again and would otherwise refresh once more.
+        if (isAuthFailureResponse(error.response) &&
+            onTokenExpired != null &&
+            error.requestOptions.extra[_authRetryKey] != true) {
+          appLogger.w(
+              '⚠️ Auth failure (${error.response?.statusCode}) — token expired, attempting refresh...');
 
           try {
             // Refresh Token
             final newToken = await onTokenExpired!();
+
+            if (newToken == null) {
+              // The refresh cannot obtain a token any more. Without this signal
+              // the app would stay "logged in" on a stored user id while every
+              // request fails — precisely the state that could only be escaped
+              // by clearing the app's data.
+              appLogger.w('⚠️ Token refresh produced no token — treating session as expired');
+              onAuthRecoveryFailed?.call();
+            }
 
             if (newToken != null) {
               appLogger.i('✅ Token refreshed, wiederhole Request...');
@@ -103,6 +158,7 @@ class NeonDatabaseService {
               // Wiederhole Request mit neuem Token
               final options = error.requestOptions;
               options.headers['Authorization'] = 'Bearer $newToken';
+              options.extra[_authRetryKey] = true;
 
               final response = await _dio.fetch(options);
               return handler.resolve(response);
@@ -296,7 +352,32 @@ class NeonDatabaseService {
   
   /// Prüfe, ob authentifiziert
   bool get isAuthenticated => _jwt != null || _userId != null;
-  
+
+  /// Reachability probe against the Data API. Any HTTP answer — 400 and 404
+  /// included — counts as "reachable"; only a transport failure (no DNS, no
+  /// route, timeout) means offline.
+  ///
+  /// Runs on its own Dio without interceptors: the auth interceptor would read
+  /// the 400 expected here as an auth failure and kick off a pointless token
+  /// refresh.
+  Future<bool> ping({Duration timeout = const Duration(seconds: 8)}) async {
+    final probe = Dio(BaseOptions(
+      baseUrl: dataApiUrl,
+      connectTimeout: timeout,
+      receiveTimeout: timeout,
+      validateStatus: (_) => true,
+    ));
+    try {
+      await probe.get('/');
+      return true;
+    } catch (e) {
+      appLogger.d('🔌 Ping failed: $e');
+      return false;
+    } finally {
+      probe.close();
+    }
+  }
+
   /// Stellt sicher, dass ein gültiges Token vorhanden ist
   /// 
   /// Prüft ob Token:

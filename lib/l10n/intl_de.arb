@@ -508,6 +508,8 @@
   "offlineMode": "Offline – Änderungen werden synchronisiert sobald die Verbindung steht",
   "pendingSyncCount": "Änderungen warten auf Synchronisierung",
   "syncNow": "Jetzt sync",
+  "sessionExpired": "Sitzung abgelaufen – bitte neu anmelden",
+  "signInAgain": "Anmelden",
   "refreshTooltip": "Aktualisieren",
   "appBarTitle": "Dietry",
   "profileTooltip": "Profil",

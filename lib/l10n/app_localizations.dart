@@ -2152,6 +2152,18 @@ abstract class AppLocalizations {
   /// **'Jetzt sync'**
   String get syncNow;
 
+  /// No description provided for @sessionExpired.
+  ///
+  /// In de, this message translates to:
+  /// **'Sitzung abgelaufen – bitte neu anmelden'**
+  String get sessionExpired;
+
+  /// No description provided for @signInAgain.
+  ///
+  /// In de, this message translates to:
+  /// **'Anmelden'**
+  String get signInAgain;
+
   /// No description provided for @refreshTooltip.
   ///
   /// In de, this message translates to:
