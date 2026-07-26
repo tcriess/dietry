@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.4.0] — 2026-07-24
+## [1.4.0] — 2026-07-26
 
 ### Added
 - **Log what you actually weigh** — pasta, rice and other foods are labelled raw or dry, but you weigh them cooked. You can now log the cooked weight directly and the app converts it back to the label basis, so a plate of pasta no longer counts as more than double what you ate.
@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A nudge toward cooked weight** — when you log a food whose label values are raw or dry, the app now points this out and offers the cooked-weight option, consistently in both the quick-add sheet and the full add screen.
 
 ### Fixed
+- **Stuck on "offline" while online** — when a login could no longer be renewed, every request failed in a way the app mistook for a lost connection. It then sat behind the red offline bar for good: nothing synced, days could not be changed, pulling to refresh did nothing, and restarting made no difference. The app now tells a dead session apart from a dead connection, rechecks the connection on its own and when you return to the app, and says plainly when a session has expired so you can sign in again. A single unsendable change can no longer block everything queued behind it.
+- **The status bar covered the date** — it now sits above the day view instead of on top of it, so stepping between days always works.
 - **English mode really is English** — the food-logging and add-activity screens, the meal-template and micronutrient screens, and stray "Gesamt" / "Gemessen am" labels no longer fall back to German.
 - **Reports came up empty for some sessions** — reports and the food search now use the same authenticated connection as the rest of the app, so a refreshed login no longer leaves them looking at stale credentials and returning nothing.
 - **"How sure are you?" chips were unreachable** — with the keyboard open, the estimate chips could not be tapped.
