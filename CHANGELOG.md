@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.1] — 2026-07-27
+
+### Fixed
+- **Meal templates: searching for ingredients works again** — building a template was impossible because the ingredient search only ever answered "search not available". Both sources are now there: your own food database, and the online search across USDA and Open Food Facts. Ingredients found only online also save correctly, which previously failed outright.
+
+---
+
 ## [1.4.0] — 2026-07-26
 
 ### Added
