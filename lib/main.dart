@@ -33,6 +33,8 @@ import 'services/nutrition_goal_service.dart';
 import 'services/food_entry_service.dart';
 import 'services/physical_activity_service.dart';
 import 'services/activity_database_service.dart';
+import 'services/food_database_service.dart';
+import 'services/food_search_service.dart';
 import 'services/gear_service.dart';
 import 'services/user_body_data_service.dart';
 import 'models/activity_item.dart';
@@ -3523,6 +3525,54 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     await _refreshCanGoBack();
   }
 
+  /// Ingredient search for the Cloud meal-template editor.
+  ///
+  /// Mirrors the two sources the add-food screen offers: the user's own +
+  /// public `food_database`, or the combined USDA/Open Food Facts online
+  /// search. Without this callback the editor's search sheet only ever shows
+  /// "search not available".
+  Future<List<MealIngredientCandidate>> _searchMealIngredients(
+    NeonDatabaseService db,
+    String query, {
+    bool searchOnline = false,
+  }) async {
+    final List<FoodItem> foods;
+    if (searchOnline) {
+      final results = await FoodSearchService().search(
+        query,
+        limit: 20,
+        locale: Localizations.localeOf(context).languageCode,
+      );
+      foods = results.map((r) => r.food).toList();
+    } else {
+      foods = await FoodDatabaseService(db).searchFoods(query, limit: 20);
+    }
+
+    return foods.map((f) {
+      final brand = f.brand;
+      return MealIngredientCandidate(
+        // Online hits have no database row yet, hence no id — the editor
+        // stores them as free-standing ingredient values.
+        id: f.id.isEmpty ? null : f.id,
+        name: brand != null && brand.isNotEmpty ? '${f.name} ($brand)' : f.name,
+        calories: f.calories,
+        protein: f.protein,
+        fat: f.fat,
+        carbs: f.carbs,
+        fiber: f.fiber,
+        sugar: f.sugar,
+        sodium: f.sodium,
+        // Drives the 🌐 badge in the result list. Database hits carry a
+        // `source` of their own ("BLS", "FDC", …), so only tag online ones.
+        source: searchOnline ? (f.source ?? 'online') : null,
+        portions: [
+          for (final p in f.portions) (name: p.name, weightG: p.amountG),
+        ],
+        isLiquid: f.isLiquid,
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -3716,6 +3766,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 date: _selectedDay,
                 authToken: tok,
                 dataApiUrl: NeonDatabaseService.dataApiUrl,
+                onSearchIngredient: (query, {bool searchOnline = false}) =>
+                    _searchMealIngredients(db, query,
+                        searchOnline: searchOnline),
                 onLog: (data) async {
                   final now = DateTime.now();
                   final entry = FoodEntry(
