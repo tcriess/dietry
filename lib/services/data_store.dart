@@ -71,7 +71,18 @@ class DataStore extends ChangeNotifier {
   DateTime? _serverReconciledDate;
 
   List<FoodEntry> get foodEntries => _foodEntries;
-  List<PhysicalActivity> get activities => _activities;
+
+  /// The day's activities, newest first — matching the server query and the
+  /// food list.
+  ///
+  /// Sorted here rather than trusted from the sources, because they disagree:
+  /// the server orders by `start_time`, the local mirror ordered by
+  /// `created_at` (so a cold start showed import order, not time of day), and
+  /// [addActivity] appends to the end regardless. Which of those you saw
+  /// depended on whether the server reconcile had landed yet, which is what
+  /// made the order look arbitrary.
+  List<PhysicalActivity> get activities =>
+      [..._activities]..sort((a, b) => b.startTime.compareTo(a.startTime));
   NutritionGoal? get goal => _goal;
   int get waterIntakeMl => _waterIntakeMl;
 

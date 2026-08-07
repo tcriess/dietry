@@ -2956,6 +2956,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       final allActivities = [...myActivities, ...publicActivities];
       final weightKg = bodyData?.weight;
 
+      // Both getters return [] on ANY error rather than throwing, and the
+      // public list is seeded — so empty in practice means the fetch failed.
+      // The import then keeps Health Connect's raw wording ("Biking" instead of
+      // "Radfahren (normal)") and cannot derive calories from a MET value, and
+      // nothing anywhere says why. Say it here at least.
+      if (allActivities.isEmpty) {
+        appLogger.w('⚠️ activity_database came back empty — imported workouts '
+            'keep their raw Health Connect names and MET calories this round');
+      }
+
       // Gear the user marked as their default for a given activity type. Most
       // runs arrive here, not through the manual form — without this auto-
       // attach, a shoe's mileage would stay at zero unless every imported

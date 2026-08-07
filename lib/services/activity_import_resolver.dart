@@ -197,22 +197,39 @@ PhysicalActivity _merge(
   PhysicalActivity incoming, {
   String? gearId,
   String? notes,
-}) =>
-    PhysicalActivity(
-      id: stored.id,
-      activityType: incoming.activityType,
-      activityId: incoming.activityId ?? stored.activityId,
-      activityName: incoming.activityName ?? stored.activityName,
-      startTime: incoming.startTime,
-      endTime: incoming.endTime,
-      durationMinutes: incoming.durationMinutes ?? stored.durationMinutes,
-      caloriesBurned: incoming.caloriesBurned ?? stored.caloriesBurned,
-      distanceKm: incoming.distanceKm ?? stored.distanceKm,
-      steps: incoming.steps ?? stored.steps,
-      avgHeartRate: incoming.avgHeartRate ?? stored.avgHeartRate,
-      notes: notes,
-      source: DataSource.healthConnect,
-      healthConnectRecordId:
-          incoming.healthConnectRecordId ?? stored.healthConnectRecordId,
-      gearId: gearId,
-    );
+}) {
+  // Classification travels as a pair. `activityId` is the link to the
+  // activity_database row the name and MET value come from, so taking the id
+  // from one record and the name from the other would show one activity's
+  // label against another's energy maths.
+  //
+  // An import whose activity_database lookup came back empty carries Health
+  // Connect's raw wording — "Biking" rather than "Radfahren (normal)" — and no
+  // id. That lookup fails silently (the service returns [] on error), so it
+  // must never be allowed to overwrite a row that was classified properly. The
+  // reverse is welcome: a classified re-import upgrades a raw stored name.
+  final takeIncomingClassification =
+      incoming.activityId != null || stored.activityId == null;
+
+  return PhysicalActivity(
+    id: stored.id,
+    activityType: incoming.activityType,
+    activityId:
+        takeIncomingClassification ? incoming.activityId : stored.activityId,
+    activityName: takeIncomingClassification
+        ? incoming.activityName
+        : stored.activityName,
+    startTime: incoming.startTime,
+    endTime: incoming.endTime,
+    durationMinutes: incoming.durationMinutes ?? stored.durationMinutes,
+    caloriesBurned: incoming.caloriesBurned ?? stored.caloriesBurned,
+    distanceKm: incoming.distanceKm ?? stored.distanceKm,
+    steps: incoming.steps ?? stored.steps,
+    avgHeartRate: incoming.avgHeartRate ?? stored.avgHeartRate,
+    notes: notes,
+    source: DataSource.healthConnect,
+    healthConnectRecordId:
+        incoming.healthConnectRecordId ?? stored.healthConnectRecordId,
+    gearId: gearId,
+  );
+}

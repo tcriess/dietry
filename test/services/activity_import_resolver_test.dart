@@ -13,11 +13,15 @@ PhysicalActivity _stored({
   double? distanceKm,
   String? gearId,
   String? notes,
+  String? activityId,
+  String? activityName,
   DataSource source = DataSource.healthConnect,
 }) =>
     PhysicalActivity(
       id: id,
       activityType: type,
+      activityId: activityId,
+      activityName: activityName,
       startTime: DateTime.parse(start),
       endTime: DateTime.parse(end),
       caloriesBurned: calories,
@@ -38,9 +42,13 @@ PhysicalActivity _incoming({
   double? distanceKm,
   int? steps,
   double? heartRate,
+  String? activityId,
+  String? activityName,
 }) =>
     PhysicalActivity(
       activityType: type,
+      activityId: activityId,
+      activityName: activityName,
       startTime: DateTime.parse(start),
       endTime: DateTime.parse(end),
       caloriesBurned: calories,
@@ -259,6 +267,66 @@ void main() {
         incoming: [_incoming(hcId: 'final')],
       );
       expect(plan.update.single.notes, 'headwind all the way back');
+    });
+  });
+
+  // The activity_database lookup that turns Health Connect's "Biking" into
+  // "Radfahren (normal)" returns [] on any error instead of throwing, so an
+  // import can silently arrive unclassified.
+  group('classification', () {
+    test('an unclassified re-import does not overwrite a classified row', () {
+      final plan = resolveActivityImport(
+        existing: [
+          _stored(
+            id: '1',
+            hcId: 'old',
+            activityId: 'db-cycling',
+            activityName: 'Radfahren (normal)',
+          ),
+        ],
+        incoming: [_incoming(hcId: 'new', activityName: 'Biking')],
+      );
+      final merged = plan.update.single;
+      expect(merged.activityName, 'Radfahren (normal)');
+      expect(merged.activityId, 'db-cycling');
+    });
+
+    test('a classified re-import upgrades a raw stored name', () {
+      final plan = resolveActivityImport(
+        existing: [_stored(id: '1', hcId: 'old', activityName: 'Biking')],
+        incoming: [
+          _incoming(
+            hcId: 'new',
+            activityId: 'db-cycling',
+            activityName: 'Radfahren (normal)',
+          ),
+        ],
+      );
+      final merged = plan.update.single;
+      expect(merged.activityName, 'Radfahren (normal)');
+      expect(merged.activityId, 'db-cycling');
+    });
+
+    test('the id and the name always come from the same record', () {
+      // Taking the id from one and the name from the other would show one
+      // activity's label against another's MET value.
+      final plan = resolveActivityImport(
+        existing: [
+          _stored(
+            id: '1',
+            hcId: 'old',
+            activityId: 'db-cycling',
+            activityName: 'Radfahren (normal)',
+          ),
+        ],
+        incoming: [_incoming(hcId: 'new', activityName: 'Biking')],
+      );
+      final merged = plan.update.single;
+      expect(
+        merged.activityId == 'db-cycling' &&
+            merged.activityName == 'Radfahren (normal)',
+        isTrue,
+      );
     });
   });
 

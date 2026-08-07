@@ -760,7 +760,10 @@ class LocalDataService {
         'physical_activities',
         where: 'user_id = ? AND start_time >= ? AND start_time <= ?',
         whereArgs: [_userId, startOfDay, endOfDay],
-        orderBy: 'created_at DESC',
+        // start_time, not created_at: ordering by insertion time made a cold
+        // start list the day's workouts in import order, then jump about when
+        // the server reconcile (which orders by start_time) landed.
+        orderBy: 'start_time DESC',
       );
       return results.map((json) => PhysicalActivity.fromJson(json)).toList();
     } catch (e) {
