@@ -64,8 +64,16 @@ class ActivitiesListScreen extends StatefulWidget {
 class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
   final _store = DataStore.instance;
 
-  /// Non-retired gear, for the one-tap picker on each activity row.
+  /// All of the user's gear, retired included. Retired items are filtered out
+  /// of the picker but must stay here: an old activity attributed to a retired
+  /// pair of shoes still has to show their name rather than fall back to the
+  /// "which gear?" prompt.
   List<Gear> _gear = [];
+
+  /// Gear ids we already went back to the store for and still could not
+  /// resolve. Stops a genuinely dangling reference from re-triggering a reload
+  /// on every single store change.
+  final Set<String> _unresolvableGearIds = {};
 
   @override
   void initState() {
@@ -74,20 +82,30 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     _loadGear();
   }
 
-  /// Guards against overlapping reloads triggered by rapid store changes.
-  bool _loadingGear = false;
+  /// In-flight load, shared rather than duplicated so a caller that awaits this
+  /// (the picker) really does get fresh data instead of silently skipping.
+  Future<void>? _gearLoad;
 
-  Future<void> _loadGear() async {
-    if (_loadingGear) return;
-    _loadingGear = true;
-    try {
-      final gear = await SyncService.instance.getGear();
-      if (!mounted) return;
-      setState(() => _gear = gear.where((g) => !g.retired).toList());
-    } finally {
-      _loadingGear = false;
-    }
+  Future<void> _loadGear() =>
+      _gearLoad ??= _fetchGear().whenComplete(() => _gearLoad = null);
+
+  Future<void> _fetchGear() async {
+    final gear = await SyncService.instance.getGear();
+    if (!mounted) return;
+    setState(() {
+      _gear = gear;
+      _unresolvableGearIds
+          .removeWhere((id) => gear.any((g) => g.id == id));
+    });
   }
+
+  /// Gear ids referenced by today's activities that [_gear] doesn't contain —
+  /// i.e. gear created after this screen loaded its list.
+  Set<String> _unresolvedGearIds() => {
+        for (final a in _store.activities)
+          if (a.gearId != null && !_gear.any((g) => g.id == a.gearId))
+            a.gearId!,
+      };
 
   /// Assign (or clear) the gear on an activity, straight from the list.
   ///
@@ -98,6 +116,19 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
   /// friction for something you do after every run.
   Future<void> _pickGear(PhysicalActivity activity) async {
     final l = AppLocalizations.of(context)!;
+
+    // Refresh first: gear created since this screen mounted would otherwise be
+    // missing from the sheet, which is exactly when the user reaches for it —
+    // they just added the bike they now want to attach.
+    await _loadGear();
+    if (!mounted) return;
+
+    // Retired gear is hidden, except the item already on this activity, which
+    // has to stay visible so it shows as the current selection.
+    final options = _gear
+        .where((g) => !g.retired || g.id == activity.gearId)
+        .toList();
+
     final chosen = await showModalBottomSheet<({Gear? gear})>(
       context: context,
       useSafeArea: true,
@@ -116,7 +147,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
               selected: activity.gearId == null,
               onTap: () => Navigator.of(ctx).pop((gear: null)),
             ),
-            for (final g in _gear)
+            for (final g in options)
               ListTile(
                 leading: Icon(g.category.icon),
                 title: Text(g.name),
@@ -154,9 +185,19 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     // SyncService has its db/local/cache wired, so getGear() returns [] and the
     // chips never appear. The store fills in shortly after (local mirror, then
     // server reconcile) and fires this callback — take that as our cue to retry
-    // the gear load until we actually have some. Cheap: getGear() is a local
-    // query and this only fires while _gear is still empty.
-    if (_gear.isEmpty) _loadGear();
+    // the gear load. Cheap: getGear() is a local query.
+    //
+    // The list also goes stale the other way round: gear created *after* this
+    // screen mounted (from the Gear screen, then assigned in the activity
+    // detail view) is missing here, so the chip cannot resolve the id and falls
+    // back to "which gear?" on an activity that plainly has some. Reloading
+    // when an activity points at gear we don't know fixes that.
+    final unresolved = _unresolvedGearIds()
+      ..removeAll(_unresolvableGearIds);
+    if (_gear.isEmpty || unresolved.isNotEmpty) {
+      _unresolvableGearIds.addAll(unresolved);
+      _loadGear();
+    }
     setState(() {});
   }
 
@@ -180,6 +221,9 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
         ),
       ),
     );
+    // The detail view can attach gear this screen has never heard of, and its
+    // dropdown loads the current list while we still hold an older one.
+    await _loadGear();
   }
 
   /// Long-press handler: copy or move [activity] to another day / meal. The

@@ -71,6 +71,7 @@ import 'screens/activities_list_screen.dart';
 import 'screens/add_activity_screen.dart';
 import 'screens/gear_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/activity_import_resolver.dart';
 import 'services/health_connect_service.dart';
 import 'services/health_connect_prefs.dart';
 import 'services/tutorial_prefs.dart';
@@ -2893,63 +2894,42 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           : imported;
 
       // Existing activities on the target day, used for de-duplication.
-      final existing = db != null
-          ? await PhysicalActivityService(db)
-              .getActivitiesInRange(start: start, end: end)
-          : _store.activities;
-      final existingHcIds = existing
-          .map((a) => a.healthConnectRecordId)
-          .whereType<String>()
-          .toSet();
+      final existing = mergeActivitiesById(
+        db != null
+            ? await PhysicalActivityService(db)
+                .getActivitiesInRange(start: start, end: end)
+            : const <PhysicalActivity>[],
+        _store.activities,
+      );
 
-      // De-duplicate imports. Skip an incoming workout when either:
-      //   • its Health Connect record id is already stored, or
-      //   • it overlaps (same type + overlapping time window) an activity we
-      //     already accepted — this catches the SAME real-world workout coming
-      //     from two Health Connect sources (e.g. the watch app plus Google Fit
-      //     re-exporting it). Those carry different record ids, so the id check
-      //     alone would let both through and show the workout twice.
-      // Richer records (distance / steps / heart-rate present) are considered
-      // first so the copy we keep has the most data.
-      int richness(PhysicalActivity a) =>
-          (a.caloriesBurned != null ? 1 : 0) +
-          (a.distanceKm != null ? 1 : 0) +
-          (a.steps != null ? 1 : 0) +
-          (a.avgHeartRate != null ? 1 : 0);
-      final ordered = [...enriched]
-        ..sort((a, b) {
-          final r = richness(b).compareTo(richness(a));
-          return r != 0 ? r : a.startTime.compareTo(b.startTime);
-        });
-      final accepted = <PhysicalActivity>[...existing];
-      final toSave = <PhysicalActivity>[];
-      for (final activity in ordered) {
-        final hcId = activity.healthConnectRecordId;
-        if (hcId != null && existingHcIds.contains(hcId)) continue;
-        if (accepted.any((e) => _activitiesOverlap(e, activity))) continue;
-        accepted.add(activity);
-        toSave.add(activity);
+      final plan = resolveActivityImport(
+        existing: existing,
+        incoming: enriched,
+      );
+
+      // Deletes first — see ActivityImportPlan for why the order matters.
+      for (final duplicate in plan.delete) {
+        final id = duplicate.id;
+        if (id == null) continue;
+        await _sync.deleteActivity(id);
+        _store.removeActivity(id);
+        appLogger
+            .i('🧹 Removed a duplicate import of ${duplicate.displayName}');
       }
-      // Save in chronological order so the activity list stays time-ordered.
-      toSave.sort((a, b) => a.startTime.compareTo(b.startTime));
-      for (final activity in toSave) {
+      for (final merged in plan.update) {
+        final updated = await _sync.updateActivity(merged);
+        _store.replaceActivity(updated ?? merged);
+        appLogger.i('♻️ Re-import updated ${merged.displayName}');
+      }
+      for (final activity in plan.create) {
         final saved = await _sync.saveActivity(activity);
         _store.addActivity(saved ?? activity);
       }
-      return toSave.length;
+      return plan.create.length;
     } catch (e) {
       appLogger.w('⚠️ Silent HC activity import failed: $e');
       return 0;
     }
-  }
-
-  /// True when [a] and [b] look like the same real-world workout: same
-  /// [ActivityType] and overlapping time intervals. Used to de-duplicate the
-  /// same activity arriving from two Health Connect sources (e.g. a watch app
-  /// and Google Fit re-exporting it), which carry different HC record ids.
-  bool _activitiesOverlap(PhysicalActivity a, PhysicalActivity b) {
-    if (a.activityType != b.activityType) return false;
-    return a.startTime.isBefore(b.endTime) && b.startTime.isBefore(a.endTime);
   }
 
   /// Links each imported PhysicalActivity to a matching `activity_database`
