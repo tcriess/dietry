@@ -1317,11 +1317,30 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                 const Icon(Icons.restaurant, color: Colors.blue, size: 20),
           ),
           title: Text(food.name, style: const TextStyle(fontSize: 14)),
-          subtitle: Text(
-            _macroSummary(l, l.per100g, food.calories, food.protein,
-                food.fat, food.carbs,
-                macroOnly: widget.dailyGoal?.macroOnly == true),
-            style: const TextStyle(fontSize: 11),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Brand/category first: it is what tells two similarly named
+              // hits apart, so it must not be pushed off the end of the line.
+              if (food.provenanceSummary != null)
+                Text(
+                  food.provenanceSummary!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blueGrey.shade600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              Text(
+                _macroSummary(l, l.per100g, food.calories, food.protein,
+                    food.fat, food.carbs,
+                    macroOnly: widget.dailyGoal?.macroOnly == true),
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
           ),
           trailing: isAdding
               ? const SizedBox(
@@ -2531,9 +2550,30 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final provenance = widget.food?.provenanceSummary;
     return AlertDialog(
-      title: Text(widget.name,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(widget.name,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          // Confirms which of several similarly named hits was picked, at the
+          // point where the amount is entered.
+          if (provenance != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              provenance,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: Colors.blueGrey.shade600,
+              ),
+            ),
+          ],
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

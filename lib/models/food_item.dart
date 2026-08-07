@@ -93,7 +93,23 @@ class FoodItem {
     required this.createdAt,
     required this.updatedAt,
   });
-  
+
+  /// Distinguishing details for telling similarly-named foods apart, e.g.
+  /// "Barilla · Pasta" or "Alnatura · OpenFoodFacts". Returns null when
+  /// nothing is known, so callers can omit the line entirely.
+  ///
+  /// The source is dropped for user-created foods ("Custom …"), where it says
+  /// nothing the 👤 badge does not already say.
+  String? get provenanceSummary {
+    final parts = <String>[
+      if (brand != null && brand!.isNotEmpty) brand!,
+      if (category != null && category!.isNotEmpty) category!,
+      if (source != null && source!.isNotEmpty && !source!.contains('Custom'))
+        source!,
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   /// Erstelle FoodItem aus JSON (Datenbank-Response)
   factory FoodItem.fromJson(Map<String, dynamic> json) {
     // Safely parse required fields with null checks

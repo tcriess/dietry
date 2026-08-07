@@ -2022,8 +2022,25 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                               : const Icon(Icons.check_circle,
                                   color: Colors.green),
                           title: Text(_selectedFood!.name),
-                          subtitle: Text(
-                            '${_selectedFood!.calories.toInt()} kcal / 100${_selectedFood!.servingUnit ?? 'g'}',
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Keep brand/category visible after selection —
+                              // this card is the only confirmation that the
+                              // right item was picked before entering an amount.
+                              if (_selectedFood!.provenanceSummary != null)
+                                Text(
+                                  _selectedFood!.provenanceSummary!,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.blueGrey.shade700,
+                                  ),
+                                ),
+                              Text(
+                                '${_selectedFood!.calories.toInt()} kcal / 100${_selectedFood!.servingUnit ?? 'g'}',
+                              ),
+                            ],
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.close),
