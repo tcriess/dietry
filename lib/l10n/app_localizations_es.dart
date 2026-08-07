@@ -1318,6 +1318,107 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get holidaysTitle => 'Vacaciones';
+
+  @override
+  String get holidaysProfileSubtitle => 'Planifica varios días libres seguidos';
+
+  @override
+  String get holidaysEmpty => 'Aún no hay vacaciones planificadas';
+
+  @override
+  String get holidaysEmptyHint =>
+      'Elige un intervalo de fechas: cada día contará como día libre, también en el futuro.';
+
+  @override
+  String get holidayAdd => 'Añadir vacaciones';
+
+  @override
+  String get holidayUnnamed => 'Vacaciones';
+
+  @override
+  String get holidayNameLabel => 'Nombre (opcional)';
+
+  @override
+  String get holidayNameHint => 'p. ej. Vacaciones de verano';
+
+  @override
+  String holidayDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días',
+      one: '1 día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String holidayCreated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días libres creados',
+      one: '1 día libre creado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get holidayDeleted => 'Vacaciones eliminadas';
+
+  @override
+  String get holidayDeleteTitle => '¿Eliminar las vacaciones?';
+
+  @override
+  String get holidayDeleteMessage =>
+      'Todos los días de estas vacaciones dejarán de estar marcados como día libre.';
+
+  @override
+  String get holidayRename => 'Cambiar nombre';
+
+  @override
+  String get holidaySectionCurrent => 'En curso';
+
+  @override
+  String get holidaySectionUpcoming => 'Planificadas';
+
+  @override
+  String get holidaySectionPast => 'Pasadas';
+
+  @override
+  String get holidayHasGaps => 'algunos días eliminados';
+
+  @override
+  String holidayBanner(String name) {
+    return '$name: día libre, no cuenta en los informes.';
+  }
+
+  @override
+  String get holidayLoadError => 'No se pudieron cargar las vacaciones';
+
+  @override
+  String get holidaySaveError => 'No se pudieron guardar las vacaciones';
+
+  @override
+  String get holidayFromCalendar => 'Desde el calendario';
+
+  @override
+  String get holidayCalendarTitle => 'Elegir una entrada del calendario';
+
+  @override
+  String get holidayCalendarHint =>
+      'Solo se muestran las entradas de día completo. Puedes ajustar las fechas antes de guardar.';
+
+  @override
+  String get holidayCalendarEmpty =>
+      'No se han encontrado entradas de día completo en tus calendarios.';
+
+  @override
+  String get holidayCalendarDenied =>
+      'Sin acceso al calendario no se pueden leer las entradas. Puedes concederlo en los ajustes del sistema.';
+
+  @override
   String streakDays(int count) {
     return 'Racha de $count días';
   }
@@ -1507,6 +1608,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get reportsExportTooltip => 'Exportar como CSV';
+
+  @override
+  String get calendarExportTooltip => 'Exportar como calendario (.ics)';
+
+  @override
+  String get calendarExportName => 'Dietry — Nutrición';
+
+  @override
+  String get calendarExportEmpty => 'No hay nada registrado en este periodo.';
 
   @override
   String get reportsExportSuccess => 'Exportación correcta';

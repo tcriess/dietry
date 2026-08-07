@@ -13,10 +13,20 @@ Future<void> exportCsvFiles({
   }
 }
 
-void _triggerDownload(String filename, String content) {
+/// Downloads a single text file of any type (used for the .ics calendar export).
+Future<void> exportTextFile({
+  required String filename,
+  required String content,
+  required String mimeType,
+}) async {
+  _triggerDownload(filename, content, mimeType: mimeType);
+}
+
+void _triggerDownload(String filename, String content,
+    {String mimeType = 'text/csv'}) {
   final blob = web.Blob(
     [content.toJS].toJS,
-    web.BlobPropertyBag(type: 'text/csv;charset=utf-8'),
+    web.BlobPropertyBag(type: '$mimeType;charset=utf-8'),
   );
   final url = web.URL.createObjectURL(blob);
   final a = web.document.createElement('a') as web.HTMLAnchorElement;

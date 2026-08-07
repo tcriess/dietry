@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 9;  // Version 9: gear table + physical_activities.gear_id
+  static const int _version = 10;  // Version 10: cheat_days holiday_id + note
 
   Database? _db;
   bool _initialized = false;
@@ -212,10 +212,14 @@ class LocalDataService {
       ''');
 
       // cheat_days table
+      // holiday_id groups the days of one declared holiday (NULL = the user
+      // toggled this single day by hand); note carries the holiday label.
       await db.execute('''
         CREATE TABLE IF NOT EXISTS cheat_days (
           user_id TEXT NOT NULL,
           date TEXT NOT NULL,
+          note TEXT,
+          holiday_id TEXT,
           created_at TEXT NOT NULL,
           PRIMARY KEY (user_id, date)
         )
@@ -519,6 +523,26 @@ class LocalDataService {
         appLogger.d('ℹ️ gear_id column already exists: $e');
       }
       appLogger.i('✅ Migration 8→9 complete (gear)');
+    }
+
+    if (oldVersion < 10) {
+      // Version 10: holidays — a run of cheat days declared in one go, grouped
+      // by a shared holiday_id (mirrors sql/migrations/V9). note holds the
+      // label. Existing rows keep holiday_id NULL and stay hand-toggled days.
+      try {
+        await db.execute('ALTER TABLE cheat_days ADD COLUMN note TEXT');
+        appLogger.d('✅ Added note column to cheat_days');
+      } catch (e) {
+        appLogger.d('ℹ️ cheat_days.note column already exists: $e');
+      }
+
+      try {
+        await db.execute('ALTER TABLE cheat_days ADD COLUMN holiday_id TEXT');
+        appLogger.d('✅ Added holiday_id column to cheat_days');
+      } catch (e) {
+        appLogger.d('ℹ️ cheat_days.holiday_id column already exists: $e');
+      }
+      appLogger.i('✅ Migration 9→10 complete (cheat day holidays)');
     }
   }
 
@@ -995,7 +1019,40 @@ class LocalDataService {
     }
   }
 
-  Future<void> markCheatDay(DateTime date) async {
+  /// The cheat day row for [date], or null when the day is not marked.
+  /// Unlike [isCheatDay] this also reports holiday membership and label.
+  Future<CheatDay?> getCheatDay(DateTime date) async {
+    if (!_initialized || _db == null) return null;
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+      final rows = await _db!.query(
+        'cheat_days',
+        where: 'user_id = ? AND date = ?',
+        whereArgs: [_userId, dateStr],
+        limit: 1,
+      );
+      if (rows.isEmpty) return null;
+      final m = rows.first;
+      return CheatDay(
+        // The local mirror has no surrogate id; (user_id, date) is the key.
+        id: '${m['user_id']}_${m['date']}',
+        userId: m['user_id'] as String,
+        cheatDate: DateTime.parse(m['date'] as String),
+        note: m['note'] as String?,
+        holidayId: m['holiday_id'] as String?,
+        createdAt: DateTime.parse(m['created_at'] as String),
+      );
+    } catch (e) {
+      appLogger.e('❌ Error reading cheat day: $e');
+      return null;
+    }
+  }
+
+  /// Marks [date] as a cheat day. Existing rows keep their holiday membership
+  /// unless [note]/[holidayId] are given — the write-through cache calls this
+  /// for every cheat day it mirrors, and must not strip a holiday's label.
+  Future<void> markCheatDay(DateTime date,
+      {String? note, String? holidayId}) async {
     if (!_initialized || _db == null) throw Exception('LocalDataService not initialized');
     try {
       final dateStr = date.toIso8601String().split('T')[0];
@@ -1005,10 +1062,22 @@ class LocalDataService {
         {
           'date': dateStr,
           'user_id': _userId,
+          'note': note,
+          'holiday_id': holidayId,
           'created_at': now,
         },
         conflictAlgorithm: ConflictAlgorithm.ignore,
       );
+      // The insert above is ignored when the day is already marked, so an
+      // update is needed to let a day join (or leave) a holiday.
+      if (note != null || holidayId != null) {
+        await _db!.update(
+          'cheat_days',
+          {'note': note, 'holiday_id': holidayId},
+          where: 'user_id = ? AND date = ?',
+          whereArgs: [_userId, dateStr],
+        );
+      }
       appLogger.d('✅ Marked cheat day: $dateStr');
     } catch (e) {
       appLogger.e('❌ Error marking cheat day: $e');
@@ -1025,6 +1094,118 @@ class LocalDataService {
       appLogger.d('✅ Unmarked cheat day: $dateStr');
     } catch (e) {
       appLogger.e('❌ Error unmarking cheat day: $e');
+      rethrow;
+    }
+  }
+
+  // ── Holidays ───────────────────────────────────────────────────────────────
+  //
+  // Mirrors CheatDayService: a holiday is a run of cheat_days rows sharing a
+  // holiday_id, never a range row of its own.
+
+  /// All declared holidays for the active user, newest first.
+  Future<List<Holiday>> listHolidays() async {
+    if (!_initialized || _db == null) return [];
+    try {
+      final maps = await _db!.query(
+        'cheat_days',
+        where: 'user_id = ? AND holiday_id IS NOT NULL',
+        whereArgs: [_userId],
+        orderBy: 'date ASC',
+      );
+      final days = maps.map((m) => CheatDay(
+            // The local mirror has no surrogate id; (user_id, date) is the key.
+            id: '${m['user_id']}_${m['date']}',
+            userId: m['user_id'] as String,
+            cheatDate: DateTime.parse(m['date'] as String),
+            note: m['note'] as String?,
+            holidayId: m['holiday_id'] as String?,
+            createdAt: DateTime.parse(m['created_at'] as String),
+          ));
+      return Holiday.groupFrom(days);
+    } catch (e) {
+      appLogger.e('❌ Error listing holidays: $e');
+      return [];
+    }
+  }
+
+  /// Marks every date from [start] to [end] (inclusive) as a cheat day of one
+  /// holiday. Days already marked are adopted rather than rejected, matching
+  /// the server's merge-duplicates behaviour.
+  Future<void> createHoliday({
+    required String holidayId,
+    required DateTime start,
+    required DateTime end,
+    String? label,
+  }) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    try {
+      final from = DateTime(start.year, start.month, start.day);
+      final to = DateTime(end.year, end.month, end.day);
+      final now = DateTime.now().toIso8601String();
+      final batch = _db!.batch();
+      for (var d = from; !d.isAfter(to); d = d.add(const Duration(days: 1))) {
+        final dateStr = d.toIso8601String().split('T')[0];
+        // Insert-then-update rather than ConflictAlgorithm.replace: replace
+        // would reset created_at on a day that was already a cheat day.
+        batch.insert(
+          'cheat_days',
+          {
+            'user_id': _userId,
+            'date': dateStr,
+            'note': label,
+            'holiday_id': holidayId,
+            'created_at': now,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+        batch.update(
+          'cheat_days',
+          {'note': label, 'holiday_id': holidayId},
+          where: 'user_id = ? AND date = ?',
+          whereArgs: [_userId, dateStr],
+        );
+      }
+      await batch.commit(noResult: true);
+      appLogger.d('✅ Created holiday $holidayId');
+    } catch (e) {
+      appLogger.e('❌ Error creating holiday: $e');
+      rethrow;
+    }
+  }
+
+  /// Deletes a whole holiday, un-marking every cheat day belonging to it.
+  Future<void> deleteHoliday(String holidayId) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    try {
+      await _db!.delete('cheat_days',
+          where: 'user_id = ? AND holiday_id = ?',
+          whereArgs: [_userId, holidayId]);
+      appLogger.d('✅ Deleted holiday $holidayId');
+    } catch (e) {
+      appLogger.e('❌ Error deleting holiday: $e');
+      rethrow;
+    }
+  }
+
+  /// Renames a holiday in place.
+  Future<void> renameHoliday(String holidayId, String? label) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    try {
+      await _db!.update(
+        'cheat_days',
+        {'note': label},
+        where: 'user_id = ? AND holiday_id = ?',
+        whereArgs: [_userId, holidayId],
+      );
+    } catch (e) {
+      appLogger.e('❌ Error renaming holiday: $e');
       rethrow;
     }
   }

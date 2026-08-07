@@ -1310,6 +1310,107 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get holidaysTitle => 'Urlaub';
+
+  @override
+  String get holidaysProfileSubtitle => 'Mehrere Cheat Days am Stück planen';
+
+  @override
+  String get holidaysEmpty => 'Noch kein Urlaub geplant';
+
+  @override
+  String get holidaysEmptyHint =>
+      'Lege einen Zeitraum fest — jeder Tag darin zählt als Cheat Day, auch in der Zukunft.';
+
+  @override
+  String get holidayAdd => 'Urlaub hinzufügen';
+
+  @override
+  String get holidayUnnamed => 'Urlaub';
+
+  @override
+  String get holidayNameLabel => 'Name (optional)';
+
+  @override
+  String get holidayNameHint => 'z. B. Sommerurlaub';
+
+  @override
+  String holidayDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String holidayCreated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Cheat Days angelegt',
+      one: '1 Cheat Day angelegt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get holidayDeleted => 'Urlaub entfernt';
+
+  @override
+  String get holidayDeleteTitle => 'Urlaub entfernen?';
+
+  @override
+  String get holidayDeleteMessage =>
+      'Die Cheat-Day-Markierung wird für alle Tage dieses Urlaubs aufgehoben.';
+
+  @override
+  String get holidayRename => 'Umbenennen';
+
+  @override
+  String get holidaySectionCurrent => 'Läuft gerade';
+
+  @override
+  String get holidaySectionUpcoming => 'Geplant';
+
+  @override
+  String get holidaySectionPast => 'Vorbei';
+
+  @override
+  String get holidayHasGaps => 'einzelne Tage entfernt';
+
+  @override
+  String holidayBanner(String name) {
+    return '$name — Cheat Day, wird in Berichten nicht gezählt.';
+  }
+
+  @override
+  String get holidayLoadError => 'Urlaub konnte nicht geladen werden';
+
+  @override
+  String get holidaySaveError => 'Urlaub konnte nicht gespeichert werden';
+
+  @override
+  String get holidayFromCalendar => 'Aus Kalender';
+
+  @override
+  String get holidayCalendarTitle => 'Kalendereintrag auswählen';
+
+  @override
+  String get holidayCalendarHint =>
+      'Es werden nur ganztägige Einträge angezeigt. Die Daten lassen sich vor dem Speichern noch anpassen.';
+
+  @override
+  String get holidayCalendarEmpty =>
+      'Keine ganztägigen Einträge in deinen Kalendern gefunden.';
+
+  @override
+  String get holidayCalendarDenied =>
+      'Ohne Kalenderzugriff können die Einträge nicht gelesen werden. Du kannst ihn in den Systemeinstellungen erteilen.';
+
+  @override
   String streakDays(int count) {
     return '$count-Tage-Streak';
   }
@@ -1498,6 +1599,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get reportsExportTooltip => 'Als CSV exportieren';
+
+  @override
+  String get calendarExportTooltip => 'Als Kalender exportieren (.ics)';
+
+  @override
+  String get calendarExportName => 'Dietry — Ernährung';
+
+  @override
+  String get calendarExportEmpty => 'In diesem Zeitraum wurde nichts erfasst.';
 
   @override
   String get reportsExportSuccess => 'Export erfolgreich';

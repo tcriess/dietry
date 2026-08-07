@@ -24,6 +24,7 @@ import '../widgets/ai_meal_model_tile.dart';
 import 'profile_setup_screen.dart';
 import 'add_body_measurement_screen.dart';
 import 'goal_recommendation_screen.dart';
+import 'holidays_screen.dart';
 
 enum _MeasurementRange { month1, months3, months6, year1, all }
 
@@ -968,6 +969,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     description: l.upgradeProProfileDescription,
                   ),
                 ],
+
+                // Holidays — plan a run of cheat days ahead of time
+                const SizedBox(height: 8),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.beach_access_outlined,
+                        color: Colors.orange),
+                    title: Text(l.holidaysTitle),
+                    subtitle: Text(l.holidaysProfileSubtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            HolidaysScreen(dbService: widget.dbService),
+                      ),
+                    ),
+                  ),
+                ),
 
                 // Hilfe & Onboarding-Tour
                 const SizedBox(height: 8),

@@ -6,6 +6,10 @@
 	<string>Dietry uses the microphone so you can describe your meal by voice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Dietry transcribes your spoken meal description to suggest food entries.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Dietry reads all-day entries so you can turn a trip already in your calendar into a holiday.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Dietry reads all-day entries so you can turn a trip already in your calendar into a holiday.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

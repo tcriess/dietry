@@ -587,6 +587,53 @@
       }
     }
   },
+  "holidaysTitle": "Vacaciones",
+  "holidaysProfileSubtitle": "Planifica varios días libres seguidos",
+  "holidaysEmpty": "Aún no hay vacaciones planificadas",
+  "holidaysEmptyHint": "Elige un intervalo de fechas: cada día contará como día libre, también en el futuro.",
+  "holidayAdd": "Añadir vacaciones",
+  "holidayUnnamed": "Vacaciones",
+  "holidayNameLabel": "Nombre (opcional)",
+  "holidayNameHint": "p. ej. Vacaciones de verano",
+  "holidayDays": "{count, plural, one{1 día} other{{count} días}}",
+  "@holidayDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holidayCreated": "{count, plural, one{1 día libre creado} other{{count} días libres creados}}",
+  "@holidayCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holidayDeleted": "Vacaciones eliminadas",
+  "holidayDeleteTitle": "¿Eliminar las vacaciones?",
+  "holidayDeleteMessage": "Todos los días de estas vacaciones dejarán de estar marcados como día libre.",
+  "holidayRename": "Cambiar nombre",
+  "holidaySectionCurrent": "En curso",
+  "holidaySectionUpcoming": "Planificadas",
+  "holidaySectionPast": "Pasadas",
+  "holidayHasGaps": "algunos días eliminados",
+  "holidayBanner": "{name}: día libre, no cuenta en los informes.",
+  "@holidayBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "holidayLoadError": "No se pudieron cargar las vacaciones",
+  "holidaySaveError": "No se pudieron guardar las vacaciones",
+  "holidayFromCalendar": "Desde el calendario",
+  "holidayCalendarTitle": "Elegir una entrada del calendario",
+  "holidayCalendarHint": "Solo se muestran las entradas de día completo. Puedes ajustar las fechas antes de guardar.",
+  "holidayCalendarEmpty": "No se han encontrado entradas de día completo en tus calendarios.",
+  "holidayCalendarDenied": "Sin acceso al calendario no se pueden leer las entradas. Puedes concederlo en los ajustes del sistema.",
   "streakDays": "Racha de {count} días",
   "@streakDays": {
     "placeholders": {
@@ -666,6 +713,9 @@
   "reportsGearWearOver": "Presupuesto de desgaste agotado — {km} km en total (presupuesto {total} km)",
   "reportsLoading": "Cargando informes…",
   "reportsExportTooltip": "Exportar como CSV",
+  "calendarExportTooltip": "Exportar como calendario (.ics)",
+  "calendarExportName": "Dietry — Nutrición",
+  "calendarExportEmpty": "No hay nada registrado en este periodo.",
   "reportsExportSuccess": "Exportación correcta",
   "reportsExportError": "Error al exportar: {error}",
   "@reportsExportError": {

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 import '../models/cheat_day.dart';
+import '../models/holiday.dart';
 import 'neon_database_service.dart';
 
 class CheatDayService {
@@ -26,6 +28,27 @@ class CheatDayService {
         .eq('cheat_date', dateStr);
 
     return (response as List).isNotEmpty;
+  }
+
+  /// The cheat day row for [date], or null when the day is not marked.
+  ///
+  /// Carries more than [isCheatDay]: the caller also learns whether the day
+  /// belongs to a holiday and under what name, which is what the overview
+  /// banner shows.
+  Future<CheatDay?> getCheatDay(DateTime date) async {
+    if (!await _db.ensureValidToken(minMinutesValid: 5)) return null;
+    final userId = _db.userId;
+    if (userId == null) return null;
+
+    final response = await _db.client
+        .from('cheat_days')
+        .select('id,user_id,cheat_date,note,holiday_id,created_at')
+        .eq('user_id', userId)
+        .eq('cheat_date', _dateStr(date));
+
+    final rows = response as List;
+    if (rows.isEmpty) return null;
+    return CheatDay.fromJson(rows.first as Map<String, dynamic>);
   }
 
   /// Marks [date] as a cheat day. No-op if already marked.
@@ -74,6 +97,129 @@ class CheatDayService {
       throw Exception('Failed to unmark cheat day (${response.statusCode})');
     }
   }
+
+  // ── Holidays ───────────────────────────────────────────────────────────────
+  //
+  // A holiday is a run of ordinary cheat_days rows sharing a holiday_id, not a
+  // range row of its own. See sql/migrations/V9__cheat_day_holidays.sql for why.
+
+  /// All declared holidays, newest first. Hand-toggled single days are excluded.
+  Future<List<Holiday>> listHolidays() async {
+    if (!await _db.ensureValidToken(minMinutesValid: 5)) return [];
+    final userId = _db.userId;
+    if (userId == null) return [];
+
+    final response = await _db.client
+        .from('cheat_days')
+        .select('id,user_id,cheat_date,note,holiday_id,created_at')
+        .eq('user_id', userId)
+        .not('holiday_id', 'is', null);
+
+    final days = (response as List)
+        .map((r) => CheatDay.fromJson(r as Map<String, dynamic>))
+        .toList();
+    return Holiday.groupFrom(days);
+  }
+
+  /// Marks every date from [start] to [end] (inclusive) as a cheat day
+  /// belonging to one new holiday. Both dates may be in the future.
+  ///
+  /// Days already marked are adopted into the holiday rather than rejected, so
+  /// declaring a holiday over a day you had toggled by hand does the obvious
+  /// thing instead of failing on the (user_id, cheat_date) unique constraint.
+  Future<Holiday> createHoliday({
+    required DateTime start,
+    required DateTime end,
+    String? label,
+  }) async {
+    if (!await _db.ensureValidToken(minMinutesValid: 5)) {
+      throw Exception('Token invalid');
+    }
+    final userId = _db.userId;
+    if (userId == null) throw Exception('No user ID');
+
+    final from = _dateOnly(start);
+    final to = _dateOnly(end);
+    if (to.isBefore(from)) {
+      throw ArgumentError('Holiday end date is before its start date');
+    }
+
+    final holidayId = const Uuid().v4();
+    final trimmed = label?.trim();
+    final rows = <Map<String, dynamic>>[];
+    for (var d = from; !d.isAfter(to); d = d.add(const Duration(days: 1))) {
+      rows.add({
+        'id': const Uuid().v4(),
+        'user_id': userId,
+        'cheat_date': _dateStr(d),
+        'holiday_id': holidayId,
+        if (trimmed != null && trimmed.isNotEmpty) 'note': trimmed,
+      });
+    }
+
+    // on_conflict must name the (user_id, cheat_date) unique constraint —
+    // PostgREST would otherwise resolve against the surrogate `id` primary key,
+    // which never collides, and the insert would fail on the real constraint.
+    final response = await _db.dioClient.post(
+      '/cheat_days?on_conflict=user_id,cheat_date',
+      data: rows,
+      options: Options(headers: {
+        'Prefer': 'return=representation,resolution=merge-duplicates',
+      }),
+    );
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception('Failed to create holiday (${response.statusCode})');
+    }
+
+    return Holiday(
+      id: holidayId,
+      label: (trimmed != null && trimmed.isEmpty) ? null : trimmed,
+      start: from,
+      end: to,
+      dayCount: rows.length,
+    );
+  }
+
+  /// Deletes a whole holiday, i.e. un-marks every cheat day belonging to it.
+  Future<void> deleteHoliday(String holidayId) async {
+    if (!await _db.ensureValidToken(minMinutesValid: 5)) {
+      throw Exception('Token invalid');
+    }
+    final userId = _db.userId;
+    if (userId == null) throw Exception('No user ID');
+
+    final response = await _db.dioClient.delete(
+      '/cheat_days?user_id=eq.$userId&holiday_id=eq.$holidayId',
+      options: Options(headers: {'Prefer': 'return=minimal'}),
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete holiday (${response.statusCode})');
+    }
+  }
+
+  /// Renames a holiday in place. The label is stored on each of its days.
+  Future<void> renameHoliday(String holidayId, String? label) async {
+    if (!await _db.ensureValidToken(minMinutesValid: 5)) {
+      throw Exception('Token invalid');
+    }
+    final userId = _db.userId;
+    if (userId == null) throw Exception('No user ID');
+
+    final trimmed = label?.trim();
+    final response = await _db.dioClient.patch(
+      '/cheat_days?user_id=eq.$userId&holiday_id=eq.$holidayId',
+      data: {'note': (trimmed == null || trimmed.isEmpty) ? null : trimmed},
+      options: Options(headers: {'Prefer': 'return=minimal'}),
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to rename holiday (${response.statusCode})');
+    }
+  }
+
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   /// Counts cheat days in the current calendar month.
   Future<int> countThisMonth(DateTime month) async {

@@ -1303,6 +1303,107 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get holidaysTitle => 'Holidays';
+
+  @override
+  String get holidaysProfileSubtitle => 'Plan several cheat days in a row';
+
+  @override
+  String get holidaysEmpty => 'No holidays planned yet';
+
+  @override
+  String get holidaysEmptyHint =>
+      'Pick a date range — every day in it counts as a cheat day, future dates included.';
+
+  @override
+  String get holidayAdd => 'Add holiday';
+
+  @override
+  String get holidayUnnamed => 'Holiday';
+
+  @override
+  String get holidayNameLabel => 'Name (optional)';
+
+  @override
+  String get holidayNameHint => 'e.g. Summer vacation';
+
+  @override
+  String holidayDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String holidayCreated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cheat days created',
+      one: '1 cheat day created',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get holidayDeleted => 'Holiday removed';
+
+  @override
+  String get holidayDeleteTitle => 'Remove holiday?';
+
+  @override
+  String get holidayDeleteMessage =>
+      'Every day of this holiday will stop being marked as a cheat day.';
+
+  @override
+  String get holidayRename => 'Rename';
+
+  @override
+  String get holidaySectionCurrent => 'Happening now';
+
+  @override
+  String get holidaySectionUpcoming => 'Planned';
+
+  @override
+  String get holidaySectionPast => 'Past';
+
+  @override
+  String get holidayHasGaps => 'some days removed';
+
+  @override
+  String holidayBanner(String name) {
+    return '$name — cheat day, not counted in reports.';
+  }
+
+  @override
+  String get holidayLoadError => 'Could not load holidays';
+
+  @override
+  String get holidaySaveError => 'Could not save the holiday';
+
+  @override
+  String get holidayFromCalendar => 'From calendar';
+
+  @override
+  String get holidayCalendarTitle => 'Pick a calendar entry';
+
+  @override
+  String get holidayCalendarHint =>
+      'Only all-day entries are listed. You can adjust the dates before saving.';
+
+  @override
+  String get holidayCalendarEmpty =>
+      'No all-day entries found in your calendars.';
+
+  @override
+  String get holidayCalendarDenied =>
+      'Without calendar access the entries can\'t be read. You can grant it in the system settings.';
+
+  @override
   String streakDays(int count) {
     return '$count day streak';
   }
@@ -1491,6 +1592,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportsExportTooltip => 'Export as CSV';
+
+  @override
+  String get calendarExportTooltip => 'Export as calendar (.ics)';
+
+  @override
+  String get calendarExportName => 'Dietry — Nutrition';
+
+  @override
+  String get calendarExportEmpty => 'Nothing logged in this period to export.';
 
   @override
   String get reportsExportSuccess => 'Export successful';

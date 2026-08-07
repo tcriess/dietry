@@ -22,6 +22,15 @@
     <!-- On-device LLM model download (Cloud/Pro; cactus runtime) -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Reading all-day entries to prefill a holiday's date range.
+         WRITE_CALENDAR is declared only because device_calendar's permission
+         gate (CalendarDelegate.arePermissionsGranted) requires BOTH to be
+         granted before it will hand out any data — the app never writes to a
+         calendar. Both sit in the same CALENDAR permission group, so the user
+         still sees a single runtime prompt. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <!-- Health Connect: All required health data read permissions -->

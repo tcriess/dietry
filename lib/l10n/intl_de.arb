@@ -604,6 +604,53 @@
       }
     }
   },
+  "holidaysTitle": "Urlaub",
+  "holidaysProfileSubtitle": "Mehrere Cheat Days am Stück planen",
+  "holidaysEmpty": "Noch kein Urlaub geplant",
+  "holidaysEmptyHint": "Lege einen Zeitraum fest — jeder Tag darin zählt als Cheat Day, auch in der Zukunft.",
+  "holidayAdd": "Urlaub hinzufügen",
+  "holidayUnnamed": "Urlaub",
+  "holidayNameLabel": "Name (optional)",
+  "holidayNameHint": "z. B. Sommerurlaub",
+  "holidayDays": "{count, plural, one{1 Tag} other{{count} Tage}}",
+  "@holidayDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holidayCreated": "{count, plural, one{1 Cheat Day angelegt} other{{count} Cheat Days angelegt}}",
+  "@holidayCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holidayDeleted": "Urlaub entfernt",
+  "holidayDeleteTitle": "Urlaub entfernen?",
+  "holidayDeleteMessage": "Die Cheat-Day-Markierung wird für alle Tage dieses Urlaubs aufgehoben.",
+  "holidayRename": "Umbenennen",
+  "holidaySectionCurrent": "Läuft gerade",
+  "holidaySectionUpcoming": "Geplant",
+  "holidaySectionPast": "Vorbei",
+  "holidayHasGaps": "einzelne Tage entfernt",
+  "holidayBanner": "{name} — Cheat Day, wird in Berichten nicht gezählt.",
+  "@holidayBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "holidayLoadError": "Urlaub konnte nicht geladen werden",
+  "holidaySaveError": "Urlaub konnte nicht gespeichert werden",
+  "holidayFromCalendar": "Aus Kalender",
+  "holidayCalendarTitle": "Kalendereintrag auswählen",
+  "holidayCalendarHint": "Es werden nur ganztägige Einträge angezeigt. Die Daten lassen sich vor dem Speichern noch anpassen.",
+  "holidayCalendarEmpty": "Keine ganztägigen Einträge in deinen Kalendern gefunden.",
+  "holidayCalendarDenied": "Ohne Kalenderzugriff können die Einträge nicht gelesen werden. Du kannst ihn in den Systemeinstellungen erteilen.",
   "streakDays": "{count}-Tage-Streak",
   "@streakDays": {
     "placeholders": {
@@ -683,6 +730,9 @@
   "reportsGearWearOver": "Verschleißbudget aufgebraucht — {km} km gesamt (Budget {total} km)",
   "reportsLoading": "Berichte werden geladen…",
   "reportsExportTooltip": "Als CSV exportieren",
+  "calendarExportTooltip": "Als Kalender exportieren (.ics)",
+  "calendarExportName": "Dietry — Ernährung",
+  "calendarExportEmpty": "In diesem Zeitraum wurde nichts erfasst.",
   "reportsExportSuccess": "Export erfolgreich",
   "reportsExportError": "Export fehlgeschlagen: {error}",
   "@reportsExportError": {

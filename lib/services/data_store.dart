@@ -26,6 +26,15 @@ class DataStore extends ChangeNotifier {
   NutritionGoal? _goal;
   int _waterIntakeMl = 0;
   bool _isCheatDay = false;
+
+  /// Name of the holiday the selected day belongs to, when it belongs to one.
+  /// Null for a hand-toggled cheat day, an unnamed holiday, or a normal day.
+  String? _holidayLabel;
+
+  /// Holiday the selected day belongs to. Kept alongside [_holidayLabel] so the
+  /// write-through cache can preserve the day's holiday membership.
+  String? _holidayId;
+
   int _streak = 0;
   int _bestStreak = 0;
   List<int> _pendingMilestones = [];
@@ -73,6 +82,11 @@ class DataStore extends ChangeNotifier {
       .fold(0, (sum, e) => sum + e.amountMl!.round());
 
   bool get isCheatDay => _isCheatDay;
+
+  /// Holiday name for the selected day, or null when it is not a named
+  /// holiday day. Only meaningful while [isCheatDay] is true.
+  String? get holidayLabel => _holidayLabel;
+
   int get streak => _streak;
   int get bestStreak => _bestStreak;
   List<int> get pendingMilestones => List.unmodifiable(_pendingMilestones);
@@ -141,6 +155,8 @@ class DataStore extends ChangeNotifier {
     _activities = [];
     _waterIntakeMl = 0;
     _isCheatDay = false;
+    _holidayLabel = null;
+    _holidayId = null;
     _streak = 0;
     _bestStreak = 0;
     _pendingMilestones = [];
@@ -272,12 +288,12 @@ class DataStore extends ChangeNotifier {
       final entries = await cache.getFoodEntriesForDate(date);
       final activities = await cache.getActivitiesForDate(date);
       final water = await cache.getWaterIntakeForDate(date);
-      final cheat = await cache.isCheatDay(date);
+      final cheat = await cache.getCheatDay(date);
 
       _foodEntries = entries;
       _activities = activities;
       _waterIntakeMl = water;
-      _isCheatDay = cheat;
+      _applyCheatDay(cheat);
       if (goal != null) {
         _goal = goal;
         _goalConfirmed = true;
@@ -301,7 +317,11 @@ class DataStore extends ChangeNotifier {
       await cache.replaceCachedActivitiesForDate(date, _activities);
       await cache.setWaterIntakeForDate(date, _waterIntakeMl);
       if (_isCheatDay) {
-        await cache.markCheatDay(date);
+        // Pass the holiday through: without it, mirroring a day fetched from
+        // the server would drop its holiday membership locally and the banner
+        // would lose the name on the next cold start.
+        await cache.markCheatDay(date,
+            note: _holidayLabel, holidayId: _holidayId);
       } else {
         await cache.unmarkCheatDay(date);
       }
@@ -424,8 +444,17 @@ class DataStore extends ChangeNotifier {
 
   // ── Cheat day ─────────────────────────────────────────────────────────────
 
+  /// Optimistic per-day toggle from the overview chip.
+  ///
+  /// Always clears the holiday info, which matches what the toggle does on the
+  /// server: un-marking deletes the row, so the day leaves its holiday, and
+  /// re-marking creates a plain day that belongs to none. (On the error-revert
+  /// path a holiday day briefly loses its name until the next load — harmless,
+  /// and better than showing a holiday for a day that just left one.)
   void setCheatDay(bool value) {
     _isCheatDay = value;
+    _holidayLabel = null;
+    _holidayId = null;
     notifyListeners();
   }
 
@@ -501,10 +530,17 @@ class DataStore extends ChangeNotifier {
 
   Future<void> _loadCheatDay(DateTime date) async {
     try {
-      _isCheatDay = await CheatDayService(_db!).isCheatDay(date);
+      _applyCheatDay(await CheatDayService(_db!).getCheatDay(date));
     } catch (_) {
       // Bestehenden Cheat-Day-Status beibehalten.
     }
+  }
+
+  /// Applies a cheat day row (or its absence) to the in-memory day state.
+  void _applyCheatDay(CheatDay? day) {
+    _isCheatDay = day != null;
+    _holidayId = day?.holidayId;
+    _holidayLabel = day?.holidayLabel;
   }
 
   Future<void> _loadStreak() async {
@@ -680,10 +716,10 @@ class DataStore extends ChangeNotifier {
   /// Load cheat day from local SQLite
   Future<void> _loadCheatDayLocal(DateTime date) async {
     try {
-      _isCheatDay = await _local!.isCheatDay(date);
+      _applyCheatDay(await _local!.getCheatDay(date));
     } catch (e) {
       appLogger.e('❌ Error loading cheat day locally: $e');
-      _isCheatDay = false;
+      _applyCheatDay(null);
     }
   }
 }

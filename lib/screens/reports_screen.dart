@@ -12,6 +12,7 @@ import '../services/neon_database_service.dart';
 import '../services/nutrition_calculator.dart';
 import '../services/nutrition_goal_service.dart';
 import '../services/platform_export.dart' as exporter;
+import '../services/nutrition_ics_export.dart';
 import '../services/reports_service.dart';
 import '../services/user_body_data_service.dart';
 
@@ -149,6 +150,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   late final ReportsService _svc;
   _ReportsData? _lastData;
   bool _exportBusy = false;
+  bool _calendarExportBusy = false;
 
   @override
   void initState() {
@@ -305,6 +307,60 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  /// Writes the visible range out as an iCalendar file, one all-day entry per
+  /// logged day. Unlike the CSV export this is available in every edition: it
+  /// is generated on the device from data already on screen, so it needs no
+  /// backend of its own.
+  Future<void> _exportCalendar() async {
+    final data = _lastData;
+    if (data == null) return;
+    final l = AppLocalizations.of(context)!;
+
+    setState(() => _calendarExportBusy = true);
+    try {
+      final ics = buildNutritionIcs(
+        days: data.nutrition,
+        generatedAt: DateTime.now(),
+        labels: NutritionIcsLabels(
+          calendarName: l.calendarExportName,
+          calories: l.caloriesLabel,
+          protein: l.proteinLabel,
+          fat: l.fatLabel,
+          carbs: l.carbsLabel,
+        ),
+      );
+      // "END:VCALENDAR" with no VEVENT in between — importing that would tell
+      // the user nothing, so say so instead of handing over an empty file.
+      if (!ics.contains('BEGIN:VEVENT')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.calendarExportEmpty)),
+          );
+        }
+        return;
+      }
+
+      await exporter.exportTextFile(
+        filename: 'dietry-nutrition-${_fmt(DateTime.now())}.ics',
+        content: ics,
+        mimeType: 'text/calendar',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.reportsExportSuccess)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.reportsExportError(e.toString()))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _calendarExportBusy = false);
+    }
+  }
+
   Future<void> _onPullToRefresh() async {
     // Delegate to the parent-supplied callback when present (which also
     // bumps refreshTrigger via DataStore wiring). Fall back to a local
@@ -367,6 +423,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   onPressed: (_lastData == null || _exportBusy) ? null : _export,
                 ),
               ],
+              IconButton(
+                icon: _calendarExportBusy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.event_note_outlined),
+                tooltip: l.calendarExportTooltip,
+                onPressed: (_lastData == null || _calendarExportBusy)
+                    ? null
+                    : _exportCalendar,
+              ),
             ],
           ),
           const SizedBox(height: 16),

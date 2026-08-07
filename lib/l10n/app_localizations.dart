@@ -2476,6 +2476,162 @@ abstract class AppLocalizations {
   /// **'Du hattest diesen Monat {count} Cheat Days. Alles gut, kein Stress!'**
   String cheatDayMonthlyNudge(int count);
 
+  /// No description provided for @holidaysTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub'**
+  String get holidaysTitle;
+
+  /// No description provided for @holidaysProfileSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Mehrere Cheat Days am Stück planen'**
+  String get holidaysProfileSubtitle;
+
+  /// No description provided for @holidaysEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Noch kein Urlaub geplant'**
+  String get holidaysEmpty;
+
+  /// No description provided for @holidaysEmptyHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Lege einen Zeitraum fest — jeder Tag darin zählt als Cheat Day, auch in der Zukunft.'**
+  String get holidaysEmptyHint;
+
+  /// No description provided for @holidayAdd.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub hinzufügen'**
+  String get holidayAdd;
+
+  /// No description provided for @holidayUnnamed.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub'**
+  String get holidayUnnamed;
+
+  /// No description provided for @holidayNameLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Name (optional)'**
+  String get holidayNameLabel;
+
+  /// No description provided for @holidayNameHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. Sommerurlaub'**
+  String get holidayNameHint;
+
+  /// No description provided for @holidayDays.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, one{1 Tag} other{{count} Tage}}'**
+  String holidayDays(int count);
+
+  /// No description provided for @holidayCreated.
+  ///
+  /// In de, this message translates to:
+  /// **'{count, plural, one{1 Cheat Day angelegt} other{{count} Cheat Days angelegt}}'**
+  String holidayCreated(int count);
+
+  /// No description provided for @holidayDeleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub entfernt'**
+  String get holidayDeleted;
+
+  /// No description provided for @holidayDeleteTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub entfernen?'**
+  String get holidayDeleteTitle;
+
+  /// No description provided for @holidayDeleteMessage.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Cheat-Day-Markierung wird für alle Tage dieses Urlaubs aufgehoben.'**
+  String get holidayDeleteMessage;
+
+  /// No description provided for @holidayRename.
+  ///
+  /// In de, this message translates to:
+  /// **'Umbenennen'**
+  String get holidayRename;
+
+  /// No description provided for @holidaySectionCurrent.
+  ///
+  /// In de, this message translates to:
+  /// **'Läuft gerade'**
+  String get holidaySectionCurrent;
+
+  /// No description provided for @holidaySectionUpcoming.
+  ///
+  /// In de, this message translates to:
+  /// **'Geplant'**
+  String get holidaySectionUpcoming;
+
+  /// No description provided for @holidaySectionPast.
+  ///
+  /// In de, this message translates to:
+  /// **'Vorbei'**
+  String get holidaySectionPast;
+
+  /// No description provided for @holidayHasGaps.
+  ///
+  /// In de, this message translates to:
+  /// **'einzelne Tage entfernt'**
+  String get holidayHasGaps;
+
+  /// No description provided for @holidayBanner.
+  ///
+  /// In de, this message translates to:
+  /// **'{name} — Cheat Day, wird in Berichten nicht gezählt.'**
+  String holidayBanner(String name);
+
+  /// No description provided for @holidayLoadError.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub konnte nicht geladen werden'**
+  String get holidayLoadError;
+
+  /// No description provided for @holidaySaveError.
+  ///
+  /// In de, this message translates to:
+  /// **'Urlaub konnte nicht gespeichert werden'**
+  String get holidaySaveError;
+
+  /// No description provided for @holidayFromCalendar.
+  ///
+  /// In de, this message translates to:
+  /// **'Aus Kalender'**
+  String get holidayFromCalendar;
+
+  /// No description provided for @holidayCalendarTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Kalendereintrag auswählen'**
+  String get holidayCalendarTitle;
+
+  /// No description provided for @holidayCalendarHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Es werden nur ganztägige Einträge angezeigt. Die Daten lassen sich vor dem Speichern noch anpassen.'**
+  String get holidayCalendarHint;
+
+  /// No description provided for @holidayCalendarEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Keine ganztägigen Einträge in deinen Kalendern gefunden.'**
+  String get holidayCalendarEmpty;
+
+  /// No description provided for @holidayCalendarDenied.
+  ///
+  /// In de, this message translates to:
+  /// **'Ohne Kalenderzugriff können die Einträge nicht gelesen werden. Du kannst ihn in den Systemeinstellungen erteilen.'**
+  String get holidayCalendarDenied;
+
   /// No description provided for @streakDays.
   ///
   /// In de, this message translates to:
@@ -2823,6 +2979,24 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Als CSV exportieren'**
   String get reportsExportTooltip;
+
+  /// No description provided for @calendarExportTooltip.
+  ///
+  /// In de, this message translates to:
+  /// **'Als Kalender exportieren (.ics)'**
+  String get calendarExportTooltip;
+
+  /// No description provided for @calendarExportName.
+  ///
+  /// In de, this message translates to:
+  /// **'Dietry — Ernährung'**
+  String get calendarExportName;
+
+  /// No description provided for @calendarExportEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'In diesem Zeitraum wurde nichts erfasst.'**
+  String get calendarExportEmpty;
 
   /// No description provided for @reportsExportSuccess.
   ///

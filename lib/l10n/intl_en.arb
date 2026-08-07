@@ -587,6 +587,53 @@
       }
     }
   },
+  "holidaysTitle": "Holidays",
+  "holidaysProfileSubtitle": "Plan several cheat days in a row",
+  "holidaysEmpty": "No holidays planned yet",
+  "holidaysEmptyHint": "Pick a date range — every day in it counts as a cheat day, future dates included.",
+  "holidayAdd": "Add holiday",
+  "holidayUnnamed": "Holiday",
+  "holidayNameLabel": "Name (optional)",
+  "holidayNameHint": "e.g. Summer vacation",
+  "holidayDays": "{count, plural, one{1 day} other{{count} days}}",
+  "@holidayDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holidayCreated": "{count, plural, one{1 cheat day created} other{{count} cheat days created}}",
+  "@holidayCreated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "holidayDeleted": "Holiday removed",
+  "holidayDeleteTitle": "Remove holiday?",
+  "holidayDeleteMessage": "Every day of this holiday will stop being marked as a cheat day.",
+  "holidayRename": "Rename",
+  "holidaySectionCurrent": "Happening now",
+  "holidaySectionUpcoming": "Planned",
+  "holidaySectionPast": "Past",
+  "holidayHasGaps": "some days removed",
+  "holidayBanner": "{name} — cheat day, not counted in reports.",
+  "@holidayBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "holidayLoadError": "Could not load holidays",
+  "holidaySaveError": "Could not save the holiday",
+  "holidayFromCalendar": "From calendar",
+  "holidayCalendarTitle": "Pick a calendar entry",
+  "holidayCalendarHint": "Only all-day entries are listed. You can adjust the dates before saving.",
+  "holidayCalendarEmpty": "No all-day entries found in your calendars.",
+  "holidayCalendarDenied": "Without calendar access the entries can't be read. You can grant it in the system settings.",
   "streakDays": "{count} day streak",
   "@streakDays": {
     "placeholders": {
@@ -666,6 +713,9 @@
   "reportsGearWearOver": "Wear budget used up — {km} km lifetime (budget {total} km)",
   "reportsLoading": "Loading reports…",
   "reportsExportTooltip": "Export as CSV",
+  "calendarExportTooltip": "Export as calendar (.ics)",
+  "calendarExportName": "Dietry — Nutrition",
+  "calendarExportEmpty": "Nothing logged in this period to export.",
   "reportsExportSuccess": "Export successful",
   "reportsExportError": "Export failed: {error}",
   "@reportsExportError": {

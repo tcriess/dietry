@@ -3950,6 +3950,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 onWaterChanged: _onWaterChanged,
                 dbService: widget.dbService,
                 isCheatDay: _store.isCheatDay,
+                holidayLabel: _store.holidayLabel,
                 streak: _store.streak,
                 bestStreak: _store.bestStreak,
                 onToggleCheatDay: _toggleCheatDay,
@@ -4063,6 +4064,11 @@ class OverviewScreen extends StatelessWidget {
   final void Function(int deltaMl) onWaterChanged;
   final NeonDatabaseService? dbService;
   final bool isCheatDay;
+
+  /// Name of the holiday this day belongs to, when it belongs to a named one.
+  /// Only read while [isCheatDay] is true.
+  final String? holidayLabel;
+
   final int streak;
   final int bestStreak;
   final Future<void> Function() onToggleCheatDay;
@@ -4084,6 +4090,7 @@ class OverviewScreen extends StatelessWidget {
     required this.onWaterChanged,
     required this.dbService,
     required this.isCheatDay,
+    this.holidayLabel,
     required this.streak,
     required this.bestStreak,
     required this.onToggleCheatDay,
@@ -4808,11 +4815,17 @@ class OverviewScreen extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    const Text('🎉', style: TextStyle(fontSize: 24)),
+                    // A declared holiday gets its own icon and names itself, so
+                    // it is obvious the day is cheat because of the holiday and
+                    // not because it was toggled by hand.
+                    Text(holidayLabel != null ? '🏖️' : '🎉',
+                        style: const TextStyle(fontSize: 24)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        l.cheatDayBanner,
+                        holidayLabel != null
+                            ? l.holidayBanner(holidayLabel!)
+                            : l.cheatDayBanner,
                         style: TextStyle(
                           color: Colors.orange.shade900,
                           fontWeight: FontWeight.w500,
