@@ -27,6 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] — 2026-08-07
+
+### Added
+- **Plan a holiday, not one cheat day at a time** — declare a date range and every day in it counts as a cheat day, future dates included. The overview names the holiday it belongs to, so it is obvious why a day is not counting towards your reports. Removing the holiday un-marks its days again, and you can still switch a single day back on by hand without disturbing the rest.
+- **Turn a trip already in your calendar into a holiday** (Android/iOS) — pick one of your calendar's all-day entries and its dates and name are filled in for you. It reads whatever calendars your phone already syncs, so Google, Outlook and iCloud all work without connecting an account to Dietry. Nothing is written until you confirm the dates.
+- **Export your nutrition history to your calendar** — from Reports, save the shown period as a calendar file with one all-day entry per day: calories at a glance, the full macro breakdown inside. Useful for seeing what you ate next to what you were doing. Re-exporting the same period updates those entries instead of creating a second set.
+- **See which food you are actually picking** — the search results and the amount dialog now show brand and source, so two similarly named foods can be told apart before you log one.
+
+### Fixed
+- **Newly created gear is picked up straight away** — after adding a bike or a pair of shoes, an activity it was assigned to still showed "which gear?", and the picker offered only the equipment that existed beforehand. Gear you have retired also keeps its name on the workouts it was used for.
+- **An imported workout no longer appears twice** — when Google Fit finalises an auto-detected activity it re-exports it with a corrected end time, which was stored as a second copy. Overlapping imports are now merged into one, the later import wins, and anything you added yourself — gear, notes — survives the merge. Copies that already got duplicated are folded back together on the next import.
+- **Imported activities keep their proper name** — the same ride could come in as "Radfahren (normal)" one time and "Biking" the next, depending on whether the activity database could be reached. A failed lookup can no longer overwrite a name that was already correct.
+- **The activity list is in a consistent order** — the day's workouts appeared in a different order depending on whether the data came from the local cache or the server, and freshly imported ones dropped to the bottom.
+
+---
+
 ## [1.4.1] — 2026-07-27
 
 ### Fixed
