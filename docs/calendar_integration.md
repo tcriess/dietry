@@ -70,7 +70,7 @@ gets this wrong once; here it means one spurious cheat day per imported holiday.
 
 ### Phase 4 — a live subscribable feed (Cloud only)
 
-`https://app.dietry.de/ics/<token>.ics`, subscribed once in Google or Apple
+`https://cloud.dietry.de/ics/<token>.ics`, subscribed once in Google or Apple
 Calendar and always current. This is the version people actually want, and the
 one that cannot be cheap:
 

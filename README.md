@@ -63,8 +63,7 @@ dietry/
 ├── sql/                           # PostgreSQL schema & migrations
 ├── config/
 │   ├── ce-dev.json                # Community Edition dev config
-│   ├── ce-prod.json.example       # Community Edition production template
-│   └── app-dev.json               # Cloud Edition dev config
+│   └── ce-prod.json.example       # Community Edition production template
 ├── web/
 │   ├── index.html                 # Flutter web entry point
 │   ├── landing.html               # Marketing landing page
@@ -104,7 +103,7 @@ Edit `config/ce-dev.json` (or use your own) with your backend details:
 
 For production, use `config/ce-prod.json.example` as a template.
 
-> **Cloud Edition**: If developing with the Cloud Edition, use `config/app-dev.json` instead (requires the private `dietry_cloud` package).
+> **Cloud Edition**: its configs live in the private `dietry_cloud` repo, not here — use `../dietry-cloud/config/cloud-dev.json`.
 
 ### 3. Set up the database
 
@@ -128,8 +127,8 @@ flutter run -d chrome   --dart-define-from-file=config/ce-dev.json   # Web
 flutter run -d linux    --dart-define-from-file=config/ce-dev.json   # Linux desktop
 flutter run -d <device> --dart-define-from-file=config/ce-dev.json   # Android / iOS
 
-# Cloud Edition (requires dietry_cloud package)
-flutter run -d chrome   --dart-define-from-file=config/app-dev.json  # Web
+# Cloud Edition (requires the private dietry_cloud package + its own config)
+flutter run -d chrome   --dart-define-from-file=../dietry-cloud/config/cloud-dev.json  # Web
 ```
 
 ---

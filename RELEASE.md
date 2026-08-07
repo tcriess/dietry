@@ -20,7 +20,7 @@ and the real app name (a push to `develop` builds the same thing with dev secret
 "Dietry Dev" label). On a release it:
 
 - builds web, Linux, Android APK **and** the Play Store App Bundle (`.aab`),
-- **deploys the web app to the production host** (`ce.dietry.de` / `app.dietry.de`),
+- **deploys the web app to the production host** (`ce.dietry.de` / `cloud.dietry.de`),
 - attaches every artifact to the GitHub release.
 
 Two things are **not** automatic:
@@ -165,7 +165,7 @@ Upload the `.aab` in the Play Console. Nothing does this for you.
 ### 7. Afterwards
 
 - Both repos back on `develop`.
-- Check `ce.dietry.de` and `app.dietry.de` are serving the new build.
+- Check `ce.dietry.de` and `cloud.dietry.de` are serving the new build.
 - Update the landing page (`/home/spanz/WebstormProjects/dietry-hp/index.html`) if the release
   changes what it advertises — version banner and download links, in **all three** languages
   (en, de, es).
@@ -192,7 +192,7 @@ Release:
 After:
   ☐ release workflow green in both repos
   ☐ .aab downloaded from the cloud release, uploaded to the Play Console
-  ☐ ce.dietry.de / app.dietry.de serving the new build
+  ☐ ce.dietry.de / cloud.dietry.de serving the new build
   ☐ landing page updated if needed
 ```
 
