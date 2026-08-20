@@ -35,7 +35,6 @@ import 'services/physical_activity_service.dart';
 import 'services/activity_database_service.dart';
 import 'services/food_database_service.dart';
 import 'services/food_search_service.dart';
-import 'services/gear_service.dart';
 import 'services/user_body_data_service.dart';
 import 'models/activity_item.dart';
 import 'services/jwt_helper.dart';
@@ -2925,6 +2924,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         final saved = await _sync.saveActivity(activity);
         _store.addActivity(saved ?? activity);
       }
+      for (final record in plan.ambiguous) {
+        appLogger.w('⚠️ Did not apply an import of ${record.displayName} '
+            '(${record.startTime} – ${record.endTime}): it spans more than one '
+            'workout, so it belongs to none of them');
+      }
       return plan.create.length;
     } catch (e) {
       appLogger.w('⚠️ Silent HC activity import failed: $e');
@@ -2947,12 +2951,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         activityService.getMyActivities(),
         activityService.getPublicActivities(),
         UserBodyDataService(db).getCurrentBodyData(),
-        GearService(db).getGear(includeRetired: false),
+        // Through SyncService, not GearService: it falls back to the offline
+        // mirror when the fetch comes back empty, and an empty gear list here
+        // means no imported workout gets its gear attached.
+        SyncService.instance.getGear(),
       ]);
       final myActivities = results[0] as List<ActivityItem>;
       final publicActivities = results[1] as List<ActivityItem>;
       final bodyData = results[2] as UserBodyData?;
-      final gear = results[3] as List<Gear>;
+      final gear =
+          (results[3] as List<Gear>).where((g) => !g.retired).toList();
       final allActivities = [...myActivities, ...publicActivities];
       final weightKg = bodyData?.weight;
 

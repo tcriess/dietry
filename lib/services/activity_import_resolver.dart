@@ -18,10 +18,17 @@ class ActivityImportPlan {
   /// in [update]. Always Health-Connect-sourced; never hand-entered.
   final List<PhysicalActivity> delete;
 
+  /// Incoming records the import deliberately did not apply: a session that
+  /// only summarises other records in the same batch, or one that matched
+  /// several stored workouts which are not the same workout as each other.
+  /// Reported so the skip is visible in the log rather than silent.
+  final List<PhysicalActivity> ambiguous;
+
   const ActivityImportPlan({
     this.create = const [],
     this.update = const [],
     this.delete = const [],
+    this.ambiguous = const [],
   });
 
   bool get isEmpty => create.isEmpty && update.isEmpty && delete.isEmpty;
@@ -56,11 +63,16 @@ ActivityImportPlan resolveActivityImport({
   final update = <PhysicalActivity>[];
   final delete = <PhysicalActivity>[];
 
+  // A session that merely spans other sessions in the same batch describes no
+  // workout of its own, and applying it can only distort one — see
+  // [_partitionSummaries].
+  final (workouts, ambiguous) = _partitionSummaries(incoming);
+
   // Richer records (distance / steps / heart rate present) first, so each
   // group's representative is the copy carrying the most data. Ordering is
   // fully determined by the data, which is what stops two records of one
   // workout from taking turns overwriting each other on every sync.
-  final ordered = [...incoming]
+  final ordered = [...workouts]
     ..sort((a, b) {
       final byRichness = _richness(b).compareTo(_richness(a));
       if (byRichness != 0) return byRichness;
@@ -82,6 +94,24 @@ ActivityImportPlan resolveActivityImport({
 
     if (stored.any((e) => e.source != DataSource.healthConnect)) continue;
 
+    // One incoming record stands for exactly one workout. When it matches
+    // stored rows that are *not* the same workout as each other, it is a
+    // session spanning them rather than a copy of any one of them — Google Fit
+    // auto-detects the whole outing alongside the individual legs, and a ride
+    // there and back becomes a single 17:31–18:45 record over two 20-minute
+    // rides that do not overlap at all.
+    //
+    // Grouping is transitive, so that one record drags both stored rides into
+    // the same group, and the later ride would be deleted as a "duplicate" of
+    // the earlier one. The next sync, whose batch no longer carries the
+    // spanning record, then re-creates it — which is exactly the delete-one-
+    // and-both-come-back loop this guard exists to stop. Nothing here can tell
+    // which ride the record belongs to, so it must touch none of them.
+    if (_overlapClusters(stored) > 1) {
+      ambiguous.add(representative);
+      continue;
+    }
+
     // Keep the row the user has since attached gear or a note to — losing that
     // costs them work, losing an auto-imported twin costs nothing.
     stored.sort((a, b) {
@@ -92,8 +122,19 @@ ActivityImportPlan resolveActivityImport({
     final survivor = stored.first;
     final duplicates = stored.skip(1).toList();
 
+    // Gear the import can attach that the stored row is missing. Auto-attach
+    // only fires when exactly one piece of gear claims the activity type, and
+    // it silently does nothing when the gear list failed to load (the service
+    // answers an error with an empty list) — so a workout imported during a
+    // token refresh keeps no gear, and every later import used to skip it as
+    // "already current". Re-attaching gear the user deliberately cleared is the
+    // accepted cost: the same unambiguous default would be re-offered anyway.
+    final gearToAttach =
+        survivor.gearId == null ? representative.gearId : null;
+
     // Already current and not duplicated.
     if (duplicates.isEmpty &&
+        gearToAttach == null &&
         survivor.healthConnectRecordId ==
             representative.healthConnectRecordId) {
       continue;
@@ -110,14 +151,19 @@ ActivityImportPlan resolveActivityImport({
     update.add(_merge(
       survivor,
       representative,
-      gearId: survivor.gearId ?? rescuedGearId,
+      gearId: survivor.gearId ?? rescuedGearId ?? gearToAttach,
       notes: _emptyToNull(survivor.notes) ?? rescuedNotes,
     ));
   }
 
   // Chronological, so newly saved activities land in time order.
   create.sort((a, b) => a.startTime.compareTo(b.startTime));
-  return ActivityImportPlan(create: create, update: update, delete: delete);
+  return ActivityImportPlan(
+    create: create,
+    update: update,
+    delete: delete,
+    ambiguous: ambiguous,
+  );
 }
 
 /// Union of two activity lists, keyed by id, first occurrence winning.
@@ -149,6 +195,72 @@ List<PhysicalActivity> mergeActivitiesById(
 bool activitiesOverlap(PhysicalActivity a, PhysicalActivity b) {
   if (a.activityType != b.activityType) return false;
   return a.startTime.isBefore(b.endTime) && b.startTime.isBefore(a.endTime);
+}
+
+/// Splits [incoming] into the records that describe a workout and the ones that
+/// only summarise others in the same batch.
+///
+/// Google Fit auto-detects the whole outing alongside the individual legs, so a
+/// ride there and back arrives as three records: 17:31-17:51, 18:24-18:45 and
+/// one 17:31-18:45 covering both. The wide one is not a third ride and it is
+/// not a correction of either — it is a container, and it carries the summed
+/// distance and calories of both legs. Applying it double-counts the outing;
+/// worse, grouping is transitive, so it chains both legs into one group and the
+/// second leg would be resolved away as a duplicate of the first.
+///
+/// A record counts as a summary only when it strictly contains **two** records
+/// that are not the same workout as each other. One contained record is the
+/// ordinary case of a provisional session finalised with a corrected end time,
+/// and that has to keep working.
+(List<PhysicalActivity>, List<PhysicalActivity>) _partitionSummaries(
+  List<PhysicalActivity> incoming,
+) {
+  bool contains(PhysicalActivity outer, PhysicalActivity inner) =>
+      !identical(outer, inner) &&
+      outer.activityType == inner.activityType &&
+      !inner.startTime.isBefore(outer.startTime) &&
+      !inner.endTime.isAfter(outer.endTime) &&
+      inner.endTime.difference(inner.startTime) <
+          outer.endTime.difference(outer.startTime);
+
+  bool isSummary(PhysicalActivity candidate) {
+    final inside = incoming.where((r) => contains(candidate, r)).toList();
+    for (var i = 0; i < inside.length; i++) {
+      for (var j = i + 1; j < inside.length; j++) {
+        if (!activitiesOverlap(inside[i], inside[j])) return true;
+      }
+    }
+    return false;
+  }
+
+  final workouts = <PhysicalActivity>[];
+  final summaries = <PhysicalActivity>[];
+  for (final record in incoming) {
+    (isSummary(record) ? summaries : workouts).add(record);
+  }
+  return (workouts, summaries);
+}
+
+/// How many distinct workouts [stored] holds — rows chained together by a
+/// direct time overlap (or a shared record id) count as one.
+int _overlapClusters(List<PhysicalActivity> stored) {
+  final clusters = <List<PhysicalActivity>>[];
+  for (final activity in stored) {
+    final matches = clusters
+        .where((c) => c.any((member) => _sameWorkout(member, activity)))
+        .toList();
+    if (matches.isEmpty) {
+      clusters.add([activity]);
+      continue;
+    }
+    // Bridging two clusters merges them: A–B and B–C makes one workout.
+    final merged = matches.first..add(activity);
+    for (final other in matches.skip(1)) {
+      merged.addAll(other);
+      clusters.remove(other);
+    }
+  }
+  return clusters.length;
 }
 
 List<List<PhysicalActivity>> _groupByWorkout(List<PhysicalActivity> ordered) {

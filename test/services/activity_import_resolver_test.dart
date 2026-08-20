@@ -42,6 +42,7 @@ PhysicalActivity _incoming({
   double? distanceKm,
   int? steps,
   double? heartRate,
+  String? gearId,
   String? activityId,
   String? activityName,
 }) =>
@@ -57,6 +58,7 @@ PhysicalActivity _incoming({
       avgHeartRate: heartRate,
       source: DataSource.healthConnect,
       healthConnectRecordId: hcId,
+      gearId: gearId,
     );
 
 void main() {
@@ -349,6 +351,192 @@ void main() {
       );
       expect(plan.delete, isEmpty);
       expect(plan.update, isEmpty);
+    });
+  });
+
+  group('gear the import can attach', () {
+    // Auto-attach silently does nothing when the gear list failed to load, and
+    // the row would otherwise stay bare for good: the same record id arrives
+    // next time and used to be waved through as "already current".
+    test('a later import attaches gear the stored row is missing', () {
+      final plan = resolveActivityImport(
+        existing: [_stored(id: '1', hcId: 'r1')],
+        incoming: [_incoming(hcId: 'r1', gearId: 'bike')],
+      );
+
+      expect(plan.create, isEmpty);
+      expect(plan.update, hasLength(1));
+      expect(plan.update.single.id, '1');
+      expect(plan.update.single.gearId, 'bike');
+    });
+
+    test('gear already on the stored row is never replaced', () {
+      final plan = resolveActivityImport(
+        existing: [_stored(id: '1', hcId: 'r1', gearId: 'race-bike')],
+        incoming: [_incoming(hcId: 'r1', gearId: 'commuter')],
+      );
+
+      expect(plan.isEmpty, isTrue);
+    });
+
+    test('attaching gear settles — the next import is a no-op', () {
+      final incoming = [_incoming(hcId: 'r1', gearId: 'bike')];
+      final first = resolveActivityImport(
+        existing: [_stored(id: '1', hcId: 'r1')],
+        incoming: incoming,
+      );
+
+      final second = resolveActivityImport(
+        existing: first.update,
+        incoming: incoming,
+      );
+      expect(second.isEmpty, isTrue);
+    });
+  });
+
+  group('a session spanning two separate workouts', () {
+    // The reported case, with the real times: a ride there (17:31–17:51) and
+    // back (18:24–18:45) plus Google Fit's auto-detected session over the whole
+    // outing. Grouping is transitive, so that one record ties both rides
+    // together — and the later ride must not become a "duplicate" of the
+    // earlier one.
+    final there = _stored(
+      id: 'there',
+      hcId: 'rec-there',
+      start: '2026-08-19T17:31:07Z',
+      end: '2026-08-19T17:51:04Z',
+      gearId: 'bike',
+    );
+    final back = _stored(
+      id: 'back',
+      hcId: 'rec-back',
+      start: '2026-08-19T18:24:53Z',
+      end: '2026-08-19T18:45:46Z',
+      gearId: 'bike',
+    );
+    final spanning = _incoming(
+      hcId: 'rec-outing',
+      start: '2026-08-19T17:31:07Z',
+      end: '2026-08-19T18:45:46Z',
+      // Richest record, so it wins the group's representative slot.
+      calories: 400,
+      distanceKm: 14,
+      steps: 0,
+      heartRate: 120,
+    );
+
+    test('deletes neither ride', () {
+      final plan = resolveActivityImport(
+        existing: [there, back],
+        incoming: [
+          spanning,
+          _incoming(
+              hcId: 'rec-there',
+              start: '2026-08-19T17:31:07Z',
+              end: '2026-08-19T17:51:04Z'),
+          _incoming(
+              hcId: 'rec-back',
+              start: '2026-08-19T18:24:53Z',
+              end: '2026-08-19T18:45:46Z'),
+        ],
+      );
+
+      expect(plan.delete, isEmpty,
+          reason: 'the way back is its own ride, not a copy of the way there');
+      expect(plan.create, isEmpty, reason: 'both rides are already stored');
+      expect(plan.ambiguous, hasLength(1));
+      expect(plan.ambiguous.single.healthConnectRecordId, 'rec-outing');
+    });
+
+    test('does not stretch a ride over the whole outing', () {
+      final plan = resolveActivityImport(
+        existing: [there, back],
+        incoming: [spanning],
+      );
+
+      expect(plan.update, isEmpty);
+      expect(plan.delete, isEmpty);
+    });
+
+    test('the outing never overwrites a single stored ride', () {
+      // With one ride deleted by hand, the spanning record no longer looks
+      // ambiguous to the guard — it matches exactly one stored row. Dropping it
+      // as a summary is what stops it stretching that ride over the full 74
+      // minutes and handing it the outing's distance and calories.
+      final plan = resolveActivityImport(
+        existing: [there],
+        incoming: [
+          spanning,
+          _incoming(
+              hcId: 'rec-there',
+              start: '2026-08-19T17:31:07Z',
+              end: '2026-08-19T17:51:04Z'),
+          _incoming(
+              hcId: 'rec-back',
+              start: '2026-08-19T18:24:53Z',
+              end: '2026-08-19T18:45:46Z'),
+        ],
+      );
+
+      expect(plan.update, isEmpty, reason: 'the stored ride is already current');
+      expect(plan.delete, isEmpty);
+      // The way back is a real ride Health Connect still holds, so restoring it
+      // is right — as its own entry, with its own times.
+      expect(plan.create, hasLength(1));
+      expect(plan.create.single.startTime,
+          DateTime.parse('2026-08-19T18:24:53Z'));
+      expect(plan.create.single.endTime, DateTime.parse('2026-08-19T18:45:46Z'));
+    });
+
+    test('a summary is only a summary when it covers two workouts', () {
+      // A provisional session finalised with a corrected end time also contains
+      // its predecessor — one record, not two — and must still be applied.
+      final plan = resolveActivityImport(
+        existing: [
+          _stored(
+              id: 'provisional',
+              hcId: 'rec-provisional',
+              start: '2026-08-19T17:31:07Z',
+              end: '2026-08-19T17:41:00Z'),
+        ],
+        incoming: [
+          _incoming(
+              hcId: 'rec-final',
+              start: '2026-08-19T17:31:07Z',
+              end: '2026-08-19T17:51:04Z',
+              distanceKm: 7),
+        ],
+      );
+
+      expect(plan.ambiguous, isEmpty);
+      expect(plan.update, hasLength(1));
+      expect(plan.update.single.endTime, DateTime.parse('2026-08-19T17:51:04Z'));
+    });
+
+    test('a genuine duplicate is still folded', () {
+      // Same ride stored twice — these DO overlap, so the guard stays out of
+      // the way and the duplicate is removed as before.
+      final plan = resolveActivityImport(
+        existing: [
+          there,
+          _stored(
+              id: 'there-again',
+              hcId: 'rec-there-2',
+              start: '2026-08-19T17:31:07Z',
+              end: '2026-08-19T17:52:00Z'),
+        ],
+        incoming: [
+          _incoming(
+              hcId: 'rec-there-2',
+              start: '2026-08-19T17:31:07Z',
+              end: '2026-08-19T17:52:00Z',
+              distanceKm: 7),
+        ],
+      );
+
+      expect(plan.delete, hasLength(1));
+      expect(plan.update, hasLength(1));
+      expect(plan.ambiguous, isEmpty);
     });
   });
 

@@ -343,9 +343,21 @@ class SyncService extends ChangeNotifier {
     try {
       final gear = await GearService(_db!).getGear();
       _markOnline();
-      // Refresh the mirror so the gear picker keeps working offline.
-      await _mirrorToCache((c) => c.replaceCachedGear(gear));
-      return gear;
+      // Refresh the mirror so the gear picker keeps working offline — but never
+      // with an empty list. GearService answers *any* failure (an unusable
+      // token on a cold start above all) with [], which is indistinguishable
+      // from "owns no gear", and mirroring that wipes the offline list.
+      if (gear.isNotEmpty) {
+        await _mirrorToCache((c) => c.replaceCachedGear(gear));
+        return gear;
+      }
+      final cache = _cache;
+      if (cache == null) return gear;
+      final cached = await cache.getGear();
+      if (cached.isNotEmpty) {
+        appLogger.w('⚠️ Gear came back empty — using the mirrored list');
+      }
+      return cached;
     } catch (_) {
       _markOffline();
       // Fall back to the last mirrored list rather than showing "no gear".

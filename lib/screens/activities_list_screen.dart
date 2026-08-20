@@ -299,6 +299,25 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
   /// The gear currently on [activity], as a tappable chip. Unassigned runs show
   /// a dashed "which shoes?" affordance rather than nothing — an imported run
   /// with no gear is the case that needs fixing, so it must be the visible one.
+  /// Whether the gear chip belongs on [activity].
+  ///
+  /// Gear is only a thing for some activities, and the chip should not sit
+  /// unanswered under every yoga session. Distance used to be the whole test,
+  /// which quietly hid the chip on exactly the imports that needed it: a ride
+  /// arrives without a distance whenever the source did not export one, and
+  /// then there was no way to attach the bike at all. Owning gear that claims
+  /// the activity type is the better signal, with distance kept as the
+  /// fallback for gear that declares no default type.
+  bool _showsGearChip(PhysicalActivity activity) {
+    if (activity.gearId != null) return true;
+    if (_gear.isEmpty) return false;
+    if (_gear.any((g) =>
+        !g.retired && g.defaultActivityType == activity.activityType)) {
+      return true;
+    }
+    return activity.distanceKm != null;
+  }
+
   Widget _buildGearChip(AppLocalizations l, PhysicalActivity activity) {
     Gear? gear;
     for (final g in _gear) {
@@ -546,10 +565,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                       '${activity.distanceKm != null ? ' • ${activity.distanceKm!.toStringAsFixed(1)} km' : ''}'
                                       '${activity.caloriesBurned != null ? ' • ${activity.caloriesBurned!.toStringAsFixed(0)} kcal' : ''}',
                                     ),
-                                    // Gear, one tap away. Only where gear is a
-                                    // thing — an activity with a distance — and
-                                    // only once some gear exists to pick from.
-                                    if (_gear.isNotEmpty && activity.distanceKm != null)
+                                    // Gear, one tap away — see [_showsGearChip].
+                                    if (_showsGearChip(activity))
                                       _buildGearChip(l, activity),
                                   ],
                                 ),
