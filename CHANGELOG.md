@@ -27,6 +27,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0] — 2026-08-20
+
+### Added
+- **Turn what you already ate into a meal template** (Cloud Edition) — tap the bookmark on a meal's heading to tick that whole meal, adjust the selection, and the template editor opens already filled in with those foods and their weights. Name it, add a picture or tags, and it is ready to log with one tap tomorrow. Building a template used to mean typing every ingredient in again, even for the dinner you had just finished logging. Once it is saved, you are offered the swap: the entries it came from give way to a single portion of the template, leaving the day's nutrition exactly as it was.
+
+### Fixed
+- **A meal template is logged into the meal you added it from** — it always landed in lunch unless you noticed the meal dropdown in the dialog and corrected it.
+- **A meal template can no longer end up empty** — if its ingredients could not be stored, the template itself was left behind: it appeared in the list and logged as zero calories, with nothing to say why. Saving is now all-or-nothing, and editing one can no longer lose its ingredient list.
+- **A ride there and back is no longer merged into one** — when Google Fit records the whole outing as one session alongside the individual legs, the second leg was treated as a duplicate of the first and removed, then re-imported on the next sync, so deleting one copy brought both back. A session that only spans other workouts is now recognised for what it is and left out of the import, and no workout is ever resolved away in favour of one it does not overlap.
+- **Equipment is attached to imported workouts more reliably** — if the gear list could not be loaded at the moment a workout arrived (a token being refreshed was enough), the workout stayed without gear for good. A later import now fills it in, the offline copy of the list is no longer overwritten with an empty one, and the gear chip also appears on activities that arrived without a distance — previously there was no way to assign a bike to those at all.
+- **Saving a meal template no longer fails with an error** — a template whose ingredients did not all carry the same nutrients (one with a fibre value next to one without) was rejected when saved, with nothing to say why.
+- **"Repeat yesterday's dinner" appears straight away** — the suggestions were fetched before the session was ready and then never retried, so on a fresh start they only turned up after visiting the previous day and coming back. They now retry, read from the offline copy when there is no connection, and work in guest mode too.
+
+---
+
 ## [1.5.0] — 2026-08-07
 
 ### Added
