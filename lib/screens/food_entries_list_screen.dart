@@ -4,6 +4,9 @@ import 'package:dietry_cloud/dietry_cloud.dart';
 import 'dart:convert' show base64Decode;
 import '../app_features.dart';
 import '../models/food_entry.dart';
+import '../models/food_item.dart';
+import '../models/food_portion.dart';
+import '../services/food_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
@@ -207,17 +210,61 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     });
   }
 
+  /// The entries' ingredients, with the foods behind them fetched where they
+  /// are needed to work out a weight.
+  ///
+  /// An entry logged in a named portion stores the portion's *name* as its unit
+  /// ("1 Scheibe") and its count as the amount — what one of them weighs lives
+  /// on the food. Without that lookup every such ingredient would land on the
+  /// 100 g fallback, which is what made a drafted template read as 100 g down
+  /// the line.
+  Future<List<MealTemplateDraftIngredient>> _draftIngredients(
+      List<FoodEntry> entries, NeonDatabaseService db) async {
+    final unresolved = <String>{
+      for (final e in entries)
+        if (e.foodId != null && unitToGrams(e.amount, e.unit) == null) e.foodId!,
+    };
+
+    final foods = <String, FoodItem>{};
+    if (unresolved.isNotEmpty) {
+      final service = FoodDatabaseService(db);
+      final fetched =
+          await Future.wait(unresolved.map((id) => service.getFoodById(id)));
+      for (final food in fetched) {
+        final id = food?.id;
+        if (food != null && id != null) foods[id] = food;
+      }
+    }
+
+    return [
+      for (final e in entries)
+        _draftIngredient(e, e.foodId == null ? null : foods[e.foodId]),
+    ];
+  }
+
   /// Converts a logged entry into a template ingredient.
   ///
   /// A template stores nutrition per 100 g, while an entry stores the totals it
-  /// actually contributed — so the weight is what ties the two together. Units
-  /// that cannot be resolved to grams here (a named portion, whose gram weight
-  /// lives on the food, not on the entry) fall back to a 100 g basis carrying
-  /// the entry's totals: the macros then come out exactly right and only the
-  /// stated weight is a placeholder, which the editor lets the user correct.
-  MealTemplateDraftIngredient _draftIngredient(FoodEntry entry) {
-    final resolved = unitToGrams(entry.amount, entry.unit) ??
-        (entry.isLiquid ? entry.amountMl : null);
+  /// actually contributed — so the weight is what ties the two together. A unit
+  /// that still cannot be resolved to grams — a portion of a food that has
+  /// since been deleted, or a portion count of another meal template — falls
+  /// back to a 100 g basis carrying the entry's totals: the macros then come
+  /// out exactly right and only the stated weight is a placeholder, which the
+  /// editor lets the user correct.
+  MealTemplateDraftIngredient _draftIngredient(FoodEntry entry, FoodItem? food) {
+    FoodPortion? portion;
+    for (final p in food?.portions ?? const <FoodPortion>[]) {
+      if (p.name == entry.unit) {
+        portion = p;
+        break;
+      }
+    }
+
+    final resolved = unitToGrams(entry.amount, entry.unit, portion: portion) ??
+        (entry.isLiquid ? entry.amountMl : null) ??
+        // A cooked weight we have no yield factor for is still a weight: the
+        // grams actually eaten beat a 100 g placeholder.
+        (entry.unit == kUnitGramCooked ? entry.amount : null);
     final weightG = (resolved == null || resolved <= 0) ? 100.0 : resolved;
     final per100 = 100.0 / weightG;
     return MealTemplateDraftIngredient(
@@ -256,13 +303,15 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
 
     setState(() => _creatingTemplate = true);
     try {
+      final ingredients = await _draftIngredients(entries, db);
+      if (!mounted) return;
       await premiumFeatures.showMealTemplateFromEntries(
         context: context,
         userId: userId,
         authToken: jwt,
         dataApiUrl: NeonDatabaseService.dataApiUrl,
         suggestedName: suggestedName,
-        ingredients: entries.map(_draftIngredient).toList(),
+        ingredients: ingredients,
         onSearchIngredient: widget.onSearchIngredient,
       );
     } finally {
