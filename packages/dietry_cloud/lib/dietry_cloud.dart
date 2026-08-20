@@ -101,12 +101,6 @@ class MealTemplateDraftResult {
   final double? sugar;
   final double? sodium;
 
-  /// True when the saved template still holds exactly the ingredients handed
-  /// over, at the same weights. Only then does one portion of it stand for
-  /// precisely the entries it was drafted from — which is what makes replacing
-  /// them with it a lossless swap rather than a rewrite of the day.
-  final bool matchesDraft;
-
   const MealTemplateDraftResult({
     required this.id,
     required this.name,
@@ -118,7 +112,6 @@ class MealTemplateDraftResult {
     this.fiber,
     this.sugar,
     this.sodium,
-    required this.matchesDraft,
   });
 }
 
@@ -299,6 +292,7 @@ abstract class PremiumFeatures {
     required String dataApiUrl,
     required Future<void> Function(MealTemplateLogData data) onLog,
     Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
+    String? initialMealType,
   });
 
   /// Öffnet den Vorlagen-Editor für eine NEUE Vorlage, vorbefüllt mit
@@ -583,6 +577,7 @@ class NullPremiumFeatures implements PremiumFeatures {
     required String dataApiUrl,
     required Future<void> Function(MealTemplateLogData data) onLog,
     Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
+    String? initialMealType,
   }) =>
       const SizedBox.shrink();
 

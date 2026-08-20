@@ -315,14 +315,20 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         onSearchIngredient: widget.onSearchIngredient,
       );
 
-      // Offer the swap only when one portion of the template is exactly what
-      // was ticked: same ingredients, same weights, all in one meal. Anything
-      // else and replacing would silently change the day's numbers.
-      if (saved != null &&
-          saved.matchesDraft &&
-          meals.length == 1 &&
-          mounted) {
-        await _replaceWithTemplate(saved, entries, meals.single, userId);
+      // Offer the swap only when one portion of the template is worth what was
+      // ticked, and all of it sits in one meal — the only thing that can say
+      // where the portion belongs. Anything the user added, removed or
+      // re-weighed in the editor shows up as a difference here.
+      if (saved != null && mounted) {
+        final lossless = _sameNutrition(saved, entries);
+        appLogger.i('Template "${saved.name}" saved: '
+            '${saved.calories.toStringAsFixed(0)} kcal for one portion vs '
+            '${entries.fold(0.0, (s, e) => s + e.calories).toStringAsFixed(0)} '
+            'kcal ticked, ${meals.length} meal(s) — '
+            'replace ${lossless && meals.length == 1 ? 'offered' : 'not offered'}');
+        if (lossless && meals.length == 1) {
+          await _replaceWithTemplate(saved, entries, meals.single, userId);
+        }
       }
     } finally {
       if (mounted) {
@@ -332,6 +338,24 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         });
       }
     }
+  }
+
+  /// Whether one portion of [template] is worth exactly what [entries] are.
+  ///
+  /// This, not the ingredient list, is what makes the swap safe to offer: it is
+  /// the day's numbers the user would be trading. Comparing weights instead
+  /// meant chasing the rounding the editor applies to them, and reported a
+  /// difference where there was none.
+  bool _sameNutrition(
+      MealTemplateDraftResult template, List<FoodEntry> entries) {
+    bool close(double a, double b, double floor) =>
+        (a - b).abs() <= (b.abs() * 0.005 > floor ? b.abs() * 0.005 : floor);
+
+    return close(template.calories,
+            entries.fold(0.0, (s, e) => s + e.calories), 1) &&
+        close(template.protein, entries.fold(0.0, (s, e) => s + e.protein), 0.5) &&
+        close(template.fat, entries.fold(0.0, (s, e) => s + e.fat), 0.5) &&
+        close(template.carbs, entries.fold(0.0, (s, e) => s + e.carbs), 0.5);
   }
 
   /// Asks whether the entries the template was drafted from should give way to

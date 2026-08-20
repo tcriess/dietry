@@ -57,7 +57,11 @@ class QuickFoodEntrySheet extends StatefulWidget {
 
   /// Öffnet die Mahlzeiten-Vorlagen (Cloud-Edition). Null = nicht verfügbar;
   /// dann wird der Vorlagen-Button ausgeblendet.
-  final VoidCallback? onOpenTemplates;
+  /// Opens the Cloud meal-templates sheet for the meal currently chosen here.
+  /// The meal travels with it: a template logged from this sheet belongs to the
+  /// meal the user was adding to, not to whatever the template dialog happens
+  /// to default to.
+  final void Function(MealType meal)? onOpenTemplates;
 
   /// Öffnet das vollständige Eingabe-Formular für die manuelle Erfassung.
   final VoidCallback onManualEntry;
@@ -1194,7 +1198,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                         style: const TextStyle(fontSize: 13)),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      widget.onOpenTemplates!();
+                      widget.onOpenTemplates!(_mealType);
                     },
                   ),
                 ),

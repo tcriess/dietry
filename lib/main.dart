@@ -3744,9 +3744,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         final hasMealTemplates =
             AppFeatures.mealTemplates && jwt != null && userId != null;
 
-        // Opens the Cloud meal-templates sheet. Only ever wired up when
-        // [hasMealTemplates] is true; the guard keeps it null-safe regardless.
-        void openTemplates() {
+        // Opens the Cloud meal-templates sheet for [meal] — whichever meal the
+        // add sheet was on. Only ever wired up when [hasMealTemplates] is true;
+        // the guard keeps it null-safe regardless.
+        void openTemplates(MealType meal) {
           final uid = userId;
           final tok = jwt;
           if (uid == null || tok == null) return;
@@ -3764,6 +3765,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 date: _selectedDay,
                 authToken: tok,
                 dataApiUrl: NeonDatabaseService.dataApiUrl,
+                initialMealType: meal.toJson(),
                 onSearchIngredient: (query, {bool searchOnline = false}) =>
                     _searchMealIngredients(db, query,
                         searchOnline: searchOnline),
