@@ -84,6 +84,17 @@
     }
   },
   "entryDeleted": "Eintrag gelöscht",
+  "mealTemplateFromEntries": "Als Vorlage speichern",
+  "mealTemplateFromEntriesTooltip": "Einträge auswählen und als Mahlzeiten-Vorlage speichern",
+  "mealTemplateSelectionCount": "{count} ausgewählt",
+  "@mealTemplateSelectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mealTemplateSelectionEmpty": "Nichts ausgewählt",
   "repeatYesterdaysMeal": "{meal} von gestern wiederholen",
   "@repeatYesterdaysMeal": {
     "placeholders": {

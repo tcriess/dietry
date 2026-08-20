@@ -227,6 +227,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get entryDeleted => 'Eintrag gelöscht';
 
   @override
+  String get mealTemplateFromEntries => 'Als Vorlage speichern';
+
+  @override
+  String get mealTemplateFromEntriesTooltip =>
+      'Einträge auswählen und als Mahlzeiten-Vorlage speichern';
+
+  @override
+  String mealTemplateSelectionCount(int count) {
+    return '$count ausgewählt';
+  }
+
+  @override
+  String get mealTemplateSelectionEmpty => 'Nichts ausgewählt';
+
+  @override
   String repeatYesterdaysMeal(String meal) {
     return '$meal von gestern wiederholen';
   }

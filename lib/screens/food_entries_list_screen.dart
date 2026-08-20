@@ -8,7 +8,6 @@ import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/food_image_service.dart';
-import '../services/food_entry_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/unit_utils.dart';
@@ -26,6 +25,11 @@ class FoodEntriesListScreen extends StatefulWidget {
   final bool canGoForward;
   final Future<void> Function()? onRefresh;
 
+  /// Ingredient search handed to the Cloud meal-template editor when a template
+  /// is drafted from selected entries, so ingredients can still be added there.
+  final Future<List<MealIngredientCandidate>> Function(String query,
+      {bool searchOnline})? onSearchIngredient;
+
   const FoodEntriesListScreen({
     super.key,
     required this.dbService,
@@ -35,6 +39,7 @@ class FoodEntriesListScreen extends StatefulWidget {
     required this.canGoBack,
     required this.canGoForward,
     this.onRefresh,
+    this.onSearchIngredient,
   });
   
   @override
@@ -53,6 +58,22 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   List<FoodEntry>? _previousDayEntries;
   bool _repeatingMeal = false;
 
+  /// Ids of the entries ticked for a new meal template, or null when the list
+  /// is in its normal (non-selecting) mode.
+  Set<String>? _selectedIds;
+  bool _creatingTemplate = false;
+
+  /// In-flight previous-day fetch, so a retry triggered by a store change
+  /// cannot stack a second request on top of the first.
+  Future<List<FoodEntry>?>? _previousDayLoad;
+
+  /// Set when the fetch above came back with no answer at all. On a cold start
+  /// this screen mounts before the session is usable, and without a retry the
+  /// repeat chips would stay hidden for the rest of the day — they only ever
+  /// appeared after navigating to the previous day and back, which is what
+  /// reloads them.
+  bool _previousDayLoadFailed = false;
+
   /// True once yesterday's entries have loaded and at least one can be
   /// repeated. Used to fall through to the per-meal "Repeat yesterday's …"
   /// chips on an otherwise empty day instead of the bare "no entries"
@@ -67,8 +88,8 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     if (widget.dbService != null) {
       _imageService = FoodImageService(widget.dbService!);
       _loadImagesForEntries(_store.foodEntries);
-      _loadPreviousDayEntries();
     }
+    _loadPreviousDayEntries();
   }
 
   @override
@@ -76,6 +97,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     super.didUpdateWidget(oldWidget);
     if (!DateUtils.isSameDay(oldWidget.selectedDay, widget.selectedDay)) {
       _previousDayEntries = null;
+      _previousDayLoadFailed = false;
+      // A selection belongs to the day it was made on — the ids are not in the
+      // new day's list, so carrying it over would only strand the action bar.
+      _selectedIds = null;
       _loadPreviousDayEntries();
     }
   }
@@ -87,23 +112,33 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   Future<void> _loadPreviousDayEntries() async {
-    final db = widget.dbService;
-    if (db == null) return;
-    final previousDay =
-        widget.selectedDay.subtract(const Duration(days: 1));
+    if (_previousDayLoad != null) return;
+    final previousDay = widget.selectedDay.subtract(const Duration(days: 1));
+    _previousDayLoad = SyncService.instance.getFoodEntriesForDate(previousDay);
+    List<FoodEntry>? entries;
     try {
-      final entries =
-          await FoodEntryService(db).getFoodEntriesForDate(previousDay);
-      if (!mounted) return;
-      if (!DateUtils.isSameDay(
-          previousDay, widget.selectedDay.subtract(const Duration(days: 1)))) {
-        // selectedDay changed while we were fetching — discard stale result.
-        return;
-      }
-      setState(() => _previousDayEntries = entries);
+      entries = await _previousDayLoad!;
     } catch (e) {
       appLogger.d('Repeat-meal: previous-day fetch failed: $e');
+    } finally {
+      _previousDayLoad = null;
     }
+    if (!mounted) return;
+    if (!DateUtils.isSameDay(
+        previousDay, widget.selectedDay.subtract(const Duration(days: 1)))) {
+      // selectedDay changed while we were fetching — discard stale result.
+      return;
+    }
+    if (entries == null) {
+      // Nothing could answer yet (cold start, no token, no mirror). Leave the
+      // chips out for now and let the next store change retry.
+      setState(() => _previousDayLoadFailed = true);
+      return;
+    }
+    setState(() {
+      _previousDayEntries = entries;
+      _previousDayLoadFailed = false;
+    });
   }
 
   /// Bulk-copies [sourceEntries] into [widget.selectedDay]. Each entry is
@@ -150,6 +185,140 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     } finally {
       if (mounted) setState(() => _repeatingMeal = false);
     }
+  }
+
+  // ── Meal template from selected entries (Cloud, Basic+) ───────────────────
+
+  bool get _selecting => _selectedIds != null;
+
+  /// Enters selection mode with [preselected] already ticked. Starting from a
+  /// meal section ticks that whole meal, which is the common case — "make a
+  /// template out of last night's dinner" — and leaves single items one tap
+  /// away.
+  void _startSelection(Iterable<FoodEntry> preselected) {
+    setState(() => _selectedIds = {for (final e in preselected) e.id});
+  }
+
+  void _toggleSelected(FoodEntry entry) {
+    final selected = _selectedIds;
+    if (selected == null) return;
+    setState(() {
+      if (!selected.remove(entry.id)) selected.add(entry.id);
+    });
+  }
+
+  /// Converts a logged entry into a template ingredient.
+  ///
+  /// A template stores nutrition per 100 g, while an entry stores the totals it
+  /// actually contributed — so the weight is what ties the two together. Units
+  /// that cannot be resolved to grams here (a named portion, whose gram weight
+  /// lives on the food, not on the entry) fall back to a 100 g basis carrying
+  /// the entry's totals: the macros then come out exactly right and only the
+  /// stated weight is a placeholder, which the editor lets the user correct.
+  MealTemplateDraftIngredient _draftIngredient(FoodEntry entry) {
+    final resolved = unitToGrams(entry.amount, entry.unit) ??
+        (entry.isLiquid ? entry.amountMl : null);
+    final weightG = (resolved == null || resolved <= 0) ? 100.0 : resolved;
+    final per100 = 100.0 / weightG;
+    return MealTemplateDraftIngredient(
+      foodId: entry.foodId,
+      name: entry.name,
+      weightG: weightG,
+      calories: entry.calories * per100,
+      protein: entry.protein * per100,
+      fat: entry.fat * per100,
+      carbs: entry.carbs * per100,
+      fiber: entry.fiber == null ? null : entry.fiber! * per100,
+      sugar: entry.sugar == null ? null : entry.sugar! * per100,
+      sodium: entry.sodium == null ? null : entry.sodium! * per100,
+      isLiquid: entry.isLiquid,
+    );
+  }
+
+  Future<void> _createTemplateFromSelection() async {
+    final selected = _selectedIds;
+    final db = widget.dbService;
+    if (selected == null || selected.isEmpty || _creatingTemplate) return;
+    final jwt = db?.jwt;
+    final userId = db?.userId;
+    if (db == null || jwt == null || userId == null) return;
+
+    final l = AppLocalizations.of(context)!;
+    final entries =
+        _store.foodEntries.where((e) => selected.contains(e.id)).toList();
+    if (entries.isEmpty) return;
+
+    // One meal's worth of entries names itself; a mixed selection does not, so
+    // leave the name for the user rather than inventing a misleading one.
+    final meals = entries.map((e) => e.mealType).toSet();
+    final suggestedName =
+        meals.length == 1 ? meals.single.localizedName(l) : '';
+
+    setState(() => _creatingTemplate = true);
+    try {
+      await premiumFeatures.showMealTemplateFromEntries(
+        context: context,
+        userId: userId,
+        authToken: jwt,
+        dataApiUrl: NeonDatabaseService.dataApiUrl,
+        suggestedName: suggestedName,
+        ingredients: entries.map(_draftIngredient).toList(),
+        onSearchIngredient: widget.onSearchIngredient,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _creatingTemplate = false;
+          _selectedIds = null;
+        });
+      }
+    }
+  }
+
+  /// The bar that replaces normal list interaction while entries are ticked.
+  Widget _buildSelectionBar(AppLocalizations l) {
+    final count = _selectedIds?.length ?? 0;
+    return Material(
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: l.cancel,
+                onPressed: _creatingTemplate
+                    ? null
+                    : () => setState(() => _selectedIds = null),
+              ),
+              Expanded(
+                child: Text(
+                  count == 0
+                      ? l.mealTemplateSelectionEmpty
+                      : l.mealTemplateSelectionCount(count),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              FilledButton.icon(
+                icon: _creatingTemplate
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.bookmark_add_outlined, size: 18),
+                label: Text(l.mealTemplateFromEntries),
+                onPressed: count == 0 || _creatingTemplate
+                    ? null
+                    : _createTemplateFromSelection,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Computes the "Repeat …" suggestions for [mealType]. Always includes
@@ -263,6 +432,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
 
   void _onStoreChanged() {
     _loadImagesForEntries(_store.foodEntries);
+    // The store filling in (local mirror, then server reconcile) is the cue
+    // that the session is usable — retry a previous-day fetch that found no
+    // source to answer it.
+    if (_previousDayLoadFailed) _loadPreviousDayEntries();
     if (mounted) setState(() {});
   }
 
@@ -501,6 +674,12 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (interactive && _selecting)
+            Checkbox(
+              value: _selectedIds!.contains(entry.id),
+              onChanged: (_) => _toggleSelected(entry),
+              visualDensity: VisualDensity.compact,
+            ),
           _buildEntryLeading(entry, entry.mealType),
           const SizedBox(width: 12),
           Expanded(
@@ -587,13 +766,22 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       ),
     );
 
+    final selected = interactive && _selecting && _selectedIds!.contains(entry.id);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       clipBehavior: Clip.antiAlias,
+      color: selected
+          ? Theme.of(context).colorScheme.primaryContainer
+          : null,
       child: interactive
           ? InkWell(
-              onTap: () => _editEntry(entry),
-              onLongPress: () => _moveCopyEntry(entry),
+              // While selecting, a tap ticks the entry instead of opening it —
+              // opening the editor mid-selection would throw the selection away.
+              onTap: _selecting
+                  ? () => _toggleSelected(entry)
+                  : () => _editEntry(entry),
+              onLongPress: _selecting ? null : () => _moveCopyEntry(entry),
               child: content,
             )
           : content,
@@ -912,6 +1100,21 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                             color: Colors.grey.shade600,
                                           ),
                                         ),
+                                      // Turn this meal into a template. Starts
+                                      // with the whole meal ticked, which is
+                                      // what the user usually means.
+                                      if (AppFeatures.mealTemplates &&
+                                          !_selecting)
+                                        IconButton(
+                                          icon: const Icon(
+                                              Icons.bookmark_add_outlined,
+                                              size: 20),
+                                          tooltip:
+                                              l.mealTemplateFromEntriesTooltip,
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () =>
+                                              _startSelection(mealEntries),
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -919,7 +1122,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                 // Entries für diese Mahlzeit
                                 ...mealEntries.map((entry) => Dismissible(
                                   key: Key(entry.id),
-                                  direction: DismissDirection.endToStart,
+                                  direction: _selecting
+                                      ? DismissDirection.none
+                                      : DismissDirection.endToStart,
                                   background: Container(
                                     color: Colors.red,
                                     alignment: Alignment.centerRight,
@@ -969,6 +1174,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                         ],
                       )),
           ),
+          if (_selecting) _buildSelectionBar(l),
         ],
       ),
     );

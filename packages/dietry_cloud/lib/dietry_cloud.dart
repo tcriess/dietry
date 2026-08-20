@@ -52,6 +52,38 @@ class MealIngredientCandidate {
   bool get isOnlineOnly => id == null || id!.isEmpty;
 }
 
+/// Eine vorbefüllte Zutat für eine Mahlzeiten-Vorlage, abgeleitet aus bereits
+/// protokollierten Food-Entries. Nährwerte pro 100 g — so speichert eine
+/// Vorlage sie auch. Primitive Typen, um zirkuläre Paket-Abhängigkeiten zu
+/// vermeiden.
+class MealTemplateDraftIngredient {
+  final String? foodId;
+  final String name;
+  final double weightG;
+  final double calories;
+  final double protein;
+  final double fat;
+  final double carbs;
+  final double? fiber;
+  final double? sugar;
+  final double? sodium;
+  final bool isLiquid;
+
+  const MealTemplateDraftIngredient({
+    this.foodId,
+    required this.name,
+    required this.weightG,
+    required this.calories,
+    required this.protein,
+    required this.fat,
+    required this.carbs,
+    this.fiber,
+    this.sugar,
+    this.sodium,
+    this.isLiquid = false,
+  });
+}
+
 /// Daten die beim Eintragen einer Mahlzeiten-Vorlage übergeben werden.
 /// Enthält alle Felder die für einen FoodEntry benötigt werden.
 /// Verwendet primitive Typen um zirkuläre Paket-Abhängigkeiten zu vermeiden.
@@ -228,6 +260,19 @@ abstract class PremiumFeatures {
     required String authToken,
     required String dataApiUrl,
     required Future<void> Function(MealTemplateLogData data) onLog,
+    Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
+  });
+
+  /// Öffnet den Vorlagen-Editor für eine NEUE Vorlage, vorbefüllt mit
+  /// [ingredients] (aus ausgewählten Log-Einträgen abgeleitet). Gibt true
+  /// zurück, wenn eine Vorlage gespeichert wurde.
+  Future<bool> showMealTemplateFromEntries({
+    required BuildContext context,
+    required String userId,
+    required String authToken,
+    required String dataApiUrl,
+    required String suggestedName,
+    required List<MealTemplateDraftIngredient> ingredients,
     Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
   });
 
@@ -502,6 +547,18 @@ class NullPremiumFeatures implements PremiumFeatures {
     Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
   }) =>
       const SizedBox.shrink();
+
+  @override
+  Future<bool> showMealTemplateFromEntries({
+    required BuildContext context,
+    required String userId,
+    required String authToken,
+    required String dataApiUrl,
+    required String suggestedName,
+    required List<MealTemplateDraftIngredient> ingredients,
+    Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
+  }) async =>
+      false;
 
   @override
   void showMicroNutrientsSheet({

@@ -3970,6 +3970,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 canGoForward:
                     !DateUtils.isSameDay(_selectedDay, DateTime.now()),
                 onRefresh: refreshAll,
+                onSearchIngredient: widget.dbService == null
+                    ? null
+                    : (query, {bool searchOnline = false}) =>
+                        _searchMealIngredients(widget.dbService!, query,
+                            searchOnline: searchOnline),
               ),
               ActivitiesListScreen(
                 dbService: widget.dbService,

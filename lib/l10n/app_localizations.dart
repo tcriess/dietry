@@ -526,6 +526,30 @@ abstract class AppLocalizations {
   /// **'Eintrag gelöscht'**
   String get entryDeleted;
 
+  /// No description provided for @mealTemplateFromEntries.
+  ///
+  /// In de, this message translates to:
+  /// **'Als Vorlage speichern'**
+  String get mealTemplateFromEntries;
+
+  /// No description provided for @mealTemplateFromEntriesTooltip.
+  ///
+  /// In de, this message translates to:
+  /// **'Einträge auswählen und als Mahlzeiten-Vorlage speichern'**
+  String get mealTemplateFromEntriesTooltip;
+
+  /// No description provided for @mealTemplateSelectionCount.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} ausgewählt'**
+  String mealTemplateSelectionCount(int count);
+
+  /// No description provided for @mealTemplateSelectionEmpty.
+  ///
+  /// In de, this message translates to:
+  /// **'Nichts ausgewählt'**
+  String get mealTemplateSelectionEmpty;
+
   /// No description provided for @repeatYesterdaysMeal.
   ///
   /// In de, this message translates to:

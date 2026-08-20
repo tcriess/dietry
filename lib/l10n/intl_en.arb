@@ -84,6 +84,17 @@
     }
   },
   "entryDeleted": "Entry deleted",
+  "mealTemplateFromEntries": "Save as meal template",
+  "mealTemplateFromEntriesTooltip": "Pick entries and save them as a meal template",
+  "mealTemplateSelectionCount": "{count} selected",
+  "@mealTemplateSelectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mealTemplateSelectionEmpty": "Nothing selected",
   "repeatYesterdaysMeal": "Repeat yesterday's {meal}",
   "@repeatYesterdaysMeal": {
     "placeholders": {

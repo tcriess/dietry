@@ -84,6 +84,17 @@
     }
   },
   "entryDeleted": "Entrada eliminada",
+  "mealTemplateFromEntries": "Guardar como plantilla",
+  "mealTemplateFromEntriesTooltip": "Selecciona entradas y guárdalas como plantilla de comida",
+  "mealTemplateSelectionCount": "{count} seleccionadas",
+  "@mealTemplateSelectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "mealTemplateSelectionEmpty": "Nada seleccionado",
   "repeatYesterdaysMeal": "Repetir {meal} de ayer",
   "@repeatYesterdaysMeal": {
     "placeholders": {

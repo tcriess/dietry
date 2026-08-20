@@ -230,6 +230,50 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  /// Food entries of an arbitrary [date] — a day other than the one
+  /// [DataStore] currently holds. Reads the way the day view reads its own day:
+  /// guest mode from the local store, logged-in from the server with the
+  /// offline mirror as the fallback.
+  ///
+  /// Returns null when *no* source could answer, so a caller can tell "nothing
+  /// logged that day" from "we don't know yet" and retry. Going straight to
+  /// [FoodEntryService] instead cannot make that distinction: it answers an
+  /// unusable token with an empty list, which on a cold start reads as an empty
+  /// day and sticks.
+  Future<List<FoodEntry>?> getFoodEntriesForDate(DateTime date) async {
+    if (_local != null) {
+      try {
+        return await _local!.getFoodEntriesForDate(date);
+      } catch (e) {
+        appLogger.d('Local food entries for $date failed: $e');
+        return null;
+      }
+    }
+
+    final db = _db;
+    if (db != null &&
+        db.userId != null &&
+        await db.ensureValidToken(minMinutesValid: 5)) {
+      try {
+        final entries = await FoodEntryService(db).getFoodEntriesForDate(date);
+        _markOnline();
+        return entries;
+      } catch (e) {
+        _markOffline();
+        appLogger.d('Server food entries for $date failed: $e');
+      }
+    }
+
+    final cache = _cache;
+    if (cache == null) return null;
+    try {
+      return await cache.getFoodEntriesForDate(date);
+    } catch (e) {
+      appLogger.d('Cached food entries for $date failed: $e');
+      return null;
+    }
+  }
+
   Future<PhysicalActivity?> saveActivity(PhysicalActivity activity) async {
     // Assign a stable client id up-front (see createFoodEntry). PhysicalActivity
     // uses a nullable id, so treat null or empty as "needs one".
