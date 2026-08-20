@@ -84,6 +84,21 @@
     }
   },
   "entryDeleted": "Eintrag gelöscht",
+  "mealTemplateReplaceTitle": "Einträge ersetzen?",
+  "mealTemplateReplaceBody": "{count} Einträge werden zu einer Portion \"{name}\". Die Nährwerte des Tages ändern sich dadurch nicht.",
+  "@mealTemplateReplaceBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mealTemplateReplaceConfirm": "Ersetzen",
+  "mealTemplateReplaceKeep": "Behalten",
+  "mealTemplateReplaced": "Einträge durch die Vorlage ersetzt",
   "mealTemplateFromEntries": "Als Vorlage speichern",
   "mealTemplateFromEntriesTooltip": "Einträge auswählen und als Mahlzeiten-Vorlage speichern",
   "mealTemplateSelectionCount": "{count} ausgewählt",

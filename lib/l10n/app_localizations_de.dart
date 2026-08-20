@@ -227,6 +227,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String get entryDeleted => 'Eintrag gelöscht';
 
   @override
+  String get mealTemplateReplaceTitle => 'Einträge ersetzen?';
+
+  @override
+  String mealTemplateReplaceBody(int count, String name) {
+    return '$count Einträge werden zu einer Portion \"$name\". Die Nährwerte des Tages ändern sich dadurch nicht.';
+  }
+
+  @override
+  String get mealTemplateReplaceConfirm => 'Ersetzen';
+
+  @override
+  String get mealTemplateReplaceKeep => 'Behalten';
+
+  @override
+  String get mealTemplateReplaced => 'Einträge durch die Vorlage ersetzt';
+
+  @override
   String get mealTemplateFromEntries => 'Als Vorlage speichern';
 
   @override

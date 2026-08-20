@@ -84,6 +84,44 @@ class MealTemplateDraftIngredient {
   });
 }
 
+/// What came back from drafting a meal template out of logged entries.
+///
+/// The nutrition is that of ONE portion — the template's full reference
+/// weight — so the caller can log it without knowing how a template is put
+/// together. Primitive types, to avoid circular package dependencies.
+class MealTemplateDraftResult {
+  final String id;
+  final String name;
+  final double totalWeightG;
+  final double calories;
+  final double protein;
+  final double fat;
+  final double carbs;
+  final double? fiber;
+  final double? sugar;
+  final double? sodium;
+
+  /// True when the saved template still holds exactly the ingredients handed
+  /// over, at the same weights. Only then does one portion of it stand for
+  /// precisely the entries it was drafted from — which is what makes replacing
+  /// them with it a lossless swap rather than a rewrite of the day.
+  final bool matchesDraft;
+
+  const MealTemplateDraftResult({
+    required this.id,
+    required this.name,
+    required this.totalWeightG,
+    required this.calories,
+    required this.protein,
+    required this.fat,
+    required this.carbs,
+    this.fiber,
+    this.sugar,
+    this.sodium,
+    required this.matchesDraft,
+  });
+}
+
 /// Daten die beim Eintragen einer Mahlzeiten-Vorlage übergeben werden.
 /// Enthält alle Felder die für einen FoodEntry benötigt werden.
 /// Verwendet primitive Typen um zirkuläre Paket-Abhängigkeiten zu vermeiden.
@@ -264,9 +302,9 @@ abstract class PremiumFeatures {
   });
 
   /// Öffnet den Vorlagen-Editor für eine NEUE Vorlage, vorbefüllt mit
-  /// [ingredients] (aus ausgewählten Log-Einträgen abgeleitet). Gibt true
-  /// zurück, wenn eine Vorlage gespeichert wurde.
-  Future<bool> showMealTemplateFromEntries({
+  /// [ingredients] (aus ausgewählten Log-Einträgen abgeleitet). Gibt die
+  /// gespeicherte Vorlage zurück, oder null wenn nichts gespeichert wurde.
+  Future<MealTemplateDraftResult?> showMealTemplateFromEntries({
     required BuildContext context,
     required String userId,
     required String authToken,
@@ -549,7 +587,7 @@ class NullPremiumFeatures implements PremiumFeatures {
       const SizedBox.shrink();
 
   @override
-  Future<bool> showMealTemplateFromEntries({
+  Future<MealTemplateDraftResult?> showMealTemplateFromEntries({
     required BuildContext context,
     required String userId,
     required String authToken,
@@ -558,7 +596,7 @@ class NullPremiumFeatures implements PremiumFeatures {
     required List<MealTemplateDraftIngredient> ingredients,
     Future<List<MealIngredientCandidate>> Function(String query, {bool searchOnline})? onSearchIngredient,
   }) async =>
-      false;
+      null;
 
   @override
   void showMicroNutrientsSheet({

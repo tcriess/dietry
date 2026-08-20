@@ -84,6 +84,21 @@
     }
   },
   "entryDeleted": "Entry deleted",
+  "mealTemplateReplaceTitle": "Replace the entries?",
+  "mealTemplateReplaceBody": "{count} entries become one portion of \"{name}\". The day's nutrition stays the same.",
+  "@mealTemplateReplaceBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mealTemplateReplaceConfirm": "Replace",
+  "mealTemplateReplaceKeep": "Keep",
+  "mealTemplateReplaced": "Entries replaced with the template",
   "mealTemplateFromEntries": "Save as meal template",
   "mealTemplateFromEntriesTooltip": "Pick entries and save them as a meal template",
   "mealTemplateSelectionCount": "{count} selected",

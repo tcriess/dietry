@@ -526,6 +526,36 @@ abstract class AppLocalizations {
   /// **'Eintrag gelöscht'**
   String get entryDeleted;
 
+  /// No description provided for @mealTemplateReplaceTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Einträge ersetzen?'**
+  String get mealTemplateReplaceTitle;
+
+  /// No description provided for @mealTemplateReplaceBody.
+  ///
+  /// In de, this message translates to:
+  /// **'{count} Einträge werden zu einer Portion \"{name}\". Die Nährwerte des Tages ändern sich dadurch nicht.'**
+  String mealTemplateReplaceBody(int count, String name);
+
+  /// No description provided for @mealTemplateReplaceConfirm.
+  ///
+  /// In de, this message translates to:
+  /// **'Ersetzen'**
+  String get mealTemplateReplaceConfirm;
+
+  /// No description provided for @mealTemplateReplaceKeep.
+  ///
+  /// In de, this message translates to:
+  /// **'Behalten'**
+  String get mealTemplateReplaceKeep;
+
+  /// No description provided for @mealTemplateReplaced.
+  ///
+  /// In de, this message translates to:
+  /// **'Einträge durch die Vorlage ersetzt'**
+  String get mealTemplateReplaced;
+
   /// No description provided for @mealTemplateFromEntries.
   ///
   /// In de, this message translates to:

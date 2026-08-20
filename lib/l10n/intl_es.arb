@@ -84,6 +84,21 @@
     }
   },
   "entryDeleted": "Entrada eliminada",
+  "mealTemplateReplaceTitle": "¿Reemplazar las entradas?",
+  "mealTemplateReplaceBody": "{count} entradas se convierten en una porción de \"{name}\". Los valores nutricionales del día no cambian.",
+  "@mealTemplateReplaceBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "mealTemplateReplaceConfirm": "Reemplazar",
+  "mealTemplateReplaceKeep": "Mantener",
+  "mealTemplateReplaced": "Entradas reemplazadas por la plantilla",
   "mealTemplateFromEntries": "Guardar como plantilla",
   "mealTemplateFromEntriesTooltip": "Selecciona entradas y guárdalas como plantilla de comida",
   "mealTemplateSelectionCount": "{count} seleccionadas",

@@ -227,6 +227,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get entryDeleted => 'Entrada eliminada';
 
   @override
+  String get mealTemplateReplaceTitle => '¿Reemplazar las entradas?';
+
+  @override
+  String mealTemplateReplaceBody(int count, String name) {
+    return '$count entradas se convierten en una porción de \"$name\". Los valores nutricionales del día no cambian.';
+  }
+
+  @override
+  String get mealTemplateReplaceConfirm => 'Reemplazar';
+
+  @override
+  String get mealTemplateReplaceKeep => 'Mantener';
+
+  @override
+  String get mealTemplateReplaced => 'Entradas reemplazadas por la plantilla';
+
+  @override
   String get mealTemplateFromEntries => 'Guardar como plantilla';
 
   @override

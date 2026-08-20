@@ -305,7 +305,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     try {
       final ingredients = await _draftIngredients(entries, db);
       if (!mounted) return;
-      await premiumFeatures.showMealTemplateFromEntries(
+      final saved = await premiumFeatures.showMealTemplateFromEntries(
         context: context,
         userId: userId,
         authToken: jwt,
@@ -314,6 +314,16 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         ingredients: ingredients,
         onSearchIngredient: widget.onSearchIngredient,
       );
+
+      // Offer the swap only when one portion of the template is exactly what
+      // was ticked: same ingredients, same weights, all in one meal. Anything
+      // else and replacing would silently change the day's numbers.
+      if (saved != null &&
+          saved.matchesDraft &&
+          meals.length == 1 &&
+          mounted) {
+        await _replaceWithTemplate(saved, entries, meals.single, userId);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -321,6 +331,77 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
           _selectedIds = null;
         });
       }
+    }
+  }
+
+  /// Asks whether the entries the template was drafted from should give way to
+  /// a single portion of it, and does it.
+  ///
+  /// The point of drafting from the log is usually that the meal is now a thing
+  /// in its own right — leaving both behind would double the day. The entries
+  /// are only removed after the template entry is safely created, so a failure
+  /// costs nothing.
+  Future<void> _replaceWithTemplate(
+    MealTemplateDraftResult template,
+    List<FoodEntry> entries,
+    MealType meal,
+    String userId,
+  ) async {
+    final l = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.mealTemplateReplaceTitle),
+        content:
+            Text(l.mealTemplateReplaceBody(entries.length, template.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.mealTemplateReplaceKeep),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.mealTemplateReplaceConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final sync = SyncService.instance;
+    final now = DateTime.now();
+    try {
+      await sync.createFoodEntry(FoodEntry(
+        id: '',
+        userId: userId,
+        mealTemplateId: template.id,
+        entryDate: widget.selectedDay,
+        mealType: meal,
+        name: template.name,
+        amount: 1,
+        unit: 'Portion',
+        calories: template.calories,
+        protein: template.protein,
+        fat: template.fat,
+        carbs: template.carbs,
+        fiber: template.fiber,
+        sugar: template.sugar,
+        sodium: template.sodium,
+        isMeal: true,
+        createdAt: now,
+        updatedAt: now,
+      ));
+      for (final entry in entries) {
+        await sync.deleteFoodEntry(entry.id);
+      }
+      await _store.loadDay(widget.selectedDay, silent: true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.mealTemplateReplaced)),
+        );
+      }
+    } catch (e) {
+      appLogger.e('Replacing entries with the template failed: $e');
     }
   }
 

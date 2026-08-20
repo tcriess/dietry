@@ -227,6 +227,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get entryDeleted => 'Entry deleted';
 
   @override
+  String get mealTemplateReplaceTitle => 'Replace the entries?';
+
+  @override
+  String mealTemplateReplaceBody(int count, String name) {
+    return '$count entries become one portion of \"$name\". The day\'s nutrition stays the same.';
+  }
+
+  @override
+  String get mealTemplateReplaceConfirm => 'Replace';
+
+  @override
+  String get mealTemplateReplaceKeep => 'Keep';
+
+  @override
+  String get mealTemplateReplaced => 'Entries replaced with the template';
+
+  @override
   String get mealTemplateFromEntries => 'Save as meal template';
 
   @override
