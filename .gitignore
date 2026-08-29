@@ -52,6 +52,7 @@ app.*.map.json
 
 # Build-Konfigurationen potentiell mit Credentials (niemals committen)
 /config/*.json
+/config/deploy.env
 
 # misc
 /tmp/

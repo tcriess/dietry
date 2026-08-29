@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Build tooling**: `scripts/build.sh <ce|cloud> <dev|prod> <web|linux|android>`,
+  `scripts/release-all.sh` and `scripts/run-android.sh` — one tracked build path
+  for every edition, backend and target, replacing the untracked root `build.sh`
+  and `build_and_release_all.sh`. Android builds can install and launch on a
+  connected device (`--run`); web builds can publish (`--deploy`). They reproduce
+  what CI builds, refuse a config whose EDITION/ENVIRONMENT disagrees with the
+  arguments, fail rather than silently signing with the debug key, ask before
+  deploying to production, and restore `pubspec.lock`, `pubspec_overrides.yaml`
+  and `android/key.properties` on exit. The web deploy target moved out of the
+  script into a gitignored `config/deploy.env` (see `config/deploy.env.example`),
+  so no server details live in this public repository.
 - **Food log**: name a new portion size straight from the amount dialog. The unit
   dropdown now ends in "+ New portion size …", which opens a two-field form with
   the weight pre-filled from the amount already entered — so after scanning a

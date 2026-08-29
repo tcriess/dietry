@@ -68,7 +68,7 @@ dietry/
 │   ├── index.html                 # Flutter web entry point
 │   ├── landing.html               # Marketing landing page
 │   └── auth_callback.html         # OAuth redirect handler
-└── build.sh                       # Build & deploy script
+└── scripts/                       # Build, run & release scripts (see scripts/README.md)
 ```
 
 ---
@@ -146,12 +146,26 @@ flutter build apk --release --dart-define-from-file=config/prod.json
 flutter build linux --release --dart-define-from-file=config/prod.json
 ```
 
-The `build.sh` script builds, packages, and deploys the web build to a server in one step:
+### Build scripts
+
+`flutter build` on its own is not enough for this app: the edition decides the
+applicationId, which `dietry_cloud` package is linked and which keystore signs the
+result, and the config for the Cloud Edition is not in this repository. `scripts/`
+wraps all of that, taking the edition, the backend and the target as its arguments:
 
 ```bash
-./build.sh ce prod   # Community Edition, production
-./build.sh ce dev    # Community Edition, dev
+./scripts/build.sh ce dev android --run        # CE dev APK, installed on a connected device
+./scripts/build.sh cloud prod android          # Cloud prod APK + Play Store bundle
+./scripts/build.sh cloud prod web --deploy     # build and publish the web app
+./scripts/run-android.sh cloud dev             # hot-reload session against the cloud dev backend
+./scripts/release-all.sh                       # every edition × environment × target
 ```
+
+They reproduce what CI builds, refuse a config that disagrees with the arguments,
+fail rather than silently signing with the debug key, ask before deploying to
+production, and restore `pubspec.lock`, `pubspec_overrides.yaml` and
+`android/key.properties` on exit. See [`scripts/README.md`](scripts/README.md) for
+the options and the reasoning.
 
 ---
 
