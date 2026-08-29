@@ -1,5 +1,6 @@
 import 'package:dietry/services/app_logger.dart';
 import '../models/food_item.dart';
+import '../models/food_portion.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
 
@@ -262,6 +263,45 @@ class FoodDatabaseService {
     }
   }
   
+  /// Appends [portion] to a food's named portion sizes and persists it.
+  ///
+  /// A portion is knowledge about the packet in the user's hand, so it should
+  /// be capturable at the moment they log it — not only from the food-editor
+  /// screen. Two cases:
+  ///
+  ///  * The food is the user's own row → PATCH it in place.
+  ///  * The food is someone else's public row (or an unsaved external hit) →
+  ///    we cannot write to it, so it is copied into the user's own database
+  ///    first, private and unapproved, and the portion lands on the copy.
+  ///
+  /// The copy deliberately drops [FoodItem.hasImage]: images live in
+  /// `food_images` keyed by the *original* food id, so the new row has none.
+  Future<AddPortionResult> addPortion(FoodItem food, FoodPortion portion) async {
+    final userId = _userId;
+    if (userId == null) {
+      throw Exception('Keine User-ID verfügbar');
+    }
+
+    final withPortion = food.copyWith(
+      portions: [...food.portions, portion],
+      updatedAt: DateTime.now(),
+    );
+
+    final isOwn = food.id.isNotEmpty && food.userId == userId;
+    if (isOwn) {
+      return AddPortionResult(food: await updateFood(withPortion), cloned: false);
+    }
+
+    appLogger.i('📋 Kopiere fremdes Food "${food.name}" für eigene Portion');
+    final copy = await createFood(withPortion.copyWith(
+      userId: userId,
+      isPublic: false,
+      isApproved: false,
+      hasImage: false,
+    ));
+    return AddPortionResult(food: copy, cloned: true);
+  }
+
   /// Lösche eigenes Food
   ///
   /// Nur eigene private foods können gelöscht werden.
@@ -457,3 +497,15 @@ class FoodDatabaseService {
   }
 }
 
+/// Outcome of [FoodDatabaseService.addPortion].
+class AddPortionResult {
+  /// The stored food carrying the new portion. Its id differs from the input
+  /// food's when [cloned] is true.
+  final FoodItem food;
+
+  /// True when the portion could not be written to the food passed in (a
+  /// public food owned by someone else) and a private copy was made instead.
+  final bool cloned;
+
+  const AddPortionResult({required this.food, required this.cloned});
+}

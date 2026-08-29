@@ -1042,6 +1042,78 @@ abstract class AppLocalizations {
   /// **'Keine Portionen definiert – Eingabe immer in g/ml'**
   String get foodPortionsEmpty;
 
+  /// No description provided for @portionAddNew.
+  ///
+  /// In de, this message translates to:
+  /// **'+ Neue Portionsgröße …'**
+  String get portionAddNew;
+
+  /// No description provided for @portionAddTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Neue Portionsgröße'**
+  String get portionAddTitle;
+
+  /// No description provided for @portionNameLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Bezeichnung'**
+  String get portionNameLabel;
+
+  /// No description provided for @portionNameHint.
+  ///
+  /// In de, this message translates to:
+  /// **'z. B. 1 Riegel'**
+  String get portionNameHint;
+
+  /// No description provided for @portionAmountLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Menge pro Portion'**
+  String get portionAmountLabel;
+
+  /// No description provided for @portionNameRequired.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte eine Bezeichnung eingeben'**
+  String get portionNameRequired;
+
+  /// No description provided for @portionAmountInvalid.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte eine Menge größer als 0 eingeben'**
+  String get portionAmountInvalid;
+
+  /// No description provided for @portionNameDuplicate.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieses Lebensmittel hat bereits eine Portion mit dieser Bezeichnung'**
+  String get portionNameDuplicate;
+
+  /// No description provided for @portionNameReserved.
+  ///
+  /// In de, this message translates to:
+  /// **'„g“, „ml“ und „g (gekocht)“ sind feste Einheiten – bitte eine andere Bezeichnung wählen'**
+  String get portionNameReserved;
+
+  /// No description provided for @portionSaved.
+  ///
+  /// In de, this message translates to:
+  /// **'Portionsgröße „{name}“ gespeichert'**
+  String portionSaved(String name);
+
+  /// No description provided for @portionSaveFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Portionsgröße konnte nicht gespeichert werden'**
+  String get portionSaveFailed;
+
+  /// No description provided for @portionCopiedToOwn.
+  ///
+  /// In de, this message translates to:
+  /// **'„{name}“ wurde in deine eigenen Lebensmittel kopiert'**
+  String portionCopiedToOwn(String name);
+
   /// No description provided for @foodPublic.
   ///
   /// In de, this message translates to:

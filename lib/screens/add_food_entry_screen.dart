@@ -29,6 +29,7 @@ import '../widgets/tag_editor.dart';
 import '../widgets/barcode_scanner_sheet.dart';
 import '../widgets/cooked_factor_dialog.dart';
 import '../widgets/cooked_weight_nudge.dart';
+import '../widgets/portion_size_dialog.dart';
 import '../services/barcode_lookup_service.dart';
 import '../services/cooking_yield.dart';
 import 'food_database_screen.dart';
@@ -837,6 +838,57 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     );
   }
 
+  /// Whether a new portion size can be named from the unit dropdown. Requires a
+  /// food already stored in the user's database — for an external hit or a
+  /// manual entry the screen's own "add to database" button is the right path,
+  /// and offering both would create the same food twice.
+  bool get _canAddPortion =>
+      widget.dbService != null &&
+      _selectedFood != null &&
+      _selectedFood!.id.isNotEmpty;
+
+  /// Names the amount currently entered as a reusable portion size on the
+  /// selected food, and selects it. Mirrors the quick-add sheet's confirm
+  /// dialog so the shortcut exists wherever an entry's amount is chosen.
+  Future<void> _addPortionSize() async {
+    final food = _selectedFood;
+    final db = widget.dbService;
+    if (food == null || db == null) return;
+    final l = AppLocalizations.of(context)!;
+
+    final grams = _currentGrams();
+    final portion = await showAddPortionSizeDialog(
+      context,
+      existing: food.portions,
+      initialAmount: grams > 0 ? grams : null,
+      isLiquid: _isLiquid,
+    );
+    if (portion == null || !mounted) return;
+
+    try {
+      final result = await FoodDatabaseService(db).addPortion(food, portion);
+      if (!mounted) return;
+      setState(() {
+        _selectedFood = result.food;
+        _unitTouched = true;
+        _selectedPortion = result.food.portions
+            .cast<FoodPortion?>()
+            .firstWhere((p) => p!.name == portion.name, orElse: () => null);
+        _amountController.text = '1';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.cloned
+            ? '${l.portionSaved(portion.name)} · ${l.portionCopiedToOwn(result.food.name)}'
+            : l.portionSaved(portion.name)),
+      ));
+    } catch (e) {
+      appLogger.w('⚠️ Portion konnte nicht gespeichert werden: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l.portionSaveFailed)));
+    }
+  }
+
   /// Dropdown zur Portionsauswahl (benannte Portionen + g/ml)
   Widget _buildPortionSelector() {
     final l = AppLocalizations.of(context)!;
@@ -886,6 +938,18 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     }
     items.add(DropdownMenuItem(value: kUnitMl, child: Text(unitLabel(kUnitMl, l))));
 
+    // Capture a portion size at the moment the amount is entered, rather than
+    // sending the user off to the food editor for it.
+    if (_canAddPortion) {
+      items.add(DropdownMenuItem(
+        value: kAddPortionValue,
+        child: Text(
+          l.portionAddNew,
+          style: TextStyle(color: Theme.of(context).colorScheme.primary),
+        ),
+      ));
+    }
+
     return DropdownButtonFormField<String>(
       initialValue: currentKey,
       decoration: InputDecoration(
@@ -895,6 +959,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       items: items,
       onChanged: (value) {
         if (value == null) return;
+        // The sentinel is an action, not a unit — never let it become the
+        // selected value.
+        if (value == kAddPortionValue) {
+          unawaited(_addPortionSize());
+          return;
+        }
         setState(() {
           _unitTouched = true;
           if (value.startsWith('p:')) {

@@ -517,6 +517,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get foodPortionsEmpty => 'No portions defined – always enter in g/ml';
 
   @override
+  String get portionAddNew => '+ New portion size …';
+
+  @override
+  String get portionAddTitle => 'New portion size';
+
+  @override
+  String get portionNameLabel => 'Name';
+
+  @override
+  String get portionNameHint => 'e.g. 1 bar';
+
+  @override
+  String get portionAmountLabel => 'Amount per portion';
+
+  @override
+  String get portionNameRequired => 'Please enter a name';
+
+  @override
+  String get portionAmountInvalid => 'Please enter an amount greater than 0';
+
+  @override
+  String get portionNameDuplicate =>
+      'This food already has a portion with that name';
+
+  @override
+  String get portionNameReserved =>
+      '“g”, “ml” and “g (cooked)” are built-in units — please pick another name';
+
+  @override
+  String portionSaved(String name) {
+    return 'Portion size “$name” saved';
+  }
+
+  @override
+  String get portionSaveFailed => 'Could not save the portion size';
+
+  @override
+  String portionCopiedToOwn(String name) {
+    return '“$name” was copied into your own foods';
+  }
+
+  @override
   String get foodPublic => 'Visible to all users';
 
   @override

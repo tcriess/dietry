@@ -520,6 +520,49 @@ class AppLocalizationsDe extends AppLocalizations {
       'Keine Portionen definiert – Eingabe immer in g/ml';
 
   @override
+  String get portionAddNew => '+ Neue Portionsgröße …';
+
+  @override
+  String get portionAddTitle => 'Neue Portionsgröße';
+
+  @override
+  String get portionNameLabel => 'Bezeichnung';
+
+  @override
+  String get portionNameHint => 'z. B. 1 Riegel';
+
+  @override
+  String get portionAmountLabel => 'Menge pro Portion';
+
+  @override
+  String get portionNameRequired => 'Bitte eine Bezeichnung eingeben';
+
+  @override
+  String get portionAmountInvalid => 'Bitte eine Menge größer als 0 eingeben';
+
+  @override
+  String get portionNameDuplicate =>
+      'Dieses Lebensmittel hat bereits eine Portion mit dieser Bezeichnung';
+
+  @override
+  String get portionNameReserved =>
+      '„g“, „ml“ und „g (gekocht)“ sind feste Einheiten – bitte eine andere Bezeichnung wählen';
+
+  @override
+  String portionSaved(String name) {
+    return 'Portionsgröße „$name“ gespeichert';
+  }
+
+  @override
+  String get portionSaveFailed =>
+      'Portionsgröße konnte nicht gespeichert werden';
+
+  @override
+  String portionCopiedToOwn(String name) {
+    return '„$name“ wurde in deine eigenen Lebensmittel kopiert';
+  }
+
+  @override
   String get foodPublic => 'Für alle Nutzer sichtbar';
 
   @override

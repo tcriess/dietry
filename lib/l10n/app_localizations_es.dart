@@ -520,6 +520,48 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sin porciones definidas – siempre ingresa en g/ml';
 
   @override
+  String get portionAddNew => '+ Nuevo tamaño de porción …';
+
+  @override
+  String get portionAddTitle => 'Nuevo tamaño de porción';
+
+  @override
+  String get portionNameLabel => 'Nombre';
+
+  @override
+  String get portionNameHint => 'p. ej. 1 barrita';
+
+  @override
+  String get portionAmountLabel => 'Cantidad por porción';
+
+  @override
+  String get portionNameRequired => 'Introduce un nombre';
+
+  @override
+  String get portionAmountInvalid => 'Introduce una cantidad mayor que 0';
+
+  @override
+  String get portionNameDuplicate =>
+      'Este alimento ya tiene una porción con ese nombre';
+
+  @override
+  String get portionNameReserved =>
+      '«g», «ml» y «g (cocido)» son unidades fijas: elige otro nombre';
+
+  @override
+  String portionSaved(String name) {
+    return 'Tamaño de porción «$name» guardado';
+  }
+
+  @override
+  String get portionSaveFailed => 'No se pudo guardar el tamaño de porción';
+
+  @override
+  String portionCopiedToOwn(String name) {
+    return '«$name» se copió a tus propios alimentos';
+  }
+
+  @override
   String get foodPublic => 'Visible para todos los usuarios';
 
   @override

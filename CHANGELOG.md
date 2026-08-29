@@ -8,13 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 
+- **Food log**: name a new portion size straight from the amount dialog. The unit
+  dropdown now ends in "+ New portion size …", which opens a two-field form with
+  the weight pre-filled from the amount already entered — so after scanning a
+  barcode you can record "1 bar = 30 g" on the spot instead of going to the food
+  database screen for it. Available in the quick-add confirm dialog and in the
+  full add-entry screen. For a public food owned by someone else, the portion is
+  stored on a private copy of the food (micronutrients are not carried over to
+  that copy).
 
 ### Changed
 - 
 
 ### Fixed
-- 
+- **Food log**: the quick-add amount dialog no longer crashes for a food that has
+  two portions with the same name, or a portion named exactly "g"/"ml" — the unit
+  list is deduplicated, and those names are now rejected when a portion is
+  created from the amount dialog.
 
 ### Deprecated
 - 

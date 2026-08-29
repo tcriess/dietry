@@ -19,6 +19,7 @@ import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
+import 'portion_size_dialog.dart';
 import 'cooked_weight_nudge.dart';
 import 'cooked_factor_dialog.dart';
 import 'repeat_meal_picker.dart';
@@ -2239,6 +2240,14 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   late String _selectedUnit;
   FoodPortion? _selectedPortion;
   bool _savingShortcut = false;
+  bool _savingPortion = false;
+
+  /// The food this dialog logs against. Mutable because naming a new portion
+  /// size for a food the user does not own stores it on a private copy — from
+  /// there on the entry, the portion prefs and the unit list all have to follow
+  /// the copy, not the public original.
+  late FoodItem? _food = widget.food;
+  late String? _foodId = widget.foodId;
 
   /// The user's own measured factor. Seeded from the widget (loaded from prefs)
   /// and updated in place when they calibrate here, so this entry — and the
@@ -2254,7 +2263,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   /// Auto default for the current selection.
   EstimateLevel _autoEstimate() {
     final level = EstimateLevel.defaultForLog(
-      foodLevel: widget.food?.estimateLevel ?? EstimateLevel.none,
+      foodLevel: _food?.estimateLevel ?? EstimateLevel.none,
     );
     // A generic factor adds spread; one the user measured themselves does not.
     final yield_ = _cookedYield;
@@ -2273,7 +2282,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   CookingYieldInfo? get _cookedYield {
     if (!_yieldResolved) {
       _yieldResolved = true;
-      final food = widget.food;
+      final food = _food;
       _yieldInfo = food == null ? null : CookingYield.defaultFor(food);
     }
     return _yieldInfo;
@@ -2304,8 +2313,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     _mealType = widget.mealType;
     _selectedUnit = widget.unit;
     // Check if the unit matches a named portion
-    if (widget.food != null) {
-      _selectedPortion = widget.food!.portions.cast<FoodPortion?>().firstWhere(
+    if (_food != null) {
+      _selectedPortion = _food!.portions.cast<FoodPortion?>().firstWhere(
             (p) => p!.name == widget.unit,
             orElse: () => null,
           );
@@ -2320,9 +2329,13 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   }
 
   List<String> _availableUnits() {
-    final food = widget.food;
+    final food = _food;
     if (food == null) return [widget.unit]; // No switching without food
-    final units = <String>[];
+    // A LinkedHashSet keeps insertion order while making duplicates impossible:
+    // DropdownButton asserts that exactly one item carries its current value,
+    // so a food with two same-named portions — or one literally named "g" —
+    // would otherwise crash this dialog.
+    final units = <String>{};
     for (final p in food.portions) {
       units.add(p.name);
     }
@@ -2338,9 +2351,9 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     // The stored unit may no longer match a portion (renamed/removed) — keep
     // it selectable so the DropdownButton always has a valid current value.
     if (!units.contains(_selectedUnit)) {
-      units.insert(0, _selectedUnit);
+      return [_selectedUnit, ...units];
     }
-    return units;
+    return units.toList();
   }
 
   /// Set once the user picks any unit — the raw/cooked nudge is a question, and
@@ -2375,7 +2388,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
 
   Future<void> _openCalibration() async {
     final generic = _cookedYield;
-    final food = widget.food;
+    final food = _food;
     if (generic == null || food == null) return;
 
     final result = await showCookedFactorDialog(
@@ -2406,8 +2419,63 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     ));
   }
 
+  /// Whether a new portion size can be named from here. Needs a food to hang
+  /// it on; meal-template entries and free-text recents have none.
+  bool get _canAddPortion => _food != null && !widget.isMeal;
+
+  /// Names the amount currently entered as a reusable portion size, e.g. after
+  /// scanning a barcode and reading "1 bar = 30 g" off the packet.
+  ///
+  /// The weight is pre-filled from whatever is in the amount field, resolved to
+  /// the food's own (raw/dry) gram basis — so this works whether the user typed
+  /// grams, millilitres, a cooked weight or another portion.
+  Future<void> _addPortionSize() async {
+    final food = _food;
+    if (food == null || _savingPortion) return;
+    final l = AppLocalizations.of(context)!;
+
+    final portion = await showAddPortionSizeDialog(
+      context,
+      existing: food.portions,
+      initialAmount: _currentAmountG(),
+      isLiquid: widget.isLiquid,
+    );
+    if (portion == null || !mounted) return;
+
+    setState(() => _savingPortion = true);
+    try {
+      final result =
+          await FoodDatabaseService(widget.dbService).addPortion(food, portion);
+      if (!mounted) return;
+      setState(() {
+        _food = result.food;
+        _foodId = result.food.id;
+        // Select what they just defined — that is why they defined it.
+        _unitTouched = true;
+        _selectedUnit = portion.name;
+        _selectedPortion = result.food.portions
+            .cast<FoodPortion?>()
+            .firstWhere((p) => p!.name == portion.name, orElse: () => null);
+        _amountCtrl.text = '1';
+        if (!_userSetEstimate) _estimateLevel = _autoEstimate();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result.cloned
+            ? '${l.portionSaved(portion.name)} · ${l.portionCopiedToOwn(result.food.name)}'
+            : l.portionSaved(portion.name)),
+      ));
+    } catch (e) {
+      appLogger.w('⚠️ Portion konnte nicht gespeichert werden: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l.portionSaveFailed)));
+    } finally {
+      if (mounted) setState(() => _savingPortion = false);
+    }
+  }
+
   void _onUnitChanged(String unit) {
-    final food = widget.food;
+    final food = _food;
     setState(() {
       _unitTouched = true;
       _selectedUnit = unit;
@@ -2436,7 +2504,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     final amount = _currentAmount;
     final scale =
         widget.initialAmount != 0 ? amount / widget.initialAmount : 1.0;
-    final food = widget.food;
+    final food = _food;
     final re = widget.recentEntry;
 
     double calories, protein, fat, carbs;
@@ -2495,7 +2563,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     return FoodEntry(
       id: const Uuid().v4(),
       userId: widget.userId,
-      foodId: _nonEmptyFoodId(widget.foodId),
+      foodId: _nonEmptyFoodId(_foodId),
       entryDate: widget.date,
       mealType: _mealType,
       name: widget.name,
@@ -2554,7 +2622,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final provenance = widget.food?.provenanceSummary;
+    final provenance = _food?.provenanceSummary;
+    final units = _availableUnits();
     return AlertDialog(
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2602,23 +2671,46 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Unit dropdown
-              if (_availableUnits().length > 1)
+              // Unit dropdown. Also the entry point for defining a new portion
+              // size, so a barcode scan can end with "1 bar = 30 g" captured on
+              // the food instead of a bare gram amount typed once and lost.
+              if (units.length > 1 || _canAddPortion)
                 DropdownButton<String>(
                   value: _selectedUnit,
-                  items: _availableUnits()
-                      .map((unit) => DropdownMenuItem(
-                            value: unit,
-                            child: Text(
-                              unitLabel(unit, l,
-                                  distinguishRaw: _cookedYield != null),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (newUnit) {
-                    if (newUnit != null) _onUnitChanged(newUnit);
-                  },
+                  items: [
+                    for (final unit in units)
+                      DropdownMenuItem(
+                        value: unit,
+                        child: Text(
+                          unitLabel(unit, l,
+                              distinguishRaw: _cookedYield != null),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    if (_canAddPortion)
+                      DropdownMenuItem(
+                        value: kAddPortionValue,
+                        child: Text(
+                          l.portionAddNew,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                  ],
+                  onChanged: _savingPortion
+                      ? null
+                      : (newUnit) {
+                          if (newUnit == null) return;
+                          // The sentinel is an action, not a unit — never let
+                          // it become the selected value.
+                          if (newUnit == kAddPortionValue) {
+                            unawaited(_addPortionSize());
+                            return;
+                          }
+                          _onUnitChanged(newUnit);
+                        },
                 )
               else
                 Text(
@@ -2645,7 +2737,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
             ),
           // Let the user replace the generic factor with their own — most of the
           // published spread in cooking yields is how a given person cooks.
-          if (_selectedUnit == kUnitGramCooked && widget.food != null)
+          if (_selectedUnit == kUnitGramCooked && _food != null)
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -2717,7 +2809,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                   final entry = _buildEntry();
                   await widget.onSaveAsShortcut(
                     label: widget.name,
-                    foodId: _nonEmptyFoodId(widget.foodId),
+                    foodId: _nonEmptyFoodId(_foodId),
                     mealType: _mealType.toJson(),
                     amount: entry.amount,
                     unit: entry.unit,
