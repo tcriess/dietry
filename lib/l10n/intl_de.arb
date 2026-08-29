@@ -1054,6 +1054,8 @@
   "manageDatabase": "Datenbank verwalten",
   "searchFood": "Lebensmittel suchen",
   "noResults": "Keine Ergebnisse",
+  "searchUnreachable": "Die Datenbank ist gerade nicht erreichbar.",
+  "searchRetry": "Erneut versuchen",
   "options": "Optionen",
   "resultsCount": "{count} Ergebnisse",
   "@resultsCount": {

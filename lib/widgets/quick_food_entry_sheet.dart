@@ -17,6 +17,7 @@ import '../services/cooking_yield.dart';
 import '../services/neon_database_service.dart';
 import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
+import '../services/db_retry.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 import 'portion_size_dialog.dart';
@@ -183,6 +184,11 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   Timer? _searchDebounce;
   List<FoodItem> _searchResults = [];
   bool _searching = false;
+
+  /// The last search hit an error rather than finding nothing. Kept apart from
+  /// an empty result list because the two used to render identically — an
+  /// unreachable database looked exactly like "no such food".
+  bool _searchFailed = false;
   String _query = '';
 
   @override
@@ -231,14 +237,20 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     final startStr = start.toIso8601String().split('T')[0];
 
     try {
-      final response = await db.client
-          .from('food_entries')
-          .select()
-          .eq('user_id', userId)
-          .gte('entry_date', startStr)
-          .lte('entry_date', endStr)
-          .order('created_at', ascending: false)
-          .limit(1000);
+      // Opening the sheet is usually the first thing to touch a compute that
+      // suspended while the app sat idle, so this needs the same retry as the
+      // search — otherwise the Recent tab comes up empty for the same reason.
+      final response = await withDbRetry(
+        () => db.client
+            .from('food_entries')
+            .select()
+            .eq('user_id', userId)
+            .gte('entry_date', startStr)
+            .lte('entry_date', endStr)
+            .order('created_at', ascending: false)
+            .limit(1000),
+        label: 'Recent entries',
+      );
 
       final entries = (response as List)
           .map((json) => FoodEntry.fromJson(json as Map<String, dynamic>))
@@ -537,6 +549,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     setState(() {
       _query = q;
       _searching = true;
+      _searchFailed = false;
       // Search takes focus; the suggestion strip would be hidden behind
       // the results anyway.
       _suggestions = const [];
@@ -547,6 +560,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   Future<void> _runSearch() async {
     final q = _query;
     if (q.isEmpty) return;
+    if (!_searching) setState(() => _searching = true);
     try {
       final results =
           await FoodDatabaseService(widget.dbService).searchFoods(q, limit: 40);
@@ -555,10 +569,19 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       setState(() {
         _searchResults = results;
         _searching = false;
+        _searchFailed = false;
       });
       await _prefetchPortionPrefs(results.map((f) => f.id));
-    } catch (_) {
-      if (mounted) setState(() => _searching = false);
+    } catch (e) {
+      // searchFoods has already retried for ~10s. Say so rather than showing
+      // an empty list the user would read as "this food is not in there".
+      appLogger.w('⚠️ Suche fehlgeschlagen: $e');
+      if (!mounted || q != _query) return;
+      setState(() {
+        _searching = false;
+        _searchFailed = true;
+        _searchResults = [];
+      });
     }
   }
 
@@ -569,6 +592,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       _query = '';
       _searchResults = [];
       _searching = false;
+      _searchFailed = false;
     });
   }
 
@@ -1298,6 +1322,29 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     final l = AppLocalizations.of(context)!;
     if (_searching) {
       return const Center(child: CircularProgressIndicator());
+    }
+    if (_searchFailed) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off, color: Colors.grey.shade400, size: 32),
+              const SizedBox(height: 12),
+              Text(l.searchUnreachable,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey)),
+              const SizedBox(height: 8),
+              FilledButton.tonalIcon(
+                onPressed: _runSearch,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(l.searchRetry),
+              ),
+            ],
+          ),
+        ),
+      );
     }
     if (_searchResults.isEmpty) {
       return Center(

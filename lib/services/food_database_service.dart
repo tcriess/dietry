@@ -1,6 +1,7 @@
 import 'package:dietry/services/app_logger.dart';
 import '../models/food_item.dart';
 import '../models/food_portion.dart';
+import 'db_retry.dart';
 import 'neon_database_service.dart';
 import 'package:dio/dio.dart';
 
@@ -29,27 +30,25 @@ class FoodDatabaseService {
   }) async {
     appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit${filterTags.isNotEmpty ? ', Tags: ${filterTags.join(", ")}' : ''})');
 
-    // Retry once on a *transient* failure — a token refresh still in flight
-    // (common right after app launch) or a cold Neon compute timing out both
-    // otherwise return an empty list that looks exactly like "no matches". A
-    // genuine empty result (no exception) returns immediately without retrying.
-    // This is what made a repeated search — e.g. adding a trailing space —
-    // suddenly succeed.
-    for (int attempt = 0; attempt < 2; attempt++) {
-      try {
-        // Token prüfen
+    // Retries transient failures — a token refresh still in flight (common
+    // right after app launch) or, far more often, a Neon compute that suspended
+    // while the app sat idle and is now resuming. See [withDbRetry] for why the
+    // budget looks the way it does.
+    //
+    // THROWS once the budget is exhausted. It used to return an empty list,
+    // which the UI renders identically to "no matches" — that is what made a
+    // repeated search (adding a trailing space, say) suddenly succeed, and made
+    // the failure invisible. Callers that genuinely cannot surface an error
+    // catch it themselves and fall back to an empty list.
+    return withDbRetry(
+      () async {
         final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
         if (!tokenValid) {
-          if (attempt == 0) {
-            appLogger.w('⚠️ Token noch nicht bereit — kurzer Retry der Suche');
-            await Future.delayed(const Duration(milliseconds: 400));
-            continue;
-          }
-          appLogger.w('⚠️ Token ungültig');
-          return [];
+          // Retryable on purpose: right after launch the refresh is often still
+          // in flight, and the next attempt finds a valid token.
+          throw StateError('JWT not ready');
         }
 
-        // Rufe RPC-Funktion auf
         final response = await _db.client.rpc(
           'search_food_database',
           params: {
@@ -60,21 +59,14 @@ class FoodDatabaseService {
         );
 
         final foods = (response as List)
-          .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
-          .toList();
+            .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
+            .toList();
 
         appLogger.i('✅ ${foods.length} Lebensmittel gefunden');
         return foods;
-      } catch (e) {
-        appLogger.e('❌ Fehler bei Food-Suche (Versuch ${attempt + 1}): $e');
-        if (attempt == 0) {
-          await Future.delayed(const Duration(milliseconds: 400));
-          continue;
-        }
-        return [];
-      }
-    }
-    return [];
+      },
+      label: 'Food search "$query"',
+    );
   }
   
   /// Hole Lebensmittel per ID
@@ -399,20 +391,29 @@ class FoodDatabaseService {
   /// Gibt alle als Favorit markierten eigenen Lebensmittel zurück.
   Future<List<FoodItem>> getFavouriteFoods() async {
     try {
-      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
-      if (!tokenValid) return [];
       final userId = _userId;
       if (userId == null) return [];
-      final response = await _db.client
-          .from('food_database')
-          .select()
-          .eq('user_id', userId)
-          .eq('is_favourite', true)
-          .order('name');
-      return (response as List)
-          .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
-          .toList();
+      // Opening the add sheet is one of the first things to touch a compute
+      // that has been suspended, so this needs the same retry as the search.
+      return await withDbRetry(
+        () async {
+          final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+          if (!tokenValid) throw StateError('JWT not ready');
+          final response = await _db.client
+              .from('food_database')
+              .select()
+              .eq('user_id', userId)
+              .eq('is_favourite', true)
+              .order('name');
+          return (response as List)
+              .map((json) => FoodItem.fromJson(json as Map<String, dynamic>))
+              .toList();
+        },
+        label: 'Favourite foods',
+      );
     } catch (e) {
+      // An empty favourites tab is benign next to a failed search — the user
+      // has other ways in — so this one stays lenient.
       appLogger.e('❌ Fehler beim Laden der Favoriten: $e');
       return [];
     }

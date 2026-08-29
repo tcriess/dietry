@@ -969,6 +969,8 @@
   "manageDatabase": "Manage database",
   "searchFood": "Search food",
   "noResults": "No results",
+  "searchUnreachable": "The database could not be reached.",
+  "searchRetry": "Try again",
   "options": "Options",
   "resultsCount": "{count} results",
   "addToDbTip": "Tip: Add to database",

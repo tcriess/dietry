@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ### Fixed
+- **Food search**: searching no longer comes back empty on the first try after
+  the app has been idle. Neon suspends the compute when nothing is talking to
+  it; the existing warm-up starts the resume, but it is a race the user can
+  out-type, and the previous retry (2 attempts, 400ms apart) was far shorter
+  than a resume takes. Data API calls on this path now retry four times over
+  ~10s with a per-attempt timeout (there was no transport timeout at all
+  before), and a failure is reported as "the database could not be reached"
+  with a retry button instead of being flattened into "no results" — which is
+  what made the failure invisible. The warm-up now also runs on app resume,
+  the case neither the start-up nor the add-sheet warm-up covered. Recent and
+  Favourites were failing silently the same way and get the same retry.
 - **Food log**: the quick-add amount dialog no longer crashes for a food that has
   two portions with the same name, or a portion named exactly "g"/"ml" — the unit
   list is deduplicated, and those names are now rejected when a portion is

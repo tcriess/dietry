@@ -1100,7 +1100,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'Portionsgröße „{name}“ gespeichert'**
-  String portionSaved(String name);
+  String portionSaved(Object name);
 
   /// No description provided for @portionSaveFailed.
   ///
@@ -1112,7 +1112,7 @@ abstract class AppLocalizations {
   ///
   /// In de, this message translates to:
   /// **'„{name}“ wurde in deine eigenen Lebensmittel kopiert'**
-  String portionCopiedToOwn(String name);
+  String portionCopiedToOwn(Object name);
 
   /// No description provided for @foodPublic.
   ///
@@ -4161,6 +4161,18 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Keine Ergebnisse'**
   String get noResults;
+
+  /// No description provided for @searchUnreachable.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Datenbank ist gerade nicht erreichbar.'**
+  String get searchUnreachable;
+
+  /// No description provided for @searchRetry.
+  ///
+  /// In de, this message translates to:
+  /// **'Erneut versuchen'**
+  String get searchRetry;
 
   /// No description provided for @options.
   ///

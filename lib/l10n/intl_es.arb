@@ -969,6 +969,8 @@
   "manageDatabase": "Gestionar base de datos",
   "searchFood": "Buscar alimento",
   "noResults": "Sin resultados",
+  "searchUnreachable": "No se pudo conectar con la base de datos.",
+  "searchRetry": "Reintentar",
   "options": "Opciones",
   "resultsCount": "{count} resultados",
   "addToDbTip": "Consejo: Agregar a la base de datos",

@@ -161,9 +161,18 @@ class MealSuggestionService {
     return out;
   }
 
+  /// Never throws: searchFoods now reports an unreachable database instead of
+  /// returning an empty list, but here — as with [_aliasesFor] below — a failed
+  /// lookup just means the item stays unmatched, which is where it already was.
+  /// Aborting the whole parse over one ingredient would be worse.
   Future<FoodItem?> _bestMatch(String query) async {
-    final results = await _foods.searchFoods(query, limit: 1);
-    return results.isNotEmpty ? results.first : null;
+    try {
+      final results = await _foods.searchFoods(query, limit: 1);
+      return results.isNotEmpty ? results.first : null;
+    } catch (e) {
+      appLogger.w('⚠️ Food lookup failed for "$query" → leaving unmatched: $e');
+      return null;
+    }
   }
 
   /// Never throws: a failed alias lookup (model error, timeout, garbage output)

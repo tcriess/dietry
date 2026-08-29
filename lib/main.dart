@@ -2687,6 +2687,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       // to have changed. Re-probe instead of waiting up to 30s for the poll.
       if (!widget.isGuestMode && widget.dbService != null) {
         _sync.checkConnectivity();
+        // It is also the most likely moment for Neon to have scaled the
+        // compute to zero — the app was idle in the background. Startup and
+        // add-sheet warm-ups don't cover that, so wake it here too.
+        widget.dbService!.warmUp();
       }
     }
   }
@@ -3534,7 +3538,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     String query, {
     bool searchOnline = false,
   }) async {
-    final List<FoodItem> foods;
+    List<FoodItem> foods;
     if (searchOnline) {
       final results = await FoodSearchService().search(
         query,
@@ -3543,7 +3547,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       );
       foods = results.map((r) => r.food).toList();
     } else {
-      foods = await FoodDatabaseService(db).searchFoods(query, limit: 20);
+      try {
+        foods = await FoodDatabaseService(db).searchFoods(query, limit: 20);
+      } catch (e) {
+        // searchFoods reports an unreachable database by throwing, but this is
+        // a callback handed to the cloud template editor: its contract returns
+        // a list, and we cannot verify the closed-source side handles a throw.
+        // An empty result is the safe answer here.
+        appLogger.w('⚠️ Ingredient search failed for "$query": $e');
+        foods = const [];
+      }
     }
 
     return foods.map((f) {

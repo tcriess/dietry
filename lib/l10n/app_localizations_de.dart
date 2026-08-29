@@ -549,7 +549,7 @@ class AppLocalizationsDe extends AppLocalizations {
       '„g“, „ml“ und „g (gekocht)“ sind feste Einheiten – bitte eine andere Bezeichnung wählen';
 
   @override
-  String portionSaved(String name) {
+  String portionSaved(Object name) {
     return 'Portionsgröße „$name“ gespeichert';
   }
 
@@ -558,7 +558,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Portionsgröße konnte nicht gespeichert werden';
 
   @override
-  String portionCopiedToOwn(String name) {
+  String portionCopiedToOwn(Object name) {
     return '„$name“ wurde in deine eigenen Lebensmittel kopiert';
   }
 
@@ -2274,6 +2274,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noResults => 'Keine Ergebnisse';
+
+  @override
+  String get searchUnreachable => 'Die Datenbank ist gerade nicht erreichbar.';
+
+  @override
+  String get searchRetry => 'Erneut versuchen';
 
   @override
   String get options => 'Optionen';

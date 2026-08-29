@@ -495,8 +495,18 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       });
 
       if (mounted) {
+        // Reachable again now that searchFoods throws instead of returning an
+        // empty list: an unreachable database used to be indistinguishable
+        // from "no matches".
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler bei Suche: $e')),
+          SnackBar(
+            content: Text(l.searchUnreachable),
+            action: SnackBarAction(
+              label: l.searchRetry,
+              onPressed: () => _searchFoods(query),
+            ),
+          ),
         );
       }
     }

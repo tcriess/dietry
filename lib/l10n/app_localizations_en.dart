@@ -546,7 +546,7 @@ class AppLocalizationsEn extends AppLocalizations {
       '“g”, “ml” and “g (cooked)” are built-in units — please pick another name';
 
   @override
-  String portionSaved(String name) {
+  String portionSaved(Object name) {
     return 'Portion size “$name” saved';
   }
 
@@ -554,7 +554,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get portionSaveFailed => 'Could not save the portion size';
 
   @override
-  String portionCopiedToOwn(String name) {
+  String portionCopiedToOwn(Object name) {
     return '“$name” was copied into your own foods';
   }
 
@@ -2260,6 +2260,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noResults => 'No results';
+
+  @override
+  String get searchUnreachable => 'The database could not be reached.';
+
+  @override
+  String get searchRetry => 'Try again';
 
   @override
   String get options => 'Options';
