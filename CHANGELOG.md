@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ### Fixed
+- **Food log**: entries within a meal now always read in the order they were
+  logged, oldest first. The order used to depend on how the list had come to be
+  — a fresh load arrived newest-first from the query, while an optimistic add
+  and the delta sync appended — so a new entry sat at the bottom of its meal and
+  jumped to the top after the next reload. The list screen groups by meal and
+  renders in list order without sorting, so the store now holds one canonical
+  order and every write goes through it.
 - **Food search**: searching no longer comes back empty on the first try after
   the app has been idle. Neon suspends the compute when nothing is talking to
   it; the existing warm-up starts the resume, but it is a race the user can

@@ -22,6 +22,35 @@ class DataStore extends ChangeNotifier {
   DataStore._();
 
   List<FoodEntry> _foodEntries = [];
+
+  /// Canonical order for a day's food entries: the order they were logged in,
+  /// oldest first.
+  ///
+  /// The list screen groups by meal type and then renders in list order without
+  /// sorting, so whatever order this list happens to be in *is* the order the
+  /// user sees. It used to depend on how the list came to be — a fresh load
+  /// arrived newest-first from the query, while [addFoodEntry] and the delta
+  /// sync appended — so a new entry sat at the bottom of its meal and jumped to
+  /// the top after the next reload.
+  ///
+  /// Ascending is the direction that makes the optimistic append already
+  /// correct, so nothing moves when the server copy arrives. Ties break on id:
+  /// a meal template or a repeated meal inserts several entries at once and
+  /// they can share a timestamp, and without a tiebreak their relative order
+  /// would still wobble between loads.
+  @visibleForTesting
+  static int byLogOrder(FoodEntry a, FoodEntry b) {
+    final byTime = a.createdAt.compareTo(b.createdAt);
+    return byTime != 0 ? byTime : a.id.compareTo(b.id);
+  }
+
+  /// Every write to [_foodEntries] goes through here — sorting at the point of
+  /// assignment rather than in the getter, which is read on every rebuild for
+  /// the day's totals.
+  void _setFoodEntries(Iterable<FoodEntry> entries) {
+    _foodEntries = List<FoodEntry>.of(entries)..sort(byLogOrder);
+  }
+
   List<PhysicalActivity> _activities = [];
   NutritionGoal? _goal;
   int _waterIntakeMl = 0;
@@ -72,8 +101,12 @@ class DataStore extends ChangeNotifier {
 
   List<FoodEntry> get foodEntries => _foodEntries;
 
-  /// The day's activities, newest first — matching the server query and the
-  /// food list.
+  /// The day's activities, newest first — matching the server query.
+  ///
+  /// Deliberately the opposite of [foodEntries], which reads oldest-first: a
+  /// flat list of a day's activities is most useful with the latest at the top,
+  /// while food entries are grouped by meal and read best in the order they
+  /// were eaten. Both are stable; only the direction differs.
   ///
   /// Sorted here rather than trusted from the sources, because they disagree:
   /// the server orders by `start_time`, the local mirror ordered by
@@ -162,7 +195,7 @@ class DataStore extends ChangeNotifier {
     _isLoading = false;
     _goal = null;
     _goalConfirmed = false;
-    _foodEntries = [];
+    _setFoodEntries(const []);
     _activities = [];
     _waterIntakeMl = 0;
     _isCheatDay = false;
@@ -301,7 +334,7 @@ class DataStore extends ChangeNotifier {
       final water = await cache.getWaterIntakeForDate(date);
       final cheat = await cache.getCheatDay(date);
 
-      _foodEntries = entries;
+      _setFoodEntries(entries);
       _activities = activities;
       _waterIntakeMl = water;
       _applyCheatDay(cheat);
@@ -391,7 +424,7 @@ class DataStore extends ChangeNotifier {
   // ── Food entries ──────────────────────────────────────────────────────────
 
   void addFoodEntry(FoodEntry entry) {
-    _foodEntries = [..._foodEntries, entry];
+    _setFoodEntries([..._foodEntries, entry]);
     notifyListeners();
     // Cloud: trigger streak update in the background after adding an entry.
     if (AppFeatures.streaks) _checkAndUpdateStreak();
@@ -404,12 +437,12 @@ class DataStore extends ChangeNotifier {
   }
 
   void replaceFoodEntry(FoodEntry entry) {
-    _foodEntries = _foodEntries.map((e) => e.id == entry.id ? entry : e).toList();
+    _setFoodEntries(_foodEntries.map((e) => e.id == entry.id ? entry : e));
     notifyListeners();
   }
 
   void removeFoodEntry(String id) {
-    _foodEntries = _foodEntries.where((e) => e.id != id).toList();
+    _setFoodEntries(_foodEntries.where((e) => e.id != id));
     notifyListeners();
   }
 
@@ -515,7 +548,7 @@ class DataStore extends ChangeNotifier {
 
   Future<void> _loadEntries(DateTime date) async {
     try {
-      _foodEntries = await FoodEntryService(_db!).getFoodEntriesForDate(date);
+      _setFoodEntries(await FoodEntryService(_db!).getFoodEntriesForDate(date));
       _lastEntriesSync = DateTime.now().toUtc();
     } catch (_) {
       // Bestehende Einträge beibehalten — nicht auf [] setzen.
@@ -596,7 +629,7 @@ class DataStore extends ChangeNotifier {
       // Gelöschte Einträge: lokal vorhanden, auf Server nicht mehr
       final deletedIds = localIds.difference(serverIds.keys.toSet());
       if (deletedIds.isNotEmpty) {
-        _foodEntries = _foodEntries.where((e) => !deletedIds.contains(e.id)).toList();
+        _setFoodEntries(_foodEntries.where((e) => !deletedIds.contains(e.id)));
       }
 
       // Geänderte oder neue Einträge
@@ -610,16 +643,14 @@ class DataStore extends ChangeNotifier {
       if (toFetch.isNotEmpty) {
         final updated = await svc.getFoodEntriesByIds(toFetch);
         for (final entry in updated) {
+          // Replace in place or add; _setFoodEntries re-establishes the
+          // order either way, so a changed createdAt cannot strand an entry.
           final idx = _foodEntries.indexWhere((e) => e.id == entry.id);
-          if (idx >= 0) {
-            _foodEntries = [
-              ..._foodEntries.sublist(0, idx),
-              entry,
-              ..._foodEntries.sublist(idx + 1),
-            ];
-          } else {
-            _foodEntries = [..._foodEntries, entry];
-          }
+          _setFoodEntries([
+            if (idx >= 0) ..._foodEntries.sublist(0, idx) else ..._foodEntries,
+            entry,
+            if (idx >= 0) ..._foodEntries.sublist(idx + 1),
+          ]);
         }
       }
 
@@ -695,11 +726,11 @@ class DataStore extends ChangeNotifier {
   /// Load food entries from local SQLite
   Future<void> _loadEntriesLocal(DateTime date) async {
     try {
-      _foodEntries = await _local!.getFoodEntriesForDate(date);
+      _setFoodEntries(await _local!.getFoodEntriesForDate(date));
       _lastEntriesSync = DateTime.now().toUtc();
     } catch (e) {
       appLogger.e('❌ Error loading entries locally: $e');
-      _foodEntries = [];
+      _setFoodEntries(const []);
     }
   }
 
