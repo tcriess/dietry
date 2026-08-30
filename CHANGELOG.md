@@ -27,6 +27,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.7.1] — 2026-08-30
+
+### Fixed
+- **Food log**: the amount dialog is usable again. The unit dropdown sizes
+  itself to its widest entry, and "+ New portion size …" — added in 1.7.0 — is
+  far wider than any unit, so it took the whole row and squeezed the amount
+  field down to a few pixels. In German it could not hold a single digit. The
+  two now split the row in fixed shares instead of the dropdown taking what it
+  wants, in both the quick-add dialog and the add-entry screen.
+- **Food search**: the retry across a suspended database now actually covers
+  the case it was written for. Every attempt was capped at the same four
+  seconds, which is the one thing that cannot work: waking the compute is not
+  the whole cost — once it is up its cache is empty, and the first search reads
+  its index from remote storage. A query slower than four seconds was killed at
+  the same point on every attempt and restarted from scratch, so the retries
+  bought nothing. Attempts are now allowed 4s, 10s and 25s in turn: the first
+  stays impatient, because a warm database answers in well under a second, and
+  the last is patient enough to let a cold one finish. A real outage still
+  fails fast — a refused connection never spends its timeout. Once a retry is
+  under way the screen says the database is waking, rather than leaving a
+  spinner to explain a wait that can now run to most of a minute.
+
+---
+
 ## [1.7.0] — 2026-08-30
 
 ### Added
