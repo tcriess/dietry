@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+### Deprecated
+- 
+
+### Removed
+- 
+
+### Security
+- 
+
+---
+
+## [1.7.0] — 2026-08-30
+
+### Added
 - **Build tooling**: `scripts/build.sh <ce|cloud> <dev|prod> <web|linux|android>`,
   `scripts/release-all.sh` and `scripts/run-android.sh` — one tracked build path
   for every edition, backend and target, replacing the untracked root `build.sh`
@@ -27,9 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   full add-entry screen. For a public food owned by someone else, the portion is
   stored on a private copy of the food (micronutrients are not carried over to
   that copy).
-
-### Changed
-- 
 
 ### Fixed
 - **Food log**: entries within a meal now always read in the order they were
@@ -55,14 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   list is deduplicated, and those names are now rejected when a portion is
   created from the amount dialog.
 
-### Deprecated
-- 
-
 ### Removed
 - 
 
-### Security
-- 
 
 ---
 
