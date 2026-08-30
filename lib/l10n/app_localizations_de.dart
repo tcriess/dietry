@@ -2276,6 +2276,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noResults => 'Keine Ergebnisse';
 
   @override
+  String get searchWaking => 'Datenbank wird geweckt …';
+
+  @override
   String get searchUnreachable => 'Die Datenbank ist gerade nicht erreichbar.';
 
   @override

@@ -4162,6 +4162,12 @@ abstract class AppLocalizations {
   /// **'Keine Ergebnisse'**
   String get noResults;
 
+  /// No description provided for @searchWaking.
+  ///
+  /// In de, this message translates to:
+  /// **'Datenbank wird geweckt …'**
+  String get searchWaking;
+
   /// No description provided for @searchUnreachable.
   ///
   /// In de, this message translates to:

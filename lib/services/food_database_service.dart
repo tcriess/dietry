@@ -24,9 +24,14 @@ class FoodDatabaseService {
   /// Case-insensitive Suche mit Trigram-Ähnlichkeits-Ranking.
   /// Optional filter by tags (all requested tags must be present).
   /// Ergebnisse sortiert nach: Eigene zuerst, dann beste Ähnlichkeit, dann zuletzt verwendet, dann alphabetisch.
+  ///
+  /// [onRetry] is forwarded to [withDbRetry]: the budget now runs to most of a
+  /// minute when the database is cold, which is too long to leave a bare
+  /// spinner to explain.
   Future<List<FoodItem>> searchFoods(String query, {
     int limit = 50,
     List<String> filterTags = const [],  // tag slugs to filter by
+    void Function(int attempt)? onRetry,
   }) async {
     appLogger.d('🔍 Suche nach Lebensmitteln: "$query" (Limit: $limit${filterTags.isNotEmpty ? ', Tags: ${filterTags.join(", ")}' : ''})');
 
@@ -66,6 +71,7 @@ class FoodDatabaseService {
         return foods;
       },
       label: 'Food search "$query"',
+      onRetry: onRetry,
     );
   }
   

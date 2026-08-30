@@ -2285,6 +2285,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noResults => 'Sin resultados';
 
   @override
+  String get searchWaking => 'Activando la base de datos …';
+
+  @override
   String get searchUnreachable => 'No se pudo conectar con la base de datos.';
 
   @override

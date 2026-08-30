@@ -7,8 +7,7 @@ import 'app_logger.dart';
 // Neon scales the compute to zero when idle. The app hydrates the day from its
 // local mirror on cold start (see DataStore.loadDay), so little touches the
 // server until the user opens the add sheet or searches — which means the
-// compute is very often suspended at exactly that moment. Resuming it usually
-// takes well under a second but can run to several, and the request that
+// compute is very often suspended at exactly that moment. The request that
 // triggers the resume is the one that pays for it.
 //
 // NeonDatabaseService.warmUp already fires at app start, when the add sheet
@@ -22,48 +21,79 @@ import 'app_logger.dart';
 // or hangs indefinitely — and every caller on this path used to turn that into
 // an empty list, which the UI renders identically to "no matches".
 
-/// How long one attempt may take before it is abandoned and retried.
+/// How long each attempt may take, in order. **Escalating**, and that is the
+/// whole point.
 ///
-/// Deliberately shorter than the total budget: a request stuck on a compute
-/// that is still resuming is better cancelled and retried than waited on, and
-/// without this there is no timeout on the postgrest path at all.
-const Duration kDbAttemptTimeout = Duration(seconds: 4);
+/// Waking the compute is not the only cost: once it is up, its page cache is
+/// empty, so the first `search_food_database` — a similarity scan over the
+/// whole table — reads its index from remote storage. That can take longer
+/// than a warm query by an order of magnitude.
+///
+/// The first version of this capped *every* attempt at 4s, which made that
+/// case unwinnable: each attempt was killed at the same point and the next one
+/// started the same cold query over from the beginning, so the retry budget
+/// bought nothing. Searching stayed broken until something else happened to
+/// warm the database.
+///
+/// So: attempt 1 is impatient, because a warm database answers in well under a
+/// second and there is no reason to hang on a request that is going nowhere.
+/// The last attempt is patient enough to let a genuinely slow cold query
+/// finish. A real outage still fails fast — a refused connection or an unknown
+/// host returns immediately and never spends its timeout.
+const List<Duration> kDbAttemptTimeouts = [
+  Duration(seconds: 4),
+  Duration(seconds: 10),
+  Duration(seconds: 25),
+];
 
-/// Delay before each retry. Length + 1 = the number of attempts, so this is
-/// four attempts spread over roughly ten seconds of wall clock in the worst
-/// case — comfortably longer than a cold start, short enough that a genuine
-/// outage still reports back while the user is watching.
+/// Delay before each retry — one shorter than [kDbAttemptTimeouts], since the
+/// last attempt is not followed by one.
+///
+/// Short, because the waiting that matters happens inside an attempt now: the
+/// resume the app is waiting for is already under way, kicked off by the
+/// attempt that just timed out.
 const List<Duration> kDbRetryBackoff = [
-  Duration(milliseconds: 400),
-  Duration(milliseconds: 1200),
-  Duration(seconds: 3),
+  Duration(milliseconds: 500),
+  Duration(seconds: 1),
 ];
 
 /// Runs [operation] against the Data API, retrying transient failures.
 ///
-/// Each attempt is capped at [kDbAttemptTimeout]; failures are retried with
-/// [kDbRetryBackoff]. The last failure is rethrown, so callers decide whether
-/// to surface it — the point of this helper is that a failure stays
+/// Attempt _n_ is capped at `attemptTimeouts[n]`; failures are retried after
+/// `backoff[n]`. The last failure is rethrown, so callers decide whether to
+/// surface it — the point of this helper is that a failure stays
 /// *distinguishable* from an empty result rather than being flattened into one.
+///
+/// [onRetry] fires before each retry with the 1-based number of the attempt
+/// about to start, so a screen can say that it is waiting on the database
+/// rather than leaving a spinner to speak for a wait that can now run to most
+/// of a minute.
 ///
 /// Every exception is retried, not just the transport ones. Telling a cold
 /// start apart from a genuine client error would mean matching on the postgrest
 /// package's exception shape, and getting that match wrong would silently
 /// disable the retry for the case it exists for. The budget is bounded, so the
-/// cost of retrying an error that was never going to succeed is ~10s, once.
+/// cost of retrying an error that was never going to succeed is one budget,
+/// once — and an error that fails fast never spends its timeout at all.
 ///
-/// [attemptTimeout] and [backoff] exist so tests can exercise the policy
-/// without spending the real ten seconds on it; production callers use the
-/// defaults.
+/// [attemptTimeouts] and [backoff] exist so tests can exercise the policy
+/// without spending the real budget on it; production callers use the defaults.
 Future<T> withDbRetry<T>(
   Future<T> Function() operation, {
   String label = 'Data API',
-  Duration attemptTimeout = kDbAttemptTimeout,
+  List<Duration> attemptTimeouts = kDbAttemptTimeouts,
   List<Duration> backoff = kDbRetryBackoff,
+  void Function(int attempt)? onRetry,
 }) async {
+  assert(attemptTimeouts.isNotEmpty);
   for (var attempt = 0;; attempt++) {
     try {
-      return await operation().timeout(attemptTimeout);
+      // The last entry also covers any attempt beyond the list, so a caller
+      // passing a longer backoff than timeouts still gets a bounded attempt.
+      final cap = attempt < attemptTimeouts.length
+          ? attemptTimeouts[attempt]
+          : attemptTimeouts.last;
+      return await operation().timeout(cap);
     } catch (e) {
       if (attempt >= backoff.length) {
         appLogger.e('❌ $label failed after ${attempt + 1} attempts: $e');
@@ -71,6 +101,7 @@ Future<T> withDbRetry<T>(
       }
       appLogger.w('⚠️ $label attempt ${attempt + 1} failed ($e) — retrying in '
           '${backoff[attempt].inMilliseconds}ms');
+      onRetry?.call(attempt + 2);
       await Future.delayed(backoff[attempt]);
     }
   }

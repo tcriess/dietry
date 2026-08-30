@@ -93,6 +93,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   Map<String, double> _selectedMicros = const {};
   List<FoodSearchResult> _searchResults = [];
   bool _isSearching = false;
+
+  /// Set once the search has had to retry, so a wait on a database that is
+  /// still resuming says what it is waiting for.
+  bool _searchWaking = false;
   bool _showManualEntry = false;
   MealType _selectedMealType = _mealTypeForCurrentTime();
   FoodPortion? _selectedPortion; // null = custom g/ml Eingabe
@@ -426,6 +430,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
     setState(() {
       _isSearching = true;
+      _searchWaking = false;
     });
 
     try {
@@ -444,6 +449,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             query,
             limit: 20,
             filterTags: _selectedTagSlugs.toList(),
+            // The first attempt failed, so the wait ahead is a suspended
+            // database resuming — it can run to most of a minute, which is too
+            // long for an unexplained spinner.
+            onRetry: (_) {
+              if (mounted) setState(() => _searchWaking = true);
+            },
           );
           results.addAll(items.map((f) => FoodSearchResult(food: f)));
         } else {
@@ -487,11 +498,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       setState(() {
         _searchResults = uniqueResults.values.toList();
         _isSearching = false;
+        _searchWaking = false;
       });
     } catch (e) {
       appLogger.e('❌ Fehler bei Food-Suche: $e');
       setState(() {
         _isSearching = false;
+        _searchWaking = false;
       });
 
       if (mounted) {
@@ -962,6 +975,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
     return DropdownButtonFormField<String>(
       initialValue: currentKey,
+      // The field shares its row with the amount input, so it must take the
+      // width it is given rather than the width its widest item wants — and a
+      // long label ("+ New portion size …", a named portion with its weight)
+      // wraps in the menu rather than overflowing a fixed-height row.
+      isExpanded: true,
+      itemHeight: null,
       decoration: InputDecoration(
         labelText: l.unit,
         border: const OutlineInputBorder(),
@@ -1718,7 +1737,23 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
                     // My DB preloaded list (authenticated) or online/guest search results
                     if (_isLoadingMyFoods || _isSearching)
-                      const Center(child: CircularProgressIndicator())
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            // Only once a retry is under way: an ordinary
+                            // search answers too fast for this to be anything
+                            // but noise.
+                            if (_searchWaking) ...[
+                              const SizedBox(height: 16),
+                              Text(l.searchWaking,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.grey)),
+                            ],
+                          ],
+                        ),
+                      )
                     else if (!_useOpenFoodFacts &&
                         widget.dbService != null &&
                         _searchController.text.trim().isEmpty) ...[

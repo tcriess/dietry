@@ -1054,6 +1054,7 @@
   "manageDatabase": "Datenbank verwalten",
   "searchFood": "Lebensmittel suchen",
   "noResults": "Keine Ergebnisse",
+  "searchWaking": "Datenbank wird geweckt …",
   "searchUnreachable": "Die Datenbank ist gerade nicht erreichbar.",
   "searchRetry": "Erneut versuchen",
   "options": "Optionen",

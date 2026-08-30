@@ -2262,6 +2262,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noResults => 'No results';
 
   @override
+  String get searchWaking => 'Waking the database …';
+
+  @override
   String get searchUnreachable => 'The database could not be reached.';
 
   @override

@@ -189,6 +189,10 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   /// an empty result list because the two used to render identically — an
   /// unreachable database looked exactly like "no such food".
   bool _searchFailed = false;
+
+  /// Set once the search has had to retry, so a wait that can now run to most
+  /// of a minute says what it is waiting for instead of spinning silently.
+  bool _searchWaking = false;
   String _query = '';
 
   @override
@@ -550,6 +554,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       _query = q;
       _searching = true;
       _searchFailed = false;
+      _searchWaking = false;
       // Search takes focus; the suggestion strip would be hidden behind
       // the results anyway.
       _suggestions = const [];
@@ -560,25 +565,40 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   Future<void> _runSearch() async {
     final q = _query;
     if (q.isEmpty) return;
-    if (!_searching) setState(() => _searching = true);
+    if (!_searching || _searchWaking) {
+      setState(() {
+        _searching = true;
+        _searchWaking = false;
+      });
+    }
     try {
-      final results =
-          await FoodDatabaseService(widget.dbService).searchFoods(q, limit: 40);
+      final results = await FoodDatabaseService(widget.dbService).searchFoods(
+        q,
+        limit: 40,
+        // The first attempt failed: the compute is suspended or its cache is
+        // cold, and the next attempt is the patient one.
+        onRetry: (_) {
+          if (mounted && q == _query) setState(() => _searchWaking = true);
+        },
+      );
       // Ignore stale responses — the query moved on while we were waiting.
       if (!mounted || q != _query) return;
       setState(() {
         _searchResults = results;
         _searching = false;
+        _searchWaking = false;
         _searchFailed = false;
       });
       await _prefetchPortionPrefs(results.map((f) => f.id));
     } catch (e) {
-      // searchFoods has already retried for ~10s. Say so rather than showing
-      // an empty list the user would read as "this food is not in there".
+      // searchFoods has already spent its whole retry budget. Say so rather
+      // than showing an empty list the user would read as "this food is not in
+      // there".
       appLogger.w('⚠️ Suche fehlgeschlagen: $e');
       if (!mounted || q != _query) return;
       setState(() {
         _searching = false;
+        _searchWaking = false;
         _searchFailed = true;
         _searchResults = [];
       });
@@ -592,6 +612,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       _query = '';
       _searchResults = [];
       _searching = false;
+      _searchWaking = false;
       _searchFailed = false;
     });
   }
@@ -1321,7 +1342,24 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
   Widget _buildSearchResults() {
     final l = AppLocalizations.of(context)!;
     if (_searching) {
-      return const Center(child: CircularProgressIndicator());
+      if (!_searchWaking) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      // The first attempt has already failed, so this wait is the database
+      // coming back up rather than a slow network. Naming it is the difference
+      // between "the app is stuck" and "it is doing something".
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(l.searchWaking,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
     }
     if (_searchFailed) {
       return Center(
@@ -2701,7 +2739,12 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
           // Amount + Unit
           Row(
             children: [
+              // Fixed shares, because a DropdownButton sizes itself to its
+              // widest menu item: "+ New portion size …" is far wider than any
+              // unit, and left unconstrained it squeezed the amount field down
+              // to a few pixels — in German it could not hold one digit.
               Expanded(
+                flex: 2,
                 child: TextFormField(
                   controller: _amountCtrl,
                   decoration: InputDecoration(
@@ -2722,42 +2765,50 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
               // size, so a barcode scan can end with "1 bar = 30 g" captured on
               // the food instead of a bare gram amount typed once and lost.
               if (units.length > 1 || _canAddPortion)
-                DropdownButton<String>(
-                  value: _selectedUnit,
-                  items: [
-                    for (final unit in units)
-                      DropdownMenuItem(
-                        value: unit,
-                        child: Text(
-                          unitLabel(unit, l,
-                              distinguishRaw: _cookedYield != null),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                    if (_canAddPortion)
-                      DropdownMenuItem(
-                        value: kAddPortionValue,
-                        child: Text(
-                          l.portionAddNew,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Theme.of(context).colorScheme.primary,
+                Expanded(
+                  flex: 3,
+                  // The button now takes the width it is given rather than the
+                  // width it wants; itemHeight null lets a long label wrap in
+                  // the menu instead of overflowing a fixed-height row.
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    itemHeight: null,
+                    value: _selectedUnit,
+                    items: [
+                      for (final unit in units)
+                        DropdownMenuItem(
+                          value: unit,
+                          child: Text(
+                            unitLabel(unit, l,
+                                distinguishRaw: _cookedYield != null),
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ),
-                      ),
-                  ],
-                  onChanged: _savingPortion
-                      ? null
-                      : (newUnit) {
-                          if (newUnit == null) return;
-                          // The sentinel is an action, not a unit — never let
-                          // it become the selected value.
-                          if (newUnit == kAddPortionValue) {
-                            unawaited(_addPortionSize());
-                            return;
-                          }
-                          _onUnitChanged(newUnit);
-                        },
+                      if (_canAddPortion)
+                        DropdownMenuItem(
+                          value: kAddPortionValue,
+                          child: Text(
+                            l.portionAddNew,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                    ],
+                    onChanged: _savingPortion
+                        ? null
+                        : (newUnit) {
+                            if (newUnit == null) return;
+                            // The sentinel is an action, not a unit — never let
+                            // it become the selected value.
+                            if (newUnit == kAddPortionValue) {
+                              unawaited(_addPortionSize());
+                              return;
+                            }
+                            _onUnitChanged(newUnit);
+                          },
+                  ),
                 )
               else
                 Text(

@@ -969,6 +969,7 @@
   "manageDatabase": "Manage database",
   "searchFood": "Search food",
   "noResults": "No results",
+  "searchWaking": "Waking the database …",
   "searchUnreachable": "The database could not be reached.",
   "searchRetry": "Try again",
   "options": "Options",

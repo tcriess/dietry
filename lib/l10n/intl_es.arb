@@ -969,6 +969,7 @@
   "manageDatabase": "Gestionar base de datos",
   "searchFood": "Buscar alimento",
   "noResults": "Sin resultados",
+  "searchWaking": "Activando la base de datos …",
   "searchUnreachable": "No se pudo conectar con la base de datos.",
   "searchRetry": "Reintentar",
   "options": "Opciones",
