@@ -3065,6 +3065,12 @@ abstract class AppLocalizations {
   /// **'Ziel'**
   String get reportsGoalLine;
 
+  /// No description provided for @reportsTargetWithBurn.
+  ///
+  /// In de, this message translates to:
+  /// **'Ziel + Verbrannt'**
+  String get reportsTargetWithBurn;
+
   /// No description provided for @reportsBodyFat.
   ///
   /// In de, this message translates to:

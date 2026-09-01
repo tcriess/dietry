@@ -78,6 +78,64 @@ double? _goalCalForDate(List<NutritionGoal> goals, DateTime date) {
   return null;
 }
 
+/// One point on the calorie trend chart: what was eaten that day, what was
+/// burned, and the target that actually applied — the goal *raised by the
+/// burn*, the same arithmetic the day view does for "remaining"
+/// (`goal − consumed + burned`). A fixed goal line would mark a 3000 kcal day
+/// as a blowout even when 900 of it was paid for by a long run.
+///
+/// For the year and all-time ranges every field is the bucket's daily average.
+/// [target] averages only over the days that had a goal at all, and is null
+/// when none of them did.
+class CalorieTrendPoint {
+  final DateTime date;
+  final double intake;
+  final double burned;
+  final double? target;
+
+  const CalorieTrendPoint({
+    required this.date,
+    required this.intake,
+    required this.burned,
+    this.target,
+  });
+}
+
+/// Folds [nutrition] into the calorie chart's x-axis points, bucketed by
+/// [range] and paired with the goal in force on each day (see
+/// [_goalCalForDate], so an edited goal shows up as a step, not retroactively).
+///
+/// [nutrition] is expected in ascending date order, as the service returns it.
+List<CalorieTrendPoint> buildCalorieTrend(
+  List<DailyNutritionData> nutrition,
+  List<NutritionGoal> goalHistory,
+  ReportRange range,
+) {
+  final groups = <String, List<DailyNutritionData>>{};
+  for (final d in nutrition) {
+    groups.putIfAbsent(range.bucketKey(d.date), () => []).add(d);
+  }
+
+  return groups.values.map((days) {
+    final targets = days
+        .map((d) {
+          final g = _goalCalForDate(goalHistory, d.date);
+          return g == null ? null : g + d.caloriesBurned;
+        })
+        .whereType<double>()
+        .toList();
+    return CalorieTrendPoint(
+      date: days.first.date,
+      intake: days.fold(0.0, (s, d) => s + d.calories) / days.length,
+      burned: days.fold(0.0, (s, d) => s + d.caloriesBurned) / days.length,
+      target: targets.isEmpty
+          ? null
+          : targets.reduce((a, b) => a + b) / targets.length,
+    );
+  }).toList()
+    ..sort((a, b) => a.date.compareTo(b.date));
+}
+
 List<({DateTime date, double value})> _bucket(
     List<({DateTime date, double value})> pts, ReportRange range) {
   if (range == ReportRange.week || range == ReportRange.month) return pts;
@@ -869,8 +927,10 @@ class _StatsSummaryCard extends StatelessWidget {
         .where((d) => d.date.toIso8601String().split('T')[0] != todayStr)
         .toList();
     final n = completed.length;
+    // Gross intake, matching the calorie chart's blue line — the burn is
+    // accounted for on the target side, not by shrinking what was eaten.
     final avgCal =
-        n == 0 ? 0.0 : completed.fold(0.0, (s, d) => s + d.netCalories) / n;
+        n == 0 ? 0.0 : completed.fold(0.0, (s, d) => s + d.calories) / n;
     final completedWater = water
         .where((d) => d.date.toIso8601String().split('T')[0] != todayStr)
         .toList();
@@ -881,10 +941,13 @@ class _StatsSummaryCard extends StatelessWidget {
             .round();
 
     final calGoal = goal?.calories ?? 0;
+    // Judged against the target that actually applied that day — goal plus
+    // burn, the same yardstick the calorie chart draws. A 2800 kcal day after
+    // a 600 kcal ride is on target, not 27% over it.
     final daysOnTarget = calGoal > 0
         ? completed
             .where((d) {
-              final r = d.calories / calGoal;
+              final r = d.calories / (calGoal + d.caloriesBurned);
               return r >= 0.9 && r <= 1.1;
             })
             .length
@@ -950,6 +1013,22 @@ class _StatTile extends StatelessWidget {
       );
 }
 
+/// Tooltip body shared by both calorie chart flavours: the day, what went in,
+/// what was burned off it, and the target the two should be judged against.
+/// The burn and target lines are dropped when there is nothing to say.
+String _trendTooltip(
+    CalorieTrendPoint p, ReportRange range, AppLocalizations l) {
+  final b = StringBuffer(_tooltipLabel(p.date, range))
+    ..write('\n${l.reportsConsumed} ${p.intake.round()} kcal');
+  if (p.burned > 0) {
+    b.write('\n${l.reportsCaloriesBurned} ${p.burned.round()} kcal');
+  }
+  if (p.target != null) {
+    b.write('\n${l.reportsGoalLine} ${p.target!.round()} kcal');
+  }
+  return b.toString();
+}
+
 // ── CE: Calorie trend card (with line/bar toggle) ─────────────────────────────
 
 class _CalorieTrendCard extends StatefulWidget {
@@ -971,6 +1050,11 @@ class _CalorieTrendCardState extends State<_CalorieTrendCard> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
+    // Derived once here so both chart flavours draw the same numbers and the
+    // legend can say whether there is a target line at all.
+    final pts = buildCalorieTrend(
+        widget.nutrition, widget.goalHistory, widget.range);
+    final hasTarget = pts.any((p) => p.target != null);
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -1004,16 +1088,28 @@ class _CalorieTrendCardState extends State<_CalorieTrendCard> {
             ),
             const SizedBox(height: 12),
             _showBars
-                ? _CalorieTrendBarChart(
-                    nutrition: widget.nutrition,
-                    range: widget.range,
-                    goalHistory: widget.goalHistory,
-                  )
-                : _CalorieTrendLineChart(
-                    nutrition: widget.nutrition,
-                    range: widget.range,
-                    goalHistory: widget.goalHistory,
-                  ),
+                ? _CalorieTrendBarChart(pts: pts, range: widget.range)
+                : _CalorieTrendLineChart(pts: pts, range: widget.range),
+            // Without this the blue line is just "calories" and the red one an
+            // unexplained second number — the whole point is that the target
+            // moves with the burn, so say so. Nothing to label when the range
+            // is empty; the charts show "no data" there instead.
+            if (pts.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 16,
+                runSpacing: 4,
+                children: [
+                  _LegendEntry(color: Colors.blue, label: l.reportsConsumed),
+                  if (hasTarget)
+                    _LegendEntry(
+                      color: Colors.red.withValues(alpha: 0.6),
+                      label: l.reportsTargetWithBurn,
+                      dashed: true,
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -1021,39 +1117,62 @@ class _CalorieTrendCardState extends State<_CalorieTrendCard> {
   }
 }
 
+/// One swatch-plus-label of a chart legend. The swatch is drawn dashed or solid
+/// to match how the chart draws that series.
+class _LegendEntry extends StatelessWidget {
+  final Color color;
+  final String label;
+  final bool dashed;
+
+  const _LegendEntry(
+      {required this.color, required this.label, this.dashed = false});
+
+  Widget _swatch() => Container(width: dashed ? 6 : 14, height: 3, color: color);
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dashed)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              _swatch(),
+              const SizedBox(width: 2),
+              _swatch(),
+            ])
+          else
+            _swatch(),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+        ],
+      );
+}
+
 // ── CE: Calorie trend – line chart ────────────────────────────────────────────
 
 class _CalorieTrendLineChart extends StatelessWidget {
-  final List<DailyNutritionData> nutrition;
+  final List<CalorieTrendPoint> pts;
   final ReportRange range;
-  final List<NutritionGoal> goalHistory;
 
-  const _CalorieTrendLineChart(
-      {required this.nutrition, required this.range, required this.goalHistory});
+  const _CalorieTrendLineChart({required this.pts, required this.range});
 
   @override
   Widget build(BuildContext context) {
-    final pts = _bucket(
-      nutrition.map((d) => (date: d.date, value: d.netCalories)).toList(),
-      range,
-    );
+    final l = AppLocalizations.of(context)!;
 
     if (pts.isEmpty) return const _NoData();
 
-    final goalSpots = pts.asMap().entries.expand<FlSpot>((e) {
-      final g = _goalCalForDate(goalHistory, pts[e.key].date);
-      return g != null ? [FlSpot(e.key.toDouble(), g)] : [];
-    }).toList();
+    final targetSpots = <FlSpot>[
+      for (var i = 0; i < pts.length; i++)
+        if (pts[i].target != null) FlSpot(i.toDouble(), pts[i].target!),
+    ];
 
     final maxY = ([
-          ...pts.map((p) => p.value),
-          ...goalSpots.map((s) => s.y),
+          ...pts.map((p) => p.intake),
+          ...targetSpots.map((s) => s.y),
         ].reduce((a, b) => a > b ? a : b) *
             1.1)
         .ceilToDouble();
-
-    final minVal = pts.map((p) => p.value).reduce((a, b) => a < b ? a : b);
-    final minY = minVal < 0 ? (minVal * 1.1).floorToDouble() : 0.0;
 
     final every = _labelEvery(pts.length);
 
@@ -1061,7 +1180,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
       height: 180,
       child: LineChart(
         LineChartData(
-          minY: minY,
+          minY: 0,
           maxY: maxY,
           gridData: FlGridData(
             drawHorizontalLine: true,
@@ -1095,25 +1214,25 @@ class _CalorieTrendLineChart extends StatelessWidget {
           ),
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (spots) => spots.map((s) {
+              // One tooltip for the day, not one per line: the target line
+              // returns null so touching it does not repeat the same numbers.
+              getTooltipItems: (spots) => spots.map<LineTooltipItem?>((s) {
                 final idx = s.x.toInt();
-                final date = idx >= 0 && idx < pts.length
-                    ? _tooltipLabel(pts[idx].date, range)
-                    : '';
+                if (s.barIndex != 0 || idx < 0 || idx >= pts.length) return null;
                 return LineTooltipItem(
-                  '$date\n${s.y.round()} kcal',
+                  _trendTooltip(pts[idx], range, l),
                   const TextStyle(fontSize: 12, color: Colors.white),
                 );
               }).toList(),
             ),
           ),
           lineBarsData: [
-            // Consumed line
+            // Intake line — what was actually eaten, gross.
             LineChartBarData(
               spots: pts
                   .asMap()
                   .entries
-                  .map((e) => FlSpot(e.key.toDouble(), e.value.value))
+                  .map((e) => FlSpot(e.key.toDouble(), e.value.intake))
                   .toList(),
               isCurved: true,
               curveSmoothness: 0.3,
@@ -1125,10 +1244,11 @@ class _CalorieTrendLineChart extends StatelessWidget {
                 color: Colors.blue.withValues(alpha: 0.08),
               ),
             ),
-            // Goal reference line (step function — reflects historical goals)
-            if (goalSpots.isNotEmpty)
+            // Target line — the goal of the day plus what was burned, so it
+            // rises on training days instead of accusing them of a blowout.
+            if (targetSpots.isNotEmpty)
               LineChartBarData(
-                spots: goalSpots,
+                spots: targetSpots,
                 isCurved: false,
                 color: Colors.red.withValues(alpha: 0.45),
                 barWidth: 1.5,
@@ -1145,33 +1265,23 @@ class _CalorieTrendLineChart extends StatelessWidget {
 // ── CE: Calorie trend – bar chart ─────────────────────────────────────────────
 
 class _CalorieTrendBarChart extends StatelessWidget {
-  final List<DailyNutritionData> nutrition;
+  final List<CalorieTrendPoint> pts;
   final ReportRange range;
-  final List<NutritionGoal> goalHistory;
 
-  const _CalorieTrendBarChart(
-      {required this.nutrition, required this.range, required this.goalHistory});
+  const _CalorieTrendBarChart({required this.pts, required this.range});
 
   @override
   Widget build(BuildContext context) {
-    final pts = _bucket(
-      nutrition.map((d) => (date: d.date, value: d.netCalories)).toList(),
-      range,
-    );
+    final l = AppLocalizations.of(context)!;
 
     if (pts.isEmpty) return const _NoData();
 
-    final goalByIndex = List.generate(
-        pts.length, (i) => _goalCalForDate(goalHistory, pts[i].date));
     final maxY = ([
-          ...pts.map((p) => p.value),
-          ...goalByIndex.whereType<double>(),
+          ...pts.map((p) => p.intake),
+          ...pts.map((p) => p.target).whereType<double>(),
         ].reduce((a, b) => a > b ? a : b) *
             1.1)
         .ceilToDouble();
-
-    final minVal = pts.map((p) => p.value).reduce((a, b) => a < b ? a : b);
-    final minY = minVal < 0 ? (minVal * 1.1).floorToDouble() : 0.0;
 
     final every = _labelEvery(pts.length);
     final barWidth = (280 / pts.length).clamp(4.0, 18.0);
@@ -1180,7 +1290,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
       height: 180,
       child: BarChart(
         BarChartData(
-          minY: minY,
+          minY: 0,
           maxY: maxY,
           gridData: FlGridData(
             drawHorizontalLine: true,
@@ -1191,12 +1301,10 @@ class _CalorieTrendBarChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, _, rod, __) {
-                final date = group.x >= 0 && group.x < pts.length
-                    ? _tooltipLabel(pts[group.x].date, range)
-                    : '';
+              getTooltipItem: (group, _, __, ___) {
+                if (group.x < 0 || group.x >= pts.length) return null;
                 return BarTooltipItem(
-                  '$date\n${rod.toY.round()} kcal',
+                  _trendTooltip(pts[group.x], range, l),
                   const TextStyle(fontSize: 12, color: Colors.white),
                 );
               },
@@ -1228,20 +1336,23 @@ class _CalorieTrendBarChart extends StatelessWidget {
               .asMap()
               .entries
               .map((e) {
-                final goalForBar = goalByIndex[e.key];
+                final target = e.value.target;
                 return BarChartGroupData(
                   x: e.key,
                   barRods: [
                     BarChartRodData(
-                      toY: e.value.value,
+                      toY: e.value.intake,
                       color: Colors.blue.withValues(alpha: 0.75),
                       width: barWidth,
                       borderRadius:
                           const BorderRadius.vertical(top: Radius.circular(3)),
-                      backDrawRodData: goalForBar != null
+                      // The backdrop rod is the day's target — goal plus burn,
+                      // so a bar that overshoots the plain goal but stays
+                      // inside its backdrop reads as the good day it was.
+                      backDrawRodData: target != null
                           ? BackgroundBarChartRodData(
                               show: true,
-                              toY: goalForBar,
+                              toY: target,
                               color: Colors.red.withValues(alpha: 0.10),
                             )
                           : BackgroundBarChartRodData(show: false),
@@ -1255,6 +1366,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
     );
   }
 }
+
 
 // ── CE: Macro average ─────────────────────────────────────────────────────────
 

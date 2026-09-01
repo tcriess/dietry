@@ -744,6 +744,7 @@
   "reportsDaysOnTarget": "Días en objetivo",
   "reportsAvgWater": "Agua diaria promedio",
   "reportsGoalLine": "Objetivo",
+  "reportsTargetWithBurn": "Objetivo + quemadas",
   "reportsBodyFat": "Grasa corporal %",
   "reportsCaloriesBurned": "Quemadas",
   "reportsConsumed": "Consumidas",

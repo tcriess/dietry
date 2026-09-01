@@ -1665,6 +1665,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get reportsGoalLine => 'Objetivo';
 
   @override
+  String get reportsTargetWithBurn => 'Objetivo + quemadas';
+
+  @override
   String get reportsBodyFat => 'Grasa corporal %';
 
   @override

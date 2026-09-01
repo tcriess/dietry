@@ -36,8 +36,6 @@ class DailyNutritionData {
     required this.carbs,
     this.caloriesBurned = 0,
   });
-
-  double get netCalories => calories - caloriesBurned;
 }
 
 class DailyWaterData {
