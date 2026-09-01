@@ -21,6 +21,7 @@ import '../services/db_retry.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 import 'portion_size_dialog.dart';
+import '../utils/nutrition_warning_text.dart';
 import 'cooked_weight_nudge.dart';
 import 'cooked_factor_dialog.dart';
 import 'repeat_meal_picker.dart';
@@ -688,6 +689,18 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       }
       return;
     }
+    // Say so before the values are logged and silently copied into the user's
+    // own database — an online source can be wrong, and the scan flow never
+    // shows the label it was transcribed from.
+    final warning = nutritionWarningText(
+        result.warnings, AppLocalizations.of(context)!);
+    if (warning != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(warning),
+        duration: const Duration(seconds: 6),
+      ));
+    }
+
     await _pickFood(foodForEntry ?? result.food);
   }
 
@@ -2519,18 +2532,25 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     if (food == null || _savingPortion) return;
     final l = AppLocalizations.of(context)!;
 
-    final portion = await showAddPortionSizeDialog(
+    final defined = await showAddPortionSizeDialog(
       context,
       existing: food.portions,
       initialAmount: _currentAmountG(),
       isLiquid: widget.isLiquid,
+      // Offers "these values are for this amount": the food's own per-100 g
+      // energy is what the correction would rewrite.
+      caloriesPer100g: food.calories,
     );
-    if (portion == null || !mounted) return;
+    if (defined == null || !mounted) return;
+    final portion = defined.portion;
 
     setState(() => _savingPortion = true);
     try {
-      final result =
-          await FoodDatabaseService(widget.dbService).addPortion(food, portion);
+      final result = await FoodDatabaseService(widget.dbService).addPortion(
+        food,
+        portion,
+        rebaseNutrition: defined.rebaseNutrition,
+      );
       if (!mounted) return;
       setState(() {
         _food = result.food;
@@ -2545,9 +2565,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         if (!_userSetEstimate) _estimateLevel = _autoEstimate();
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result.cloned
-            ? '${l.portionSaved(portion.name)} · ${l.portionCopiedToOwn(result.food.name)}'
-            : l.portionSaved(portion.name)),
+        content: Text([
+          l.portionSaved(portion.name),
+          if (defined.rebaseNutrition) l.portionRebased,
+          if (result.cloned) l.portionCopiedToOwn(result.food.name),
+        ].join(' · ')),
       ));
     } catch (e) {
       appLogger.w('⚠️ Portion konnte nicht gespeichert werden: $e');
@@ -2707,7 +2729,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final provenance = _food?.provenanceSummary;
+    final food = _food;
+    final provenance = food?.provenanceSummary;
     final units = _availableUnits();
     return AlertDialog(
       title: Column(
@@ -2727,6 +2750,26 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
                 color: Colors.blueGrey.shade600,
+              ),
+            ),
+          ],
+          // The basis everything below is scaled from. A food whose "per 100 g"
+          // values are really a packet's own label — a 25 g bar at 105 kcal —
+          // is invisible in a scaled total, and this is where it shows.
+          if (food != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              l.nutritionPer100Summary(
+                formatAmount(food.calories),
+                formatAmount(food.carbs),
+                formatAmount(food.fat),
+                formatAmount(food.protein),
+                food.isLiquid ? kUnitMl : kUnitGram,
+              ),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                color: Colors.grey.shade600,
               ),
             ),
           ],

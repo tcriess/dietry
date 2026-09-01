@@ -258,6 +258,28 @@ class FoodItem {
     };
   }
   
+  /// The same food with every per-100 g value multiplied by [factor].
+  ///
+  /// Used to put a food back on a per-100 g basis when its values turn out to
+  /// be for some other amount — a label transcribed per portion, say, where a
+  /// 25 g bar's figures were entered as if they were per 100 g (factor 4).
+  ///
+  /// Note: micronutrients live in their own table (`food_database_micros`) and
+  /// are NOT touched here — the caller has to deal with them separately.
+  FoodItem rescaleNutrition(double factor) {
+    double? scale(double? v) => v == null ? null : v * factor;
+    return copyWith(
+      calories: calories * factor,
+      protein: protein * factor,
+      fat: fat * factor,
+      carbs: carbs * factor,
+      fiber: scale(fiber),
+      sugar: scale(sugar),
+      sodium: scale(sodium),
+      saturatedFat: scale(saturatedFat),
+    );
+  }
+
   /// Erstelle Kopie mit geänderten Werten
   FoodItem copyWith({
     String? id,

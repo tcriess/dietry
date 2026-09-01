@@ -563,6 +563,31 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get portionRebaseLabel => 'Nährwerte gelten für diese Menge';
+
+  @override
+  String portionRebaseHint(Object current, Object rebased) {
+    return 'Aus $current kcal werden $rebased kcal pro 100 g';
+  }
+
+  @override
+  String get portionRebased => 'Nährwerte auf 100 g umgerechnet';
+
+  @override
+  String nutritionPer100Summary(
+      Object calories, Object carbs, Object fat, Object protein, Object unit) {
+    return '$calories kcal · P $protein · F $fat · KH $carbs pro 100 $unit';
+  }
+
+  @override
+  String get foodValuesImpossible =>
+      'Die Online-Nährwerte sind unmöglich (mehr als 100 g Makros oder über 950 kcal pro 100 g) — bitte mit der Packung vergleichen.';
+
+  @override
+  String get foodValuesEnergyMismatch =>
+      'Kalorien und Makros aus der Online-Datenbank passen nicht zusammen — bitte mit der Packung vergleichen.';
+
+  @override
   String get foodPublic => 'Für alle Nutzer sichtbar';
 
   @override

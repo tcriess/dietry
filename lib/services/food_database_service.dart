@@ -274,13 +274,28 @@ class FoodDatabaseService {
   ///
   /// The copy deliberately drops [FoodItem.hasImage]: images live in
   /// `food_images` keyed by the *original* food id, so the new row has none.
-  Future<AddPortionResult> addPortion(FoodItem food, FoodPortion portion) async {
+  ///
+  /// [rebaseNutrition] additionally puts the food's values back on a per-100 g
+  /// basis, treating what is stored as the figures for one [portion] — the fix
+  /// for a source row whose "per 100 g" column really holds a packet's label
+  /// (a 25 g bar at 105 kcal read as 105 kcal/100 g). Micronutrients live in
+  /// their own table and are NOT rescaled, so a food with cloud micros needs
+  /// those corrected separately.
+  Future<AddPortionResult> addPortion(
+    FoodItem food,
+    FoodPortion portion, {
+    bool rebaseNutrition = false,
+  }) async {
     final userId = _userId;
     if (userId == null) {
       throw Exception('Keine User-ID verfügbar');
     }
 
-    final withPortion = food.copyWith(
+    final rebased = rebaseNutrition && portion.amountG > 0
+        ? food.rescaleNutrition(100 / portion.amountG)
+        : food;
+
+    final withPortion = rebased.copyWith(
       portions: [...food.portions, portion],
       updatedAt: DateTime.now(),
     );

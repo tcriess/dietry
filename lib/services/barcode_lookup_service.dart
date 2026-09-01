@@ -1,4 +1,5 @@
 import '../models/food_item.dart';
+import '../models/food_search_result.dart';
 import 'food_database_service.dart';
 import 'open_food_facts_service.dart';
 import 'app_logger.dart';
@@ -8,10 +9,16 @@ class BarcodeLookupResult {
   final bool fromOff;
   final Map<String, double> micros;
 
+  /// What looks wrong about [food]'s values, when it came from an online
+  /// source. Always empty for a hit in the app's own database — those have
+  /// been through this check already, or were entered by the user.
+  final List<NutritionDataWarning> warnings;
+
   const BarcodeLookupResult({
     required this.food,
     required this.fromOff,
     this.micros = const {},
+    this.warnings = const [],
   });
 }
 
@@ -42,7 +49,12 @@ class BarcodeLookupService {
       final off = await OpenFoodFactsService().searchByBarcode(trimmed, locale: locale);
       if (off != null) {
         appLogger.i('✅ Barcode $trimmed bei Open Food Facts: ${off.food.name}');
-        return BarcodeLookupResult(food: off.food, fromOff: true, micros: off.micros);
+        return BarcodeLookupResult(
+          food: off.food,
+          fromOff: true,
+          micros: off.micros,
+          warnings: off.warnings,
+        );
       }
     } catch (e) {
       appLogger.w('⚠️ OFF Barcode-Suche fehlgeschlagen: $e');

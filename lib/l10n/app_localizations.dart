@@ -1114,6 +1114,43 @@ abstract class AppLocalizations {
   /// **'„{name}“ wurde in deine eigenen Lebensmittel kopiert'**
   String portionCopiedToOwn(Object name);
 
+  /// No description provided for @portionRebaseLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Nährwerte gelten für diese Menge'**
+  String get portionRebaseLabel;
+
+  /// No description provided for @portionRebaseHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Aus {current} kcal werden {rebased} kcal pro 100 g'**
+  String portionRebaseHint(Object current, Object rebased);
+
+  /// No description provided for @portionRebased.
+  ///
+  /// In de, this message translates to:
+  /// **'Nährwerte auf 100 g umgerechnet'**
+  String get portionRebased;
+
+  /// No description provided for @nutritionPer100Summary.
+  ///
+  /// In de, this message translates to:
+  /// **'{calories} kcal · P {protein} · F {fat} · KH {carbs} pro 100 {unit}'**
+  String nutritionPer100Summary(
+      Object calories, Object carbs, Object fat, Object protein, Object unit);
+
+  /// No description provided for @foodValuesImpossible.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Online-Nährwerte sind unmöglich (mehr als 100 g Makros oder über 950 kcal pro 100 g) — bitte mit der Packung vergleichen.'**
+  String get foodValuesImpossible;
+
+  /// No description provided for @foodValuesEnergyMismatch.
+  ///
+  /// In de, this message translates to:
+  /// **'Kalorien und Makros aus der Online-Datenbank passen nicht zusammen — bitte mit der Packung vergleichen.'**
+  String get foodValuesEnergyMismatch;
+
   /// No description provided for @foodPublic.
   ///
   /// In de, this message translates to:

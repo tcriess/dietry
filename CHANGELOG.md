@@ -8,13 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 
+- **Food log**: naming a new portion size can now also correct the food it is
+  named on. A tick box — "the nutrition values are for this amount" — puts a
+  food whose per-100 g columns really hold a packet's own label back on a
+  per-100 g basis, previewing what the numbers become before you save.
+- **Food search**: an online hit whose values are arithmetically impossible
+  (macros weighing over 100 g, more energy than pure fat) or whose calories do
+  not match its macros now says so before it is logged or copied into your own
+  database.
 
 ### Changed
-- 
+- **Food log**: the quick-add amount dialog states the per-100 g values it is
+  scaling from. A food whose values are wrong is invisible in a scaled total —
+  this is where it shows, and the add-entry screen already said it.
+- **Barcode scan**: Open Food Facts' serving size is kept instead of discarded.
+  A scanned 25 g bar arrives with "1 Portion (25 g)" ready to pick, rather than
+  a gram figure to establish and type in by hand.
 
 ### Fixed
-- 
+- **Barcode scan**: nutrition values transcribed per serving are no longer
+  imported as if they were per 100 g. Open Food Facts records which basis a
+  contributor used; where it says "per serving" the values are now converted
+  with the serving weight, and a record that states no serving weight is
+  refused rather than guessed at. Note that a label transcribed wholesale into
+  the wrong column stays self-consistent and cannot be detected — hence the
+  per-100 g line in the amount dialog and the correction above.
 
 ### Deprecated
 - 

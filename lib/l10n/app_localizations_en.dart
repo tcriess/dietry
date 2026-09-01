@@ -559,6 +559,31 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get portionRebaseLabel => 'Nutrition values are for this amount';
+
+  @override
+  String portionRebaseHint(Object current, Object rebased) {
+    return '$current kcal becomes $rebased kcal per 100 g';
+  }
+
+  @override
+  String get portionRebased => 'Nutrition rebased to per 100 g';
+
+  @override
+  String nutritionPer100Summary(
+      Object calories, Object carbs, Object fat, Object protein, Object unit) {
+    return '$calories kcal · P $protein · F $fat · C $carbs per 100 $unit';
+  }
+
+  @override
+  String get foodValuesImpossible =>
+      'The online values are impossible (over 100 g of macros, or more than 950 kcal per 100 g) — please check them against the packet.';
+
+  @override
+  String get foodValuesEnergyMismatch =>
+      'The online calories and macros don\'t add up — please check them against the packet.';
+
+  @override
   String get foodPublic => 'Visible to all users';
 
   @override

@@ -4,6 +4,7 @@ import 'package:dietry/l10n/app_localizations_en.dart';
 import 'package:dietry/models/food_portion.dart';
 import 'package:dietry/utils/unit_utils.dart';
 import 'package:dietry/widgets/portion_size_dialog.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -88,6 +89,95 @@ void main() {
             reservedLabels: reserved(en)),
         isNull,
       );
+    });
+  });
+
+  group('the "values are for this amount" correction', () {
+    /// Opens the dialog and returns what it hands back once [act] has filled it
+    /// in and saved.
+    Future<NewPortion?> run(
+      WidgetTester tester, {
+      double? caloriesPer100g,
+      double? initialAmount,
+      required Future<void> Function(WidgetTester tester) act,
+    }) async {
+      NewPortion? result;
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showAddPortionSizeDialog(
+                  context,
+                  existing: const [],
+                  initialAmount: initialAmount,
+                  caloriesPer100g: caloriesPer100g,
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await act(tester);
+      await tester.pumpAndSettle();
+      return result;
+    }
+
+    Future<void> fillIn(WidgetTester tester, {required String amount}) async {
+      await tester.enterText(find.byType(TextField).first, '1 Riegel');
+      await tester.enterText(find.byType(TextField).last, amount);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is not offered for a food with no values to rewrite',
+        (tester) async {
+      await run(tester, act: (t) async {
+        expect(find.byType(CheckboxListTile), findsNothing);
+        await fillIn(t, amount: '25');
+        await t.tap(find.text('Save'));
+      });
+    });
+
+    testWidgets('previews what the correction would produce', (tester) async {
+      // The bar this was found on: 105 kcal in the per-100 g column is the
+      // 25 g packet's own figure, and 420 is what it should read.
+      await run(tester, caloriesPer100g: 105, initialAmount: 25,
+          act: (t) async {
+        expect(find.textContaining('420'), findsOneWidget);
+        await fillIn(t, amount: '25');
+        await t.tap(find.text('Save'));
+      });
+    });
+
+    testWidgets('is off unless the user asks for it', (tester) async {
+      final result =
+          await run(tester, caloriesPer100g: 105, act: (t) async {
+        await fillIn(t, amount: '25');
+        await t.tap(find.text('Save'));
+      });
+
+      expect(result!.rebaseNutrition, isFalse);
+      expect(result.portion.amountG, 25);
+    });
+
+    testWidgets('comes back with the portion when ticked', (tester) async {
+      final result =
+          await run(tester, caloriesPer100g: 105, act: (t) async {
+        await fillIn(t, amount: '25');
+        await t.tap(find.byType(CheckboxListTile));
+        await t.pumpAndSettle();
+        await t.tap(find.text('Save'));
+      });
+
+      expect(result!.rebaseNutrition, isTrue);
+      expect(result.portion.name, '1 Riegel');
+      expect(result.portion.amountG, 25);
     });
   });
 

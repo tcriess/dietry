@@ -31,6 +31,7 @@ import '../widgets/cooked_factor_dialog.dart';
 import '../widgets/cooked_weight_nudge.dart';
 import '../widgets/portion_size_dialog.dart';
 import '../services/barcode_lookup_service.dart';
+import '../utils/nutrition_warning_text.dart';
 import '../services/cooking_yield.dart';
 import 'food_database_screen.dart';
 
@@ -549,19 +550,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       _userCookedFactor = null;
 
       // Per-100g-Werte aus FoodItem in die Controller schreiben — NICHT skalieren.
-      _caloriesController.text = food.calories.toStringAsFixed(0);
-      _proteinController.text = food.protein.toStringAsFixed(1);
-      _fatController.text = food.fat.toStringAsFixed(1);
-      _carbsController.text = food.carbs.toStringAsFixed(1);
-      _fiberController.text =
-          food.fiber != null ? food.fiber!.toStringAsFixed(1) : '';
-      _sugarController.text =
-          food.sugar != null ? food.sugar!.toStringAsFixed(1) : '';
-      _sodiumController.text =
-          food.sodium != null ? food.sodium!.toStringAsFixed(1) : '';
-      _saturatedFatController.text = food.saturatedFat != null
-          ? food.saturatedFat!.toStringAsFixed(1)
-          : '';
+      _applyNutritionOf(food);
 
       _isLiquid = food.isLiquid;
 
@@ -602,6 +591,38 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     });
 
     unawaited(_loadCookedFactor(food));
+  }
+
+  /// Says so when an online source's values look wrong, before they are logged
+  /// or copied into the user's own database. Only arithmetic can be checked —
+  /// a label transcribed wholesale on the wrong basis passes silently, which is
+  /// why the amount card also states the per-100 g values it scales from.
+  void _warnAboutValues(List<NutritionDataWarning> warnings) {
+    final l = AppLocalizations.of(context);
+    if (l == null) return;
+    final text = nutritionWarningText(warnings, l);
+    if (text == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(text),
+      duration: const Duration(seconds: 6),
+    ));
+  }
+
+  /// Writes [food]'s per-100 g values into the nutrition controllers, which
+  /// always hold a per-100 g basis (never a scaled total).
+  void _applyNutritionOf(FoodItem food) {
+    _caloriesController.text = food.calories.toStringAsFixed(0);
+    _proteinController.text = food.protein.toStringAsFixed(1);
+    _fatController.text = food.fat.toStringAsFixed(1);
+    _carbsController.text = food.carbs.toStringAsFixed(1);
+    _fiberController.text =
+        food.fiber != null ? food.fiber!.toStringAsFixed(1) : '';
+    _sugarController.text =
+        food.sugar != null ? food.sugar!.toStringAsFixed(1) : '';
+    _sodiumController.text =
+        food.sodium != null ? food.sodium!.toStringAsFixed(1) : '';
+    _saturatedFatController.text =
+        food.saturatedFat != null ? food.saturatedFat!.toStringAsFixed(1) : '';
   }
 
   /// Öffnet den OCR-Scan-Flow (Premium, mobile) und prefillt die
@@ -725,6 +746,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (!mounted) return;
     setState(() => _isSearching = false);
     _selectFood(foodForSelect, micros: microsForSelect);
+    _warnAboutValues(result.warnings);
 
     if (result.fromOff) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -880,16 +902,24 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     final l = AppLocalizations.of(context)!;
 
     final grams = _currentGrams();
-    final portion = await showAddPortionSizeDialog(
+    final defined = await showAddPortionSizeDialog(
       context,
       existing: food.portions,
       initialAmount: grams > 0 ? grams : null,
       isLiquid: _isLiquid,
+      // Offers "these values are for this amount": the food's own per-100 g
+      // energy is what the correction would rewrite.
+      caloriesPer100g: food.calories,
     );
-    if (portion == null || !mounted) return;
+    if (defined == null || !mounted) return;
+    final portion = defined.portion;
 
     try {
-      final result = await FoodDatabaseService(db).addPortion(food, portion);
+      final result = await FoodDatabaseService(db).addPortion(
+        food,
+        portion,
+        rebaseNutrition: defined.rebaseNutrition,
+      );
       if (!mounted) return;
       setState(() {
         _selectedFood = result.food;
@@ -898,11 +928,17 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             .cast<FoodPortion?>()
             .firstWhere((p) => p!.name == portion.name, orElse: () => null);
         _amountController.text = '1';
+        // The entry is built from the controllers, not from the food — so a
+        // rebase has to reach them or the entry would still be logged off the
+        // old per-100 g values.
+        _applyNutritionOf(result.food);
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result.cloned
-            ? '${l.portionSaved(portion.name)} · ${l.portionCopiedToOwn(result.food.name)}'
-            : l.portionSaved(portion.name)),
+        content: Text([
+          l.portionSaved(portion.name),
+          if (defined.rebaseNutrition) l.portionRebased,
+          if (result.cloned) l.portionCopiedToOwn(result.food.name),
+        ].join(' · ')),
       ));
     } catch (e) {
       appLogger.w('⚠️ Portion konnte nicht gespeichert werden: $e');
@@ -2015,6 +2051,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                             if (action == 'use') {
                                               _selectFood(food,
                                                   micros: result.micros);
+                                              _warnAboutValues(result.warnings);
                                             } else if (action == 'edit') {
                                               await _editFoodInSearch(food);
                                             } else if (action == 'delete') {
@@ -2056,8 +2093,10 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                         ),
                                     ],
                                   ),
-                                  onTap: () =>
-                                      _selectFood(food, micros: result.micros),
+                                  onTap: () {
+                                    _selectFood(food, micros: result.micros);
+                                    _warnAboutValues(result.warnings);
+                                  },
                                 );
                               },
                             ),
