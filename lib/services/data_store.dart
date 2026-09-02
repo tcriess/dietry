@@ -4,6 +4,7 @@ import 'food_entry_service.dart';
 import 'physical_activity_service.dart';
 import 'nutrition_goal_service.dart';
 import 'water_intake_service.dart';
+import 'serial_day_writer.dart';
 import 'cheat_day_service.dart';
 import 'streak_service.dart';
 import 'neon_database_service.dart';
@@ -98,6 +99,11 @@ class DataStore extends ChangeNotifier {
   /// when the very first fetch was skipped because the token wasn't valid yet
   /// (common now that paint-first mounts Home before the token refresh lands).
   DateTime? _serverReconciledDate;
+
+  /// The day currently held in memory — the last one [loadDay] was asked
+  /// for, whether the fetch succeeded or not. Used to decide whether a
+  /// late result still belongs to what the user is looking at.
+  DateTime? _loadedDate;
 
   List<FoodEntry> get foodEntries => _foodEntries;
 
@@ -207,6 +213,8 @@ class DataStore extends ChangeNotifier {
     _lastEntriesSync = null;
     _lastActivitiesSync = null;
     _serverReconciledDate = null;
+    _loadedDate = null;
+    _waterWriter.clear();
     notifyListeners();
   }
 
@@ -221,6 +229,7 @@ class DataStore extends ChangeNotifier {
   Future<void> loadDay(DateTime date, {bool silent = false, bool delta = false}) async {
     // Guest mode or remote mode?
     if (_local == null && _db == null) return;
+    _loadedDate = date;
 
     // ── Guest mode: local SQLite only ──
     if (_local != null) {
@@ -481,8 +490,65 @@ class DataStore extends ChangeNotifier {
 
   // ── Water ─────────────────────────────────────────────────────────────────
 
-  void setWaterIntakeMl(int ml) {
-    _waterIntakeMl = ml.clamp(0, 9999);
+  /// Applies [deltaMl] to the day's water intake and persists the result.
+  ///
+  /// The in-memory value moves immediately so the counter reacts to the tap,
+  /// and the write goes through [_waterWriter]: one request at a time, last
+  /// value wins. Two quick taps therefore always leave the backend on the
+  /// value the user saw, and until the write is acknowledged a refresh is
+  /// stopped from painting the older server value over it.
+  Future<void> adjustWaterIntake(DateTime date, int deltaMl) async {
+    final baseline = _waterIntakeMl;
+    _waterIntakeMl = (baseline + deltaMl).clamp(0, 9999);
+    notifyListeners();
+    await _waterWriter.submit(date, _waterIntakeMl, baseline: baseline);
+  }
+
+  late final SerialDayWriter _waterWriter = SerialDayWriter(
+    write: _writeWaterIntake,
+    onFailure: _revertWaterIntake,
+  );
+
+  /// Persists one water value. Returns false only when the backend rejected
+  /// the write, which sends the displayed value back to where the burst began.
+  Future<bool> _writeWaterIntake(DateTime date, int amountMl) async {
+    final local = _local;
+    if (local != null) {
+      try {
+        await local.setWaterIntakeForDate(date, amountMl);
+        return true;
+      } catch (e) {
+        appLogger.e('❌ Local water write failed: $e');
+        return false;
+      }
+    }
+    final db = _db;
+    // No backend attached yet — keep the optimistic value rather than snapping
+    // it back; the next load reconciles it.
+    if (db == null) return true;
+    final saved = await WaterIntakeService(db).setIntakeForDate(date, amountMl);
+    if (saved == null) return false;
+    // Mirror into the offline cache right away, so returning to the day (or a
+    // cold start) hydrates the new value instead of the last reconciled one.
+    try {
+      await _cache?.setWaterIntakeForDate(date, amountMl);
+    } catch (e) {
+      appLogger.w('⚠️ Water cache write failed: $e');
+    }
+    return true;
+  }
+
+  /// Undoes the optimistic update of a burst the backend refused — but only
+  /// while that day is still the one on screen.
+  void _revertWaterIntake(DateTime date, int baseline) {
+    final loaded = _loadedDate;
+    if (loaded == null) return;
+    if (loaded.year != date.year ||
+        loaded.month != date.month ||
+        loaded.day != date.day) {
+      return;
+    }
+    _waterIntakeMl = baseline;
     notifyListeners();
   }
 
@@ -566,7 +632,11 @@ class DataStore extends ChangeNotifier {
 
   Future<void> _loadWaterIntake(DateTime date) async {
     try {
-      _waterIntakeMl = await WaterIntakeService(_db!).getIntakeForDate(date);
+      final fetched = await WaterIntakeService(_db!).getIntakeForDate(date);
+      // A tap the server hasn't acknowledged yet would be answered with the
+      // value it replaced — dropping the user's change back to the old one.
+      if (_waterWriter.hasPending(date)) return;
+      _waterIntakeMl = fetched;
     } catch (_) {
       // Bestehenden Wasserstand beibehalten.
     }
@@ -748,7 +818,9 @@ class DataStore extends ChangeNotifier {
   /// Load water intake from local SQLite
   Future<void> _loadWaterIntakeLocal(DateTime date) async {
     try {
-      _waterIntakeMl = await _local!.getWaterIntakeForDate(date);
+      final fetched = await _local!.getWaterIntakeForDate(date);
+      if (_waterWriter.hasPending(date)) return; // see [_loadWaterIntake]
+      _waterIntakeMl = fetched;
     } catch (e) {
       appLogger.e('❌ Error loading water intake locally: $e');
       _waterIntakeMl = 0;

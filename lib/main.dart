@@ -3316,19 +3316,13 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     await _store.loadDay(_selectedDay);
   }
 
-  Future<void> _onWaterChanged(int deltaMl) async {
-    final before = _store.waterIntakeMl;
-    final newAmount = (before + deltaMl).clamp(0, 9999);
-    _store.setWaterIntakeMl(newAmount); // optimistic
-
-    if (widget.dbService != null) {
-      final saved = await WaterIntakeService(widget.dbService!)
-          .setIntakeForDate(_selectedDay, newAmount);
-      if (saved == null) {
-        _store.setWaterIntakeMl(before); // revert to exact previous value
-      }
-    }
-  }
+  /// The +/− water buttons. The store owns the optimistic update and the
+  /// write — it serializes a burst of taps into one request at a time so the
+  /// last tapped value is the one that ends up stored (two taps used to send
+  /// two racing upserts, and the older one landing last silently undid the
+  /// second tap on the next refresh).
+  Future<void> _onWaterChanged(int deltaMl) =>
+      _store.adjustWaterIntake(_selectedDay, deltaMl);
 
   Future<void> _jumpToToday() async {
     final today = DateTime.now();
