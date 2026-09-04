@@ -668,8 +668,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     );
   }
 
-  Future<void> _deleteEntry(FoodEntry entry) async {
-    final l = AppLocalizations.of(context)!;
+  /// The delete confirmation, shared by every delete path. Returns true when
+  /// the user went through with it.
+  Future<bool> _confirmDeleteEntry(FoodEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -691,8 +692,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         );
       },
     );
+    return confirmed == true;
+  }
 
-    if (confirmed != true) return;
+  /// Drops [entry] without asking — for callers that already confirmed, such
+  /// as a completed swipe.
+  Future<void> _removeEntry(FoodEntry entry) async {
+    final l = AppLocalizations.of(context)!;
 
     // Optimistic remove — UI updates immediately.
     _store.removeFoodEntry(entry.id);
@@ -707,6 +713,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _deleteEntry(FoodEntry entry) async {
+    if (!await _confirmDeleteEntry(entry) || !mounted) return;
+    await _removeEntry(entry);
   }
 
   Future<void> _editEntry(FoodEntry entry) async {
@@ -1294,31 +1305,12 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                     padding: const EdgeInsets.only(right: 16),
                                     child: const Icon(Icons.delete, color: Colors.white),
                                   ),
-                                  confirmDismiss: (direction) async {
-                                    return await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) {
-                                        final ld = AppLocalizations.of(context)!;
-                                        return AlertDialog(
-                                          title: Text(ld.deleteEntryTitle),
-                                          content: Text(ld.deleteEntryConfirm(entry.name)),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.of(context).pop(false),
-                                              child: Text(ld.cancel),
-                                            ),
-                                            TextButton(
-                                              onPressed: () => Navigator.of(context).pop(true),
-                                              style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                              child: Text(ld.delete),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
+                                  confirmDismiss: (direction) =>
+                                      _confirmDeleteEntry(entry),
+                                  // The swipe already asked — deleting through
+                                  // _deleteEntry here would ask a second time.
                                   onDismissed: (direction) {
-                                    _deleteEntry(entry);
+                                    _removeEntry(entry);
                                   },
                                   child: _buildEntryCard(context, entry,
                                       interactive: true),
