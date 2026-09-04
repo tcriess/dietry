@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+### Deprecated
+- 
+
+### Removed
+- 
+
+### Security
+- 
+
+---
+
+## [1.7.2] — 2026-09-04
+
+### Added
 - **Food log**: naming a new portion size can now also correct the food it is
   named on. A tick box — "the nutrition values are for this amount" — puts a
   food whose per-100 g columns really hold a packet's own label back on a
@@ -24,6 +46,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Barcode scan**: Open Food Facts' serving size is kept instead of discarded.
   A scanned 25 g bar arrives with "1 Portion (25 g)" ready to pick, rather than
   a gram figure to establish and type in by hand.
+- **Food log, activities**: long-pressing an entry to copy or move it now starts
+  on **today** and leads with **Copy**. The sheet used to open on the entry's own
+  day with Move as the highlighted button, so the common case — pulling
+  yesterday's dinner into today's log — took two corrections before it could be
+  confirmed.
+- **Food log, activities**: an entry is only deleted from the list directly while
+  it sits on today's log. On any other day the delete button is gone from the row
+  and lives in the long-press sheet instead, next to Move and Copy, so a mis-tap
+  while looking back over the week can no longer drop history unnoticed. Swiping
+  a row still deletes on any day, and still asks first.
 
 ### Fixed
 - **Barcode scan**: nutrition values transcribed per serving are no longer
@@ -33,15 +65,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refused rather than guessed at. Note that a label transcribed wholesale into
   the wrong column stays self-consistent and cannot be detected — hence the
   per-100 g line in the amount dialog and the correction above.
-
-### Deprecated
-- 
-
-### Removed
-- 
-
-### Security
-- 
+- **Reports**: the calorie trend no longer counts a workout twice. It subtracted
+  what you burned from what you ate and then compared that to a flat goal line,
+  which reads as a deficit on every day you trained. It now plots what you ate
+  against a target that rises with the burn — the same arithmetic the day view
+  uses for "remaining" — with a legend and a tooltip that break both lines down.
+  The summary card's "days on target" was scoring against the flat goal while the
+  average next to it used the net figure; the two now agree with each other and
+  with the chart.
+- **Water**: two quick taps no longer settle back to one. Each +200 ml tap sent
+  the running total as its own request, and nothing kept them in order — when the
+  first arrived last, the day was stored as 200 ml while the screen showed 400,
+  until a refresh pulled it back down. Water now goes through one write at a
+  time, a tap during a write updates what the next one sends, and a refresh
+  leaves the figure alone while a write is outstanding. In guest mode the day's
+  water is also kept across restarts, which it never was.
+- **Food log**: swiping an entry away asks once, not twice. The confirmation came
+  up again after the row had already gone, and answering "cancel" to that second
+  question left the entry in the log but out of the list until the next reload.
 
 ---
 
