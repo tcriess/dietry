@@ -722,9 +722,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     );
   }
 
-  /// Long-press handler: copy or move [entry] to another day / meal. A copy is
-  /// a fresh entry (new id) at the target; a move re-dates the existing entry
-  /// in place. After either, the currently-viewed day is reloaded so same-day
+  /// Long-press handler: copy, move or delete [entry]. A copy is a fresh entry
+  /// (new id) at the target; a move re-dates the existing entry in place; a
+  /// delete runs the usual confirmation. After either, the currently-viewed day is reloaded so same-day
   /// changes re-group and entries moved to another day disappear.
   Future<void> _moveCopyEntry(FoodEntry entry) async {
     final result = await showMoveCopySheet(
@@ -733,6 +733,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       initialMeal: entry.mealType,
     );
     if (result == null || !mounted) return;
+
+    if (result.action == MoveCopyAction.delete) {
+      await _deleteEntry(entry);
+      return;
+    }
 
     final l = AppLocalizations.of(context)!;
     final sync = SyncService.instance;
@@ -899,16 +904,21 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                           constraints: const BoxConstraints(
                               minWidth: 32, minHeight: 32),
                         ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        color: Colors.red.shade400,
-                        onPressed: () => _deleteEntry(entry),
-                        tooltip: l.delete,
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        constraints:
-                            const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
+                      // Deleting straight from the row is offered for today's
+                      // log only: a mis-tap while browsing an older day would
+                      // drop history that is no longer being watched. Past
+                      // entries are deleted from the long-press sheet.
+                      if (DateUtils.isSameDay(entry.entryDate, DateTime.now()))
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          color: Colors.red.shade400,
+                          onPressed: () => _deleteEntry(entry),
+                          tooltip: l.delete,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          constraints:
+                              const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
                     ],
                   ],
                 ),

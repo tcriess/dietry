@@ -201,6 +201,33 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     setState(() {});
   }
 
+  /// The delete confirmation, shared by the swipe gesture and the long-press
+  /// sheet. Returns true when the user went through with it.
+  Future<bool> _confirmDeleteActivity(PhysicalActivity activity) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final ld = AppLocalizations.of(context)!;
+        return AlertDialog(
+          title: Text(ld.deleteActivityTitle),
+          content: Text(ld.deleteActivityConfirm(activity.displayName)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(ld.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: Text(ld.delete),
+            ),
+          ],
+        );
+      },
+    );
+    return confirmed == true;
+  }
+
   Future<void> _deleteActivity(PhysicalActivity activity) async {
     final l = AppLocalizations.of(context)!;
     _store.removeActivity(activity.id!);
@@ -226,10 +253,10 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     await _loadGear();
   }
 
-  /// Long-press handler: copy or move [activity] to another day / meal. The
-  /// chosen meal maps to a representative start time on the target day (the
-  /// original time is kept when the meal is unchanged); the duration is
-  /// preserved. A copy is a fresh manual entry; a move re-dates in place.
+  /// Long-press handler: copy, move or delete [activity]. The chosen meal maps
+  /// to a representative start time on the target day (the original time is
+  /// kept when the meal is unchanged); the duration is preserved. A copy is a
+  /// fresh manual entry; a move re-dates in place; a delete asks first.
   Future<void> _moveCopyActivity(PhysicalActivity activity) async {
     final currentMeal = _mealForTime(activity.startTime);
     final result = await showMoveCopySheet(
@@ -238,6 +265,13 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
       initialMeal: currentMeal,
     );
     if (result == null || !mounted) return;
+
+    if (result.action == MoveCopyAction.delete) {
+      if (await _confirmDeleteActivity(activity) && mounted) {
+        await _deleteActivity(activity);
+      }
+      return;
+    }
 
     final l = AppLocalizations.of(context)!;
     final sync = SyncService.instance;
@@ -522,29 +556,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                               padding: const EdgeInsets.only(right: 16),
                               child: const Icon(Icons.delete, color: Colors.white),
                             ),
-                            confirmDismiss: (direction) async {
-                              return await showDialog<bool>(
-                                context: context,
-                                builder: (context) {
-                                  final ld = AppLocalizations.of(context)!;
-                                  return AlertDialog(
-                                    title: Text(ld.deleteActivityTitle),
-                                    content: Text(ld.deleteActivityConfirm(activity.displayName)),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(context).pop(false),
-                                        child: Text(ld.cancel),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Navigator.of(context).pop(true),
-                                        style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                        child: Text(ld.delete),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
+                            confirmDismiss: (direction) =>
+                                _confirmDeleteActivity(activity),
                             onDismissed: (direction) => _deleteActivity(activity),
                             child: Card(
                               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -569,12 +582,22 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                       _buildGearChip(l, activity),
                                   ],
                                 ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 20),
-                                  color: Colors.red.shade400,
-                                  onPressed: () => _deleteActivity(activity),
-                                  tooltip: l.delete,
-                                ),
+                                // Deleting straight from the row is offered for
+                                // today's log only: a mis-tap while browsing an
+                                // older day would drop history that is no longer
+                                // being watched. Past activities are deleted
+                                // from the long-press sheet.
+                                trailing: DateUtils.isSameDay(
+                                        activity.startTime, DateTime.now())
+                                    ? IconButton(
+                                        icon: const Icon(Icons.delete_outline,
+                                            size: 20),
+                                        color: Colors.red.shade400,
+                                        onPressed: () =>
+                                            _deleteActivity(activity),
+                                        tooltip: l.delete,
+                                      )
+                                    : null,
                                 onTap: () => _editActivity(activity),
                                 onLongPress: () => _moveCopyActivity(activity),
                               ),

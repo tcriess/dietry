@@ -3,12 +3,13 @@ import 'package:intl/intl.dart';
 import '../models/food_entry.dart' show MealType;
 import '../l10n/app_localizations.dart';
 
-/// Whether the user chose to duplicate an entry (leaving the original in place)
-/// or to relocate it.
-enum MoveCopyAction { copy, move }
+/// Whether the user chose to duplicate an entry (leaving the original in
+/// place), to relocate it, or to delete it outright.
+enum MoveCopyAction { copy, move, delete }
 
 /// The target the user picked in [showMoveCopySheet]: a [day] and a [meal],
-/// plus which [action] to perform.
+/// plus which [action] to perform. For [MoveCopyAction.delete] the day and the
+/// meal carry no meaning.
 class MoveCopyResult {
   final DateTime day;
   final MealType meal;
@@ -25,8 +26,9 @@ class MoveCopyResult {
 /// target **day** (with quick Yesterday / Today / Tomorrow chips plus a date
 /// picker) and a target **meal** (breakfast / lunch / dinner / snack), then tap
 /// Copy or Move. The day starts on **today**, which is where an entry pulled up
-/// from an older day almost always wants to go. Returns the chosen
-/// [MoveCopyResult], or null if dismissed.
+/// from an older day almost always wants to go. The sheet also carries the
+/// delete action, which is the only way to remove an entry that is not on
+/// today's log. Returns the chosen [MoveCopyResult], or null if dismissed.
 ///
 /// Shared by the food log and the activity log so both behave identically.
 Future<MoveCopyResult?> showMoveCopySheet(
@@ -163,6 +165,17 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
             // ── Actions ──────────────────────────────────────────────────
             Row(
               children: [
+                IconButton.outlined(
+                  icon: const Icon(Icons.delete_outline),
+                  style: IconButton.styleFrom(
+                      foregroundColor: Colors.red.shade400),
+                  tooltip: l.delete,
+                  onPressed: () => Navigator.of(context).pop(
+                    MoveCopyResult(
+                        day: _day, meal: _meal, action: MoveCopyAction.delete),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.drive_file_move_outline),
