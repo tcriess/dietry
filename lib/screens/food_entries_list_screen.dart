@@ -730,7 +730,6 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     final result = await showMoveCopySheet(
       context,
       title: entry.name,
-      initialDay: entry.entryDate,
       initialMeal: entry.mealType,
     );
     if (result == null || !mounted) return;

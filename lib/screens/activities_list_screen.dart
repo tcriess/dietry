@@ -235,7 +235,6 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     final result = await showMoveCopySheet(
       context,
       title: activity.displayName,
-      initialDay: activity.startTime,
       initialMeal: currentMeal,
     );
     if (result == null || !mounted) return;

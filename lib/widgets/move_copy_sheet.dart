@@ -24,13 +24,14 @@ class MoveCopyResult {
 /// Bottom sheet for relocating or duplicating a log entry. Lets the user pick a
 /// target **day** (with quick Yesterday / Today / Tomorrow chips plus a date
 /// picker) and a target **meal** (breakfast / lunch / dinner / snack), then tap
-/// Copy or Move. Returns the chosen [MoveCopyResult], or null if dismissed.
+/// Copy or Move. The day starts on **today**, which is where an entry pulled up
+/// from an older day almost always wants to go. Returns the chosen
+/// [MoveCopyResult], or null if dismissed.
 ///
 /// Shared by the food log and the activity log so both behave identically.
 Future<MoveCopyResult?> showMoveCopySheet(
   BuildContext context, {
   required String title,
-  required DateTime initialDay,
   required MealType initialMeal,
 }) {
   return showModalBottomSheet<MoveCopyResult>(
@@ -39,7 +40,6 @@ Future<MoveCopyResult?> showMoveCopySheet(
     showDragHandle: true,
     builder: (ctx) => _MoveCopySheet(
       title: title,
-      initialDay: initialDay,
       initialMeal: initialMeal,
     ),
   );
@@ -47,12 +47,10 @@ Future<MoveCopyResult?> showMoveCopySheet(
 
 class _MoveCopySheet extends StatefulWidget {
   final String title;
-  final DateTime initialDay;
   final MealType initialMeal;
 
   const _MoveCopySheet({
     required this.title,
-    required this.initialDay,
     required this.initialMeal,
   });
 
@@ -67,7 +65,7 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
   @override
   void initState() {
     super.initState();
-    _day = DateUtils.dateOnly(widget.initialDay);
+    _day = DateUtils.dateOnly(DateTime.now());
     _meal = widget.initialMeal;
   }
 
@@ -167,22 +165,22 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.copy_all_outlined),
-                    label: Text(l.copy),
+                    icon: const Icon(Icons.drive_file_move_outline),
+                    label: Text(l.move),
                     onPressed: () => Navigator.of(context).pop(
                       MoveCopyResult(
-                          day: _day, meal: _meal, action: MoveCopyAction.copy),
+                          day: _day, meal: _meal, action: MoveCopyAction.move),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton.icon(
-                    icon: const Icon(Icons.drive_file_move_outline),
-                    label: Text(l.move),
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: Text(l.copy),
                     onPressed: () => Navigator.of(context).pop(
                       MoveCopyResult(
-                          day: _day, meal: _meal, action: MoveCopyAction.move),
+                          day: _day, meal: _meal, action: MoveCopyAction.copy),
                     ),
                   ),
                 ),
