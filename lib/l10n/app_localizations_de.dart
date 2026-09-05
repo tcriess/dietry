@@ -2357,4 +2357,66 @@ class AppLocalizationsDe extends AppLocalizations {
   String measuredOn(String date) {
     return 'Gemessen am: $date';
   }
+
+  @override
+  String get quickEstimate => 'Schätzen';
+
+  @override
+  String get quickEstimateTitle => 'Schnelle Schätzung';
+
+  @override
+  String get quickEstimateHint =>
+      'Nur ein Log-Eintrag — deine Lebensmittel-Datenbank bleibt unberührt.';
+
+  @override
+  String get quickEstimateBasisTotal => 'Gesamt';
+
+  @override
+  String get quickEstimateBasisPer100 => 'Pro 100';
+
+  @override
+  String get quickEstimateWeightOptional => 'Gewicht (optional)';
+
+  @override
+  String get quickEstimateNeedsValue => 'Mindestens einen Nährwert angeben';
+
+  @override
+  String quickEstimateLogQuery(String query) {
+    return '\"$query\" schätzen';
+  }
+
+  @override
+  String get entryToFoodUpdate => 'Auch im Lebensmittel korrigieren';
+
+  @override
+  String entryToFoodUpdateSubtitle(String name) {
+    return '\"$name\" übernimmt diese Werte pro 100.';
+  }
+
+  @override
+  String get entryToFoodCopy => 'Korrigierte Kopie speichern';
+
+  @override
+  String entryToFoodCopySubtitle(String name) {
+    return '\"$name\" gehört dir nicht. Dieser Eintrag zeigt danach auf deine Kopie.';
+  }
+
+  @override
+  String get entryToFoodCreate => 'Zu meinen Lebensmitteln hinzufügen';
+
+  @override
+  String get entryToFoodCreateSubtitle =>
+      'Legt ein Lebensmittel aus diesen Werten pro 100 an und verknüpft diesen Eintrag damit.';
+
+  @override
+  String get entryToFoodUpdated => 'Lebensmittel aktualisiert';
+
+  @override
+  String entryToFoodCreated(String name) {
+    return '\"$name\" zu deinen Lebensmitteln hinzugefügt';
+  }
+
+  @override
+  String get entryToFoodMicrosNote =>
+      'Mikronährstoffe werden nicht übertragen.';
 }

@@ -8,7 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 
+- **Food log**: a **quick estimate** entry for anything that is neither in your
+  food database nor behind a barcode — a canteen plate, a colleague's cake. Give
+  it a name and either the totals for the whole helping or per-100 values plus a
+  weight, and it is logged, nothing else: no food is created, no barcode is
+  needed. It also sits under an empty search, so a fruitless lookup can be
+  finished on the spot instead of abandoned.
+- **Food log**: a corrected entry can now carry the correction back into your
+  food database. When the per-100 values in the edit screen no longer match the
+  food behind the entry — the usual case after a barcode brought in wrong data —
+  a tick box offers to fix the food too, so the next scan of the same product is
+  already right. A public food nobody may edit takes the correction as a private
+  copy instead, and the entry then points at that copy.
+- **Food log**: an entry with no food behind it can be turned into one. The edit
+  screen offers to add it to your food database and links the entry to the new
+  food, so a quick estimate you keep repeating only has to be typed once. Offered
+  only while the entry really has no food reference.
 
 ### Changed
 - 

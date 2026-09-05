@@ -4300,6 +4300,108 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Gemessen am: {date}'**
   String measuredOn(String date);
+
+  /// No description provided for @quickEstimate.
+  ///
+  /// In de, this message translates to:
+  /// **'Schätzen'**
+  String get quickEstimate;
+
+  /// No description provided for @quickEstimateTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Schnelle Schätzung'**
+  String get quickEstimateTitle;
+
+  /// No description provided for @quickEstimateHint.
+  ///
+  /// In de, this message translates to:
+  /// **'Nur ein Log-Eintrag — deine Lebensmittel-Datenbank bleibt unberührt.'**
+  String get quickEstimateHint;
+
+  /// No description provided for @quickEstimateBasisTotal.
+  ///
+  /// In de, this message translates to:
+  /// **'Gesamt'**
+  String get quickEstimateBasisTotal;
+
+  /// No description provided for @quickEstimateBasisPer100.
+  ///
+  /// In de, this message translates to:
+  /// **'Pro 100'**
+  String get quickEstimateBasisPer100;
+
+  /// No description provided for @quickEstimateWeightOptional.
+  ///
+  /// In de, this message translates to:
+  /// **'Gewicht (optional)'**
+  String get quickEstimateWeightOptional;
+
+  /// No description provided for @quickEstimateNeedsValue.
+  ///
+  /// In de, this message translates to:
+  /// **'Mindestens einen Nährwert angeben'**
+  String get quickEstimateNeedsValue;
+
+  /// No description provided for @quickEstimateLogQuery.
+  ///
+  /// In de, this message translates to:
+  /// **'\"{query}\" schätzen'**
+  String quickEstimateLogQuery(String query);
+
+  /// No description provided for @entryToFoodUpdate.
+  ///
+  /// In de, this message translates to:
+  /// **'Auch im Lebensmittel korrigieren'**
+  String get entryToFoodUpdate;
+
+  /// No description provided for @entryToFoodUpdateSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'\"{name}\" übernimmt diese Werte pro 100.'**
+  String entryToFoodUpdateSubtitle(String name);
+
+  /// No description provided for @entryToFoodCopy.
+  ///
+  /// In de, this message translates to:
+  /// **'Korrigierte Kopie speichern'**
+  String get entryToFoodCopy;
+
+  /// No description provided for @entryToFoodCopySubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'\"{name}\" gehört dir nicht. Dieser Eintrag zeigt danach auf deine Kopie.'**
+  String entryToFoodCopySubtitle(String name);
+
+  /// No description provided for @entryToFoodCreate.
+  ///
+  /// In de, this message translates to:
+  /// **'Zu meinen Lebensmitteln hinzufügen'**
+  String get entryToFoodCreate;
+
+  /// No description provided for @entryToFoodCreateSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Legt ein Lebensmittel aus diesen Werten pro 100 an und verknüpft diesen Eintrag damit.'**
+  String get entryToFoodCreateSubtitle;
+
+  /// No description provided for @entryToFoodUpdated.
+  ///
+  /// In de, this message translates to:
+  /// **'Lebensmittel aktualisiert'**
+  String get entryToFoodUpdated;
+
+  /// No description provided for @entryToFoodCreated.
+  ///
+  /// In de, this message translates to:
+  /// **'\"{name}\" zu deinen Lebensmitteln hinzugefügt'**
+  String entryToFoodCreated(String name);
+
+  /// No description provided for @entryToFoodMicrosNote.
+  ///
+  /// In de, this message translates to:
+  /// **'Mikronährstoffe werden nicht übertragen.'**
+  String get entryToFoodMicrosNote;
 }
 
 class _AppLocalizationsDelegate

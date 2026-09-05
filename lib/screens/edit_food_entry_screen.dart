@@ -12,6 +12,57 @@ import '../services/sync_service.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/unit_utils.dart';
 
+/// The edit form's eight per-100 nutrition fields, as text.
+typedef Per100Fields = ({
+  String calories,
+  String protein,
+  String fat,
+  String carbs,
+  String fiber,
+  String sugar,
+  String sodium,
+  String saturatedFat,
+});
+
+/// Renders a per-100 value the way the edit form fills its field.
+///
+/// The form's numbers are round-tripped through the entry's stored totals and
+/// then truncated for display, so a straight `double` comparison against the
+/// food would call harmless rounding a "correction". Comparing what the field
+/// *shows* against what the food *would* show is exact.
+String per100FieldText(double? value, int digits) =>
+    value == null ? '' : value.toStringAsFixed(digits);
+
+/// True when [fields] no longer say what [food] stores — i.e. the user really
+/// corrected a nutrition value and it is worth offering to push it back.
+bool per100DiffersFromFood(FoodItem food, Per100Fields fields) {
+  bool differs(String text, double? value, int digits) =>
+      text.trim() != per100FieldText(value, digits);
+  return differs(fields.calories, food.calories, 0) ||
+      differs(fields.protein, food.protein, 1) ||
+      differs(fields.fat, food.fat, 1) ||
+      differs(fields.carbs, food.carbs, 1) ||
+      differs(fields.fiber, food.fiber, 1) ||
+      differs(fields.sugar, food.sugar, 1) ||
+      differs(fields.sodium, food.sodium, 1) ||
+      differs(fields.saturatedFat, food.saturatedFat, 1);
+}
+
+/// What a save can additionally do to `food_database`, on top of updating the
+/// log entry itself. See [_EditFoodEntryScreenState._foodSyncKind].
+enum _FoodSyncKind {
+  /// The entry has no `food_id` — build a food from its per-100 values and
+  /// point the entry at it.
+  create,
+
+  /// The entry's own food holds different values — correct it in place.
+  update,
+
+  /// Same, but the food is a public row we cannot write to: the correction
+  /// goes into a private copy and the entry follows it.
+  copy,
+}
+
 /// Screen zum Bearbeiten eines Food-Entries.
 ///
 /// Zwei Bearbeitungsmodi (für Food-Einträge, `isMeal == false`):
@@ -70,6 +121,10 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   /// Grams the entry originally represented — fixed reference for scaling the
   /// micronutrient row when the amount changes. Only set in per-100g mode.
   double? _originalGrams;
+
+  /// Opt-in: also write the per-100 values in the form back to
+  /// `food_database` when saving. See [_foodSyncKind].
+  bool _syncToFood = false;
 
   bool _isSaving = false;
 
@@ -247,12 +302,199 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     };
   }
 
+  // ── food-database write-back ────────────────────────────────────────────────
+
+  /// A cooked-weight entry's per-100 fields are per 100 g *cooked*; that is not
+  /// the basis `food_database` stores, so writing them back would corrupt the
+  /// food. Such entries are simply not offered the write-back.
+  bool get _isCookedBasis => widget.entry.unit == kUnitGramCooked;
+
+  /// The per-100 nutrition fields as they currently read.
+  Per100Fields get _per100Fields => (
+        calories: _caloriesController.text,
+        protein: _proteinController.text,
+        fat: _fatController.text,
+        carbs: _carbsController.text,
+        fiber: _fiberController.text,
+        sugar: _sugarController.text,
+        sodium: _sodiumController.text,
+        saturatedFat: _saturatedFatController.text,
+      );
+
+  /// Which food-database write-back the current form state supports, or null
+  /// when none is on offer.
+  ///
+  ///  * [_FoodSyncKind.create] — the entry references no food at all, so one
+  ///    can be built from its per-100 values (task: promote a fresh log entry).
+  ///  * [_FoodSyncKind.update] — the entry's own food holds different values;
+  ///    correcting it here fixes every future scan of the same product.
+  ///  * [_FoodSyncKind.copy] — same, but the food is someone else's public row
+  ///    which we cannot write to, so a private copy takes the correction.
+  ///
+  /// Needs per-100 mode: totals mode (meal entry, unresolved portion) has no
+  /// per-100 basis to write.
+  _FoodSyncKind? get _foodSyncKind {
+    final db = widget.dbService;
+    if (db == null || !_per100gMode || _resolvingFood || _isCookedBasis) {
+      return null;
+    }
+    // Strictly "reference absent" — a food that merely failed to load must not
+    // be mistaken for one that never existed.
+    if (widget.entry.foodId == null) return _FoodSyncKind.create;
+
+    final food = _foodItem;
+    if (food == null || !per100DiffersFromFood(food, _per100Fields)) return null;
+    return (food.userId != null && food.userId == db.userId)
+        ? _FoodSyncKind.update
+        : _FoodSyncKind.copy;
+  }
+
+  /// Writes the form's per-100 values into `food_database` per [kind] and
+  /// reports the id the entry should point at afterwards (null = keep the one
+  /// it has) plus a message for the save confirmation.
+  ///
+  /// Micronutrients live in their own table (`food_database_micros`) and are
+  /// NOT written here — a food whose micros are wrong still needs those fixed
+  /// on the food itself.
+  Future<({String? foodId, String message})> _writeFoodFromForm(
+    _FoodSyncKind kind,
+    AppLocalizations l,
+  ) async {
+    final db = widget.dbService!;
+    final service = FoodDatabaseService(db);
+    final now = DateTime.now();
+
+    double v(TextEditingController c) => parseDouble(c.text);
+    double? o(TextEditingController c) => tryParseDouble(c.text);
+
+    if (kind == _FoodSyncKind.create) {
+      final created = await service.createFood(FoodItem(
+        id: '',
+        userId: db.userId,
+        name: _nameController.text.trim(),
+        calories: v(_caloriesController),
+        protein: v(_proteinController),
+        fat: v(_fatController),
+        carbs: v(_carbsController),
+        fiber: o(_fiberController),
+        sugar: o(_sugarController),
+        sodium: o(_sodiumController),
+        saturatedFat: o(_saturatedFatController),
+        isPublic: false,
+        isApproved: false,
+        isLiquid: _isLiquid,
+        source: 'Custom',
+        // The entry was logged as a guess, so the food inherits that guess as
+        // its inherent uncertainty and seeds future logs with it.
+        estimateLevel: _estimateLevel,
+        createdAt: now,
+        updatedAt: now,
+      ));
+      return (foodId: created.id, message: l.entryToFoodCreated(created.name));
+    }
+
+    // Correction paths keep every non-nutrition attribute of the food — this
+    // fixes wrong numbers, it does not rename or recategorise anything.
+    final base = _foodItem!;
+    final isCopy = kind == _FoodSyncKind.copy;
+    final corrected = FoodItem(
+      id: isCopy ? '' : base.id,
+      userId: isCopy ? db.userId : base.userId,
+      name: base.name,
+      calories: v(_caloriesController),
+      protein: v(_proteinController),
+      fat: v(_fatController),
+      carbs: v(_carbsController),
+      fiber: o(_fiberController),
+      sugar: o(_sugarController),
+      sodium: o(_sodiumController),
+      saturatedFat: o(_saturatedFatController),
+      servingSize: base.servingSize,
+      servingUnit: base.servingUnit,
+      portions: base.portions,
+      category: base.category,
+      brand: base.brand,
+      // The barcode rides along: searchByBarcode prefers the user's own rows,
+      // so the next scan of this product finds the corrected copy.
+      barcode: base.barcode,
+      isPublic: isCopy ? false : base.isPublic,
+      isApproved: isCopy ? false : base.isApproved,
+      isFavourite: isCopy ? false : base.isFavourite,
+      isLiquid: base.isLiquid,
+      // Images live in food_images keyed by the *original* id, so a copy has none.
+      hasImage: isCopy ? false : base.hasImage,
+      tags: isCopy ? const [] : base.tags,
+      source: base.source,
+      estimateLevel: base.estimateLevel,
+      createdAt: isCopy ? now : base.createdAt,
+      updatedAt: now,
+    );
+
+    if (isCopy) {
+      final copy = await service.createFood(corrected);
+      return (foodId: copy.id, message: l.entryToFoodCreated(copy.name));
+    }
+    await service.updateFood(corrected);
+    return (foodId: null, message: l.entryToFoodUpdated);
+  }
+
+  /// The opt-in checkbox for [_foodSyncKind]. Hidden when nothing is on offer,
+  /// which also means it disappears again if the user reverts their edit.
+  Widget _buildFoodSyncTile(AppLocalizations l, _FoodSyncKind kind) {
+    final foodName = _foodItem?.name ?? _nameController.text.trim();
+    final (IconData icon, String title, String subtitle) = switch (kind) {
+      _FoodSyncKind.create => (
+          Icons.add_box_outlined,
+          l.entryToFoodCreate,
+          l.entryToFoodCreateSubtitle,
+        ),
+      _FoodSyncKind.update => (
+          Icons.edit_note,
+          l.entryToFoodUpdate,
+          l.entryToFoodUpdateSubtitle(foodName),
+        ),
+      _FoodSyncKind.copy => (
+          Icons.file_copy_outlined,
+          l.entryToFoodCopy,
+          l.entryToFoodCopySubtitle(foodName),
+        ),
+    };
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: CheckboxListTile(
+        value: _syncToFood,
+        onChanged: (val) => setState(() => _syncToFood = val ?? false),
+        controlAffinity: ListTileControlAffinity.leading,
+        secondary: Icon(icon),
+        title: Text(title),
+        subtitle: Text(kind == _FoodSyncKind.create
+            ? subtitle
+            : '$subtitle ${l.entryToFoodMicrosNote}'),
+      ),
+    );
+  }
+
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
+    final l = AppLocalizations.of(context)!;
 
     setState(() => _isSaving = true);
 
     try {
+      // Food-database write-back runs FIRST: a failure there then leaves both
+      // the food and the entry untouched, so a retry is unambiguous.
+      // Re-read the kind rather than trusting the checkbox alone — the offer
+      // may have lapsed since it was ticked.
+      String? syncedFoodId;
+      String? syncMessage;
+      final syncKind = _syncToFood ? _foodSyncKind : null;
+      if (syncKind != null) {
+        final result = await _writeFoodFromForm(syncKind, l);
+        syncedFoodId = result.foodId;
+        syncMessage = result.message;
+      }
+
       final rawAmount = parseDouble(_amountController.text);
       final displayUnit = _selectedPortion?.name ?? _customUnit;
 
@@ -312,6 +554,8 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       }
 
       final updatedEntry = widget.entry.copyWith(
+        // Only ever set, never cleared: null keeps the reference the entry has.
+        foodId: syncedFoodId,
         name: _nameController.text,
         amount: rawAmount,
         unit: displayUnit,
@@ -357,7 +601,9 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         final lCtx = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(lCtx.entryUpdated),
+            content: Text(syncMessage == null
+                ? lCtx.entryUpdated
+                : '${lCtx.entryUpdated} · $syncMessage'),
             backgroundColor: Colors.green,
           ),
         );
@@ -696,6 +942,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final foodSync = _foodSyncKind;
 
     return Scaffold(
       appBar: AppBar(title: Text(l.editEntryTitle)),
@@ -800,6 +1047,13 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
             else
               // Totals mode (meal / unresolved portion): read-only preview.
               _buildTotalsPreview(),
+
+            // Offer to carry the correction into the food database — or, for an
+            // entry that has no food behind it, to create one from it.
+            if (foodSync != null) ...[
+              const SizedBox(height: 16),
+              _buildFoodSyncTile(l, foodSync),
+            ],
 
             const SizedBox(height: 24),
 

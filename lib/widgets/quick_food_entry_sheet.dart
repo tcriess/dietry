@@ -25,6 +25,7 @@ import '../utils/nutrition_warning_text.dart';
 import 'cooked_weight_nudge.dart';
 import 'cooked_factor_dialog.dart';
 import 'repeat_meal_picker.dart';
+import 'quick_estimate_sheet.dart';
 import '../screens/add_food_entry_screen.dart' show createFoodFromScannedBarcode;
 
 /// Postgres rejects an empty string as a `uuid`, and PostgREST surfaces
@@ -536,6 +537,46 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     } finally {
       if (mounted) setState(() => _addingId = null);
     }
+  }
+
+  /// Logs a rough entry for something that is in neither the food database nor
+  /// any barcode index. Creates only a `food_entries` row — no food is added to
+  /// the database, so [FoodEntry.foodId] stays null (the edit screen can
+  /// promote it to a real food later).
+  Future<void> _logQuickEstimate({String? initialName}) async {
+    final est = await showQuickEstimateSheet(context, initialName: initialName);
+    if (est == null || !mounted) return;
+
+    final now = DateTime.now();
+    await _addEntry(
+      FoodEntry(
+        id: const Uuid().v4(),
+        userId: widget.dbService.userId!,
+        entryDate: widget.date,
+        mealType: _mealType,
+        name: est.name,
+        amount: est.amount,
+        unit: est.unit,
+        calories: est.calories,
+        protein: est.protein,
+        fat: est.fat,
+        carbs: est.carbs,
+        fiber: est.fiber,
+        sugar: est.sugar,
+        sodium: est.sodium,
+        saturatedFat: est.saturatedFat,
+        isLiquid: est.isLiquid,
+        amountMl: est.amountMl,
+        isMeal: est.isMeal,
+        estimateLevel: est.estimateLevel,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      est.amountG,
+    );
+    // Launched from the empty search state: drop back to browse so the
+    // "added" toast isn't stranded behind a "no results" message.
+    if (mounted && initialName != null) _clearSearch();
   }
 
   // ── Suche ────────────────────────────────────────────────────────────────────
@@ -1244,17 +1285,18 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     }
     return Column(
       children: [
-        // Quick links: meal templates (Cloud) + manual entry form
+        // Quick links: meal templates (Cloud), quick estimate, manual form.
+        // Three buttons share one row, so they are deliberately compact —
+        // labels ellipsize rather than overflow on narrow phones.
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
           child: Row(
             children: [
               if (widget.onOpenTemplates != null) ...[
                 Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.restaurant_menu, size: 18),
-                    label: Text(l.templates,
-                        style: const TextStyle(fontSize: 13)),
+                  child: _QuickLinkButton(
+                    icon: Icons.restaurant_menu,
+                    label: l.templates,
                     onPressed: () {
                       Navigator.of(context).pop();
                       widget.onOpenTemplates!(_mealType);
@@ -1264,10 +1306,17 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                 const SizedBox(width: 8),
               ],
               Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.edit_note, size: 18),
-                  label: Text(l.manualEntry,
-                      style: const TextStyle(fontSize: 13)),
+                child: _QuickLinkButton(
+                  icon: Icons.bolt,
+                  label: l.quickEstimate,
+                  onPressed: _logQuickEstimate,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _QuickLinkButton(
+                  icon: Icons.edit_note,
+                  label: l.manualEntry,
                   onPressed: () {
                     Navigator.of(context).pop();
                     widget.onManualEntry();
@@ -1401,9 +1450,23 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(l.noSearchResults(_query),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l.noSearchResults(_query),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey)),
+              const SizedBox(height: 12),
+              // Nothing to pick means the food isn't known here — logging a
+              // rough estimate under the typed name is the shortest way out.
+              FilledButton.tonalIcon(
+                onPressed: () => _logQuickEstimate(initialName: _query),
+                icon: const Icon(Icons.bolt, size: 18),
+                label: Text(l.quickEstimateLogQuery(_query),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -1474,6 +1537,39 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           onTap: isAdding ? null : () => _pickFood(food),
         );
       },
+    );
+  }
+}
+
+/// One of the three compact quick links above the browse tabs. Shrunk down
+/// from a plain [OutlinedButton.icon] so three of them fit a narrow phone.
+class _QuickLinkButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _QuickLinkButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      icon: Icon(icon, size: 16),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        visualDensity: VisualDensity.compact,
+      ),
+      onPressed: onPressed,
     );
   }
 }

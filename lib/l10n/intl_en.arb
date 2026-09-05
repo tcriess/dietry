@@ -991,5 +991,22 @@
   "optionalSection": "Optional",
   "saveFoodForFuture": "Save this food for future use",
   "activityTotal": "Total",
-  "measuredOn": "Measured on: {date}"
+  "measuredOn": "Measured on: {date}",
+  "quickEstimate": "Estimate",
+  "quickEstimateTitle": "Quick estimate",
+  "quickEstimateHint": "Just a log entry — your food database stays untouched.",
+  "quickEstimateBasisTotal": "Total",
+  "quickEstimateBasisPer100": "Per 100",
+  "quickEstimateWeightOptional": "Weight (optional)",
+  "quickEstimateNeedsValue": "Enter at least one nutrition value",
+  "quickEstimateLogQuery": "Estimate \"{query}\"",
+  "entryToFoodUpdate": "Also correct the food",
+  "entryToFoodUpdateSubtitle": "\"{name}\" takes over these per-100 values.",
+  "entryToFoodCopy": "Save a corrected copy",
+  "entryToFoodCopySubtitle": "\"{name}\" isn't yours to edit. This entry will point at your copy.",
+  "entryToFoodCreate": "Add to my foods",
+  "entryToFoodCreateSubtitle": "Creates a food from these per-100 values and links this entry to it.",
+  "entryToFoodUpdated": "Food updated",
+  "entryToFoodCreated": "\"{name}\" added to your foods",
+  "entryToFoodMicrosNote": "Micronutrients are not carried over."
 }

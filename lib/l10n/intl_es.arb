@@ -991,5 +991,22 @@
   "optionalSection": "Opcional",
   "saveFoodForFuture": "Guarda este alimento para uso futuro",
   "activityTotal": "Total",
-  "measuredOn": "Medido el: {date}"
+  "measuredOn": "Medido el: {date}",
+  "quickEstimate": "Estimar",
+  "quickEstimateTitle": "Estimación rápida",
+  "quickEstimateHint": "Solo un registro — tu base de datos de alimentos no cambia.",
+  "quickEstimateBasisTotal": "Total",
+  "quickEstimateBasisPer100": "Por 100",
+  "quickEstimateWeightOptional": "Peso (opcional)",
+  "quickEstimateNeedsValue": "Introduce al menos un valor nutricional",
+  "quickEstimateLogQuery": "Estimar \"{query}\"",
+  "entryToFoodUpdate": "Corregir también el alimento",
+  "entryToFoodUpdateSubtitle": "\"{name}\" adoptará estos valores por 100.",
+  "entryToFoodCopy": "Guardar una copia corregida",
+  "entryToFoodCopySubtitle": "\"{name}\" no es tuyo. Esta entrada apuntará a tu copia.",
+  "entryToFoodCreate": "Añadir a mis alimentos",
+  "entryToFoodCreateSubtitle": "Crea un alimento con estos valores por 100 y vincula esta entrada.",
+  "entryToFoodUpdated": "Alimento actualizado",
+  "entryToFoodCreated": "\"{name}\" añadido a tus alimentos",
+  "entryToFoodMicrosNote": "Los micronutrientes no se transfieren."
 }

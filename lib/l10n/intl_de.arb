@@ -1090,5 +1090,50 @@
         "type": "String"
       }
     }
-  }
+  },
+  "quickEstimate": "Schätzen",
+  "quickEstimateTitle": "Schnelle Schätzung",
+  "quickEstimateHint": "Nur ein Log-Eintrag — deine Lebensmittel-Datenbank bleibt unberührt.",
+  "quickEstimateBasisTotal": "Gesamt",
+  "quickEstimateBasisPer100": "Pro 100",
+  "quickEstimateWeightOptional": "Gewicht (optional)",
+  "quickEstimateNeedsValue": "Mindestens einen Nährwert angeben",
+  "quickEstimateLogQuery": "\"{query}\" schätzen",
+  "@quickEstimateLogQuery": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "entryToFoodUpdate": "Auch im Lebensmittel korrigieren",
+  "entryToFoodUpdateSubtitle": "\"{name}\" übernimmt diese Werte pro 100.",
+  "@entryToFoodUpdateSubtitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "entryToFoodCopy": "Korrigierte Kopie speichern",
+  "entryToFoodCopySubtitle": "\"{name}\" gehört dir nicht. Dieser Eintrag zeigt danach auf deine Kopie.",
+  "@entryToFoodCopySubtitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "entryToFoodCreate": "Zu meinen Lebensmitteln hinzufügen",
+  "entryToFoodCreateSubtitle": "Legt ein Lebensmittel aus diesen Werten pro 100 an und verknüpft diesen Eintrag damit.",
+  "entryToFoodUpdated": "Lebensmittel aktualisiert",
+  "entryToFoodCreated": "\"{name}\" zu deinen Lebensmitteln hinzugefügt",
+  "@entryToFoodCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "entryToFoodMicrosNote": "Mikronährstoffe werden nicht übertragen."
 }
