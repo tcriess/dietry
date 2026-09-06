@@ -29,7 +29,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ### Fixed
-- 
+- **Sync**: the app no longer claims to be offline while the server is answering
+  it. A rejected write — a workout the database refuses, a row that is already
+  gone — was indistinguishable from a dead connection, so a single unstorable
+  record put up the red "offline" banner and kept it there: every sync cycle
+  retried the same record, was refused again, and went straight back to red.
+  Only a request that reaches nobody counts as offline now; a refusal is
+  reported as what it is, and is no longer queued for a replay that can only be
+  refused again.
+- **Activities**: a Health Connect workout the database cannot store — one that
+  lasts less than a minute, or runs past a full day — is skipped on import
+  instead of being sent, refused, and re-sent on the next sync. Watches
+  auto-detect these by the handful.
 
 ### Deprecated
 - 

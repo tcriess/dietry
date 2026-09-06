@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' show ClientException;
+import 'package:postgrest/postgrest.dart' show PostgrestException;
 import 'package:uuid/uuid.dart';
 import '../models/food_entry.dart';
 import '../models/gear.dart';
@@ -25,6 +27,62 @@ enum _ReplayOutcome {
   /// The server rejected the operation on its merits. Replaying it will never
   /// succeed, so it must be dropped rather than block the queue.
   rejected,
+}
+
+/// What a failed request tells us about the connection.
+///
+/// The offline banner asks one question only: did we reach the server? A
+/// refusal answers it as clearly as a success does. Conflating the two is what
+/// pinned the app in the red banner while the Data API was answering every
+/// request — a Health Connect import kept sending a workout that the
+/// `duration_minutes` check constraint refuses, and each 400 read as a lost
+/// connection.
+@visibleForTesting
+enum SyncFailure {
+  /// Nothing came back — no route, no DNS, a timeout. The only genuinely
+  /// offline case.
+  offline,
+
+  /// The server answered but cannot apply this right now: 5xx, 429, or an auth
+  /// rejection a fresh sign-in resolves. Worth replaying; we are online.
+  transient,
+
+  /// The server answered and refused on the merits — a violated constraint, a
+  /// malformed payload, a row that is gone. A replay reproduces the refusal
+  /// exactly, so it must not be queued. We are online.
+  rejected,
+
+  /// Failed before reaching the wire, or on the answer once it arrived — an
+  /// unusable token, an unexpected row shape. No verdict on connectivity, so
+  /// the flag must not move; the operation is still worth keeping, since a
+  /// replay is what finally puts it in front of the server.
+  unknown,
+}
+
+/// Classifies [error] for [SyncFailure]. Only evidence of a transport failure
+/// counts as offline.
+@visibleForTesting
+SyncFailure classifySyncFailure(Object error) {
+  if (error is DioException) {
+    final response = error.response;
+    // No response at all → the request reached nobody.
+    if (response == null) return SyncFailure.offline;
+    if (NeonDatabaseService.isAuthFailureResponse(response)) {
+      return SyncFailure.transient;
+    }
+    final status = response.statusCode ?? 0;
+    if (status >= 500 || status == 429) return SyncFailure.transient;
+    if (status >= 400) return SyncFailure.rejected;
+    return SyncFailure.transient;
+  }
+  // postgrest only builds this from an HTTP response, so the server answered.
+  if (error is PostgrestException) return SyncFailure.rejected;
+  // The read path talks to postgrest over package:http, which reports a
+  // transport failure as a ClientException rather than as a DioException.
+  if (error is ClientException || error is TimeoutException) {
+    return SyncFailure.offline;
+  }
+  return SyncFailure.unknown;
 }
 
 /// Monitors connectivity and replays queued offline operations.
@@ -154,14 +212,15 @@ class SyncService extends ChangeNotifier {
       final result = await FoodEntryService(_db!).createFoodEntry(e);
       _markOnline();
       return result;
-    } catch (_) {
-      _markOffline();
-      await OfflineQueue.instance.enqueue(
-        table: QueueTable.foodEntries,
-        operation: QueueOperation.create,
-        payload: e.toJson(),
-      );
-      await _refreshPendingCount();
+    } catch (err) {
+      if (_handleWriteFailure(err, 'Food entry create')) {
+        await OfflineQueue.instance.enqueue(
+          table: QueueTable.foodEntries,
+          operation: QueueOperation.create,
+          payload: e.toJson(),
+        );
+        await _refreshPendingCount();
+      }
       // Return the entry with its assigned id (was null) so the caller's
       // optimistic add carries the same id the queued replay will insert.
       return e;
@@ -188,14 +247,15 @@ class SyncService extends ChangeNotifier {
       final result = await FoodEntryService(_db!).updateFoodEntry(entry);
       _markOnline();
       return result;
-    } catch (_) {
-      _markOffline();
-      await OfflineQueue.instance.enqueue(
-        table: QueueTable.foodEntries,
-        operation: QueueOperation.update,
-        payload: entry.toJson(),
-      );
-      await _refreshPendingCount();
+    } catch (err) {
+      if (_handleWriteFailure(err, 'Food entry update')) {
+        await OfflineQueue.instance.enqueue(
+          table: QueueTable.foodEntries,
+          operation: QueueOperation.update,
+          payload: entry.toJson(),
+        );
+        await _refreshPendingCount();
+      }
       return null;
     }
   }
@@ -219,14 +279,15 @@ class SyncService extends ChangeNotifier {
     try {
       await FoodEntryService(_db!).deleteFoodEntry(id);
       _markOnline();
-    } catch (_) {
-      _markOffline();
-      await OfflineQueue.instance.enqueue(
-        table: QueueTable.foodEntries,
-        operation: QueueOperation.delete,
-        payload: {'id': id},
-      );
-      await _refreshPendingCount();
+    } catch (err) {
+      if (_handleWriteFailure(err, 'Food entry delete')) {
+        await OfflineQueue.instance.enqueue(
+          table: QueueTable.foodEntries,
+          operation: QueueOperation.delete,
+          payload: {'id': id},
+        );
+        await _refreshPendingCount();
+      }
     }
   }
 
@@ -259,7 +320,7 @@ class SyncService extends ChangeNotifier {
         _markOnline();
         return entries;
       } catch (e) {
-        _markOffline();
+        _handleReadFailure(e);
         appLogger.d('Server food entries for $date failed: $e');
       }
     }
@@ -300,14 +361,15 @@ class SyncService extends ChangeNotifier {
       final result = await PhysicalActivityService(_db!).saveActivity(a);
       _markOnline();
       return result;
-    } catch (_) {
-      _markOffline();
-      await OfflineQueue.instance.enqueue(
-        table: QueueTable.physicalActivities,
-        operation: QueueOperation.create,
-        payload: a.toJson(),
-      );
-      await _refreshPendingCount();
+    } catch (err) {
+      if (_handleWriteFailure(err, 'Activity create')) {
+        await OfflineQueue.instance.enqueue(
+          table: QueueTable.physicalActivities,
+          operation: QueueOperation.create,
+          payload: a.toJson(),
+        );
+        await _refreshPendingCount();
+      }
       // Return the activity with its assigned id (was null) so the caller's
       // optimistic add matches the id the queued replay will insert.
       return a;
@@ -334,14 +396,15 @@ class SyncService extends ChangeNotifier {
       final result = await PhysicalActivityService(_db!).updateActivity(activity);
       _markOnline();
       return result;
-    } catch (_) {
-      _markOffline();
-      await OfflineQueue.instance.enqueue(
-        table: QueueTable.physicalActivities,
-        operation: QueueOperation.update,
-        payload: activity.toJson(),
-      );
-      await _refreshPendingCount();
+    } catch (err) {
+      if (_handleWriteFailure(err, 'Activity update')) {
+        await OfflineQueue.instance.enqueue(
+          table: QueueTable.physicalActivities,
+          operation: QueueOperation.update,
+          payload: activity.toJson(),
+        );
+        await _refreshPendingCount();
+      }
       return null;
     }
   }
@@ -365,14 +428,15 @@ class SyncService extends ChangeNotifier {
     try {
       await PhysicalActivityService(_db!).deleteActivity(id);
       _markOnline();
-    } catch (_) {
-      _markOffline();
-      await OfflineQueue.instance.enqueue(
-        table: QueueTable.physicalActivities,
-        operation: QueueOperation.delete,
-        payload: {'id': id},
-      );
-      await _refreshPendingCount();
+    } catch (err) {
+      if (_handleWriteFailure(err, 'Activity delete')) {
+        await OfflineQueue.instance.enqueue(
+          table: QueueTable.physicalActivities,
+          operation: QueueOperation.delete,
+          payload: {'id': id},
+        );
+        await _refreshPendingCount();
+      }
     }
   }
 
@@ -402,8 +466,8 @@ class SyncService extends ChangeNotifier {
         appLogger.w('⚠️ Gear came back empty — using the mirrored list');
       }
       return cached;
-    } catch (_) {
-      _markOffline();
+    } catch (err) {
+      _handleReadFailure(err);
       // Fall back to the last mirrored list rather than showing "no gear".
       final cache = _cache;
       if (cache == null) return <Gear>[];
@@ -510,39 +574,46 @@ class SyncService extends ChangeNotifier {
     _isSyncing = true;
     notifyListeners();
 
-    for (final op in pending) {
-      final outcome = await _replay(op);
+    // try/finally: anything escaping the loop (a SQLite error while removing a
+    // drained operation, say) used to leave _isSyncing stuck at true, and every
+    // later cycle then returned at the guard above — the queue never drained
+    // again for the life of the process.
+    try {
+      for (final op in pending) {
+        final outcome = await _replay(op);
 
-      if (outcome == _ReplayOutcome.applied) {
-        await OfflineQueue.instance.remove(op.id);
-        continue;
-      }
+        if (outcome == _ReplayOutcome.applied) {
+          await OfflineQueue.instance.remove(op.id);
+          continue;
+        }
 
-      if (outcome == _ReplayOutcome.rejected) {
-        // The server rejected this operation on its merits (malformed payload,
-        // violated constraint, row already gone). Retrying changes nothing.
-        // Such an operation used to sit at the head of the queue forever,
-        // failing every sync cycle and keeping the red offline banner up for
-        // good — drop it and move on.
-        appLogger.w(
-            '🗑️ Dropping permanently rejected sync operation: ${op.table.name}/${op.operation.name} (${op.id})');
-        await OfflineQueue.instance.remove(op.id);
-        continue;
-      }
+        if (outcome == _ReplayOutcome.rejected) {
+          // The server rejected this operation on its merits (malformed
+          // payload, violated constraint, row already gone). Retrying changes
+          // nothing. Such an operation used to sit at the head of the queue
+          // forever, failing every sync cycle and keeping the red offline
+          // banner up for good — drop it and move on.
+          appLogger.w(
+              '🗑️ Dropping permanently rejected sync operation: ${op.table.name}/${op.operation.name} (${op.id})');
+          await OfflineQueue.instance.remove(op.id);
+          continue;
+        }
 
-      // Transient failure (network, 5xx, auth). Bump the counter and stop this
-      // cycle, which preserves the ordering of the remaining operations.
-      await OfflineQueue.instance.incrementRetry(op.id);
-      if (op.retryCount + 1 >= _maxReplayAttempts) {
-        appLogger.w(
-            '🗑️ Giving up on sync operation after ${op.retryCount + 1} attempts: ${op.table.name}/${op.operation.name} (${op.id})');
-        await OfflineQueue.instance.remove(op.id);
-        continue;
+        // Transient failure (network, 5xx, auth). Bump the counter and stop
+        // this cycle, which preserves the ordering of the remaining operations.
+        await OfflineQueue.instance.incrementRetry(op.id);
+        if (op.retryCount + 1 >= _maxReplayAttempts) {
+          appLogger.w(
+              '🗑️ Giving up on sync operation after ${op.retryCount + 1} attempts: ${op.table.name}/${op.operation.name} (${op.id})');
+          await OfflineQueue.instance.remove(op.id);
+          continue;
+        }
+        break;
       }
-      break;
+    } finally {
+      _isSyncing = false;
     }
 
-    _isSyncing = false;
     await _refreshPendingCount();
   }
 
@@ -573,54 +644,48 @@ class SyncService extends ChangeNotifier {
       }
       _markOnline();
       return _ReplayOutcome.applied;
-    } on DioException catch (e) {
+    } catch (e) {
       // A queued create whose HTTP response was lost may already have committed
       // server-side; the replay then hits a duplicate-key (409 Conflict) on the
       // client-supplied id. Now that ids are client-generated this is the
       // "already applied" case — treat it as success so the op drains instead
       // of wedging the queue on every cycle.
       if (op.operation == QueueOperation.create &&
+          e is DioException &&
           e.response?.statusCode == 409) {
         appLogger.i('↩️ Replay: create already applied (409) — treating as done');
         _markOnline();
         return _ReplayOutcome.applied;
       }
 
-      final status = e.response?.statusCode;
+      switch (classifySyncFailure(e)) {
+        // Transport failure, i.e. genuinely offline.
+        case SyncFailure.offline:
+          _markOffline();
+          return _ReplayOutcome.retry;
 
-      // No response at all → transport failure, i.e. genuinely offline.
-      if (status == null) {
-        _markOffline();
-        return _ReplayOutcome.retry;
+        // The server answered, so the network is fine. Either it is unhappy
+        // right now (5xx, 429) or it rejects our token — and the Dio
+        // interceptor already tried a refresh, otherwise the request would have
+        // been retried transparently. Keep the operation either way: a fresh
+        // sign-in makes it replayable again.
+        case SyncFailure.transient:
+          _markReachable();
+          return _ReplayOutcome.retry;
+
+        // A verdict on the operation itself (malformed payload, constraint
+        // violation, row already deleted). Replaying it fails identically
+        // forever, so let the caller drop it.
+        case SyncFailure.rejected:
+          _markReachable();
+          appLogger.w('⚠️ Replay rejected: $e');
+          return _ReplayOutcome.rejected;
+
+        // Never reached the wire, or broke on the answer. Says nothing about
+        // the connection, so leave the flag where it is and try again.
+        case SyncFailure.unknown:
+          return _ReplayOutcome.retry;
       }
-
-      // The server answered, so the network is fine.
-      _markReachable();
-
-      // Auth failure: the Dio interceptor already tried to refresh and failed,
-      // otherwise the request would have been retried transparently. Keep the
-      // operation — it becomes replayable again after a fresh sign-in.
-      if (NeonDatabaseService.isAuthFailureResponse(e.response)) {
-        return _ReplayOutcome.retry;
-      }
-
-      // 5xx and 429: the server is unhappy right now, not with this payload.
-      if (status >= 500 || status == 429) {
-        return _ReplayOutcome.retry;
-      }
-
-      // Any other 4xx is a verdict on the operation itself (malformed payload,
-      // constraint violation, row already deleted). Replaying it will fail
-      // identically forever, so let the caller drop it.
-      if (status >= 400) {
-        appLogger.w('⚠️ Replay rejected with $status: ${e.response?.data}');
-        return _ReplayOutcome.rejected;
-      }
-
-      return _ReplayOutcome.retry;
-    } catch (_) {
-      _markOffline();
-      return _ReplayOutcome.retry;
     }
   }
 
@@ -640,6 +705,43 @@ class SyncService extends ChangeNotifier {
   }
 
   // ── State helpers ─────────────────────────────────────────────────────────
+
+  /// Applies the connectivity verdict of a failed write, and answers whether
+  /// the operation is worth queueing. One place, so every write path agrees on
+  /// what "offline" means.
+  bool _handleWriteFailure(Object error, String what) {
+    final failure = classifySyncFailure(error);
+    switch (failure) {
+      case SyncFailure.offline:
+        _markOffline();
+      case SyncFailure.transient:
+      case SyncFailure.rejected:
+        _markReachable();
+      case SyncFailure.unknown:
+        break;
+    }
+    if (failure == SyncFailure.rejected) {
+      // Queueing this would replay the same refusal every cycle until the retry
+      // budget runs out, holding the sync indicator up the whole time.
+      appLogger.e('❌ $what refused by the server — dropped, not queued: $error');
+      return false;
+    }
+    return true;
+  }
+
+  /// Connectivity verdict for a failed read. Same rule as writes: only a
+  /// transport failure means offline.
+  void _handleReadFailure(Object error) {
+    switch (classifySyncFailure(error)) {
+      case SyncFailure.offline:
+        _markOffline();
+      case SyncFailure.transient:
+      case SyncFailure.rejected:
+        _markReachable();
+      case SyncFailure.unknown:
+        break;
+    }
+  }
 
   /// A request went through and was accepted: we are online *and* authenticated.
   void _markOnline() {

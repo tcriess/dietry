@@ -285,8 +285,17 @@ class PhysicalActivityService {
         throw Exception('UPDATE fehlgeschlagen: ${response.statusCode}');
       }
 
-      final updatedJson = (response.data as List).first as Map<String, dynamic>;
-      final updated = PhysicalActivity.fromJson(updatedJson);
+      // A PATCH that matched nothing answers 200 with an empty array — the row
+      // is gone, or never belonged to this user. Reading .first there threw a
+      // bare "Bad state: No element", which the sync service could only read as
+      // a lost connection. Say what actually happened instead.
+      final rows = response.data as List;
+      if (rows.isEmpty) {
+        throw StateError(
+            'UPDATE matched no physical_activities row (id=${activity.id})');
+      }
+      final updated =
+          PhysicalActivity.fromJson(rows.first as Map<String, dynamic>);
 
       appLogger.i('✅ Aktivität erfolgreich aktualisiert');
       return updated;

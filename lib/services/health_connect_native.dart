@@ -82,6 +82,10 @@ Future<bool> requestHealthPermissions() async {
   }
 }
 
+/// Upper bound of the `physical_activities_duration_minutes_check` constraint
+/// (24 hours). A workout longer than this cannot be stored, whatever it claims.
+const int _maxStorableWorkoutMinutes = 1440;
+
 Future<List<PhysicalActivity>> fetchHealthActivities({
   required DateTime start,
   required DateTime end,
@@ -102,12 +106,28 @@ Future<List<PhysicalActivity>> fetchHealthActivities({
     for (final d in data) {
       try {
         final value = d.value as WorkoutHealthValue;
+
+        // `physical_activities` accepts 0 < duration_minutes <= 1440, and
+        // Health Connect reports sessions on both sides of that: a watch
+        // auto-detects a walk lasting seconds (inMinutes truncates it to 0),
+        // and a session nobody stopped runs past a day. Sending one is a 400
+        // the import repeats on every single sync — and until the sync service
+        // learned to tell a refusal from a lost connection, each of those
+        // rejections put the whole app in the offline banner.
+        final minutes = d.dateTo.difference(d.dateFrom).inMinutes;
+        if (minutes < 1 || minutes > _maxStorableWorkoutMinutes) {
+          appLogger.w('⚠️ Skipping a workout Health Connect reports as '
+              '$minutes min (${d.dateFrom} – ${d.dateTo}) — outside the '
+              'storable range');
+          continue;
+        }
+
         result.add(PhysicalActivity(
           activityType: _mapWorkoutType(value.workoutActivityType),
           activityName: _workoutTypeName(value.workoutActivityType),
           startTime: d.dateFrom,
           endTime: d.dateTo,
-          durationMinutes: d.dateTo.difference(d.dateFrom).inMinutes,
+          durationMinutes: minutes,
           caloriesBurned: value.totalEnergyBurned?.toDouble(),
           distanceKm: value.totalDistance != null
               ? value.totalDistance! / 1000.0  // m → km

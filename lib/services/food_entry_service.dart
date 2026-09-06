@@ -216,9 +216,13 @@ class FoodEntryService {
         throw Exception('UPDATE fehlgeschlagen: ${response.statusCode}');
       }
 
-      // Response ist Array mit einem Element
-      final updatedJson = (response.data as List).first as Map<String, dynamic>;
-      final updated = FoodEntry.fromJson(updatedJson);
+      // A PATCH that matched nothing answers 200 with an empty array (see
+      // PhysicalActivityService.updateActivity for the same case).
+      final rows = response.data as List;
+      if (rows.isEmpty) {
+        throw StateError('UPDATE matched no food_entries row (id=${entry.id})');
+      }
+      final updated = FoodEntry.fromJson(rows.first as Map<String, dynamic>);
 
       appLogger.i('✅ Food-Entry erfolgreich aktualisiert');
       return updated;
