@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that is really stored, instead of showing one that never arrived.
 
 ### Fixed
+- **Food database**: the screen speaks the app's language again — the image
+  picker's messages, the load and favourite errors, and the delete menu entry
+  were German whatever language you had chosen. The Linux one now also says
+  what to do about it rather than only that something failed.
 - **Food database**: adding a food no longer throws away its picture and its
   tags. Both were only ever written when *editing*, so a picture chosen or tags
   ticked while creating a food silently went nowhere. While adding, the remove

@@ -1212,5 +1212,8 @@
   "foodImageUploaded": "Bild hochgeladen",
   "foodImageDeleted": "Bild gelöscht",
   "foodImageUploadFailed": "Bild konnte nicht hochgeladen werden",
-  "foodImageDeleteFailed": "Bild konnte nicht gelöscht werden"
+  "foodImageDeleteFailed": "Bild konnte nicht gelöscht werden",
+  "foodImageReadFailed": "Die Bilddatei konnte nicht gelesen werden",
+  "foodImagePickFailed": "Das Bild konnte nicht geladen werden",
+  "foodImagePickUnavailableLinux": "Bilderauswahl unter Linux nicht verfügbar. Bitte stelle sicher, dass ein Standard-Dateimanager installiert ist."
 }

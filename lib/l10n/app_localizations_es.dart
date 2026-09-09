@@ -2522,4 +2522,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get foodImageDeleteFailed => 'No se pudo eliminar la imagen';
+
+  @override
+  String get foodImageReadFailed => 'No se pudo leer el archivo de imagen';
+
+  @override
+  String get foodImagePickFailed => 'No se pudo cargar la imagen';
+
+  @override
+  String get foodImagePickUnavailableLinux =>
+      'La selección de imágenes no está disponible en Linux. Asegúrate de tener instalado un gestor de archivos predeterminado.';
 }

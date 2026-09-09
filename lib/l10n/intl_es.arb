@@ -1033,5 +1033,8 @@
   "foodImageUploaded": "Imagen subida",
   "foodImageDeleted": "Imagen eliminada",
   "foodImageUploadFailed": "No se pudo subir la imagen",
-  "foodImageDeleteFailed": "No se pudo eliminar la imagen"
+  "foodImageDeleteFailed": "No se pudo eliminar la imagen",
+  "foodImageReadFailed": "No se pudo leer el archivo de imagen",
+  "foodImagePickFailed": "No se pudo cargar la imagen",
+  "foodImagePickUnavailableLinux": "La selección de imágenes no está disponible en Linux. Asegúrate de tener instalado un gestor de archivos predeterminado."
 }

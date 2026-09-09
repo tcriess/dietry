@@ -4552,6 +4552,24 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Bild konnte nicht gelöscht werden'**
   String get foodImageDeleteFailed;
+
+  /// No description provided for @foodImageReadFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Bilddatei konnte nicht gelesen werden'**
+  String get foodImageReadFailed;
+
+  /// No description provided for @foodImagePickFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Das Bild konnte nicht geladen werden'**
+  String get foodImagePickFailed;
+
+  /// No description provided for @foodImagePickUnavailableLinux.
+  ///
+  /// In de, this message translates to:
+  /// **'Bilderauswahl unter Linux nicht verfügbar. Bitte stelle sicher, dass ein Standard-Dateimanager installiert ist.'**
+  String get foodImagePickUnavailableLinux;
 }
 
 class _AppLocalizationsDelegate

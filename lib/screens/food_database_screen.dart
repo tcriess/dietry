@@ -158,9 +158,10 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
     } catch (e) {
       appLogger.e('_loadFoods: Error loading foods: $e');
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Fehler beim Laden: $e'),
+              content: Text(l.errorPrefix(e.toString())),
               backgroundColor: Colors.red),
         );
       }
@@ -236,8 +237,11 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         if (idx != -1) _foods[idx] = food;
       });
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(l.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -867,12 +871,12 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                         PopupMenuItem(
                                           value: 'delete',
                                           child: Row(
-                                            children: const [
-                                              Icon(Icons.delete_outline,
+                                            children: [
+                                              const Icon(Icons.delete_outline,
                                                   color: Colors.red),
-                                              SizedBox(width: 8),
-                                              Text('Löschen',
-                                                  style: TextStyle(
+                                              const SizedBox(width: 8),
+                                              Text(l.delete,
+                                                  style: const TextStyle(
                                                       color: Colors.red)),
                                             ],
                                           ),
@@ -1121,9 +1125,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
           appLogger.e('_pickImage: Error reading file bytes: $readError',
               error: readError);
           if (mounted) {
+            final l = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Fehler beim Lesen der Datei: $readError'),
+                content: Text(l.foodImageReadFailed),
                 backgroundColor: Colors.red,
               ),
             );
@@ -1143,11 +1148,13 @@ class FoodEditDialogState extends State<FoodEditDialog> {
           e.message?.contains('FileSelectorApi.showFileChooser') == true;
 
       if (mounted) {
-        String errorMsg = 'Fehler beim Laden des Bildes';
-        if (isLinuxFileChooserError) {
-          errorMsg = 'Bilderauswahl auf Linux nicht verfügbar. '
-              'Bitte stellen Sie sicher, dass ein Standard-Dateimanager installiert ist.';
-        }
+        final l = AppLocalizations.of(context)!;
+        // The Linux file chooser needs a portal/file manager the desktop build
+        // cannot assume is there; saying so beats a generic failure the user
+        // can do nothing about.
+        final errorMsg = isLinuxFileChooserError
+            ? l.foodImagePickUnavailableLinux
+            : l.foodImagePickFailed;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1161,9 +1168,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       appLogger.e('_pickImage: Error during image selection: $e',
           error: e, stackTrace: stackTrace);
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Fehler beim Laden des Bildes: $e'),
+            content: Text(l.foodImagePickFailed),
             backgroundColor: Colors.red,
           ),
         );
