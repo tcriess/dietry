@@ -1135,5 +1135,74 @@
       }
     }
   },
-  "entryToFoodMicrosNote": "Mikronährstoffe werden nicht übertragen."
+  "entryToFoodMicrosNote": "Mikronährstoffe werden nicht übertragen.",
+  "exerciseCreditTitle": "Sport-Anrechnung",
+  "exerciseCreditSubtitle": "Wie viel von verbrannten Kalorien auf dein Tagesbudget angerechnet wird.",
+  "exerciseCreditExplainer": "Verbrannte Kalorien sind eine Schätzung – und ein Teil davon steckt schon in deinem Ziel, wenn dieses aus einem Aktivitätslevel berechnet wurde. Dazu spart der Körper einen Teil des Mehrverbrauchs an anderer Stelle wieder ein. Ein Faktor unter 100 % rechnet das ein.",
+  "exerciseCreditFieldLabel": "Anteil der verbrannten Kalorien (%)",
+  "exerciseCreditFieldHelper": "0 = Training zählt gar nicht, 100 = jede Kalorie zählt.",
+  "exerciseCreditInvalid": "Bitte einen Wert zwischen 0 und 200 eingeben",
+  "exerciseCreditFull": "Alles (100 %)",
+  "exerciseCreditUseDefault": "Standard verwenden ({value})",
+  "@exerciseCreditUseDefault": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "exerciseCreditFollowDay": "Dem Tag folgen ({value})",
+  "@exerciseCreditFollowDay": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "exerciseCreditDayTitle": "Anrechnung an diesem Tag",
+  "exerciseCreditDayFromProfile": "{value} · dein Standard",
+  "@exerciseCreditDayFromProfile": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "exerciseCreditDayOwn": "{value} · nur an diesem Tag",
+  "@exerciseCreditDayOwn": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "exerciseCreditActivityTitle": "Anrechnung dieser Aktivität",
+  "exerciseCreditActivityOwn": "{value} · nur diese Aktivität",
+  "@exerciseCreditActivityOwn": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "exerciseCreditSaveFailed": "Die Sport-Anrechnung konnte nicht gespeichert werden",
+  "caloriesCreditedOf": "{credited} von {burned} kcal",
+  "@caloriesCreditedOf": {
+    "placeholders": {
+      "credited": {
+        "type": "String"
+      },
+      "burned": {
+        "type": "String"
+      }
+    }
+  },
+  "exerciseCreditOfBurned": "von {burned} kcal",
+  "@exerciseCreditOfBurned": {
+    "placeholders": {
+      "burned": {
+        "type": "String"
+      }
+    }
+  }
 }

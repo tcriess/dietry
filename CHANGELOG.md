@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screen offers to add it to your food database and links the entry to the new
   food, so a quick estimate you keep repeating only has to be typed once. Offered
   only while the entry really has no food reference.
+- **Activities**: **exercise credit** — how much of a workout's burn is added to
+  the day's calorie budget, instead of every burned calorie counting one for
+  one. Set a default in your profile, override it for a single day on the
+  activities screen, or for a single workout on the activity itself; the most
+  specific setting wins. Left alone it is 100%, exactly as before. The overview
+  then shows both figures ("300 of 600 kcal"), and the reports page judges each
+  day against the target that really applied to it.
 
 ### Changed
 - 
@@ -50,6 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - 
+
+### Notes for self-hosters
+- This release adds migration `V10__exercise_credit_factor.sql`: an
+  `exercise_credit_factor` column on `users`, a `credit_factor` column on
+  `physical_activities`, a new `exercise_credit_days` table, and a
+  `total_credited_calories` column on the `daily_activity_summary` view. Apply
+  migrations before deploying the new app — without them activity writes and the
+  reports page will fail.
 
 ---
 

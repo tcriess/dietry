@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 10;  // Version 10: cheat_days holiday_id + note
+  static const int _version = 11;  // Version 11: exercise credit factors
 
   Database? _db;
   bool _initialized = false;
@@ -177,6 +177,7 @@ class LocalDataService {
           source TEXT NOT NULL DEFAULT 'manual',
           health_connect_record_id TEXT,
           gear_id TEXT,
+          credit_factor REAL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -225,6 +226,20 @@ class LocalDataService {
         )
       ''');
 
+      // exercise_credit_days table: how much of a day's burn counts towards
+      // its calorie budget. A missing row means "no opinion" — the profile
+      // default (then 1.0) applies. Mirrors sql/migrations/V10.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS exercise_credit_days (
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          factor REAL NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
+        )
+      ''');
+
       // user_profile table (singleton for guest user)
       await db.execute('''
         CREATE TABLE IF NOT EXISTS user_profile (
@@ -234,6 +249,7 @@ class LocalDataService {
           gender TEXT,
           activity_level TEXT,
           weight_goal TEXT,
+          exercise_credit_factor REAL,
           updated_at TEXT NOT NULL
         )
       ''');
@@ -544,6 +560,45 @@ class LocalDataService {
       }
       appLogger.i('✅ Migration 9→10 complete (cheat day holidays)');
     }
+
+    if (oldVersion < 11) {
+      // Version 11: exercise credit factors — how much of a workout's burn is
+      // added to the day's calorie budget, at three levels of specificity
+      // (activity → day → profile). Mirrors sql/migrations/V10. Every existing
+      // row stays NULL, which means 1.0: nobody's numbers move.
+      try {
+        await db.execute(
+            'ALTER TABLE physical_activities ADD COLUMN credit_factor REAL');
+        appLogger.d('✅ Added credit_factor column to physical_activities');
+      } catch (e) {
+        appLogger.d('ℹ️ credit_factor column already exists: $e');
+      }
+
+      try {
+        await db.execute(
+            'ALTER TABLE user_profile ADD COLUMN exercise_credit_factor REAL');
+        appLogger.d('✅ Added exercise_credit_factor column to user_profile');
+      } catch (e) {
+        appLogger.d('ℹ️ exercise_credit_factor column already exists: $e');
+      }
+
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS exercise_credit_days (
+            user_id TEXT NOT NULL,
+            date TEXT NOT NULL,
+            factor REAL NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, date)
+          )
+        ''');
+        appLogger.d('✅ Created exercise_credit_days table');
+      } catch (e) {
+        appLogger.d('ℹ️ exercise_credit_days table already exists: $e');
+      }
+      appLogger.i('✅ Migration 10→11 complete (exercise credit factors)');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -796,6 +851,7 @@ class LocalDataService {
         source: activity.source,
         healthConnectRecordId: activity.healthConnectRecordId,
         gearId: activity.gearId,
+        creditFactor: activity.creditFactor,
       );
 
       // Add user_id and timestamps which are required in the local schema
@@ -1101,6 +1157,128 @@ class LocalDataService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Exercise credit
+  // ─────────────────────────────────────────────────────────────────────────
+  // Guest mode: the only store. Logged-in: the offline mirror of
+  // `exercise_credit_days` and `users.exercise_credit_factor`.
+
+  /// The factor set for [date], or null when the day has no override.
+  Future<double?> getExerciseCreditForDate(DateTime date) async {
+    if (!_initialized || _db == null) return null;
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+      final rows = await _db!.query(
+        'exercise_credit_days',
+        columns: ['factor'],
+        where: 'user_id = ? AND date = ?',
+        whereArgs: [_userId, dateStr],
+        limit: 1,
+      );
+      if (rows.isEmpty) return null;
+      final value = rows.first['factor'];
+      return value == null ? null : (value as num).toDouble();
+    } catch (e) {
+      appLogger.e('❌ Error reading day exercise credit: $e');
+      return null;
+    }
+  }
+
+  /// Sets the factor for [date], or removes the override when [factor] is null.
+  /// Removing is a delete rather than a stored 1.0, so a later change to the
+  /// profile default still reaches the day.
+  Future<void> setExerciseCreditForDate(DateTime date, double? factor) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    final dateStr = date.toIso8601String().split('T')[0];
+    final now = DateTime.now().toIso8601String();
+    try {
+      if (factor == null) {
+        await _db!.delete('exercise_credit_days',
+            where: 'user_id = ? AND date = ?', whereArgs: [_userId, dateStr]);
+        return;
+      }
+      await _db!.insert(
+        'exercise_credit_days',
+        {
+          'user_id': _userId,
+          'date': dateStr,
+          'factor': factor,
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      appLogger.e('❌ Error writing day exercise credit: $e');
+      rethrow;
+    }
+  }
+
+  /// Every day that carries an override, as (date, factor) pairs. Used by the
+  /// guest→account migration, which has to carry them across one by one.
+  Future<List<({DateTime date, double factor})>>
+      getAllExerciseCreditDays() async {
+    if (!_initialized || _db == null) return const [];
+    try {
+      final rows = await _db!.query(
+        'exercise_credit_days',
+        columns: ['date', 'factor'],
+        where: 'user_id = ?',
+        whereArgs: [_userId],
+        orderBy: 'date',
+      );
+      return rows
+          .map((r) => (
+                date: DateTime.parse(r['date'] as String),
+                factor: (r['factor'] as num).toDouble(),
+              ))
+          .toList();
+    } catch (e) {
+      appLogger.e('❌ Error listing day exercise credits: $e');
+      return const [];
+    }
+  }
+
+  /// The profile-level default, or null when the user never set one.
+  Future<double?> getUserExerciseCreditFactor() async {
+    final profile = await getUserProfile();
+    return profile?.exerciseCreditFactor;
+  }
+
+  /// Writes just the profile-level default, leaving the rest of the row alone.
+  /// Its own UPDATE rather than [saveUserProfile], which replaces every column
+  /// and is called from flows that know nothing about this factor.
+  Future<void> setUserExerciseCreditFactor(double? factor) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    final now = DateTime.now().toIso8601String();
+    final changed = await _db!.update(
+      'user_profile',
+      {'exercise_credit_factor': factor, 'updated_at': now},
+      where: 'user_id = ?',
+      whereArgs: [_userId],
+    );
+    // A guest who never ran the profile setup has no row yet, and the factor is
+    // still worth keeping — the setting lives on the activities screen, which
+    // does not require a profile. Only for a real value though: a row holding
+    // nothing but a null factor would turn "no profile yet" into an all-blank
+    // profile everywhere else that reads it.
+    if (changed == 0 && factor != null) {
+      await _db!.insert(
+        'user_profile',
+        {
+          'user_id': _userId,
+          'exercise_credit_factor': factor,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+  }
+
   // ── Holidays ───────────────────────────────────────────────────────────────
   //
   // Mirrors CheatDayService: a holiday is a run of cheat_days rows sharing a
@@ -1267,6 +1445,7 @@ class LocalDataService {
         'gender': profile.gender?.name,
         'activity_level': profile.activityLevel?.name,
         'weight_goal': profile.weightGoal?.name,
+        'exercise_credit_factor': profile.exerciseCreditFactor,
         'updated_at': now,
       };
 
@@ -1689,6 +1868,7 @@ class LocalDataService {
       'gear',
       'water_intake',
       'cheat_days',
+      'exercise_credit_days',
       'user_profile',
       'user_body_measurements',
     ];

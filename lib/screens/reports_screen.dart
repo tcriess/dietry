@@ -120,7 +120,9 @@ List<CalorieTrendPoint> buildCalorieTrend(
     final targets = days
         .map((d) {
           final g = _goalCalForDate(goalHistory, d.date);
-          return g == null ? null : g + d.caloriesBurned;
+          // The credited burn, not the gross one: the target line has to be
+          // the same yardstick the overview screen used that day.
+          return g == null ? null : g + d.creditedBurn;
         })
         .whereType<double>()
         .toList();
@@ -941,13 +943,13 @@ class _StatsSummaryCard extends StatelessWidget {
             .round();
 
     final calGoal = goal?.calories ?? 0;
-    // Judged against the target that actually applied that day — goal plus
-    // burn, the same yardstick the calorie chart draws. A 2800 kcal day after
-    // a 600 kcal ride is on target, not 27% over it.
+    // Judged against the target that actually applied that day — goal plus the
+    // credited part of the burn, the same yardstick the calorie chart draws. A
+    // 2800 kcal day after a 600 kcal ride is on target, not 27% over it.
     final daysOnTarget = calGoal > 0
         ? completed
             .where((d) {
-              final r = d.calories / (calGoal + d.caloriesBurned);
+              final r = d.calories / (calGoal + d.creditedBurn);
               return r >= 0.9 && r <= 1.1;
             })
             .length

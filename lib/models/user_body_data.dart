@@ -55,7 +55,12 @@ class UserProfile {
   final Gender? gender;
   final ActivityLevel? activityLevel;
   final WeightGoal? weightGoal;
-  
+
+  /// Default share of a workout's burn added to the daily calorie budget.
+  /// Null = 1.0, i.e. count all of it. A day or a single activity may override
+  /// it; see `ExerciseCredit`.
+  final double? exerciseCreditFactor;
+
   UserProfile({
     this.id,
     this.birthdate,
@@ -63,7 +68,30 @@ class UserProfile {
     this.gender,
     this.activityLevel,
     this.weightGoal,
+    this.exerciseCreditFactor,
   });
+
+  UserProfile copyWith({
+    String? id,
+    DateTime? birthdate,
+    double? height,
+    Gender? gender,
+    ActivityLevel? activityLevel,
+    WeightGoal? weightGoal,
+    double? exerciseCreditFactor,
+    bool clearExerciseCreditFactor = false,
+  }) =>
+      UserProfile(
+        id: id ?? this.id,
+        birthdate: birthdate ?? this.birthdate,
+        height: height ?? this.height,
+        gender: gender ?? this.gender,
+        activityLevel: activityLevel ?? this.activityLevel,
+        weightGoal: weightGoal ?? this.weightGoal,
+        exerciseCreditFactor: clearExerciseCreditFactor
+            ? null
+            : (exerciseCreditFactor ?? this.exerciseCreditFactor),
+      );
   
   /// Berechne Alter aus Geburtsdatum
   int? get age {
@@ -83,6 +111,13 @@ class UserProfile {
     if (gender != null) 'gender': gender!.name,
     if (activityLevel != null) 'activity_level': activityLevel!.name,
     if (weightGoal != null) 'weight_goal': weightGoal!.name,
+    // Omitted when null, like every field above — and here that matters: the
+    // profile-setup and goal-recommendation screens PATCH a partial profile
+    // they never asked about this factor in, and an explicit null from them
+    // would wipe a setting they never showed. Clearing it back to "count all of
+    // it" goes through UserProfileService.updateExerciseCreditFactor instead.
+    if (exerciseCreditFactor != null)
+      'exercise_credit_factor': exerciseCreditFactor,
   };
   
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -97,6 +132,9 @@ class UserProfile {
         : null,
     weightGoal: json['weight_goal'] != null
         ? WeightGoal.values.firstWhere((e) => e.name == json['weight_goal'])
+        : null,
+    exerciseCreditFactor: json['exercise_credit_factor'] != null
+        ? (json['exercise_credit_factor'] as num).toDouble()
         : null,
   );
 }

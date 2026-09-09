@@ -10,6 +10,7 @@ import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/exercise_credit_dialog.dart';
 import '../widgets/gear_dropdown.dart';
 
 /// Screen zum Bearbeiten einer Aktivität
@@ -43,11 +44,15 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
   List<Gear> _gear = [];
   Gear? _selectedGear;
 
+  /// This workout's own credit factor; null means it follows the day's.
+  double? _creditFactor;
+
   @override
   void initState() {
     super.initState();
 
     _startTime = TimeOfDay.fromDateTime(widget.activity.startTime);
+    _creditFactor = widget.activity.creditFactor;
 
     _durationController = TextEditingController(
       text: (widget.activity.durationMinutes ?? widget.activity.calculatedDuration).toString(),
@@ -217,6 +222,9 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
         // Null when the user picked "none" — PhysicalActivity.toJson always
         // emits gear_id, so the PATCH really does clear the attribution.
         gearId: _selectedGear?.id,
+        // Null when the user chose "follow the day" — PhysicalActivity.toJson
+        // always emits credit_factor, so the PATCH really does clear it.
+        creditFactor: _creditFactor,
       );
       
       // Optimistic update — immediately visible in all tabs.
@@ -419,6 +427,16 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
               ),
               const SizedBox(height: 16),
             ],
+
+            // How much of this workout's burn reaches the budget. The day the
+            // activity belongs to supplies the fallback, not today's — editing
+            // last Tuesday's run must inherit last Tuesday's factor.
+            ExerciseCreditField(
+              value: _creditFactor,
+              inheritedFactor: DataStore.instance.effectiveDayCreditFactor,
+              onChanged: (value) => setState(() => _creditFactor = value),
+            ),
+            const SizedBox(height: 16),
 
             // Notizen
             TextFormField(

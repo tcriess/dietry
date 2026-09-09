@@ -343,5 +343,9 @@ PhysicalActivity _merge(
     healthConnectRecordId:
         incoming.healthConnectRecordId ?? stored.healthConnectRecordId,
     gearId: gearId,
+    // Always the stored one: a per-activity credit factor is a decision the
+    // user made about this workout, and a re-import from Health Connect —
+    // which knows nothing about it — must not undo it.
+    creditFactor: stored.creditFactor,
   );
 }

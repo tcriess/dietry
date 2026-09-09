@@ -48,6 +48,13 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   TrackingMethod _trackingMethod = TrackingMethod.tdeeHybrid;
   UserBodyData? _currentBodyData;
 
+  /// Carried through untouched. This screen never asks about the exercise
+  /// credit factor, but the guest save below writes a whole profile row — so
+  /// without holding on to it, saving a goal would silently reset a guest's
+  /// default back to "count every burned calorie". (The logged-in path PATCHes
+  /// and omits nulls, so it is safe either way.)
+  double? _exerciseCreditFactor;
+
   @override
   void initState() {
     super.initState();
@@ -86,6 +93,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             if (profile.gender != null) _gender = profile.gender!;
             if (profile.activityLevel != null) _activityLevel = profile.activityLevel!;
             if (profile.weightGoal != null) _weightGoal = profile.weightGoal!;
+            _exerciseCreditFactor = profile.exerciseCreditFactor;
           }
           if (measurement != null) {
             _weightController.text = measurement.weight.toStringAsFixed(1);
@@ -276,6 +284,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               gender: _currentBodyData!.gender,
               activityLevel: _currentBodyData!.activityLevel,
               weightGoal: _currentBodyData!.weightGoal,
+              exerciseCreditFactor: _exerciseCreditFactor,
             );
             await LocalDataService.instance.saveUserProfile(profile);
             appLogger.d('   ✅ Profil lokal gespeichert');

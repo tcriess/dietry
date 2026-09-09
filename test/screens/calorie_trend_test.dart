@@ -8,7 +8,8 @@ import 'package:dietry/services/reports_service.dart';
 /// and every training day reads as a blowout — which is exactly what a fixed
 /// goal line used to claim.
 
-DailyNutritionData _day(String date, double kcal, {double burned = 0}) =>
+DailyNutritionData _day(String date, double kcal,
+        {double burned = 0, double? credited}) =>
     DailyNutritionData(
       date: DateTime.parse(date),
       calories: kcal,
@@ -16,6 +17,7 @@ DailyNutritionData _day(String date, double kcal, {double burned = 0}) =>
       fat: 0,
       carbs: 0,
       caloriesBurned: burned,
+      caloriesCredited: credited,
     );
 
 NutritionGoal _goal(double kcal, {String? from}) => NutritionGoal(
@@ -53,6 +55,34 @@ void main() {
 
       expect(pts[0].target, 2300); // old goal + burn
       expect(pts[1].target, 1900); // new goal, nothing burned
+    });
+
+    test('lifts the target by the CREDITED burn when a factor applies', () {
+      // Same 480 kcal ride, but the user credits half of a workout. The target
+      // has to move by 240, not 480 — otherwise the reports page and the
+      // overview screen judge the same day against two different numbers. The
+      // burn line still draws the full 480: that is what the body spent.
+      final pts = buildCalorieTrend(
+        [_day('2026-03-03', 2350, burned: 480, credited: 240)],
+        [_goal(2200)],
+        ReportRange.week,
+      );
+
+      expect(pts.single.burned, 480);
+      expect(pts.single.target, 2440);
+    });
+
+    test('a day with no credited figure still counts its whole burn', () {
+      // An un-migrated database answers without total_credited_calories. That
+      // must read as "credit everything", the behaviour before factors existed,
+      // and never as "credit nothing".
+      final pts = buildCalorieTrend(
+        [_day('2026-03-03', 2350, burned: 480)],
+        [_goal(2200)],
+        ReportRange.week,
+      );
+
+      expect(pts.single.target, 2680);
     });
 
     test('averages within a bucket for the coarse ranges', () {

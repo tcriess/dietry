@@ -1008,5 +1008,22 @@
   "entryToFoodCreateSubtitle": "Crea un alimento con estos valores por 100 y vincula esta entrada.",
   "entryToFoodUpdated": "Alimento actualizado",
   "entryToFoodCreated": "\"{name}\" añadido a tus alimentos",
-  "entryToFoodMicrosNote": "Los micronutrientes no se transfieren."
+  "entryToFoodMicrosNote": "Los micronutrientes no se transfieren.",
+  "exerciseCreditTitle": "Crédito por ejercicio",
+  "exerciseCreditSubtitle": "Cuánto de las calorías quemadas se suma a tu presupuesto diario.",
+  "exerciseCreditExplainer": "Las calorías quemadas son una estimación, y una parte ya está incluida en tu objetivo si este se calculó a partir de un nivel de actividad. Además, el cuerpo recupera parte de ese gasto extra en otros momentos del día. Un factor por debajo del 100 % lo tiene en cuenta.",
+  "exerciseCreditFieldLabel": "Parte de lo quemado (%)",
+  "exerciseCreditFieldHelper": "0 = el ejercicio no cuenta, 100 = cuenta cada caloría.",
+  "exerciseCreditInvalid": "Introduce un valor entre 0 y 200",
+  "exerciseCreditFull": "Todo (100 %)",
+  "exerciseCreditUseDefault": "Usar el valor por defecto ({value})",
+  "exerciseCreditFollowDay": "Seguir al día ({value})",
+  "exerciseCreditDayTitle": "Crédito de este día",
+  "exerciseCreditDayFromProfile": "{value} · tu valor por defecto",
+  "exerciseCreditDayOwn": "{value} · solo este día",
+  "exerciseCreditActivityTitle": "Crédito de esta actividad",
+  "exerciseCreditActivityOwn": "{value} · solo esta actividad",
+  "exerciseCreditSaveFailed": "No se pudo guardar el crédito por ejercicio",
+  "caloriesCreditedOf": "{credited} de {burned} kcal",
+  "exerciseCreditOfBurned": "de {burned} kcal"
 }

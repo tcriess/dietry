@@ -3052,6 +3052,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           source: a.source,
           healthConnectRecordId: a.healthConnectRecordId,
           gearId: gearId,
+          creditFactor: a.creditFactor,
         );
       }).toList();
     } catch (e) {
@@ -3958,6 +3959,8 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 dbService: widget.dbService,
                 isCheatDay: _store.isCheatDay,
                 holidayLabel: _store.holidayLabel,
+                dayCreditFactor: _store.dayCreditFactor,
+                profileCreditFactor: _store.profileCreditFactor,
                 streak: _store.streak,
                 bestStreak: _store.bestStreak,
                 onToggleCheatDay: _toggleCheatDay,
@@ -4081,6 +4084,12 @@ class OverviewScreen extends StatelessWidget {
   /// Only read while [isCheatDay] is true.
   final String? holidayLabel;
 
+  /// The day's own exercise-credit override, and the profile default behind
+  /// it. Null at both levels means the burn is credited in full — what the
+  /// screen did before any of this existed. See [ExerciseCredit].
+  final double? dayCreditFactor;
+  final double? profileCreditFactor;
+
   final int streak;
   final int bestStreak;
   final Future<void> Function() onToggleCheatDay;
@@ -4103,6 +4112,8 @@ class OverviewScreen extends StatelessWidget {
     required this.dbService,
     required this.isCheatDay,
     this.holidayLabel,
+    this.dayCreditFactor,
+    this.profileCreditFactor,
     required this.streak,
     required this.bestStreak,
     required this.onToggleCheatDay,
@@ -4150,11 +4161,11 @@ class OverviewScreen extends StatelessWidget {
   }
 
   /// P(true intake is under the goal) given the day's calorie uncertainty.
-  /// net = goal − consumed + burned; under-goal ⇔ net > 0 ⇒ P = Φ(net/σ).
+  /// net = goal − consumed + credited burn; under-goal ⇔ net > 0 ⇒ P = Φ(net/σ).
   /// null when there's no meaningful uncertainty to reason about.
   int? get probUnderGoalPct {
     if (!showCalorieBand || caloriesSigma <= 0) return null;
-    final net = goal.calories - totalCalories + totalCaloriesBurned;
+    final net = goal.calories - totalCalories + creditedCaloriesBurned;
     return (_phi(net / caloriesSigma) * 100).round();
   }
 
@@ -4259,9 +4270,32 @@ class OverviewScreen extends StatelessWidget {
     );
   }
 
-  // ✅ Berechne verbrannte Kalorien aus activities
-  double get totalCaloriesBurned =>
-      activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
+  /// What the day's activities cost the body — the honest, unfactored burn.
+  double get totalCaloriesBurned => ExerciseCredit.grossTotal(activities);
+
+  /// The part of that burn the calorie budget actually gets. Identical to
+  /// [totalCaloriesBurned] until a credit factor is set somewhere.
+  double get creditedCaloriesBurned => ExerciseCredit.creditedTotal(
+        activities,
+        day: dayCreditFactor,
+        profile: profileCreditFactor,
+      );
+
+  /// Whether the two are far enough apart to be worth spelling out. Below a
+  /// kilocalorie it is rounding, not information.
+  bool get showsCreditSplit =>
+      (totalCaloriesBurned - creditedCaloriesBurned).abs() >= 1;
+
+  /// The burned figure as the user should read it: what the budget got, and —
+  /// once a factor is in play — what it was before the factor.
+  String _burnedLabel(AppLocalizations l, {bool withUnit = true}) {
+    if (showsCreditSplit) {
+      return l.caloriesCreditedOf(creditedCaloriesBurned.toStringAsFixed(0),
+          totalCaloriesBurned.toStringAsFixed(0));
+    }
+    final value = totalCaloriesBurned.toStringAsFixed(0);
+    return withUnit ? '$value kcal' : value;
+  }
 
   String _formatRemainingCalories(double remaining, AppLocalizations l) {
     final absValue = remaining.abs().toStringAsFixed(0);
@@ -4458,7 +4492,7 @@ class OverviewScreen extends StatelessWidget {
 
   Widget _buildNutritionOverview(BuildContext context, AppLocalizations l) {
     final remainingCalories =
-        goal.calories - totalCalories + totalCaloriesBurned;
+        goal.calories - totalCalories + creditedCaloriesBurned;
     final remainingProtein =
         (goal.protein - totalProtein).clamp(0, goal.protein);
     final remainingFat = (goal.fat - totalFat).clamp(0, goal.fat);
@@ -4478,9 +4512,7 @@ class OverviewScreen extends StatelessWidget {
               showCalorieBand
                   ? '${totalCalories.toStringAsFixed(0)} ± ${caloriesSigma.toStringAsFixed(0)} kcal'
                   : '${totalCalories.toStringAsFixed(0)} kcal',
-              totalCaloriesBurned > 0
-                  ? '${totalCaloriesBurned.toStringAsFixed(0)} kcal'
-                  : '-',
+              totalCaloriesBurned > 0 ? _burnedLabel(l) : '-',
               _formatRemainingCalories(remainingCalories, l),
               Colors.deepPurple,
             ),
@@ -4546,7 +4578,7 @@ class OverviewScreen extends StatelessWidget {
               DataCell(_consumedCell(totalCalories.toStringAsFixed(0),
                   caloriesSigma.toStringAsFixed(0))),
               DataCell(Text(
-                totalCaloriesBurned.toStringAsFixed(0),
+                _burnedLabel(l, withUnit: false),
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: Colors.green.shade700),
               )),
@@ -4866,7 +4898,7 @@ class OverviewScreen extends StatelessWidget {
                   if (totalCaloriesBurned > 0)
                     (
                       label: l.caloriesBurned,
-                      value: '${totalCaloriesBurned.toStringAsFixed(0)} kcal',
+                      value: _burnedLabel(l),
                       color: Colors.green.shade700
                     ),
                   (
@@ -4933,14 +4965,14 @@ class OverviewScreen extends StatelessWidget {
             ),
             Text(
               showCalorieBand
-                  ? '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}  (± ${caloriesSigma.toStringAsFixed(0)})'
-                  : '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + totalCaloriesBurned, l)}',
+                  ? '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + creditedCaloriesBurned, l)}  (± ${caloriesSigma.toStringAsFixed(0)})'
+                  : '${l.remaining}: ${_formatRemainingCalories(goal.calories - totalCalories + creditedCaloriesBurned, l)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color:
-                    (goal.calories - totalCalories + totalCaloriesBurned) >= 0
-                        ? Colors.green
-                        : Colors.red,
+                color: (goal.calories - totalCalories + creditedCaloriesBurned) >=
+                        0
+                    ? Colors.green
+                    : Colors.red,
               ),
             ),
             if (probUnderGoalPct != null)

@@ -18,6 +18,11 @@ class PhysicalActivity {
   final String? healthConnectRecordId; // ID von Health Connect für Sync
   final String? gearId; // Optional: Referenz zu gear (Laufschuhe, Rad, …)
 
+  /// Share of [caloriesBurned] this workout contributes to the day's calorie
+  /// budget. Null — the normal case — falls through to the day's factor, then
+  /// the profile default, then 1.0. See `ExerciseCredit`.
+  final double? creditFactor;
+
   PhysicalActivity({
     this.id,
     this.activityType = ActivityType.other,
@@ -34,6 +39,7 @@ class PhysicalActivity {
     this.source = DataSource.manual,
     this.healthConnectRecordId,
     this.gearId,
+    this.creditFactor,
   });
   
   /// Hole den Anzeige-Namen (activity_name hat Vorrang vor activityType)
@@ -60,6 +66,9 @@ class PhysicalActivity {
     // Emitted even when null, unlike the fields above: updateActivity PATCHes
     // the full row, so an omitted gear_id could never be cleared once set.
     'gear_id': gearId,
+    // Same reason: clearing an activity's own factor so it falls back on the
+    // day's has to be expressible.
+    'credit_factor': creditFactor,
   };
 
   factory PhysicalActivity.fromJson(Map<String, dynamic> json) => PhysicalActivity(
@@ -84,6 +93,9 @@ class PhysicalActivity {
     ),
     healthConnectRecordId: json['health_connect_record_id'] as String?,
     gearId: json['gear_id'] as String?,
+    creditFactor: json['credit_factor'] != null
+        ? (json['credit_factor'] as num).toDouble()
+        : null,
   );
 
   /// Returns a copy with the given fields replaced. Used e.g. when moving an
@@ -108,6 +120,8 @@ class PhysicalActivity {
     String? healthConnectRecordId,
     String? gearId,
     bool clearGearId = false,
+    double? creditFactor,
+    bool clearCreditFactor = false,
   }) {
     return PhysicalActivity(
       id: id ?? this.id,
@@ -126,6 +140,8 @@ class PhysicalActivity {
       healthConnectRecordId:
           healthConnectRecordId ?? this.healthConnectRecordId,
       gearId: clearGearId ? null : (gearId ?? this.gearId),
+      creditFactor:
+          clearCreditFactor ? null : (creditFactor ?? this.creditFactor),
     );
   }
 }

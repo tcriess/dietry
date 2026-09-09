@@ -14,6 +14,7 @@ import '../services/app_logger.dart';
 import '../services/anonymous_auth_service.dart';
 import '../app_config.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/exercise_credit_dialog.dart';
 import '../widgets/gear_dropdown.dart';
 import 'activity_database_screen.dart';
 import 'gear_screen.dart';
@@ -48,6 +49,10 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
 
   List<Gear> _gear = [];
   Gear? _selectedGear;
+
+  /// This workout's own credit factor; null means it follows the day's.
+  double? _creditFactor;
+
   /// True once the user has touched the gear dropdown. Blocks
   /// [_applyDefaultGear] from overriding a deliberate choice (including a
   /// deliberate "none") on a later activity change.
@@ -308,6 +313,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         source: DataSource.manual,
         gearId: _selectedGear?.id,
+        creditFactor: _creditFactor,
       );
 
       final saved = await SyncService.instance.saveActivity(activity);
@@ -626,6 +632,18 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
               ),
               const SizedBox(height: 16),
             ],
+
+            // How much of this workout's burn reaches the budget. Offered on
+            // the way in as well as in the edit screen, because the one-off
+            // workout that deserves a different factor — the all-day hike, the
+            // easy recovery spin — is usually known to be one while it is being
+            // entered.
+            ExerciseCreditField(
+              value: _creditFactor,
+              inheritedFactor: DataStore.instance.effectiveDayCreditFactor,
+              onChanged: (value) => setState(() => _creditFactor = value),
+            ),
+            const SizedBox(height: 16),
 
             // Notizen (optional)
             TextFormField(

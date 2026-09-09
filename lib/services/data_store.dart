@@ -6,6 +6,8 @@ import 'nutrition_goal_service.dart';
 import 'water_intake_service.dart';
 import 'serial_day_writer.dart';
 import 'cheat_day_service.dart';
+import 'exercise_credit_service.dart';
+import 'user_profile_service.dart';
 import 'streak_service.dart';
 import 'neon_database_service.dart';
 import 'local_data_service.dart';
@@ -64,6 +66,17 @@ class DataStore extends ChangeNotifier {
   /// Holiday the selected day belongs to. Kept alongside [_holidayLabel] so the
   /// write-through cache can preserve the day's holiday membership.
   String? _holidayId;
+
+  /// Share of the selected day's burn that counts towards its budget, when the
+  /// day carries its own override. Null = no opinion for this day, so
+  /// [profileCreditFactor] (then 1.0) applies. See [ExerciseCredit].
+  double? _dayCreditFactor;
+
+  /// The profile-level default, or null when the user never set one. A
+  /// user-level value, not a day-level one: loaded once per session (see
+  /// [_profileCreditFactorLoaded]) rather than on every day change.
+  double? _profileCreditFactor;
+  bool _profileCreditFactorLoaded = false;
 
   int _streak = 0;
   int _bestStreak = 0;
@@ -137,6 +150,29 @@ class DataStore extends ChangeNotifier {
   /// holiday day. Only meaningful while [isCheatDay] is true.
   String? get holidayLabel => _holidayLabel;
 
+  /// The selected day's own exercise-credit override, or null when it has none.
+  double? get dayCreditFactor => _dayCreditFactor;
+
+  /// The profile default, or null when the user never set one.
+  double? get profileCreditFactor => _profileCreditFactor;
+
+  /// The factor in force for the selected day, ignoring any per-activity
+  /// overrides — what the day-level UI shows and edits.
+  double get effectiveDayCreditFactor => ExerciseCredit.resolve(
+        day: _dayCreditFactor,
+        profile: _profileCreditFactor,
+      );
+
+  /// The day's burn as the body spent it, before any factor.
+  double get grossCaloriesBurned => ExerciseCredit.grossTotal(_activities);
+
+  /// The part of the day's burn that reaches the calorie budget.
+  double get creditedCaloriesBurned => ExerciseCredit.creditedTotal(
+        _activities,
+        day: _dayCreditFactor,
+        profile: _profileCreditFactor,
+      );
+
   int get streak => _streak;
   int get bestStreak => _bestStreak;
   List<int> get pendingMilestones => List.unmodifiable(_pendingMilestones);
@@ -207,6 +243,9 @@ class DataStore extends ChangeNotifier {
     _isCheatDay = false;
     _holidayLabel = null;
     _holidayId = null;
+    _dayCreditFactor = null;
+    _profileCreditFactor = null;
+    _profileCreditFactorLoaded = false;
     _streak = 0;
     _bestStreak = 0;
     _pendingMilestones = [];
@@ -243,6 +282,7 @@ class DataStore extends ChangeNotifier {
         _loadActivitiesLocal(date),
         _loadWaterIntakeLocal(date),
         _loadCheatDayLocal(date),
+        _loadExerciseCreditLocal(date),
       ]);
       _isLoading = false;
       _isInitialLoading = false;
@@ -298,6 +338,7 @@ class DataStore extends ChangeNotifier {
         _loadActivitiesDelta(date),
         _loadWaterIntake(date),
         _loadCheatDay(date),
+        _loadExerciseCredit(date),
       ]);
     } else {
       // Full-Fetch: Sync-Zeitstempel zurücksetzen.
@@ -309,6 +350,7 @@ class DataStore extends ChangeNotifier {
         _loadActivities(date),
         _loadWaterIntake(date),
         _loadCheatDay(date),
+        _loadExerciseCredit(date),
         _loadStreak(),
       ]);
     }
@@ -342,11 +384,17 @@ class DataStore extends ChangeNotifier {
       final activities = await cache.getActivitiesForDate(date);
       final water = await cache.getWaterIntakeForDate(date);
       final cheat = await cache.getCheatDay(date);
+      final dayCredit = await cache.getExerciseCreditForDate(date);
+      final profileCredit = await cache.getUserExerciseCreditFactor();
 
       _setFoodEntries(entries);
       _activities = activities;
       _waterIntakeMl = water;
       _applyCheatDay(cheat);
+      _dayCreditFactor = dayCredit;
+      // Deliberately not marked as loaded: the mirror is a first paint, and the
+      // authoritative value still has to come from the server below.
+      _profileCreditFactor = profileCredit;
       if (goal != null) {
         _goal = goal;
         _goalConfirmed = true;
@@ -377,6 +425,10 @@ class DataStore extends ChangeNotifier {
             note: _holidayLabel, holidayId: _holidayId);
       } else {
         await cache.unmarkCheatDay(date);
+      }
+      await cache.setExerciseCreditForDate(date, _dayCreditFactor);
+      if (_profileCreditFactorLoaded) {
+        await cache.setUserExerciseCreditFactor(_profileCreditFactor);
       }
     } catch (e) {
       appLogger.w('⚠️ Cache write-through failed: $e');
@@ -568,6 +620,52 @@ class DataStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Exercise credit ───────────────────────────────────────────────────────
+
+  /// Sets (or, with a null [factor], clears) the exercise-credit override for
+  /// [date] — optimistically, reverting if the write is refused.
+  ///
+  /// Clearing removes the day's row rather than storing 1.0, so a later change
+  /// to the profile default still reaches the day.
+  Future<void> saveDayCreditFactor(DateTime date, double? factor) async {
+    final previous = _dayCreditFactor;
+    _dayCreditFactor = factor;
+    notifyListeners();
+    try {
+      if (_local != null) {
+        await _local!.setExerciseCreditForDate(date, factor);
+      } else if (_db != null) {
+        await ExerciseCreditService(_db!).setFactorForDate(date, factor);
+      }
+      await _cache?.setExerciseCreditForDate(date, factor);
+    } catch (e) {
+      _dayCreditFactor = previous;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  /// Sets (or clears) the profile-level default. Same optimistic shape as
+  /// [saveDayCreditFactor]; a day's own override still wins over it.
+  Future<void> saveProfileCreditFactor(double? factor) async {
+    final previous = _profileCreditFactor;
+    _profileCreditFactor = factor;
+    _profileCreditFactorLoaded = true;
+    notifyListeners();
+    try {
+      if (_local != null) {
+        await _local!.setUserExerciseCreditFactor(factor);
+      } else if (_db != null) {
+        await UserProfileService(_db!).updateExerciseCreditFactor(factor);
+      }
+      await _cache?.setUserExerciseCreditFactor(factor);
+    } catch (e) {
+      _profileCreditFactor = previous;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   void setStreak(int value) {
     _streak = value;
     notifyListeners();
@@ -655,6 +753,27 @@ class DataStore extends ChangeNotifier {
     _isCheatDay = day != null;
     _holidayId = day?.holidayId;
     _holidayLabel = day?.holidayLabel;
+  }
+
+  Future<void> _loadExerciseCredit(DateTime date) async {
+    try {
+      _dayCreditFactor =
+          await ExerciseCreditService(_db!).getFactorForDate(date);
+    } catch (_) {
+      // Bestehenden Tagesfaktor beibehalten.
+    }
+    // User-level, so once per session rather than once per day change.
+    if (!_profileCreditFactorLoaded) {
+      try {
+        _profileCreditFactor =
+            await UserProfileService(_db!).getExerciseCreditFactor();
+        _profileCreditFactorLoaded = true;
+      } catch (_) {
+        // Keep whatever we have (possibly the mirror's copy) and retry on the
+        // next load. Reading a failure as "no default" would credit the whole
+        // burn and hand the user calories they had asked not to be given.
+      }
+    }
   }
 
   Future<void> _loadStreak() async {
@@ -828,6 +947,16 @@ class DataStore extends ChangeNotifier {
   }
 
   /// Load cheat day from local SQLite
+  Future<void> _loadExerciseCreditLocal(DateTime date) async {
+    try {
+      _dayCreditFactor = await _local!.getExerciseCreditForDate(date);
+      _profileCreditFactor = await _local!.getUserExerciseCreditFactor();
+      _profileCreditFactorLoaded = true;
+    } catch (_) {
+      // Bestehende Faktoren beibehalten.
+    }
+  }
+
   Future<void> _loadCheatDayLocal(DateTime date) async {
     try {
       _applyCheatDay(await _local!.getCheatDay(date));

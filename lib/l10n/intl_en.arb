@@ -1008,5 +1008,22 @@
   "entryToFoodCreateSubtitle": "Creates a food from these per-100 values and links this entry to it.",
   "entryToFoodUpdated": "Food updated",
   "entryToFoodCreated": "\"{name}\" added to your foods",
-  "entryToFoodMicrosNote": "Micronutrients are not carried over."
+  "entryToFoodMicrosNote": "Micronutrients are not carried over.",
+  "exerciseCreditTitle": "Exercise credit",
+  "exerciseCreditSubtitle": "How much of a workout's burn is added to your daily budget.",
+  "exerciseCreditExplainer": "A burn figure is an estimate, and part of it is already inside your goal whenever that goal was built from an activity level. On top of that, the body claws back some of the extra spend elsewhere in the day. A factor below 100% prices that in.",
+  "exerciseCreditFieldLabel": "Share of the burn (%)",
+  "exerciseCreditFieldHelper": "0 = workouts don't count at all, 100 = every calorie counts.",
+  "exerciseCreditInvalid": "Enter a value between 0 and 200",
+  "exerciseCreditFull": "All of it (100%)",
+  "exerciseCreditUseDefault": "Use the default ({value})",
+  "exerciseCreditFollowDay": "Follow the day ({value})",
+  "exerciseCreditDayTitle": "Credit on this day",
+  "exerciseCreditDayFromProfile": "{value} · your default",
+  "exerciseCreditDayOwn": "{value} · this day only",
+  "exerciseCreditActivityTitle": "Credit for this activity",
+  "exerciseCreditActivityOwn": "{value} · this activity only",
+  "exerciseCreditSaveFailed": "The exercise credit could not be saved",
+  "caloriesCreditedOf": "{credited} of {burned} kcal",
+  "exerciseCreditOfBurned": "of {burned} kcal"
 }

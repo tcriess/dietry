@@ -2403,4 +2403,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get entryToFoodMicrosNote => 'Micronutrients are not carried over.';
+
+  @override
+  String get exerciseCreditTitle => 'Exercise credit';
+
+  @override
+  String get exerciseCreditSubtitle =>
+      'How much of a workout\'s burn is added to your daily budget.';
+
+  @override
+  String get exerciseCreditExplainer =>
+      'A burn figure is an estimate, and part of it is already inside your goal whenever that goal was built from an activity level. On top of that, the body claws back some of the extra spend elsewhere in the day. A factor below 100% prices that in.';
+
+  @override
+  String get exerciseCreditFieldLabel => 'Share of the burn (%)';
+
+  @override
+  String get exerciseCreditFieldHelper =>
+      '0 = workouts don\'t count at all, 100 = every calorie counts.';
+
+  @override
+  String get exerciseCreditInvalid => 'Enter a value between 0 and 200';
+
+  @override
+  String get exerciseCreditFull => 'All of it (100%)';
+
+  @override
+  String exerciseCreditUseDefault(String value) {
+    return 'Use the default ($value)';
+  }
+
+  @override
+  String exerciseCreditFollowDay(String value) {
+    return 'Follow the day ($value)';
+  }
+
+  @override
+  String get exerciseCreditDayTitle => 'Credit on this day';
+
+  @override
+  String exerciseCreditDayFromProfile(String value) {
+    return '$value · your default';
+  }
+
+  @override
+  String exerciseCreditDayOwn(String value) {
+    return '$value · this day only';
+  }
+
+  @override
+  String get exerciseCreditActivityTitle => 'Credit for this activity';
+
+  @override
+  String exerciseCreditActivityOwn(String value) {
+    return '$value · this activity only';
+  }
+
+  @override
+  String get exerciseCreditSaveFailed =>
+      'The exercise credit could not be saved';
+
+  @override
+  String caloriesCreditedOf(String credited, String burned) {
+    return '$credited of $burned kcal';
+  }
+
+  @override
+  String exerciseCreditOfBurned(String burned) {
+    return 'of $burned kcal';
+  }
 }

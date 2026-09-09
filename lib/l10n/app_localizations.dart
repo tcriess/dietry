@@ -4402,6 +4402,108 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Mikronährstoffe werden nicht übertragen.'**
   String get entryToFoodMicrosNote;
+
+  /// No description provided for @exerciseCreditTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Sport-Anrechnung'**
+  String get exerciseCreditTitle;
+
+  /// No description provided for @exerciseCreditSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Wie viel von verbrannten Kalorien auf dein Tagesbudget angerechnet wird.'**
+  String get exerciseCreditSubtitle;
+
+  /// No description provided for @exerciseCreditExplainer.
+  ///
+  /// In de, this message translates to:
+  /// **'Verbrannte Kalorien sind eine Schätzung – und ein Teil davon steckt schon in deinem Ziel, wenn dieses aus einem Aktivitätslevel berechnet wurde. Dazu spart der Körper einen Teil des Mehrverbrauchs an anderer Stelle wieder ein. Ein Faktor unter 100 % rechnet das ein.'**
+  String get exerciseCreditExplainer;
+
+  /// No description provided for @exerciseCreditFieldLabel.
+  ///
+  /// In de, this message translates to:
+  /// **'Anteil der verbrannten Kalorien (%)'**
+  String get exerciseCreditFieldLabel;
+
+  /// No description provided for @exerciseCreditFieldHelper.
+  ///
+  /// In de, this message translates to:
+  /// **'0 = Training zählt gar nicht, 100 = jede Kalorie zählt.'**
+  String get exerciseCreditFieldHelper;
+
+  /// No description provided for @exerciseCreditInvalid.
+  ///
+  /// In de, this message translates to:
+  /// **'Bitte einen Wert zwischen 0 und 200 eingeben'**
+  String get exerciseCreditInvalid;
+
+  /// No description provided for @exerciseCreditFull.
+  ///
+  /// In de, this message translates to:
+  /// **'Alles (100 %)'**
+  String get exerciseCreditFull;
+
+  /// No description provided for @exerciseCreditUseDefault.
+  ///
+  /// In de, this message translates to:
+  /// **'Standard verwenden ({value})'**
+  String exerciseCreditUseDefault(String value);
+
+  /// No description provided for @exerciseCreditFollowDay.
+  ///
+  /// In de, this message translates to:
+  /// **'Dem Tag folgen ({value})'**
+  String exerciseCreditFollowDay(String value);
+
+  /// No description provided for @exerciseCreditDayTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Anrechnung an diesem Tag'**
+  String get exerciseCreditDayTitle;
+
+  /// No description provided for @exerciseCreditDayFromProfile.
+  ///
+  /// In de, this message translates to:
+  /// **'{value} · dein Standard'**
+  String exerciseCreditDayFromProfile(String value);
+
+  /// No description provided for @exerciseCreditDayOwn.
+  ///
+  /// In de, this message translates to:
+  /// **'{value} · nur an diesem Tag'**
+  String exerciseCreditDayOwn(String value);
+
+  /// No description provided for @exerciseCreditActivityTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Anrechnung dieser Aktivität'**
+  String get exerciseCreditActivityTitle;
+
+  /// No description provided for @exerciseCreditActivityOwn.
+  ///
+  /// In de, this message translates to:
+  /// **'{value} · nur diese Aktivität'**
+  String exerciseCreditActivityOwn(String value);
+
+  /// No description provided for @exerciseCreditSaveFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Die Sport-Anrechnung konnte nicht gespeichert werden'**
+  String get exerciseCreditSaveFailed;
+
+  /// No description provided for @caloriesCreditedOf.
+  ///
+  /// In de, this message translates to:
+  /// **'{credited} von {burned} kcal'**
+  String caloriesCreditedOf(String credited, String burned);
+
+  /// No description provided for @exerciseCreditOfBurned.
+  ///
+  /// In de, this message translates to:
+  /// **'von {burned} kcal'**
+  String exerciseCreditOfBurned(String burned);
 }
 
 class _AppLocalizationsDelegate

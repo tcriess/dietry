@@ -26,7 +26,17 @@ class DailyNutritionData {
   final double protein;
   final double fat;
   final double carbs;
+
+  /// What the day's activities cost the body — the unfactored burn, which is
+  /// what the chart's burn line draws.
   final double caloriesBurned;
+
+  /// The part of that burn the day's calorie budget got, once the exercise
+  /// credit factors were applied. Null means the source did not report it (an
+  /// un-migrated database, or a caller that has no view of the factors), and
+  /// then [creditedBurn] falls back to the gross figure — the behaviour before
+  /// credit factors existed.
+  final double? caloriesCredited;
 
   const DailyNutritionData({
     required this.date,
@@ -35,7 +45,12 @@ class DailyNutritionData {
     required this.fat,
     required this.carbs,
     this.caloriesBurned = 0,
+    this.caloriesCredited,
   });
+
+  /// The burn as the budget saw it. Use this wherever a day is judged against
+  /// its target; use [caloriesBurned] to report what was actually spent.
+  double get creditedBurn => caloriesCredited ?? caloriesBurned;
 }
 
 class DailyWaterData {
@@ -120,15 +135,23 @@ class ReportsService {
         '?select=entry_date,total_calories,total_protein,total_fat,total_carbs'
         '&user_id=eq.$uid&order=entry_date.asc${_range('entry_date', from, to)}');
 
+    // total_credited_calories is the same sum with each activity's exercise
+    // credit factor applied — see sql/migrations/V10. Kept alongside the gross
+    // total rather than replacing it: the chart draws what was burned, the
+    // target line uses what was credited, and conflating them would make one of
+    // the two lie.
     final rA = await _get('/daily_activity_summary'
-        '?select=activity_date,total_calories'
+        '?select=activity_date,total_calories,total_credited_calories'
         '&user_id=eq.$uid${_range('activity_date', from, to)}');
 
     final burnedByDate = <String, double>{};
+    final creditedByDate = <String, double>{};
     for (final row in rA) {
       final ds = (row['activity_date'] as String).split('T')[0];
       burnedByDate[ds] =
           (row['total_calories'] as num?)?.toDouble() ?? 0;
+      final credited = row['total_credited_calories'] as num?;
+      if (credited != null) creditedByDate[ds] = credited.toDouble();
     }
 
     return rN.map((row) {
@@ -140,6 +163,7 @@ class ReportsService {
         fat: (row['total_fat'] as num?)?.toDouble() ?? 0,
         carbs: (row['total_carbs'] as num?)?.toDouble() ?? 0,
         caloriesBurned: burnedByDate[ds] ?? 0,
+        caloriesCredited: creditedByDate[ds],
       );
     }).toList();
   }

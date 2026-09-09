@@ -7,6 +7,7 @@ export 'holiday.dart';
 export 'streak_record.dart';
 export 'physical_activity.dart';
 export 'gear.dart';
+export 'exercise_credit.dart';
 export 'tracking_method.dart';
 
 import 'tracking_method.dart';

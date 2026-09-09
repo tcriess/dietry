@@ -21,6 +21,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/app_features_utils.dart';
 import '../widgets/main_tutorial.dart';
 import '../widgets/ai_meal_model_tile.dart';
+import '../widgets/exercise_credit_dialog.dart';
 import 'profile_setup_screen.dart';
 import 'add_body_measurement_screen.dart';
 import 'goal_recommendation_screen.dart';
@@ -55,6 +56,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _waterReminderEnabled = false;
   bool _foodLogReminderEnabled = false;
   bool _hcImportEnabled = false;
+
+  /// The default share of a workout's burn added to the daily budget, or null
+  /// when the user never set one (= count all of it). Held apart from
+  /// [_profile] because a user with no profile row yet can still set it.
+  double? _exerciseCreditFactor;
 
   @override
   void initState() {
@@ -105,6 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() {
           _profile = profile;
+          _exerciseCreditFactor = profile?.exerciseCreditFactor;
           _currentMeasurement = current;
           _allMeasurements = measurements;
           _goal = goal;
@@ -157,6 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (hasData && mounted) {
         setState(() {
           _profile = profile;
+          _exerciseCreditFactor = profile?.exerciseCreditFactor;
           _currentMeasurement = current;
           _allMeasurements = measurements;
           _goal = goal;
@@ -688,6 +696,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 16),
 
                 // =======================================
+                // SPORT-ANRECHNUNG (default exercise credit)
+                // =======================================
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.percent, color: Colors.orange),
+                    title: Text(l.exerciseCreditTitle),
+                    subtitle: Text(l.exerciseCreditSubtitle),
+                    trailing: Text(
+                      ExerciseCredit.formatPercent(
+                          _exerciseCreditFactor ?? ExerciseCredit.full),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                    ),
+                    onTap: () => _editExerciseCredit(l),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // =======================================
                 // DATA SOURCES (Health Connect toggle)
                 // Only rendered on platforms where HC is available.
                 // =======================================
@@ -1028,6 +1058,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return NutritionCalculator.calculateWaterGoal(_currentMeasurement!.weight);
     }
     return 2000;
+  }
+
+  /// Edits the profile-level default. Individual days and single activities
+  /// may still override it — this is only the value they fall back on.
+  Future<void> _editExerciseCredit(AppLocalizations l) async {
+    final choice = await showExerciseCreditDialog(
+      context,
+      title: l.exerciseCreditTitle,
+      current: _exerciseCreditFactor,
+      inheritedFactor: ExerciseCredit.full,
+      // Nothing sits above the profile, so the escape hatch here is simply
+      // "back to counting all of it".
+      inheritLabel: l.exerciseCreditFull,
+    );
+    if (choice == null || !mounted) return;
+
+    final previous = _exerciseCreditFactor;
+    setState(() => _exerciseCreditFactor = choice.factor);
+    try {
+      // Through the store rather than the service: it owns the value the
+      // overview reads, and writes it through to the offline mirror.
+      await DataStore.instance.saveProfileCreditFactor(choice.factor);
+      if (mounted) {
+        setState(() =>
+            _profile = _profile?.copyWith(
+                exerciseCreditFactor: choice.factor,
+                clearExerciseCreditFactor: choice.factor == null));
+      }
+    } catch (e) {
+      appLogger.e('❌ Could not save the default exercise credit: $e');
+      if (!mounted) return;
+      setState(() => _exerciseCreditFactor = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.exerciseCreditSaveFailed),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildWaterGoalRow(AppLocalizations l) {

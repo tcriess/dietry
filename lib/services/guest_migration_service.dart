@@ -5,6 +5,8 @@ import 'gear_service.dart';
 import 'physical_activity_service.dart';
 import 'water_intake_service.dart';
 import 'cheat_day_service.dart';
+import 'exercise_credit_service.dart';
+import 'user_profile_service.dart';
 import 'nutrition_goal_service.dart';
 import 'user_body_measurements_service.dart';
 import 'app_logger.dart';
@@ -215,6 +217,31 @@ class GuestMigrationService {
       } catch (e) {
         appLogger.w('⚠️ Error migrating cheat days: $e');
         result.errors.add('Cheat days: $e');
+      }
+
+      // 8. Migrate exercise credit — the profile default and any per-day
+      // overrides. Without this a guest who had set "count half" would come out
+      // of the migration crediting everything again, and only notice by the
+      // budget quietly growing.
+      try {
+        appLogger.d('🔥 Migrating exercise credit factors...');
+        final defaultFactor = await local.getUserExerciseCreditFactor();
+        if (defaultFactor != null) {
+          await UserProfileService(db).updateExerciseCreditFactor(defaultFactor);
+        }
+        final days = await local.getAllExerciseCreditDays();
+        final creditService = ExerciseCreditService(db);
+        for (final day in days) {
+          try {
+            await creditService.setFactorForDate(day.date, day.factor);
+          } catch (e) {
+            appLogger.w('⚠️ Error migrating credit day ${day.date}: $e');
+          }
+        }
+        appLogger.d('✅ Exercise credit migrated (${days.length} days)');
+      } catch (e) {
+        appLogger.w('⚠️ Error migrating exercise credit: $e');
+        result.errors.add('Exercise credit: $e');
       }
 
       appLogger.i('✅ Guest data migration completed');

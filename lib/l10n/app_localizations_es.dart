@@ -2428,4 +2428,73 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get entryToFoodMicrosNote => 'Los micronutrientes no se transfieren.';
+
+  @override
+  String get exerciseCreditTitle => 'Crédito por ejercicio';
+
+  @override
+  String get exerciseCreditSubtitle =>
+      'Cuánto de las calorías quemadas se suma a tu presupuesto diario.';
+
+  @override
+  String get exerciseCreditExplainer =>
+      'Las calorías quemadas son una estimación, y una parte ya está incluida en tu objetivo si este se calculó a partir de un nivel de actividad. Además, el cuerpo recupera parte de ese gasto extra en otros momentos del día. Un factor por debajo del 100 % lo tiene en cuenta.';
+
+  @override
+  String get exerciseCreditFieldLabel => 'Parte de lo quemado (%)';
+
+  @override
+  String get exerciseCreditFieldHelper =>
+      '0 = el ejercicio no cuenta, 100 = cuenta cada caloría.';
+
+  @override
+  String get exerciseCreditInvalid => 'Introduce un valor entre 0 y 200';
+
+  @override
+  String get exerciseCreditFull => 'Todo (100 %)';
+
+  @override
+  String exerciseCreditUseDefault(String value) {
+    return 'Usar el valor por defecto ($value)';
+  }
+
+  @override
+  String exerciseCreditFollowDay(String value) {
+    return 'Seguir al día ($value)';
+  }
+
+  @override
+  String get exerciseCreditDayTitle => 'Crédito de este día';
+
+  @override
+  String exerciseCreditDayFromProfile(String value) {
+    return '$value · tu valor por defecto';
+  }
+
+  @override
+  String exerciseCreditDayOwn(String value) {
+    return '$value · solo este día';
+  }
+
+  @override
+  String get exerciseCreditActivityTitle => 'Crédito de esta actividad';
+
+  @override
+  String exerciseCreditActivityOwn(String value) {
+    return '$value · solo esta actividad';
+  }
+
+  @override
+  String get exerciseCreditSaveFailed =>
+      'No se pudo guardar el crédito por ejercicio';
+
+  @override
+  String caloriesCreditedOf(String credited, String burned) {
+    return '$credited de $burned kcal';
+  }
+
+  @override
+  String exerciseCreditOfBurned(String burned) {
+    return 'de $burned kcal';
+  }
 }

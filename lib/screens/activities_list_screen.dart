@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/exercise_credit.dart';
 import '../models/gear.dart';
 import '../models/physical_activity.dart';
 import '../models/food_entry.dart' show MealType;
@@ -8,6 +9,7 @@ import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/exercise_credit_dialog.dart';
 import '../widgets/move_copy_sheet.dart';
 import 'edit_activity_screen.dart';
 
@@ -309,6 +311,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
           notes: activity.notes,
           source: DataSource.manual,
           gearId: activity.gearId,
+          creditFactor: activity.creditFactor,
         ));
       } else {
         await sync.updateActivity(
@@ -399,6 +402,26 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     );
   }
 
+  /// Marks a workout that credits a different share than the rest of the day.
+  /// Not a button: the factor is edited where the rest of the activity is.
+  Widget _buildCreditChip(AppLocalizations l, PhysicalActivity activity) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.percent, size: 13, color: Colors.orange.shade800),
+          const SizedBox(width: 4),
+          Text(
+            l.exerciseCreditActivityOwn(
+                ExerciseCredit.formatPercent(activity.creditFactor!)),
+            style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDuration(int minutes) {
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
@@ -414,7 +437,12 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     final activities = _store.activities;
 
     final totalDuration = activities.fold(0, (sum, a) => sum + (a.durationMinutes ?? a.calculatedDuration));
-    final totalCalories = activities.fold(0.0, (sum, a) => sum + (a.caloriesBurned ?? 0));
+    final totalCalories = ExerciseCredit.grossTotal(activities);
+    // What the calorie budget actually gets. Equal to [totalCalories] until a
+    // credit factor is set somewhere; the card then shows both, because a
+    // number that had silently shrunk would just look like a bug.
+    final creditedCalories = _store.creditedCaloriesBurned;
+    final showsCreditSplit = (totalCalories - creditedCalories).abs() >= 1;
 
     return Scaffold(
       body: Column(
@@ -472,31 +500,46 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
               color: Colors.blue.shade50,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Column(children: [
-                      const Icon(Icons.timer, color: Colors.blue),
-                      const SizedBox(height: 4),
-                      Text(_formatDuration(totalDuration),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(l.activityTotal, style: Theme.of(context).textTheme.bodySmall),
-                    ]),
-                    if (totalCalories > 0)
-                      Column(children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orange),
-                        const SizedBox(height: 4),
-                        Text(totalCalories.toStringAsFixed(0),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                        Text('kcal', style: Theme.of(context).textTheme.bodySmall),
-                      ]),
-                    Column(children: [
-                      const Icon(Icons.fitness_center, color: Colors.green),
-                      const SizedBox(height: 4),
-                      Text('${activities.length}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      Text(l.activitiesTitle, style: Theme.of(context).textTheme.bodySmall),
-                    ]),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(children: [
+                          const Icon(Icons.timer, color: Colors.blue),
+                          const SizedBox(height: 4),
+                          Text(_formatDuration(totalDuration),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          Text(l.activityTotal, style: Theme.of(context).textTheme.bodySmall),
+                        ]),
+                        if (totalCalories > 0)
+                          Column(children: [
+                            const Icon(Icons.local_fire_department, color: Colors.orange),
+                            const SizedBox(height: 4),
+                            // The credited figure leads, with the gross one
+                            // underneath where the unit normally sits — the
+                            // budget is what the number is for.
+                            Text(creditedCalories.toStringAsFixed(0),
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                            Text(
+                                showsCreditSplit
+                                    ? l.exerciseCreditOfBurned(
+                                        totalCalories.toStringAsFixed(0))
+                                    : 'kcal',
+                                style: Theme.of(context).textTheme.bodySmall),
+                          ]),
+                        Column(children: [
+                          const Icon(Icons.fitness_center, color: Colors.green),
+                          const SizedBox(height: 4),
+                          Text('${activities.length}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          Text(l.activitiesTitle, style: Theme.of(context).textTheme.bodySmall),
+                        ]),
+                      ],
+                    ),
+                    const Divider(height: 20),
+                    _buildDayCreditRow(l),
                   ],
                 ),
               ),
@@ -580,6 +623,11 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                     // Gear, one tap away — see [_showsGearChip].
                                     if (_showsGearChip(activity))
                                       _buildGearChip(l, activity),
+                                    // Only when this workout overrides the day.
+                                    // On every row it would just repeat what
+                                    // the summary card already says.
+                                    if (activity.creditFactor != null)
+                                      _buildCreditChip(l, activity),
                                   ],
                                 ),
                                 // Deleting straight from the row is offered for
@@ -609,6 +657,79 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
         ],
       ),
     );
+  }
+
+  /// The factor in force for the shown day, and where it comes from — one tap
+  /// opens the editor.
+  ///
+  /// It lives here rather than on the overview because this is the screen the
+  /// burn is on: seeing "3 activities, 640 kcal" and "half of that counts" in
+  /// the same card is what makes the smaller number on the overview legible.
+  Widget _buildDayCreditRow(AppLocalizations l) {
+    final own = _store.dayCreditFactor;
+    final label = ExerciseCredit.formatPercent(_store.effectiveDayCreditFactor);
+
+    return InkWell(
+      onTap: _editDayCredit,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(Icons.percent, size: 18, color: Colors.blue.shade700),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l.exerciseCreditDayTitle,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    own == null
+                        ? l.exerciseCreditDayFromProfile(label)
+                        : l.exerciseCreditDayOwn(label),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade700,
+                          fontWeight:
+                              own == null ? FontWeight.normal : FontWeight.bold,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.edit, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editDayCredit() async {
+    final l = AppLocalizations.of(context)!;
+    final profileDefault = _store.profileCreditFactor ?? ExerciseCredit.full;
+    final choice = await showExerciseCreditDialog(
+      context,
+      title: l.exerciseCreditDayTitle,
+      current: _store.dayCreditFactor,
+      inheritedFactor: profileDefault,
+      inheritLabel: l.exerciseCreditUseDefault(
+          ExerciseCredit.formatPercent(profileDefault)),
+    );
+    if (choice == null || !mounted) return;
+
+    try {
+      await _store.saveDayCreditFactor(widget.selectedDay, choice.factor);
+    } catch (e) {
+      appLogger.e('❌ Could not save the day exercise credit: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.exerciseCreditSaveFailed),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   /// Wrap [child] in a [RefreshIndicator] when an onRefresh callback was
