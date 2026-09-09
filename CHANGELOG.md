@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 
+
+### Deprecated
+- 
+
+### Removed
+- 
+
+### Security
+- 
+
+---
+
+## [1.8.0] — 2026-09-09
+
+### Added
 - **Food log**: a **quick estimate** entry for anything that is neither in your
   food database nor behind a barcode — a canteen plate, a colleague's cake. Give
   it a name and either the totals for the whole helping or per-100 values plus a
@@ -68,15 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of being sent, refused, and re-sent on the next sync. Watches
   auto-detect these by the handful.
 
-### Deprecated
-- 
-
-### Removed
-- 
-
-### Security
-- 
-
 ### Notes for self-hosters
 - This release adds migration `V10__exercise_credit_factor.sql`: an
   `exercise_credit_factor` column on `users`, a `credit_factor` column on
@@ -84,6 +97,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `total_credited_calories` column on the `daily_activity_summary` view. Apply
   migrations before deploying the new app — without them activity writes and the
   reports page will fail.
+- `./flyway.sh` now runs under **Podman** as well as Docker, whichever actually
+  answers. That matters inside a distrobox container, where `docker` is on
+  `PATH` but only forwards to a host that may not have it. Force the choice with
+  `CONTAINER_ENGINE=podman ./flyway.sh …`.
 
 ---
 
