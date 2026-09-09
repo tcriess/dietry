@@ -1406,7 +1406,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       return;
     }
 
-    final result = await showDialog<FoodItem>(
+    final result = await showDialog<FoodFormResult>(
       context: context,
       builder: (context) =>
           FoodEditDialog(food: food, dbService: widget.dbService!),
@@ -1415,7 +1415,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
     try {
       final service = FoodDatabaseService(widget.dbService!);
-      final updated = await service.updateFood(result);
+      final updated = await service.updateFood(result.food);
+      await TagService(widget.dbService!)
+          .setFoodTags(updated.id, result.tags);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

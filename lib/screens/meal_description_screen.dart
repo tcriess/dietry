@@ -244,7 +244,7 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
   Future<void> _createFood(_Row row) async {
     final db = widget.dbService;
     if (db == null) return;
-    final created = await showDialog<FoodItem>(
+    final created = await showDialog<FoodFormResult>(
       context: context,
       builder: (_) => FoodEditDialog(
         food: null,
@@ -255,7 +255,10 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     if (created == null || !mounted) return;
     final FoodItem saved;
     try {
-      saved = await FoodDatabaseService(db).createFood(created);
+      saved = await FoodDatabaseService(db).createFood(created.food);
+      // An image or tags picked here are not carried over: this entry point
+      // exists to get a name and its nutrition values on the record fast, and
+      // the food database screen is where a food is dressed up afterwards.
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)

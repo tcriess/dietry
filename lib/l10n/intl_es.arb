@@ -1027,5 +1027,11 @@
   "caloriesCreditedOf": "{credited} de {burned} kcal",
   "exerciseCreditOfBurned": "de {burned} kcal",
   "editDone": "Listo",
-  "editDiscardedInvalid": "Entrada no válida — se mantiene el valor anterior"
+  "editDiscardedInvalid": "Entrada no válida — se mantiene el valor anterior",
+  "foodImageNone": "Sin imagen",
+  "foodImagePick": "Elegir imagen",
+  "foodImageUploaded": "Imagen subida",
+  "foodImageDeleted": "Imagen eliminada",
+  "foodImageUploadFailed": "No se pudo subir la imagen",
+  "foodImageDeleteFailed": "No se pudo eliminar la imagen"
 }

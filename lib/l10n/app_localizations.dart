@@ -4516,6 +4516,42 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'Ungültige Eingabe — der bisherige Wert bleibt'**
   String get editDiscardedInvalid;
+
+  /// No description provided for @foodImageNone.
+  ///
+  /// In de, this message translates to:
+  /// **'Kein Bild'**
+  String get foodImageNone;
+
+  /// No description provided for @foodImagePick.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild wählen'**
+  String get foodImagePick;
+
+  /// No description provided for @foodImageUploaded.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild hochgeladen'**
+  String get foodImageUploaded;
+
+  /// No description provided for @foodImageDeleted.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild gelöscht'**
+  String get foodImageDeleted;
+
+  /// No description provided for @foodImageUploadFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild konnte nicht hochgeladen werden'**
+  String get foodImageUploadFailed;
+
+  /// No description provided for @foodImageDeleteFailed.
+  ///
+  /// In de, this message translates to:
+  /// **'Bild konnte nicht gelöscht werden'**
+  String get foodImageDeleteFailed;
 }
 
 class _AppLocalizationsDelegate

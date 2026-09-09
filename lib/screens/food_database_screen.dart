@@ -20,6 +20,7 @@ import '../widgets/barcode_scanner_sheet.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
+import '../widgets/edit_on_close.dart';
 import '../widgets/tag_editor.dart';
 import 'tag_management_screen.dart';
 // food_detail_screen.dart removed — detail nav replaced by log-food action;
@@ -171,28 +172,34 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   Future<void> _editFood(FoodItem food) async {
     appLogger.d(
         '_editFood: Opening dialog for ${food.name}, hasImage=${food.hasImage}');
-    final result = await showDialog<FoodItem>(
+    final result = await showDialog<FoodFormResult>(
       context: context,
       builder: (context) =>
           FoodEditDialog(food: food, dbService: widget.dbService),
     );
     if (result == null) {
-      appLogger.d('_editFood: Dialog cancelled');
+      // The form held something unstorable and the edit was dropped — the
+      // dialog has already said so. Nothing to write.
+      appLogger.d('_editFood: nothing to apply');
       return;
     }
 
+    final updated = result.food;
     appLogger.d(
-        '_editFood: Dialog returned food ${result.name}, hasImage=${result.hasImage}');
+        '_editFood: Dialog returned food ${updated.name}, hasImage=${updated.hasImage}');
 
     try {
       final service = FoodDatabaseService(widget.dbService);
-      await service.updateFood(result);
-      appLogger.d('_editFood: Food updated, hasImage=${result.hasImage}');
+      await service.updateFood(updated);
+      // Tags are written here rather than by the dialog, so that a food's row
+      // and its tags succeed or fail together and report through one path.
+      await _tagService.setFoodTags(updated.id, result.tags);
+      appLogger.d('_editFood: Food updated, hasImage=${updated.hasImage}');
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l.foodUpdated(result.name)),
+            content: Text(l.foodUpdated(updated.name)),
             backgroundColor: Colors.green,
           ),
         );
@@ -283,7 +290,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
   }
 
   Future<void> _addFood() async {
-    final result = await showDialog<FoodItem>(
+    final result = await showDialog<FoodFormResult>(
       context: context,
       builder: (context) =>
           FoodEditDialog(food: null, dbService: widget.dbService),
@@ -292,7 +299,24 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
 
     try {
       final service = FoodDatabaseService(widget.dbService);
-      final created = await service.createFood(result);
+      var created = await service.createFood(result.food);
+
+      // The picture and the tags could not be written from the dialog: neither
+      // has anywhere to go until the food has an id. They used to be dropped
+      // here — picking an image or choosing tags while adding a food simply did
+      // nothing. Now they are written against the row we just created.
+      final pending = result.pendingImage;
+      if (pending != null) {
+        await _imageService.saveImage(created.id, pending);
+        // Only now is the flag true. Set at creation it would have claimed an
+        // image that a failed upload never stored.
+        created = created.copyWith(hasImage: true);
+        await service.updateFood(created);
+      }
+      if (result.tags.isNotEmpty) {
+        await _tagService.setFoodTags(created.id, result.tags);
+      }
+
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -878,6 +902,33 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
 
 /// Dialog zum Erstellen oder Bearbeiten eines Lebensmittels.
 /// [food] == null → neues Lebensmittel anlegen.
+/// What the food form decided.
+///
+/// The dialog no longer writes anything but the image, and only in edit mode
+/// (see [FoodEditDialogState._pickImage]). Everything else is handed back for
+/// the caller to write, because when a food is *new* the caller is the only one
+/// that knows its id — which is why a picked image and chosen tags used to be
+/// dropped on the floor when adding one.
+class FoodFormResult {
+  /// The row to write. In add mode [FoodItem.hasImage] is false even when
+  /// [pendingImage] is set: it only becomes true once the upload has actually
+  /// succeeded, which the caller does after creating the food.
+  final FoodItem food;
+
+  /// Set only when adding — an image picked before the food had an id, so it
+  /// could not be uploaded yet. In edit mode the upload already happened as
+  /// soon as the image was chosen.
+  final Uint8List? pendingImage;
+
+  final List<Tag> tags;
+
+  const FoodFormResult({
+    required this.food,
+    required this.tags,
+    this.pendingImage,
+  });
+}
+
 class FoodEditDialog extends StatefulWidget {
   final FoodItem? food;
   final NeonDatabaseService dbService;
@@ -922,7 +973,13 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   String? _existingImageBase64;
   bool _isLoadingImage = false;
   bool _isUploadingImage = false;
-  bool _imageUploadSuccess = false;
+
+  /// Whether an image is attached to this food *now*. In edit mode it tracks
+  /// the server: the upload happens when the picture is chosen and the delete
+  /// when it is removed, so by the time the dialog closes there is nothing left
+  /// to wait for. In add mode it stays false until the caller has uploaded.
+  late bool _hasImage;
+
   late FoodImageService _imageService;
 
   // Tags handling
@@ -959,6 +1016,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         text:
             f?.saturatedFat != null ? f!.saturatedFat!.toStringAsFixed(1) : '');
     _barcodeController = TextEditingController(text: f?.barcode ?? '');
+    _hasImage = f?.hasImage ?? false;
     for (final p in (widget.food?.portions ?? [])) {
       _portionRows.add((
         name: TextEditingController(text: p.name),
@@ -1052,6 +1110,13 @@ class FoodEditDialogState extends State<FoodEditDialog> {
             _existingImageBase64 = null; // Clear existing if picking new
           });
           appLogger.d('_pickImage: Image state updated successfully');
+          // Editing: the food already has an id, so store the picture now —
+          // the same moment the remove button has always deleted one. Closing
+          // the dialog then has nothing left to wait for, and a failure is
+          // reported here, against the picture it is about, instead of on the
+          // way out. Adding has no id yet, so the bytes travel back with the
+          // form and the caller uploads them once the food exists.
+          if (_isEdit) await _uploadPickedImage();
         } catch (readError) {
           appLogger.e('_pickImage: Error reading file bytes: $readError',
               error: readError);
@@ -1107,8 +1172,14 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   }
 
   Future<void> _deleteImage() async {
+    // Adding: nothing has been uploaded yet, so removing the picture is just
+    // forgetting the bytes. This used to bail out entirely, which left no way
+    // to un-pick an image while creating a food.
     if (!_isEdit || widget.food == null) {
-      appLogger.w('_deleteImage: Invalid state - not editing or food is null');
+      setState(() {
+        _selectedImageBytes = null;
+        _existingImageBase64 = null;
+      });
       return;
     }
     appLogger.d('_deleteImage: Deleting image for food ${widget.food!.id}');
@@ -1116,60 +1187,71 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       await _imageService.deleteImage(widget.food!.id);
       appLogger.i('_deleteImage: Image deleted successfully');
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         setState(() {
           _existingImageBase64 = null;
           _selectedImageBytes = null;
+          _hasImage = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Bild gelöscht'), backgroundColor: Colors.green),
+          SnackBar(
+              content: Text(l.foodImageDeleted),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e, stackTrace) {
       appLogger.e('_deleteImage: Failed to delete image: $e',
           error: e, stackTrace: stackTrace);
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Fehler beim Löschen: $e'),
+              content: Text(l.foodImageDeleteFailed),
               backgroundColor: Colors.red),
         );
       }
     }
   }
 
-  Future<void> _uploadImageIfSelected(String foodId) async {
-    if (_selectedImageBytes == null) {
-      appLogger.d('_uploadImageIfSelected: No image selected, skipping upload');
-      return;
-    }
-    if (!mounted) {
-      appLogger
-          .d('_uploadImageIfSelected: Widget not mounted, skipping upload');
-      return;
-    }
+  /// Stores the freshly picked image against the food being edited.
+  ///
+  /// On failure the preview is rolled back to whatever is really on the server,
+  /// so the tile never shows a picture that was not stored — with no Save
+  /// button to press, the tile *is* the confirmation.
+  Future<void> _uploadPickedImage() async {
+    final bytes = _selectedImageBytes;
+    final food = widget.food;
+    if (bytes == null || food == null || !mounted) return;
 
-    appLogger.d(
-        '_uploadImageIfSelected: Starting upload for food $foodId, image size: ${_selectedImageBytes!.length} bytes');
+    appLogger.d('_uploadPickedImage: uploading ${bytes.length} bytes '
+        'for food ${food.id}');
     setState(() => _isUploadingImage = true);
     try {
-      await _imageService.saveImage(foodId, _selectedImageBytes!);
-      _imageUploadSuccess = true;
-      appLogger.i('_uploadImageIfSelected: Image uploaded successfully');
+      await _imageService.saveImage(food.id, bytes);
+      appLogger.i('_uploadPickedImage: uploaded');
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        setState(() => _hasImage = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Bild hochgeladen'), backgroundColor: Colors.green),
+          SnackBar(
+              content: Text(l.foodImageUploaded),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e, stackTrace) {
-      _imageUploadSuccess = false;
-      appLogger.e('_uploadImageIfSelected: Upload failed: $e',
+      appLogger.e('_uploadPickedImage: upload failed: $e',
           error: e, stackTrace: stackTrace);
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        setState(() => _selectedImageBytes = null);
+        // Put back whatever the server still holds, if anything.
+        if (_hasImage) {
+          await _loadExistingImage();
+        }
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Fehler beim Hochladen: $e'),
+              content: Text(l.foodImageUploadFailed),
               backgroundColor: Colors.red),
         );
       }
@@ -1270,35 +1352,25 @@ class FoodEditDialogState extends State<FoodEditDialog> {
     });
   }
 
-  void _save() async {
-    appLogger.d('_save: Starting save process, isEdit: $_isEdit');
-    if (!_formKey.currentState!.validate()) {
-      appLogger.d('_save: Form validation failed');
-      return;
+  /// The form's answer, or null when it does not validate.
+  ///
+  /// Synchronous, which is the whole point: the image is already stored (edit)
+  /// or travels back as bytes (add), and the tags are the caller's to write —
+  /// so closing the dialog no longer has to wait for a network round trip, and
+  /// a back gesture can commit exactly what the button would have.
+  FoodFormResult? _edited() {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      appLogger.d('_edited: Form validation failed');
+      return null;
     }
 
     final now = DateTime.now();
     final foodId = widget.food?.id ?? '';
 
-    // Track if image was uploaded or already exists
-    bool hasImage = widget.food?.hasImage ?? false;
-
-    // If editing and image is selected, upload it before closing
-    if (_isEdit && _selectedImageBytes != null) {
-      appLogger.d('_save: Image selected for upload, uploading before closing');
-      _imageUploadSuccess = false;
-      await _uploadImageIfSelected(foodId);
-      if (_imageUploadSuccess) {
-        hasImage = true;
-      }
-    }
-
-    // If deleting an image, hasImage should be false
-    if (_existingImageBase64 == null &&
-        widget.food?.hasImage == true &&
-        _selectedImageBytes == null) {
-      hasImage = false;
-    }
+    // Editing: [_hasImage] already reflects the server, because picking and
+    // removing a picture write straight through. Adding: false until the caller
+    // has actually uploaded the pending bytes.
+    final hasImage = _isEdit && _hasImage;
 
     final food = FoodItem(
       id: foodId,
@@ -1343,18 +1415,17 @@ class FoodEditDialogState extends State<FoodEditDialog> {
       updatedAt: now,
     );
 
-    // Save tags if editing and tags were modified
-    if (_isEdit) {
-      appLogger
-          .d('_save: Saving ${_editingTags.length} tags for food ${food.id}');
-      await _tagService.setFoodTags(food.id, _editingTags);
-    }
+    return FoodFormResult(
+      food: food,
+      tags: _editingTags,
+      // Only ever set while adding — see [FoodFormResult.pendingImage].
+      pendingImage: _isEdit ? null : _selectedImageBytes,
+    );
+  }
 
-    if (mounted) {
-      appLogger.d(
-          '_save: Closing dialog with food: ${food.name}, hasImage: ${food.hasImage}');
-      Navigator.of(context).pop(food);
-    }
+  void _save() {
+    final result = _edited();
+    if (result != null) Navigator.of(context).pop(result);
   }
 
   Widget _numField({
@@ -1386,7 +1457,13 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return AlertDialog(
+    // Editing applies on close and has no Save button — the image is already
+    // stored by the time we get here, so there is nothing left to wait for.
+    // Adding keeps its button: nothing can be applied until the food exists.
+    return EditOnClose<FoodFormResult>(
+      commit: _isEdit ? _edited : () => null,
+      invalidMessage: _isEdit ? l.editDiscardedInvalid : null,
+      child: AlertDialog(
       scrollable: true,
       title: Text(_isEdit ? l.editEntryTitle : l.newFood),
       content: SizedBox(
@@ -1481,7 +1558,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                                     Icon(Icons.image_not_supported,
                                         size: 48, color: Colors.grey.shade400),
                                     const SizedBox(height: 8),
-                                    Text('Kein Bild',
+                                    Text(l.foodImageNone,
                                         style: TextStyle(
                                             color: Colors.grey.shade600)),
                                   ],
@@ -1495,7 +1572,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                         ElevatedButton.icon(
                           onPressed: _isUploadingImage ? null : _pickImage,
                           icon: const Icon(Icons.photo_camera),
-                          label: const Text('Bild wählen'),
+                          label: Text(l.foodImagePick),
                         ),
                         const SizedBox(width: 8),
                         if (_existingImageBase64 != null ||
@@ -1503,7 +1580,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                           ElevatedButton.icon(
                             onPressed: _isUploadingImage ? null : _deleteImage,
                             icon: const Icon(Icons.delete),
-                            label: const Text('Löschen'),
+                            label: Text(l.delete),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red.shade100,
                               foregroundColor: Colors.red.shade900,
@@ -1831,18 +1908,22 @@ class FoodEditDialogState extends State<FoodEditDialog> {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.cancel),
-        ),
-        ElevatedButton(
-          onPressed: _save,
-          style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green, foregroundColor: Colors.white),
-          child: Text(_isEdit ? l.save : l.add),
-        ),
-      ],
+      actions: _isEdit
+          ? const [EditDoneButton()]
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l.cancel),
+              ),
+              ElevatedButton(
+                onPressed: _save,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white),
+                child: Text(l.add),
+              ),
+            ],
+      ),
     );
   }
 }

@@ -2479,4 +2479,22 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editDiscardedInvalid =>
       'Invalid entry — the previous value was kept';
+
+  @override
+  String get foodImageNone => 'No image';
+
+  @override
+  String get foodImagePick => 'Choose image';
+
+  @override
+  String get foodImageUploaded => 'Image uploaded';
+
+  @override
+  String get foodImageDeleted => 'Image deleted';
+
+  @override
+  String get foodImageUploadFailed => 'The image could not be uploaded';
+
+  @override
+  String get foodImageDeleteFailed => 'The image could not be deleted';
 }

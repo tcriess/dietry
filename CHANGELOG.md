@@ -41,8 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to apply until a new entry is complete. An entry that cannot be stored is not
   quietly thrown away: a form keeps you on it with the error showing, and a
   single-value dialog keeps the value you had and says so.
+- **A food's picture is stored the moment you choose it**, the way removing one
+  has always deleted it straight away, so there is nothing left to wait for when
+  you close the editor. If the upload fails the preview goes back to the picture
+  that is really stored, instead of showing one that never arrived.
 
 ### Fixed
+- **Food database**: adding a food no longer throws away its picture and its
+  tags. Both were only ever written when *editing*, so a picture chosen or tags
+  ticked while creating a food silently went nowhere. While adding, the remove
+  button also does nothing no longer — you can un-pick an image again.
 - **Sync**: the app no longer claims to be offline while the server is answering
   it. A rejected write — a workout the database refuses, a row that is already
   gone — was indistinguishable from a dead connection, so a single unstorable

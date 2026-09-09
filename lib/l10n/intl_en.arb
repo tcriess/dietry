@@ -1027,5 +1027,11 @@
   "caloriesCreditedOf": "{credited} of {burned} kcal",
   "exerciseCreditOfBurned": "of {burned} kcal",
   "editDone": "Done",
-  "editDiscardedInvalid": "Invalid entry — the previous value was kept"
+  "editDiscardedInvalid": "Invalid entry — the previous value was kept",
+  "foodImageNone": "No image",
+  "foodImagePick": "Choose image",
+  "foodImageUploaded": "Image uploaded",
+  "foodImageDeleted": "Image deleted",
+  "foodImageUploadFailed": "The image could not be uploaded",
+  "foodImageDeleteFailed": "The image could not be deleted"
 }

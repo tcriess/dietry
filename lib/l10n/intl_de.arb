@@ -1206,5 +1206,11 @@
     }
   },
   "editDone": "Fertig",
-  "editDiscardedInvalid": "Ungültige Eingabe — der bisherige Wert bleibt"
+  "editDiscardedInvalid": "Ungültige Eingabe — der bisherige Wert bleibt",
+  "foodImageNone": "Kein Bild",
+  "foodImagePick": "Bild wählen",
+  "foodImageUploaded": "Bild hochgeladen",
+  "foodImageDeleted": "Bild gelöscht",
+  "foodImageUploadFailed": "Bild konnte nicht hochgeladen werden",
+  "foodImageDeleteFailed": "Bild konnte nicht gelöscht werden"
 }
