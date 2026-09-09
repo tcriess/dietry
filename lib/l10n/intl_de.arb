@@ -1204,5 +1204,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "editDone": "Fertig",
+  "editDiscardedInvalid": "Ungültige Eingabe — der bisherige Wert bleibt"
 }

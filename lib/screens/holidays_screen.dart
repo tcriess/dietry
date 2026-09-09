@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../widgets/edit_on_close.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/calendar_event.dart';
@@ -267,9 +268,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   Future<void> _rename(Holiday holiday) async {
     final l = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: holiday.label ?? '');
+    // Applies on close — see [EditOnClose]. Any name is storable, including an
+    // empty one (which drops the label), so nothing here can be refused.
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => EditOnClose<String>(
+        commit: () => controller.text.trim(),
+        child: AlertDialog(
         title: Text(l.holidayRename),
         content: TextField(
           controller: controller,
@@ -280,18 +285,10 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             hintText: l.holidayNameHint,
             border: const OutlineInputBorder(),
           ),
-          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+          onSubmitted: (_) => Navigator.of(ctx).maybePop(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: Text(l.save),
-          ),
-        ],
+        actions: const [EditDoneButton()],
+        ),
       ),
     );
     controller.dispose();

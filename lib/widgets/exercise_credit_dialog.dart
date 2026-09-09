@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/exercise_credit.dart';
 import '../l10n/app_localizations.dart';
+import 'edit_on_close.dart';
 
 /// What the user chose in [showExerciseCreditDialog]: [factor] is the level's
 /// own value, `null` meaning "no opinion here, inherit from the level above".
-/// The dialog returns null when it was dismissed, so `null` result and
-/// `factor == null` are different answers.
+///
+/// The wrapper exists precisely so that answer is a real value: the dialog
+/// itself answers with null only when the field held something unusable, and
+/// the caller then leaves the stored value alone. See [EditOnClose].
 class ExerciseCreditChoice {
   final double? factor;
   const ExerciseCreditChoice(this.factor);
@@ -21,6 +24,8 @@ class ExerciseCreditChoice {
 /// factor; [inheritedFactor] is what would then apply, used to pre-fill the
 /// field so the dialog opens showing the number actually in force rather than
 /// an empty box.
+///
+/// Applies on close — see [EditOnClose]. There is no Save and no Cancel.
 Future<ExerciseCreditChoice?> showExerciseCreditDialog(
   BuildContext context, {
   required String title,
@@ -75,67 +80,77 @@ class _ExerciseCreditDialogState extends State<_ExerciseCreditDialog> {
     super.dispose();
   }
 
-  void _submit() {
-    final l = AppLocalizations.of(context)!;
+  /// The current entry, or null when it cannot be stored. Called on whichever
+  /// way out of the dialog the user took.
+  ExerciseCreditChoice? _commit() {
     final factor = ExerciseCredit.parsePercent(_controller.text);
-    if (factor == null) {
-      setState(() => _error = l.exerciseCreditInvalid);
-      return;
-    }
-    Navigator.of(context).pop(ExerciseCreditChoice(factor));
+    return factor == null ? null : ExerciseCreditChoice(factor);
+  }
+
+  /// Live validation, so the entry is marked bad while it is being typed rather
+  /// than only once the dialog is on its way out.
+  void _validate(String text) {
+    final l = AppLocalizations.of(context)!;
+    final error = ExerciseCredit.parsePercent(text) == null
+        ? l.exerciseCreditInvalid
+        : null;
+    if (error != _error) setState(() => _error = error);
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submit(),
-            decoration: InputDecoration(
-              labelText: l.exerciseCreditFieldLabel,
-              helperText: l.exerciseCreditFieldHelper,
-              helperMaxLines: 2,
-              errorText: _error,
-              suffixText: '%',
-              border: const OutlineInputBorder(),
+    return EditOnClose<ExerciseCreditChoice>(
+      commit: _commit,
+      invalidMessage: l.editDiscardedInvalid,
+      child: AlertDialog(
+        title: Text(widget.title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              textInputAction: TextInputAction.done,
+              onChanged: _validate,
+              onSubmitted: (_) => Navigator.of(context).maybePop(),
+              decoration: InputDecoration(
+                labelText: l.exerciseCreditFieldLabel,
+                helperText: l.exerciseCreditFieldHelper,
+                helperMaxLines: 2,
+                errorText: _error,
+                suffixText: '%',
+                border: const OutlineInputBorder(),
+              ),
             ),
+            const SizedBox(height: 12),
+            Text(
+              l.exerciseCreditExplainer,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          // Leftmost, and deliberately not styled as the primary action: falling
+          // back to the level above is a normal answer, not an "undo". A direct
+          // pop, so it answers with its own value instead of the field's.
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop(const ExerciseCreditChoice(null)),
+            child: Text(widget.inheritLabel),
           ),
-          const SizedBox(height: 12),
-          Text(
-            l.exerciseCreditExplainer,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: Colors.grey.shade600),
-          ),
+          EditDoneButton(enabled: _error == null),
         ],
       ),
-      actions: [
-        // Leftmost, and deliberately not styled as the primary action: falling
-        // back to the level above is a normal answer, not an "undo".
-        TextButton(
-          onPressed: () =>
-              Navigator.of(context).pop(const ExerciseCreditChoice(null)),
-          child: Text(widget.inheritLabel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.cancel),
-        ),
-        FilledButton(onPressed: _submit, child: Text(l.save)),
-      ],
     );
   }
 }

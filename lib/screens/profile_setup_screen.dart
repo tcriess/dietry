@@ -31,6 +31,39 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   late WeightGoal _selectedWeightGoal;
   bool _isSaving = false;
 
+  /// True when this screen is editing a profile that already exists, rather
+  /// than setting one up for the first time. Editing applies on close and has
+  /// no Save button; a first-time setup keeps one, because there is nothing to
+  /// apply until the profile is complete.
+  bool get _isEdit => widget.existingProfile != null;
+
+  /// What the form held when it opened — see [_isDirty].
+  String? _baseline;
+
+  String get _formFingerprint => [
+        _heightController.text,
+        _selectedBirthdate?.toIso8601String(),
+        _selectedGender.name,
+        _selectedActivityLevel.name,
+        _selectedWeightGoal.name,
+      ].join('\u0000');
+
+  /// A missing baseline counts as changed — see the same note in
+  /// edit_activity_screen.dart.
+  bool get _isDirty => _baseline == null || _formFingerprint != _baseline;
+
+  /// There is no Save button while editing: leaving the screen applies the
+  /// change. A profile that cannot be stored keeps the user here with the
+  /// error showing rather than being dropped on the way out.
+  Future<void> _applyAndClose() async {
+    if (_isSaving) return;
+    if (!_isEdit || !_isDirty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    await _saveProfile();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +78,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _selectedGender = profile?.gender ?? Gender.male;
     _selectedActivityLevel = profile?.activityLevel ?? ActivityLevel.moderate;
     _selectedWeightGoal = profile?.weightGoal ?? WeightGoal.maintain;
+    _baseline = _formFingerprint;
   }
 
   @override
@@ -140,7 +174,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final l = AppLocalizations.of(context)!;
     final isEdit = widget.existingProfile != null;
 
-    return Scaffold(
+    return PopScope(
+      // Only editing applies on close; a first-time setup keeps its button and
+      // must not write a half-filled profile on a back gesture.
+      canPop: !isEdit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _applyAndClose();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? l.profileEditTitle : l.profileSetupTitle),
       ),
@@ -301,28 +343,32 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
             const SizedBox(height: 24),
 
-            // Speichern Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveProfile,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: Text(_isSaving ? l.saving : l.save),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
+            // Only the first-time setup has a button: an edit applies on close.
+            if (!isEdit)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _saveProfile,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.check),
+                  label: Text(_isSaving ? l.saving : l.save),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                  ),
                 ),
-              ),
-            ),
+              )
+            else if (_isSaving)
+              const LinearProgressIndicator(),
           ],
         ),
+      ),
       ),
     );
   }

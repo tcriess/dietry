@@ -3,11 +3,16 @@ import 'package:dietry/widgets/exercise_credit_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The dialog has to answer three different questions with one widget, and the
-/// distinction that matters is between "the user chose a number", "the user
-/// chose to inherit" and "the user backed out" — three outcomes the caller
-/// stores three different ways, and a null factor is *not* the same as no
-/// answer at all.
+/// The dialog has to answer three different questions with one widget. It
+/// applies on close (see [EditOnClose]): there is no Save and no Cancel, and
+/// every way out — Done, the back gesture, a tap outside — has to commit the
+/// same thing. A dialog that saved on Done but dropped the edit on a back
+/// gesture would be worse than one with a Save button, so all three paths are
+/// exercised here.
+///
+/// A null result means "the entry was unusable, keep what you had"; a
+/// [ExerciseCreditChoice] carrying a null factor means "inherit". They are
+/// different answers and the caller stores them differently.
 
 Future<ExerciseCreditChoice? Function()> open(
   WidgetTester tester, {
@@ -63,12 +68,36 @@ void main() {
     expect(find.widgetWithText(TextField, '25'), findsOneWidget);
   });
 
-  testWidgets('saving returns the entered percentage as a factor', (t) async {
+  testWidgets('Done applies the entered percentage as a factor', (t) async {
     final result = await open(t, current: null, inherited: 1.0);
     await t.enterText(find.byType(TextField), '60');
-    await t.tap(find.text('Save'));
+    await t.tap(find.text('Done'));
     await t.pumpAndSettle();
     expect(result()!.factor, 0.6);
+  });
+
+  testWidgets('the back gesture applies the edit too', (t) async {
+    final result = await open(t, current: null, inherited: 1.0);
+    await t.enterText(find.byType(TextField), '40');
+    final NavigatorState nav = t.state(find.byType(Navigator).last);
+    nav.maybePop();
+    await t.pumpAndSettle();
+    expect(result()!.factor, 0.4);
+  });
+
+  testWidgets('a tap outside applies the edit too', (t) async {
+    final result = await open(t, current: null, inherited: 1.0);
+    await t.enterText(find.byType(TextField), '35');
+    await t.tapAt(const Offset(8, 8));
+    await t.pumpAndSettle();
+    expect(result()!.factor, 0.35);
+  });
+
+  testWidgets('there is no Save and no Cancel', (t) async {
+    await open(t, current: 0.25, inherited: 0.5);
+    expect(find.text('Save'), findsNothing);
+    expect(find.text('Cancel'), findsNothing);
+    expect(find.text('Done'), findsOneWidget);
   });
 
   testWidgets('inheriting answers with a null factor, not with no answer',
@@ -80,34 +109,42 @@ void main() {
     expect(result()!.factor, isNull);
   });
 
-  testWidgets('cancelling answers with nothing at all', (t) async {
-    final result = await open(t, current: 0.25, inherited: 0.5);
-    await t.tap(find.text('Cancel'));
-    await t.pumpAndSettle();
-    expect(result(), isNull);
-  });
-
-  testWidgets('an out-of-range entry is refused and keeps the dialog open',
+  testWidgets('an out-of-range entry marks the field and disables Done',
       (t) async {
     final result = await open(t, current: null, inherited: 1.0);
     await t.enterText(find.byType(TextField), '900');
-    await t.tap(find.text('Save'));
     await t.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('Enter a value between 0 and 200'), findsOneWidget);
+    final done = t.widget<FilledButton>(
+        find.ancestor(of: find.text('Done'), matching: find.byType(FilledButton)));
+    expect(done.onPressed, isNull, reason: 'Done must not throw the edit away');
 
     // …and a corrected entry then goes through.
     await t.enterText(find.byType(TextField), '90');
-    await t.tap(find.text('Save'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Done'));
     await t.pumpAndSettle();
     expect(result()!.factor, 0.9);
+  });
+
+  testWidgets('backing out of an unusable entry keeps the previous value',
+      (t) async {
+    // Done is disabled here, so the back gesture is the only way out — and it
+    // must not store 900%. The caller reads null as "leave it alone".
+    final result = await open(t, current: 0.5, inherited: 1.0);
+    await t.enterText(find.byType(TextField), '900');
+    await t.pumpAndSettle();
+    final NavigatorState nav = t.state(find.byType(Navigator).last);
+    nav.maybePop();
+    await t.pumpAndSettle();
+    expect(result(), isNull);
   });
 
   testWidgets('zero is a real answer, not an empty one', (t) async {
     final result = await open(t, current: null, inherited: 1.0);
     await t.enterText(find.byType(TextField), '0');
-    await t.tap(find.text('Save'));
+    await t.tap(find.text('Done'));
     await t.pumpAndSettle();
     expect(result()!.factor, 0);
   });
@@ -161,7 +198,7 @@ void main() {
       await t.tap(find.byType(InkWell));
       await t.pumpAndSettle();
       await t.enterText(find.byType(TextField), '80');
-      await t.tap(find.text('Save'));
+      await t.tap(find.text('Done'));
       await t.pumpAndSettle();
 
       expect(called, isTrue);

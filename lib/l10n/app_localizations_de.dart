@@ -2489,4 +2489,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String exerciseCreditOfBurned(String burned) {
     return 'von $burned kcal';
   }
+
+  @override
+  String get editDone => 'Fertig';
+
+  @override
+  String get editDiscardedInvalid =>
+      'Ungültige Eingabe — der bisherige Wert bleibt';
 }

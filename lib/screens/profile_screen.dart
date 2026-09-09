@@ -21,6 +21,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/app_features_utils.dart';
 import '../widgets/main_tutorial.dart';
 import '../widgets/ai_meal_model_tile.dart';
+import '../widgets/edit_on_close.dart';
 import '../widgets/exercise_credit_dialog.dart';
 import 'profile_setup_screen.dart';
 import 'add_body_measurement_screen.dart';
@@ -1231,9 +1232,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _editWaterGoal(AppLocalizations l) async {
     final controller =
         TextEditingController(text: _waterGoalSuggestion.toString());
-    final confirmed = await showDialog<bool>(
+    // Applies on close — see [EditOnClose]. A goal of zero or less is not
+    // storable, so it answers null and the previous goal stands.
+    final newValue = await showDialog<int>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => EditOnClose<int>(
+        commit: () {
+          final parsed = int.tryParse(controller.text);
+          return (parsed == null || parsed <= 0) ? null : parsed;
+        },
+        invalidMessage: l.editDiscardedInvalid,
+        child: AlertDialog(
         title: Row(
           children: [
             const Icon(Icons.water_drop, color: Colors.lightBlue),
@@ -1252,22 +1261,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           autofocus: true,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.save),
-          ),
-        ],
+        actions: const [EditDoneButton()],
+        ),
       ),
     );
 
-    if (confirmed != true || !mounted) return;
-    final newValue = int.tryParse(controller.text);
-    if (newValue == null || newValue <= 0) return;
+    if (newValue == null || !mounted) return;
 
     final updatedGoal = NutritionGoal(
       id: _goal?.id,

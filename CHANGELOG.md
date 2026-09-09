@@ -33,7 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   day against the target that really applied to it.
 
 ### Changed
-- 
+- **Editing no longer needs a Save button.** Changing something that already
+  exists — an activity, a logged food, your profile, a measurement, a goal, a
+  factor — applies the moment you leave the editor, whether you use the Done
+  button, the back arrow or a back gesture. Cancel is gone with it. Creating
+  something new is unchanged and still has its button, because there is nothing
+  to apply until a new entry is complete. An entry that cannot be stored is not
+  quietly thrown away: a form keeps you on it with the error showing, and a
+  single-value dialog keeps the value you had and says so.
 
 ### Fixed
 - **Sync**: the app no longer claims to be offline while the server is answering

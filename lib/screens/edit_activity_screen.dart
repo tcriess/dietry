@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import '../utils/number_utils.dart';
 import 'package:flutter/services.dart';
 import '../models/physical_activity.dart';
@@ -47,6 +48,16 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
   /// This workout's own credit factor; null means it follows the day's.
   double? _creditFactor;
 
+  /// The form's own idea of the activity, snapshotted once everything it shows
+  /// has finished loading. [_isDirty] compares against this rather than against
+  /// [widget.activity], because the form normalises what it displays: an
+  /// imported workout's seconds are dropped by the time picker and 300.5 kcal
+  /// is shown as "301". Compared against the stored row, an untouched entry
+  /// would therefore look edited — and, with no Save button between them,
+  /// merely opening one and pressing back would quietly rewrite it.
+  Map<String, dynamic>? _baseline;
+  bool _gearLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +89,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
   Future<void> _loadGear() async {
     final all = await SyncService.instance.getGear();
     if (!mounted) return;
+    _gearLoaded = true;
     setState(() {
       _gear = all
           .where((g) => !g.retired || g.id == widget.activity.gearId)
@@ -91,6 +103,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
       }
       _selectedGear = current;
     });
+    _captureBaseline();
   }
 
   /// Lade alle Activities aus Datenbank
@@ -103,6 +116,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
           setState(() {
             _isLoadingActivities = false;
           });
+          _captureBaseline();
         }
         return;
       }
@@ -144,6 +158,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
         _selectedActivity = match;
       });
 
+      _captureBaseline();
       appLogger.i('✅ ${_availableActivities.length} Activities für Edit geladen');
     } catch (e) {
       appLogger.e('❌ Fehler beim Laden der Activities: $e');
@@ -151,6 +166,7 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
         setState(() {
           _isLoadingActivities = false;
         });
+        _captureBaseline();
       }
     }
   }
@@ -177,30 +193,31 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
     }
   }
   
-  Future<void> _saveChanges() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    
-    setState(() {
-      _isSaving = true;
-    });
-    
-    try {
-      // Kombiniere Datum + neue Uhrzeit
-      final originalDate = widget.activity.startTime;
-      final startDateTime = DateTime(
-        originalDate.year,
-        originalDate.month,
-        originalDate.day,
-        _startTime.hour,
-        _startTime.minute,
-      );
-      
-      final durationMinutes = int.parse(_durationController.text);
-      final endDateTime = startDateTime.add(Duration(minutes: durationMinutes));
-      
-      final updatedActivity = PhysicalActivity(
+  /// Snapshots what the form settled on, once — and only once both loaders
+  /// have run, so a value one of them is still about to fill in is not mistaken
+  /// for the user's own edit.
+  void _captureBaseline() {
+    if (_baseline != null || _isLoadingActivities || !_gearLoaded) return;
+    _baseline = _editedActivity().toJson();
+  }
+
+  /// The activity as the form currently describes it. Only safe once the form
+  /// validates — the duration is parsed, not tried.
+  PhysicalActivity _editedActivity() {
+    // Kombiniere Datum + neue Uhrzeit
+    final originalDate = widget.activity.startTime;
+    final startDateTime = DateTime(
+      originalDate.year,
+      originalDate.month,
+      originalDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+
+    final durationMinutes = int.parse(_durationController.text);
+    final endDateTime = startDateTime.add(Duration(minutes: durationMinutes));
+
+    return PhysicalActivity(
         id: widget.activity.id,
         // Preserve original values when no DB activity is selected (e.g. Health
         // Connect imports without a matching database row).
@@ -225,8 +242,42 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
         // Null when the user chose "follow the day" — PhysicalActivity.toJson
         // always emits credit_factor, so the PATCH really does clear it.
         creditFactor: _creditFactor,
-      );
-      
+    );
+  }
+
+  /// Whether the user changed anything. Compared on the serialised form because
+  /// [PhysicalActivity] has no value equality.
+  ///
+  /// A missing baseline counts as changed. It should not happen — every path
+  /// that settles the form takes one — but of the two ways to be wrong, writing
+  /// values that were already there is a great deal better than dropping an
+  /// edit on the floor.
+  bool get _isDirty =>
+      _baseline == null || !mapEquals(_editedActivity().toJson(), _baseline!);
+
+  /// There is no Save button: leaving the screen is what applies the edit.
+  ///
+  /// An entry that cannot be stored keeps the user here with the field errors
+  /// showing, rather than being dropped on the way out — a form is not a single
+  /// value, and silently discarding all of it would lose real work.
+  Future<void> _applyAndClose() async {
+    if (_isSaving) return;
+    if (!(_formKey.currentState?.validate() ?? true)) return;
+    if (!_isDirty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    await _saveChanges();
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final updatedActivity = _editedActivity();
+
       // Optimistic update — immediately visible in all tabs.
       DataStore.instance.replaceActivity(updatedActivity);
 
@@ -268,7 +319,16 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return Scaffold(
+    return PopScope(
+      // Every way off this screen — the app bar arrow, the system back gesture,
+      // a predictive-back swipe — goes through here, so they cannot drift apart
+      // the way a Save button and a back arrow used to.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _applyAndClose();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(l.editMeasurementTitle),
       ),
@@ -448,30 +508,16 @@ class _EditActivityScreenState extends State<EditActivityScreen> {
               maxLines: 3,
             ),
             
+            // No Save button: the edit applies when the screen closes. All that
+            // is left to show is a write in flight.
+            if (_isSaving) ...[
+              const SizedBox(height: 24),
+              const LinearProgressIndicator(),
+            ],
             const SizedBox(height: 24),
-            
-            // Speichern Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveChanges,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: Text(_isSaving ? l.saving : l.save),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                ),
-              ),
-            ),
           ],
         ),
+      ),
       ),
     );
   }

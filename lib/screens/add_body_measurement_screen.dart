@@ -35,6 +35,40 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
   late DateTime _selectedDate;
   bool _isSaving = false;
 
+  /// True when an existing measurement is being changed rather than a new one
+  /// recorded. Editing applies on close and has no Save button; adding keeps
+  /// one, because there is nothing to apply until the measurement exists.
+  bool get _isEdit => widget.existingMeasurement != null;
+
+  /// What the form held when it opened — see [_isDirty].
+  String? _baseline;
+
+  String get _formFingerprint => [
+        _weightController.text,
+        _bodyFatController.text,
+        _muscleMassController.text,
+        _waistController.text,
+        _notesController.text,
+        _selectedDate.toIso8601String(),
+      ].join('\u0000');
+
+  /// A missing baseline counts as changed — see the same note in
+  /// edit_activity_screen.dart.
+  bool get _isDirty => _baseline == null || _formFingerprint != _baseline;
+
+  /// There is no Save button while editing: leaving the screen applies the
+  /// change. A measurement that cannot be stored keeps the user here with the
+  /// field errors showing rather than being dropped on the way out.
+  Future<void> _applyAndClose() async {
+    if (_isSaving) return;
+    if (!_isEdit || !_isDirty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    if (!(_formKey.currentState?.validate() ?? true)) return;
+    await _saveMeasurement();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +91,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
     _notesController = TextEditingController(
       text: m?.notes ?? '',
     );
+    _baseline = _formFingerprint;
   }
 
   @override
@@ -151,7 +186,15 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
     final l = AppLocalizations.of(context)!;
     final isEdit = widget.existingMeasurement != null;
 
-    return Scaffold(
+    return PopScope(
+      // Only editing applies on close; adding keeps its button and must not
+      // record a half-filled measurement on a back gesture.
+      canPop: !isEdit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _applyAndClose();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? l.editMeasurementTitle : l.addMeasurementTitle),
       ),
@@ -340,28 +383,32 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
 
             const SizedBox(height: 24),
 
-            // Speichern Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveMeasurement,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: Text(_isSaving ? l.saving : l.save),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
+            // Only a new measurement has a button: an edit applies on close.
+            if (!isEdit)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _saveMeasurement,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.check),
+                  label: Text(_isSaving ? l.saving : l.save),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                  ),
                 ),
-              ),
-            ),
+              )
+            else if (_isSaving)
+              const LinearProgressIndicator(),
           ],
         ),
+      ),
       ),
     );
   }

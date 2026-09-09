@@ -5,6 +5,7 @@ import '../models/activity_item.dart';
 import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/edit_on_close.dart';
 
 /// Screen zur Verwaltung eigener Aktivitäten in der Datenbank.
 ///
@@ -380,10 +381,13 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
     super.dispose();
   }
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
+  /// The activity as the form describes it, or null when the form does not
+  /// validate. Editing applies on close, so this is what a back gesture
+  /// commits too; adding still goes through the button.
+  ActivityItem? _edited() {
+    if (!(_formKey.currentState?.validate() ?? false)) return null;
 
-    final activity = ActivityItem(
+    return ActivityItem(
       id: widget.activity?.id ?? '',
       userId: widget.activity?.userId,
       name: _nameController.text.trim(),
@@ -404,14 +408,22 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
       createdAt: widget.activity?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
+  }
 
-    Navigator.of(context).pop(activity);
+  void _save() {
+    final activity = _edited();
+    if (activity != null) Navigator.of(context).pop(activity);
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return AlertDialog(
+    // Editing applies on close and has no Save button; adding keeps one,
+    // because there is nothing to apply until the activity exists.
+    return EditOnClose<ActivityItem>(
+      commit: widget.isEditing ? _edited : () => null,
+      invalidMessage: widget.isEditing ? l.editDiscardedInvalid : null,
+      child: AlertDialog(
       scrollable: true,
       title: Text(widget.isEditing ? l.editMeasurementTitle : l.saveToDatabase),
       content: Form(
@@ -579,20 +591,23 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.cancel),
-        ),
-        ElevatedButton(
-          onPressed: _save,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-          ),
-          child: Text(widget.isEditing ? l.save : l.add),
-        ),
-      ],
+      actions: widget.isEditing
+          ? const [EditDoneButton()]
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l.cancel),
+              ),
+              ElevatedButton(
+                onPressed: _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text(l.add),
+              ),
+            ],
+      ),
     );
   }
 }

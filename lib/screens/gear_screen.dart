@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../widgets/edit_on_close.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/gear.dart';
@@ -337,16 +338,18 @@ class _GearEditDialogState extends State<_GearEditDialog> {
     }
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+  /// The gear as the form describes it, or null when the form does not
+  /// validate. Editing applies on close, so this is also what a back gesture
+  /// commits; adding still goes through the button.
+  Gear? _edited() {
+    if (!(_formKey.currentState?.validate() ?? false)) return null;
 
     // tryParseDouble returns null for an empty/unparseable field, which is
     // exactly what "no wear budget" means; initial distance falls back to 0.
     final initial = _initialDistanceController.text.trim();
     final retireAt = _retireAtController.text.trim();
 
-    Navigator.of(context).pop(
-      Gear(
+    return Gear(
         id: widget.gear?.id,
         name: _nameController.text.trim(),
         category: _category,
@@ -355,15 +358,26 @@ class _GearEditDialogState extends State<_GearEditDialog> {
         retireAtKm: tryParseDouble(retireAt),
         retired: widget.gear?.retired ?? false,
         notes: widget.gear?.notes,
-      ),
     );
+  }
+
+  void _submit() {
+    final gear = _edited();
+    if (gear != null) Navigator.of(context).pop(gear);
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
 
-    return AlertDialog(
+    final isEdit = widget.gear != null;
+
+    // Editing applies on close and has no Save button; adding keeps one,
+    // because there is nothing to apply until the item exists.
+    return EditOnClose<Gear>(
+      commit: isEdit ? _edited : () => null,
+      invalidMessage: isEdit ? l.editDiscardedInvalid : null,
+      child: AlertDialog(
       title: Text(widget.gear == null ? l.gearAdd : l.gearEdit),
       content: SingleChildScrollView(
         child: Form(
@@ -463,13 +477,16 @@ class _GearEditDialogState extends State<_GearEditDialog> {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.cancel),
-        ),
-        ElevatedButton(onPressed: _submit, child: Text(l.save)),
-      ],
+      actions: isEdit
+          ? const [EditDoneButton()]
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l.cancel),
+              ),
+              ElevatedButton(onPressed: _submit, child: Text(l.gearAdd)),
+            ],
+      ),
     );
   }
 }

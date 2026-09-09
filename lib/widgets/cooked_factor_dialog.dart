@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'edit_on_close.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/number_utils.dart';
@@ -87,7 +88,15 @@ class _CookedFactorDialogState extends State<_CookedFactorDialog> {
     final l = AppLocalizations.of(context)!;
     final factor = _factor;
 
-    return AlertDialog(
+    return EditOnClose<CookedFactorResult>(
+      // Applies on close. Two half-entered weights are not a factor, so it
+      // answers null and whatever was calibrated before stands.
+      commit: () {
+        final f = _factor;
+        return f == null ? null : CookedFactorResult(f);
+      },
+      invalidMessage: l.editDiscardedInvalid,
+      child: AlertDialog(
       title: Text(l.cookedCalibrateTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -114,23 +123,17 @@ class _CookedFactorDialogState extends State<_CookedFactorDialog> {
         ],
       ),
       actions: [
+        // A direct pop, so "reset" answers with its own value rather than the
+        // fields'. See [EditOnClose].
         if (widget.currentFactor != null)
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(const CookedFactorResult(null)),
             child: Text(l.cookedCalibrateReset),
           ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.cancel),
-        ),
-        FilledButton(
-          onPressed: factor == null
-              ? null
-              : () => Navigator.of(context).pop(CookedFactorResult(factor)),
-          child: Text(l.save),
-        ),
+        EditDoneButton(enabled: factor != null),
       ],
+      ),
     );
   }
 }

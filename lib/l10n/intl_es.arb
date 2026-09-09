@@ -1025,5 +1025,7 @@
   "exerciseCreditActivityOwn": "{value} · solo esta actividad",
   "exerciseCreditSaveFailed": "No se pudo guardar el crédito por ejercicio",
   "caloriesCreditedOf": "{credited} de {burned} kcal",
-  "exerciseCreditOfBurned": "de {burned} kcal"
+  "exerciseCreditOfBurned": "de {burned} kcal",
+  "editDone": "Listo",
+  "editDiscardedInvalid": "Entrada no válida — se mantiene el valor anterior"
 }

@@ -128,6 +128,66 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
 
   bool _isSaving = false;
 
+  /// What the form held once it had settled — see [_captureBaseline]. There is
+  /// no Save button, so leaving the screen is what applies the edit, and this
+  /// is how "the user changed something" is told from "the user only looked".
+  /// Taken from the raw inputs rather than a rebuilt entry, because the form
+  /// normalises what it shows (a portion entry is re-expressed per 100 g once
+  /// its food resolves) and a rebuilt entry would differ from the stored one
+  /// even when nothing was touched.
+  String? _baseline;
+
+  /// Every input the user can change, in one comparable string.
+  String get _formFingerprint => [
+        _nameController.text,
+        _amountController.text,
+        _caloriesController.text,
+        _proteinController.text,
+        _fatController.text,
+        _carbsController.text,
+        _fiberController.text,
+        _sugarController.text,
+        _sodiumController.text,
+        _saturatedFatController.text,
+        _selectedMealType.name,
+        _isLiquid,
+        _estimateLevel.name,
+        _selectedPortion?.name,
+        _customUnit,
+        _per100gMode,
+        _syncToFood,
+      ].join('\u0000');
+
+  /// Snapshots the settled form, once — and only once the food lookup that can
+  /// still rewrite the fields has finished.
+  void _captureBaseline() {
+    if (_baseline != null || _resolvingFood) return;
+    _baseline = _formFingerprint;
+  }
+
+  /// Whether the user changed anything.
+  ///
+  /// A missing baseline counts as changed. It should not happen — every path
+  /// that settles the form takes one — but of the two ways to be wrong,
+  /// writing values that were already there is a great deal better than
+  /// dropping an edit on the floor.
+  bool get _isDirty => _baseline == null || _formFingerprint != _baseline;
+
+  /// There is no Save button: leaving the screen is what applies the edit.
+  ///
+  /// An entry that cannot be stored keeps the user here with the field errors
+  /// showing rather than being dropped on the way out — a ten-field form is not
+  /// a single value, and discarding all of it silently would lose real work.
+  Future<void> _applyAndClose() async {
+    if (_isSaving || _resolvingFood) return;
+    if (!(_formKey.currentState?.validate() ?? true)) return;
+    if (!_isDirty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    await _saveChanges();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -161,7 +221,13 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       _originalGrams = e.amount;
       _applyPer100gFromEntry(e.amount);
       // Load the food (if any) so the unit selector can offer named portions.
-      if (e.foodId != null) _resolveFood(e.foodId!);
+      // The lookup takes the baseline snapshot when it settles; without one
+      // there is nothing left to wait for, so take it here.
+      if (e.foodId != null) {
+        _resolveFood(e.foodId!);
+      } else {
+        _captureBaseline();
+      }
     } else {
       // Named-portion entry: mode depends on whether the portion resolves.
       if (e.foodId != null) {
@@ -172,6 +238,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         // No food reference → cannot resolve grams → totals mode.
         _per100gMode = false;
         _applyTotalsFromEntry();
+        _captureBaseline();
       }
     }
   }
@@ -247,6 +314,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       }
       _resolvingFood = false;
     });
+    _captureBaseline();
   }
 
   @override
@@ -476,7 +544,6 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
   }
 
   Future<void> _saveChanges() async {
-    if (!_formKey.currentState!.validate()) return;
     final l = AppLocalizations.of(context)!;
 
     setState(() => _isSaving = true);
@@ -944,7 +1011,16 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     final l = AppLocalizations.of(context)!;
     final foodSync = _foodSyncKind;
 
-    return Scaffold(
+    return PopScope(
+      // Every way off this screen — the app bar arrow, the system back gesture,
+      // a predictive-back swipe — goes through here, so they cannot drift apart
+      // the way a Save button and a back arrow used to.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _applyAndClose();
+      },
+      child: Scaffold(
       appBar: AppBar(title: Text(l.editEntryTitle)),
       body: Form(
         key: _formKey,
@@ -1055,30 +1131,16 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
               _buildFoodSyncTile(l, foodSync),
             ],
 
+            // No Save button: the edit applies when the screen closes. All that
+            // is left to show is a write in flight.
+            if (_isSaving) ...[
+              const SizedBox(height: 24),
+              const LinearProgressIndicator(),
+            ],
             const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed:
-                    (_isSaving || _resolvingFood) ? null : _saveChanges,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check),
-                label: Text(_isSaving ? l.saving : l.save),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.all(16),
-                ),
-              ),
-            ),
           ],
         ),
+      ),
       ),
     );
   }

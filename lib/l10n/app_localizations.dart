@@ -4504,6 +4504,18 @@ abstract class AppLocalizations {
   /// In de, this message translates to:
   /// **'von {burned} kcal'**
   String exerciseCreditOfBurned(String burned);
+
+  /// No description provided for @editDone.
+  ///
+  /// In de, this message translates to:
+  /// **'Fertig'**
+  String get editDone;
+
+  /// No description provided for @editDiscardedInvalid.
+  ///
+  /// In de, this message translates to:
+  /// **'Ungültige Eingabe — der bisherige Wert bleibt'**
+  String get editDiscardedInvalid;
 }
 
 class _AppLocalizationsDelegate
