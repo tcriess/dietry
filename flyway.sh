@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# flyway.sh — run Flyway against a Dietry database, via Docker (no JVM needed).
+# flyway.sh — run Flyway against a Dietry database, in a container (no JVM needed).
 #
 #   export DATABASE_URL='postgresql://user:pass@host/db?sslmode=require'
 #
@@ -35,6 +35,28 @@ set -euo pipefail
 # Override ad hoc with FLYWAY_IMAGE=... if you need to test a new version.
 FLYWAY_IMAGE="${FLYWAY_IMAGE:-flyway/flyway:12.11.0-alpine}"
 
+# Docker or Podman, whichever is actually usable here. Podman is a drop-in for
+# the handful of flags below, and on some setups it is the only option: inside a
+# distrobox container `docker` exists but is a shim that forwards to the host
+# (`distrobox-host-exec docker`), so it is on PATH and cannot work. Hence the
+# probe is `info`, which talks to the engine, rather than `command -v`, which
+# only proves a file exists. Override with CONTAINER_ENGINE=podman to skip it.
+CONTAINER_ENGINE="${CONTAINER_ENGINE:-}"
+if [[ -z "$CONTAINER_ENGINE" ]]; then
+  for candidate in docker podman; do
+    if command -v "$candidate" >/dev/null 2>&1 &&
+       "$candidate" info >/dev/null 2>&1; then
+      CONTAINER_ENGINE="$candidate"
+      break
+    fi
+  done
+fi
+if [[ -z "$CONTAINER_ENGINE" ]]; then
+  echo "error: no usable container engine found (tried docker, podman)." >&2
+  echo "  Install one, start its daemon, or set CONTAINER_ENGINE explicitly." >&2
+  exit 1
+fi
+
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "error: DATABASE_URL is not set." >&2
   echo "  export DATABASE_URL='postgresql://user:pass@host/db?sslmode=require'" >&2
@@ -54,8 +76,8 @@ DB_PASS="${creds#*:}"
 JDBC_URL="jdbc:postgresql://${hostpart%%\?*}?sslmode=require"
 
 flyway() {
-  docker run --rm \
-    -v "$(pwd)/sql:/flyway/sql" \
+  "$CONTAINER_ENGINE" run --rm \
+    -v "$(pwd)/sql:/flyway/sql:ro" \
     -v "$(pwd)/flyway.conf:/flyway/conf/flyway.conf:ro" \
     -e FLYWAY_URL="$JDBC_URL" \
     -e FLYWAY_USER="$DB_USER" \

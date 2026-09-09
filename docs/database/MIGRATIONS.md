@@ -1,7 +1,7 @@
 # Database Migrations
 
 Dietry's schema is managed with **Flyway Community** (free, Apache-2.0 engine),
-run through Docker so no JVM is needed locally.
+run in a container so no JVM is needed locally.
 
 ```bash
 export DATABASE_URL='postgresql://user:pass@host/db?sslmode=require'
@@ -9,6 +9,15 @@ export DATABASE_URL='postgresql://user:pass@host/db?sslmode=require'
 ./flyway.sh migrate    # apply pending migrations
 ./flyway.sh validate   # checksum check, no writes
 ```
+
+`flyway.sh` uses Docker or Podman, whichever answers `info`. Podman needs no
+extra setup — but note that inside a **distrobox** container `docker` is a shim
+that forwards to the host (`distrobox-host-exec docker`), so it is on `PATH`
+even when nothing can run it. That is why the script probes the engine rather
+than the binary. Force the choice with `CONTAINER_ENGINE=podman ./flyway.sh …`.
+
+`validate` fails while any migration is **pending** — that is Flyway's design,
+not a problem with the files. Run it after `migrate`, or read `info` first.
 
 ## Layout
 
