@@ -84,9 +84,6 @@ class AppFeatures {
   /// Mikronährstoffe & Vitamine pro Food-Entry: nur für Pro-Nutzer (Cloud).
   static bool get microNutrients => isPaid;
 
-  /// Schnell-Eintrag für Aktivitäten: für alle Cloud-Nutzer verfügbar.
-  static bool get activityQuickAdd => _isCloud;
-
   /// Streak-Tracking mit persistenten Rekorden, Meilensteinen und Badges.
   /// Kostenlos für alle Cloud-Nutzer (kein Premium-Abo erforderlich).
   static bool get streaks => _isCloud;

@@ -5,17 +5,19 @@
 | Core nutrition tracking | ✅ | ✅ | ✅ |
 | Custom DB/Auth endpoint (self-hosted) | ✅ | ❌ | ❌ |
 | Meal templates | ❌ | ✅ | ✅ |
-| Activity quick-add | ❌ | ✅ | ✅ |
+| Activity quick-add | ✅ | ✅ | ✅ |
 | Streaks | ❌ | ✅ | ✅ |
 | Reports export (CSV) | ❌ | ✅ | ✅ |
 | Share progress (mobile only) | ❌ | ✅ | ✅ |
 | Micronutrient tracking | ❌ | ❌ | ✅ |
 | Advanced analytics | ❌ | ❌ | ✅ |
 | Nutrition label scan (mobile only) | ❌ | ❌ | ✅ |
+| AI meal parsing (mobile only) | ❌ | ❌ | ✅ |
 
 ## Notes
 
-- **Cloud Pro** maps to JWT roles `'pro'` or `'basic'` — checked via `AppFeatures.isPaid`
+- **Cloud Pro** maps to JWT roles `'pro'`, `'basic'` or `'admin'` — checked via `AppFeatures.isPaid`
+- AI meal parsing only gates *availability*; the model must also be downloaded and enabled
 - **Cloud Free** maps to JWT role `'free'`
 - **Community Edition** maps to JWT role `'community'` (set on logout/reset)
 - Feature gates live in `lib/app_features.dart`

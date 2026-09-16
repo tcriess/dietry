@@ -95,7 +95,6 @@ class AppFeaturesUtils {
     appLogger.d('Features:');
     appLogger.d('  Meal Templates: ${AppFeatures.mealTemplates}');
     appLogger.d('  Micro Nutrients: ${AppFeatures.microNutrients}');
-    appLogger.d('  Activity Quick Add: ${AppFeatures.activityQuickAdd}');
     appLogger.d('  Streaks: ${AppFeatures.streaks}');
     appLogger.d('  Reports Export: ${AppFeatures.reportsExport}');
     appLogger.d('  Advanced Analytics: ${AppFeatures.advancedAnalytics}');
@@ -109,8 +108,6 @@ class AppFeaturesUtils {
         return AppFeatures.mealTemplates;
       case 'micronutrients':
         return AppFeatures.microNutrients;
-      case 'activity_quick_add':
-        return AppFeatures.activityQuickAdd;
       case 'streaks':
         return AppFeatures.streaks;
       case 'reports_export':
