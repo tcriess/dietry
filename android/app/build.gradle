@@ -34,21 +34,17 @@ def edition = project.findProperty('edition') ?: 'community'
 def appId = edition == 'cloud' ? 'de.dietry.app' : 'de.dietry.community'
 
 android {
-    namespace "com.sws.dietry"
-    compileSdkVersion flutter.compileSdkVersion
-    ndkVersion flutter.ndkVersion
+    namespace = "com.sws.dietry"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
         // Java 17: required by the plus_plugins majors (share_plus 13,
         // package_info_plus 10, device_info_plus 13) whose Android modules
         // compile at jvmTarget = JVM_17.
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = '17'
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     sourceSets {
@@ -57,13 +53,13 @@ android {
 
     defaultConfig {
         // Application ID is set based on EDITION (community or cloud)
-        applicationId appId
+        applicationId = appId
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdkVersion 26  // Health Connect benötigt Android 8.0+
-        targetSdkVersion flutter.targetSdkVersion
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        minSdk = 26  // Health Connect benötigt Android 8.0+
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
 
         // Manifest placeholders. `appName` is the visible launcher label;
         // build.sh passes it via -PappName based on edition+environment
@@ -79,10 +75,10 @@ android {
     signingConfigs {
         release {
             if (keystorePropertiesFile.exists()) {
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storeFile = file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
             }
         }
     }
@@ -94,7 +90,7 @@ android {
             }
         }
         release {
-            signingConfig keystorePropertiesFile.exists()
+            signingConfig = keystorePropertiesFile.exists()
                 ? signingConfigs.release
                 : signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -102,8 +98,16 @@ android {
     }
 }
 
+// Still KGP, not built-in Kotlin: five plugins have not migrated, and enabling
+// it while they apply KGP is a hard failure under AGP 9.
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
+
 flutter {
-    source '../..'
+    source = '../..'
 }
 
 dependencies {

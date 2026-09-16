@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - One macro palette everywhere: calories violet, protein red, fat orange, carbs
   teal. The day list, the overview pie and the reports charts used to disagree.
   Carbs changes the most — it was amber in the day list.
+- Android build: Gradle 9.1.0, AGP 9.0.1, Kotlin 2.3.20.
+- Dependencies updated within their constraints. mobile_scanner and
+  speech_to_text no longer pull in the Kotlin Gradle Plugin.
 
 ### Fixed
 - Text that was unreadable in dark mode, notably the activity summary and the

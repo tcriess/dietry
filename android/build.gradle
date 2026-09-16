@@ -7,14 +7,31 @@ allprojects {
     }
 }
 
-rootProject.buildDir = '../build'
+rootProject.layout.buildDirectory = file('../build')
 subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.layout.buildDirectory =
+            rootProject.layout.buildDirectory.dir(project.name)
 }
+// AGP 9 fails a plugin compiled against an older SDK than its dependencies
+// (cloud: cactus is on 35, device_info_plus wants 36). Must be registered
+// before the evaluationDependsOn below, which evaluates :app.
+subprojects {
+    if (project.path != ':app') {
+        afterEvaluate {
+            def android = project.extensions.findByName('android')
+            def appSdk = rootProject.project(':app')
+                    .extensions.getByName('android').compileSdk
+            if (android?.compileSdk != null && android.compileSdk < appSdk) {
+                android.compileSdk = appSdk
+            }
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(':app')
 }
 
 tasks.register("clean", Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }
