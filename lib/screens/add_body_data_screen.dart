@@ -5,6 +5,7 @@ import '../models/user_body_data.dart';
 import '../services/user_body_data_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/app_logger.dart';
+import '../theme/app_colors.dart';
 
 /// Screen zum Eingeben/Bearbeiten von Körperdaten
 class AddBodyDataScreen extends StatefulWidget {
@@ -99,7 +100,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
                   ? '✅ Körperdaten gespeichert!' 
                   : '✅ Änderungen gespeichert!',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
         
@@ -112,7 +113,7 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
           ),
         );
       }
@@ -140,17 +141,17 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
           children: [
             // Info-Card
             Card(
-              color: Colors.blue.shade50,
+              color: context.colors.info.container,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700),
+                    Icon(Icons.info_outline, color: context.colors.info.strong),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Diese Daten werden für personalisierte Empfehlungen und Kalorien-Schätzungen verwendet.',
-                        style: TextStyle(color: Colors.blue.shade900),
+                        style: TextStyle(color: context.colors.info.onContainer),
                       ),
                     ),
                   ],
@@ -330,8 +331,8 @@ class _AddBodyDataScreenState extends State<AddBodyDataScreen> {
                     : const Icon(Icons.check),
                 label: Text(_isSaving ? 'Speichere...' : 'Speichern'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  foregroundColor: Colors.white,
+                  backgroundColor: context.colors.accent.base,
+                  foregroundColor: context.colors.accent.on,
                   padding: const EdgeInsets.all(16),
                 ),
               ),

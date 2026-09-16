@@ -4,6 +4,7 @@ import 'edit_on_close.dart';
 
 import '../l10n/app_localizations.dart';
 import '../utils/number_utils.dart';
+import '../theme/app_colors.dart';
 
 /// Outcome of the calibration dialog. [factor] null means "drop my measurement
 /// and go back to the app's generic factor"; the dialog returning null at all
@@ -104,7 +105,7 @@ class _CookedFactorDialogState extends State<_CookedFactorDialog> {
         children: [
           Text(
             l.cookedCalibrateIntro,
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 13, color: context.colors.subtle),
           ),
           const SizedBox(height: 16),
           _weightField(_rawCtrl, l.cookedCalibrateRaw),

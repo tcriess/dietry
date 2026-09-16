@@ -10,6 +10,7 @@ import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../utils/unit_utils.dart';
 
 /// The edit form's eight per-100 nutrition fields, as text.
@@ -671,7 +672,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
             content: Text(syncMessage == null
                 ? lCtx.entryUpdated
                 : '${lCtx.entryUpdated} · $syncMessage'),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
         Navigator.of(context).pop();
@@ -682,7 +683,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(lCtx.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     } finally {
@@ -700,7 +701,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
-                ?.copyWith(color: Colors.grey.shade700)),
+                ?.copyWith(color: context.colors.onNeutralContainer)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
@@ -787,7 +788,7 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: context.colors.border),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(text,
@@ -817,14 +818,14 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
         : 'Gesamt für $amountStr$unitText:';
 
     return Card(
-      color: Colors.blue.shade50,
+      color: context.colors.info.container,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextStyle(fontSize: 12, color: context.colors.muted)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1159,10 +1160,12 @@ class _PreviewMacro extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(value,
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: context.colors.info.base)),
         Text(label,
-            style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            style: TextStyle(fontSize: 10, color: context.colors.muted)),
       ],
     );
   }

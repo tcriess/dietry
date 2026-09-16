@@ -10,6 +10,7 @@ import '../services/calendar_service.dart';
 import '../services/cheat_day_service.dart';
 import '../services/local_data_service.dart';
 import '../services/neon_database_service.dart';
+import '../theme/app_colors.dart';
 
 /// Declare and manage holidays — named runs of cheat days, typically a
 /// vacation planned before it starts.
@@ -230,7 +231,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
                 l.holidayCalendarHint,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: ctx.colors.muted),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -249,7 +250,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                     subtitle.write(' · ${e.calendarName}');
                   }
                   return ListTile(
-                    leading: const Icon(Icons.event, color: Colors.orange),
+                    leading:
+                        Icon(Icons.event, color: ctx.colors.warning.base),
                     title: Text(e.title),
                     subtitle: Text(subtitle.toString()),
                     onTap: () => Navigator.of(ctx).pop(e),
@@ -325,7 +327,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             child: Text(l.cancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+            style:
+                FilledButton.styleFrom(backgroundColor: ctx.colors.danger.base),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(l.delete),
           ),
@@ -399,7 +402,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             const SizedBox(height: 8),
             Text(
               l.holidaysEmptyHint,
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: context.colors.muted),
               textAlign: TextAlign.center,
             ),
             // Repeated from the app bar: the empty state is where someone who
@@ -455,7 +458,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             fontSize: 12,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
-            color: Colors.grey.shade600,
+            color: context.colors.muted,
           ),
         ),
       );
@@ -470,11 +473,11 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      color: highlight ? Colors.orange.shade50 : null,
+      color: highlight ? context.colors.warning.container : null,
       shape: highlight
           ? RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.orange.shade300),
+              side: BorderSide(color: context.colors.warning.border),
             )
           : null,
       child: Opacity(
@@ -491,7 +494,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           subtitle: Text(subtitle.toString()),
           onTap: _busy ? null : () => _rename(h),
           trailing: IconButton(
-            icon: Icon(Icons.delete_outline, color: Colors.red.shade400),
+            icon: Icon(Icons.delete_outline, color: context.colors.danger.base),
             tooltip: l.delete,
             onPressed: _busy ? null : () => _delete(h),
           ),

@@ -8,19 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 
+- Semantic colour palette (`lib/theme/app_colors.dart`) with a light and a dark
+  value for every role, reachable as `context.colors`.
 
 ### Changed
-- 
+- All screens read their colours from the palette instead of hardcoding them.
+- One macro palette everywhere: calories violet, protein red, fat orange, carbs
+  teal. The day list, the overview pie and the reports charts used to disagree.
+  Carbs changes the most — it was amber in the day list.
 
 ### Fixed
-- 
+- Text that was unreadable in dark mode, notably the activity summary and the
+  nutrition preview in the food entry dialogs.
+- Macro colours are now distinguishable with red-green colour blindness; the
+  old orange/amber pair was not.
 
 ### Deprecated
 - 
 
 ### Removed
-- 
+- `lib/main_simple.dart`, an experimental entry point nothing referenced.
 
 ### Security
 - 

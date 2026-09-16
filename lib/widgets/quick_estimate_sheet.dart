@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../models/food_entry.dart';
 import '../utils/number_utils.dart';
 import '../utils/unit_utils.dart';
+import '../theme/app_colors.dart';
 
 /// Unit stored for an estimate logged without a weight: one unnamed portion.
 /// Matches what meal-template entries use, so the edit screen's totals mode
@@ -267,7 +268,7 @@ class _QuickEstimateSheetState extends State<_QuickEstimateSheet> {
           children: [
             Row(
               children: [
-                const Icon(Icons.bolt, color: Colors.teal),
+                Icon(Icons.bolt, color: context.colors.accent.base),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

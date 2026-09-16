@@ -6,6 +6,7 @@ import '../services/user_body_measurements_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 /// Screen zum Eingeben von zeitbasierten Körpermessungen (Gewicht, etc.)
 class AddBodyMeasurementScreen extends StatefulWidget {
@@ -156,7 +157,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.measurementSaved),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
 
@@ -168,7 +169,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.errorPrefix(e.toString())),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
           ),
         );
       }
@@ -205,17 +206,17 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
           children: [
             // Info
             Card(
-              color: Colors.teal.shade50,
+              color: context.colors.accent.container,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.teal.shade700),
+                    Icon(Icons.info_outline, color: context.colors.accent.strong),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         l.profileInfoText,
-                        style: TextStyle(color: Colors.teal.shade900),
+                        style: TextStyle(color: context.colors.accent.onContainer),
                       ),
                     ),
                   ],
@@ -235,7 +236,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      Icon(Icons.calendar_today, color: Colors.blue.shade700),
+                      Icon(Icons.calendar_today, color: context.colors.info.strong),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -244,7 +245,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
                             Text(
                               l.measurementDate,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
+                                color: context.colors.muted,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -257,7 +258,7 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
                           ],
                         ),
                       ),
-                      Icon(Icons.edit, color: Colors.grey.shade400, size: 20),
+                      Icon(Icons.edit, color: context.colors.faint, size: 20),
                     ],
                   ),
                 ),
@@ -398,8 +399,8 @@ class _AddBodyMeasurementScreenState extends State<AddBodyMeasurementScreen> {
                       : const Icon(Icons.check),
                   label: Text(_isSaving ? l.saving : l.save),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
+                    backgroundColor: context.colors.accent.base,
+                    foregroundColor: context.colors.accent.on,
                     padding: const EdgeInsets.all(16),
                   ),
                 ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/neon_database_service.dart';
 import '../services/tag_service.dart';
+import '../theme/app_colors.dart';
 
 /// Lets the user review the tags they created and delete them globally.
 ///
@@ -58,7 +59,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
             child: Text(l.cancel),
           ),
           TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.danger.base),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(l.delete),
           ),
@@ -102,7 +103,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                       child: Text(
                         l.noTagsCreated,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: context.colors.subtle),
                       ),
                     ),
                   )
@@ -127,7 +128,7 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                                 )
                               : IconButton(
                                   icon: const Icon(Icons.delete_outline),
-                                  color: Colors.red,
+                                  color: context.colors.danger.base,
                                   onPressed: () => _confirmDelete(managed),
                                 ),
                         );

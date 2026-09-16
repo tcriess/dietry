@@ -10,6 +10,7 @@ import '../services/user_body_measurements_service.dart';
 import '../services/local_data_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 /// Screen zur Eingabe von Körperdaten und Berechnung von Nutrition Goal Empfehlungen
 class GoalRecommendationScreen extends StatefulWidget {
@@ -130,7 +131,9 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
     if (_birthdate == null) {
       final l = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.birthdateSelectSnackbar), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text(l.birthdateSelectSnackbar),
+            backgroundColor: context.colors.danger.base),
       );
       return;
     }
@@ -176,7 +179,9 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
     } catch (e) {
       setState(() => _isCalculating = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('Fehler bei Berechnung: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Fehler bei Berechnung: $e'),
+            backgroundColor: context.colors.danger.base),
       );
     }
   }
@@ -312,7 +317,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.goalSaved),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -327,7 +332,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.errorPrefix(e.toString())),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -371,7 +376,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.info_outline, color: Colors.blue),
+                          Icon(Icons.info_outline, color: context.colors.info.base),
                           const SizedBox(width: 8),
                           Text(
                             l.personalizedRecTitle,
@@ -483,7 +488,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                               )
                             : l.birthdateSelect,
                         style: TextStyle(
-                          color: _birthdate != null ? null : Colors.grey.shade600,
+                          color: _birthdate != null ? null : context.colors.muted,
                         ),
                       ),
                       const Icon(Icons.calendar_today, size: 18),
@@ -662,10 +667,11 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 child: FilledButton.icon(
                   onPressed: _isCalculating ? null : _calculateRecommendation,
                   icon: _isCalculating
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: context.colors.success.on),
                         )
                       : const Icon(Icons.calculate),
                   label: Text(_isCalculating ? l.calculating : l.calculateButton),
@@ -687,16 +693,18 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                     child: FilledButton.icon(
                       onPressed: _isSaving ? null : _saveGoal,
                       icon: _isSaving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: context.colors.success.on),
                             )
                           : const Icon(Icons.save),
                       label: Text(_isSaving ? l.saving : l.saveAsGoal),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                        backgroundColor: context.colors.success.base,
+                        foregroundColor: context.colors.success.on,
                         padding: const EdgeInsets.all(16),
                       ),
                     ),
@@ -720,7 +728,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.recommend, color: Colors.green, size: 28),
+                Icon(Icons.recommend, color: context.colors.success.base, size: 28),
                 const SizedBox(width: 8),
                 Text(
                   l.recommendationTitle,
@@ -738,16 +746,16 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.purple.shade50,
+                  color: context.colors.plum.container,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.purple.shade200),
+                  border: Border.all(color: context.colors.plum.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.track_changes, color: Colors.purple.shade700),
+                        Icon(Icons.track_changes, color: context.colors.plum.strong),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -755,7 +763,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.purple.shade900,
+                              color: context.colors.plum.onContainer,
                             ),
                           ),
                         ),
@@ -766,7 +774,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                       rec.method.localizedShortDescription(l),
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.purple.shade800,
+                        color: context.colors.plum.onContainer,
                       ),
                     ),
                   ],
@@ -780,7 +788,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: context.colors.info.container,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -818,9 +826,9 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: context.colors.success.container,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green, width: 2),
+                  border: Border.all(color: context.colors.success.base, width: 2),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -831,10 +839,10 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                     ),
                     Text(
                       '${rec.calories.toInt()} kcal',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                        color: context.colors.success.base,
                       ),
                     ),
                   ],
@@ -856,7 +864,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               'g',
               macroPercentages['protein']!,
               Icons.egg,
-              Colors.red,
+              context.colors.danger.base,
             ),
             const SizedBox(height: 8),
             _buildMacroRow(
@@ -865,7 +873,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               'g',
               macroPercentages['fat']!,
               Icons.water_drop,
-              Colors.orange,
+              context.colors.warning.base,
             ),
             const SizedBox(height: 8),
             _buildMacroRow(
@@ -874,7 +882,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               'g',
               macroPercentages['carbs']!,
               Icons.grass,
-              Colors.green,
+              context.colors.success.base,
             ),
 
             const SizedBox(height: 16),
@@ -882,7 +890,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             // Wasserziel
             Row(
               children: [
-                const Icon(Icons.water_drop, color: Colors.blue, size: 20),
+                Icon(Icons.water_drop, color: context.colors.info.base, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   l.waterTitle,
@@ -914,7 +922,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: context.colors.info.container,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -922,14 +930,14 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.checklist, color: Colors.blue.shade700),
+                      Icon(Icons.checklist, color: context.colors.info.strong),
                       const SizedBox(width: 8),
                       Text(
                         l.trackingWhatToTrack,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade900,
+                          color: context.colors.info.onContainer,
                         ),
                       ),
                     ],
@@ -939,7 +947,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                     rec.method.localizedTrackingGuideline(l),
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.blue.shade800,
+                      color: context.colors.info.onContainer,
                     ),
                   ),
                 ],
@@ -952,12 +960,13 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: context.colors.highlight.container,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.lightbulb_outline, color: Colors.amber),
+                  Icon(Icons.lightbulb_outline,
+                      color: context.colors.highlight.base),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -995,7 +1004,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               const SizedBox(height: 2),
               LinearProgressIndicator(
                 value: percentage / 100,
-                backgroundColor: Colors.grey.shade200,
+                backgroundColor: context.colors.neutralContainerHigh,
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ],

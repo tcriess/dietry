@@ -3,6 +3,7 @@ import 'dart:convert' show base64Decode;
 import 'package:dietry/models/food_item.dart';
 import 'package:dietry/services/app_logger.dart';
 import 'package:dietry/services/food_image_service.dart';
+import 'package:dietry/theme/app_colors.dart';
 
 /// Widget to display a food thumbnail with image or letter avatar fallback.
 /// Shows cached image if available, otherwise fetches it asynchronously.
@@ -62,7 +63,7 @@ class _FoodThumbnailWidgetState extends State<FoodThumbnailWidget> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           // Loading state
           return CircleAvatar(
-            backgroundColor: Colors.grey.shade300,
+            backgroundColor: context.colors.neutralContainerHigh,
             child: const SizedBox(
               width: 20,
               height: 20,
@@ -91,7 +92,7 @@ class _FoodThumbnailWidgetState extends State<FoodThumbnailWidget> {
           final imageBytes = base64Decode(snapshot.data!);
           return CircleAvatar(
             backgroundImage: MemoryImage(imageBytes),
-            backgroundColor: Colors.grey.shade300,
+            backgroundColor: context.colors.neutralContainerHigh,
           );
         } catch (e) {
           appLogger.e('FoodThumbnailWidget: Error decoding image for ${widget.food.name}: $e');

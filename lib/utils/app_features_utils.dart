@@ -3,6 +3,7 @@ import 'package:dietry_cloud/dietry_cloud.dart' show premiumFeatures;
 import '../app_config.dart';
 import '../app_features.dart';
 import '../services/app_logger.dart';
+import '../theme/app_colors.dart';
 
 /// Utility functions for feature gating and premium tier prompts.
 class AppFeaturesUtils {
@@ -50,7 +51,7 @@ class AppFeaturesUtils {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lock_outline, size: 48, color: Colors.grey[400]),
+              Icon(Icons.lock_outline, size: 48, color: context.colors.faint),
               const SizedBox(height: 16),
               Text(
                 feature,

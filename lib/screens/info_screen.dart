@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../app_config.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 class InfoScreen extends StatelessWidget {
   const InfoScreen({super.key});
@@ -63,13 +64,13 @@ class InfoScreen extends StatelessWidget {
                       children: [
                         Text(
                           l.infoVersion(version),
-                          style: const TextStyle(color: Colors.grey),
+                          style: TextStyle(color: context.colors.subtle),
                         ),
                         if (buildLine.isNotEmpty)
                           Text(
                             buildLine,
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color: context.colors.subtle,
                               fontSize: 11,
                             ),
                           ),
@@ -82,7 +83,7 @@ class InfoScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   l.appSubtitle,
-                  style: const TextStyle(color: Colors.grey),
+                  style: TextStyle(color: context.colors.subtle),
                 ),
               ],
             ),
@@ -117,7 +118,7 @@ class InfoScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   l.infoResponsible,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: context.colors.subtle),
                 ),
               ],
             ),
@@ -149,7 +150,7 @@ class InfoScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   l.infoDataDeletion,
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  style: TextStyle(fontSize: 13, color: context.colors.subtle),
                 ),
               ],
             ),
@@ -279,7 +280,7 @@ class InfoScreen extends StatelessWidget {
           Center(
             child: Text(
               l.infoCopyright,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+              style: TextStyle(color: context.colors.subtle, fontSize: 12),
             ),
           ),
 
@@ -374,11 +375,11 @@ class _ApiCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.balance, size: 12, color: Colors.grey),
+                        Icon(Icons.balance, size: 12, color: context.colors.subtle),
                         const SizedBox(width: 4),
                         Text(
                           license,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          style: TextStyle(fontSize: 11, color: context.colors.subtle),
                         ),
                       ],
                     ),
@@ -386,7 +387,7 @@ class _ApiCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.open_in_new, size: 16, color: Colors.grey),
+              Icon(Icons.open_in_new, size: 16, color: context.colors.subtle),
             ],
           ),
         ),
@@ -412,7 +413,7 @@ class _LibraryRow extends StatelessWidget {
           ),
           Text(
             license,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 12, color: context.colors.muted),
           ),
         ],
       ),
@@ -432,22 +433,22 @@ class _EditionBadge extends StatelessWidget {
 
     if (!isCloud) {
       label = 'Community Edition';
-      bg = Colors.grey.shade200;
-      fg = Colors.grey.shade700;
+      bg = context.colors.neutralContainerHigh;
+      fg = context.colors.onNeutralContainer;
     } else {
       switch (role) {
         case 'pro':
           label = 'Cloud Edition · Pro';
-          bg = const Color(0xFFFFD700).withValues(alpha: 0.2);
-          fg = const Color(0xFF7A6000);
+          bg = context.colors.highlight.container;
+          fg = context.colors.highlight.onContainer;
         case 'basic':
           label = 'Cloud Edition · Basic';
           bg = Theme.of(context).colorScheme.primaryContainer;
           fg = Theme.of(context).colorScheme.onPrimaryContainer;
         default:
           label = 'Cloud Edition · Free';
-          bg = Colors.teal.shade50;
-          fg = Colors.teal.shade700;
+          bg = context.colors.accent.container;
+          fg = context.colors.accent.strong;
       }
     }
 

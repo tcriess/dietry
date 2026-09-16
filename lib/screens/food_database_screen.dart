@@ -19,6 +19,7 @@ import '../services/barcode_lookup_service.dart';
 import '../widgets/barcode_scanner_sheet.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/edit_on_close.dart';
 import '../widgets/tag_editor.dart';
@@ -162,7 +163,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     } finally {
@@ -201,7 +202,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.foodUpdated(updated.name)),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
       }
@@ -214,7 +215,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -241,7 +242,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -262,7 +263,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(
+                  foregroundColor: context.colors.danger.base),
               child: Text(l.delete),
             ),
           ],
@@ -277,7 +279,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
       if (mounted) {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.foodDeleted), backgroundColor: Colors.green),
+          SnackBar(
+              content: Text(l.foodDeleted),
+              backgroundColor: context.colors.success.base),
         );
       }
       _loadFoods();
@@ -287,7 +291,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -326,7 +330,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.foodAdded(created.name)),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
       }
@@ -337,7 +341,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -495,15 +499,16 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.no_food,
-                                size: 64, color: Colors.grey.shade400),
+                                size: 64, color: context.colors.faint),
                             const SizedBox(height: 16),
                             Text(l.entriesEmpty,
                                 style: TextStyle(
-                                    color: Colors.grey.shade600, fontSize: 16)),
+                                    color: context.colors.muted, fontSize: 16)),
                             const SizedBox(height: 8),
                             Text(l.foodDatabaseEmpty,
                                 style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 13)),
+                                    color: context.colors.subtle,
+                                    fontSize: 13)),
                           ],
                         ),
                       );
@@ -512,7 +517,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                       return Center(
                         child: Text(
                           l.noSearchResults(_searchQuery),
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(color: context.colors.muted),
                         ),
                       );
                     }
@@ -527,6 +532,9 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                         final food = displayed[index];
                         final isSmallScreen =
                             MediaQuery.of(context).size.width < 500;
+                        final c = context.colors;
+                        // Approved reads as success, pending as warning.
+                        final status = food.isApproved ? c.success : c.warning;
 
                         return GestureDetector(
                           onTap: () => _editFood(food),
@@ -575,9 +583,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                         horizontal: 6,
                                                         vertical: 2),
                                                 decoration: BoxDecoration(
-                                                  color: food.isApproved
-                                                      ? Colors.green.shade100
-                                                      : Colors.orange.shade100,
+                                                  color: status.container,
                                                   borderRadius:
                                                       BorderRadius.circular(10),
                                                 ),
@@ -591,11 +597,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                           : Icons
                                                               .pending_outlined,
                                                       size: 12,
-                                                      color: food.isApproved
-                                                          ? Colors
-                                                              .green.shade700
-                                                          : Colors
-                                                              .orange.shade700,
+                                                      color:
+                                                          status.onContainer,
                                                     ),
                                                     const SizedBox(width: 3),
                                                     Text(
@@ -606,11 +609,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                         fontSize: 10,
                                                         fontWeight:
                                                             FontWeight.bold,
-                                                        color: food.isApproved
-                                                            ? Colors
-                                                                .green.shade700
-                                                            : Colors.orange
-                                                                .shade700,
+                                                        color:
+                                                            status.onContainer,
                                                       ),
                                                     ),
                                                   ],
@@ -629,7 +629,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                           '${food.category != null ? ' • ${food.category}' : ''}',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: Colors.grey.shade600,
+                                            color: c.muted,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -673,7 +673,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                               '+${food.tags.length - 3} mehr',
                                               style: TextStyle(
                                                 fontSize: 10,
-                                                color: Colors.grey.shade600,
+                                                color: c.muted,
                                               ),
                                             ),
                                         ],
@@ -685,9 +685,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: food.isApproved
-                                                  ? Colors.green.shade100
-                                                  : Colors.orange.shade100,
+                                              color: status.container,
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                             ),
@@ -699,9 +697,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                       ? Icons.public
                                                       : Icons.pending_outlined,
                                                   size: 10,
-                                                  color: food.isApproved
-                                                      ? Colors.green.shade700
-                                                      : Colors.orange.shade700,
+                                                  color: status.onContainer,
                                                 ),
                                                 const SizedBox(width: 2),
                                                 Text(
@@ -711,10 +707,7 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                   style: TextStyle(
                                                     fontSize: 9,
                                                     fontWeight: FontWeight.bold,
-                                                    color: food.isApproved
-                                                        ? Colors.green.shade700
-                                                        : Colors
-                                                            .orange.shade700,
+                                                    color: status.onContainer,
                                                   ),
                                                 ),
                                               ],
@@ -738,8 +731,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                 : Icons.star_border,
                                             size: 20,
                                             color: food.isFavourite
-                                                ? Colors.amber.shade600
-                                                : Colors.grey.shade400,
+                                                ? c.highlight.base
+                                                : c.faint,
                                           ),
                                           tooltip: food.isFavourite
                                               ? 'Aus Favoriten entfernen'
@@ -788,8 +781,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                               minWidth: 32, minHeight: 32),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.delete_outline,
-                                              size: 20, color: Colors.red),
+                                          icon: Icon(Icons.delete_outline,
+                                              size: 20, color: c.danger.base),
                                           tooltip: l.delete,
                                           onPressed: () => _deleteFood(food),
                                           padding: EdgeInsets.zero,
@@ -837,8 +830,8 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                                     ? Icons.star
                                                     : Icons.star_border,
                                                 color: food.isFavourite
-                                                    ? Colors.amber.shade600
-                                                    : Colors.grey.shade600,
+                                                    ? c.highlight.base
+                                                    : c.muted,
                                               ),
                                               const SizedBox(width: 8),
                                               Text(food.isFavourite
@@ -872,12 +865,12 @@ class _FoodDatabaseScreenState extends State<FoodDatabaseScreen> {
                                           value: 'delete',
                                           child: Row(
                                             children: [
-                                              const Icon(Icons.delete_outline,
-                                                  color: Colors.red),
+                                              Icon(Icons.delete_outline,
+                                                  color: c.danger.base),
                                               const SizedBox(width: 8),
                                               Text(l.delete,
-                                                  style: const TextStyle(
-                                                      color: Colors.red)),
+                                                  style: TextStyle(
+                                                      color: c.danger.base)),
                                             ],
                                           ),
                                         ),
@@ -1129,7 +1122,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(l.foodImageReadFailed),
-                backgroundColor: Colors.red,
+                backgroundColor: context.colors.danger.base,
               ),
             );
           }
@@ -1159,7 +1152,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMsg),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -1172,7 +1165,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.foodImagePickFailed),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
           ),
         );
       }
@@ -1204,7 +1197,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.foodImageDeleted),
-              backgroundColor: Colors.green),
+              backgroundColor: context.colors.success.base),
         );
       }
     } catch (e, stackTrace) {
@@ -1215,7 +1208,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.foodImageDeleteFailed),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -1243,7 +1236,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.foodImageUploaded),
-              backgroundColor: Colors.green),
+              backgroundColor: context.colors.success.base),
         );
       }
     } catch (e, stackTrace) {
@@ -1260,7 +1253,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.foodImageUploadFailed),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     } finally {
@@ -1465,6 +1458,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final c = context.colors;
     // Editing applies on close and has no Save button — the image is already
     // stored by the time we get here, so there is nothing left to wait for.
     // Adding keeps its button: nothing can be applied until the food exists.
@@ -1486,21 +1480,21 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
+                    color: c.highlight.container,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade300),
+                    border: Border.all(color: c.highlight.border),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.info_outline,
-                          size: 16, color: Colors.amber.shade800),
+                          size: 16, color: c.highlight.strong),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Dieser Eintrag ist öffentlich freigegeben. '
                           'Nach dem Speichern muss er erneut von einem Admin bestätigt werden.',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.amber.shade900),
+                              fontSize: 12, color: c.highlight.onContainer),
                         ),
                       ),
                     ],
@@ -1511,14 +1505,14 @@ class FoodEditDialogState extends State<FoodEditDialog> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: c.warning.container,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   'Nährwerte pro 100 g bzw. 100 ml angeben',
                   style: TextStyle(
                       fontSize: 12,
-                      color: Colors.orange.shade900,
+                      color: c.warning.onContainer,
                       fontWeight: FontWeight.bold),
                 ),
               ),
@@ -1548,9 +1542,9 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                       width: double.infinity,
                       height: 150,
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(color: c.border),
                         borderRadius: BorderRadius.circular(8),
-                        color: Colors.grey.shade100,
+                        color: c.neutralContainer,
                       ),
                       child: _selectedImageBytes != null
                           ? Image.memory(_selectedImageBytes!,
@@ -1564,11 +1558,10 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.image_not_supported,
-                                        size: 48, color: Colors.grey.shade400),
+                                        size: 48, color: c.faint),
                                     const SizedBox(height: 8),
                                     Text(l.foodImageNone,
-                                        style: TextStyle(
-                                            color: Colors.grey.shade600)),
+                                        style: TextStyle(color: c.muted)),
                                   ],
                                 ),
                     ),
@@ -1590,8 +1583,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                             icon: const Icon(Icons.delete),
                             label: Text(l.delete),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade100,
-                              foregroundColor: Colors.red.shade900,
+                              backgroundColor: c.danger.container,
+                              foregroundColor: c.danger.onContainer,
                             ),
                           ),
                       ],
@@ -1793,7 +1786,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                   child: Text(
                     l.foodPortionsEmpty,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                          color: c.muted,
                         ),
                   ),
                 )
@@ -1832,8 +1825,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.remove_circle_outline,
-                              color: Colors.red),
+                          icon: Icon(Icons.remove_circle_outline,
+                              color: c.danger.base),
                           onPressed: () {
                             setState(() {
                               row.name.dispose();
@@ -1859,7 +1852,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                 contentPadding: EdgeInsets.zero,
                 secondary: Icon(
                   _isPublic ? Icons.public : Icons.lock_outline,
-                  color: _isPublic ? Colors.green : Colors.grey,
+                  color: _isPublic ? c.success.base : c.subtle,
                 ),
               ),
 
@@ -1872,7 +1865,7 @@ class FoodEditDialogState extends State<FoodEditDialog> {
                 contentPadding: EdgeInsets.zero,
                 secondary: Icon(
                   _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                  color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                  color: _isLiquid ? c.water.base : c.subtle,
                 ),
               ),
               const SizedBox(height: 16),
@@ -1926,8 +1919,8 @@ class FoodEditDialogState extends State<FoodEditDialog> {
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white),
+                    backgroundColor: c.success.base,
+                    foregroundColor: c.success.on),
                 child: Text(l.add),
               ),
             ],

@@ -15,6 +15,7 @@ import '../services/platform_export.dart' as exporter;
 import '../services/nutrition_ics_export.dart';
 import '../services/reports_service.dart';
 import '../services/user_body_data_service.dart';
+import '../theme/app_colors.dart';
 
 enum _FoodSortMode { calories, count, weight }
 
@@ -791,9 +792,9 @@ class _GearLifetime extends StatelessWidget {
           // Same thresholds as the gear screen: orange approaching the budget,
           // red once it is spent.
           color: wear >= 1.0
-              ? Colors.red
+              ? context.colors.danger.base
               : wear >= 0.8
-                  ? Colors.orange
+                  ? context.colors.warning.base
                   : theme.colorScheme.primary,
         ),
         const SizedBox(height: 4),
@@ -837,7 +838,7 @@ class _NoData extends StatelessWidget {
         child: Center(
           child: Text(
             AppLocalizations.of(context)!.reportsNoData,
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            style: TextStyle(color: context.colors.subtle, fontSize: 13),
           ),
         ),
       );
@@ -1009,7 +1010,7 @@ class _StatTile extends StatelessWidget {
                   fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
           Text(label,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 11, color: context.colors.muted),
               textAlign: TextAlign.center),
         ],
       );
@@ -1102,10 +1103,12 @@ class _CalorieTrendCardState extends State<_CalorieTrendCard> {
                 spacing: 16,
                 runSpacing: 4,
                 children: [
-                  _LegendEntry(color: Colors.blue, label: l.reportsConsumed),
+                  _LegendEntry(
+                      color: context.colors.chartIntake,
+                      label: l.reportsConsumed),
                   if (hasTarget)
                     _LegendEntry(
-                      color: Colors.red.withValues(alpha: 0.6),
+                      color: context.colors.chartTarget.withValues(alpha: 0.6),
                       label: l.reportsTargetWithBurn,
                       dashed: true,
                     ),
@@ -1145,7 +1148,7 @@ class _LegendEntry extends StatelessWidget {
             _swatch(),
           const SizedBox(width: 6),
           Text(label,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              style: TextStyle(fontSize: 10, color: context.colors.muted)),
         ],
       );
 }
@@ -1161,6 +1164,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final c = context.colors;
 
     if (pts.isEmpty) return const _NoData();
 
@@ -1188,7 +1192,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
             drawHorizontalLine: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                FlLine(color: c.chartGrid, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
@@ -1223,7 +1227,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
                 if (s.barIndex != 0 || idx < 0 || idx >= pts.length) return null;
                 return LineTooltipItem(
                   _trendTooltip(pts[idx], range, l),
-                  const TextStyle(fontSize: 12, color: Colors.white),
+                  TextStyle(fontSize: 12, color: c.chartTooltipText),
                 );
               }).toList(),
             ),
@@ -1238,12 +1242,12 @@ class _CalorieTrendLineChart extends StatelessWidget {
                   .toList(),
               isCurved: true,
               curveSmoothness: 0.3,
-              color: Colors.blue,
+              color: c.chartIntake,
               barWidth: 2,
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: Colors.blue.withValues(alpha: 0.08),
+                color: c.chartIntake.withValues(alpha: 0.08),
               ),
             ),
             // Target line — the goal of the day plus what was burned, so it
@@ -1252,7 +1256,7 @@ class _CalorieTrendLineChart extends StatelessWidget {
               LineChartBarData(
                 spots: targetSpots,
                 isCurved: false,
-                color: Colors.red.withValues(alpha: 0.45),
+                color: c.chartTarget.withValues(alpha: 0.45),
                 barWidth: 1.5,
                 dashArray: [6, 4],
                 dotData: const FlDotData(show: false),
@@ -1275,6 +1279,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final c = context.colors;
 
     if (pts.isEmpty) return const _NoData();
 
@@ -1298,7 +1303,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
             drawHorizontalLine: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                FlLine(color: c.chartGrid, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
@@ -1307,7 +1312,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
                 if (group.x < 0 || group.x >= pts.length) return null;
                 return BarTooltipItem(
                   _trendTooltip(pts[group.x], range, l),
-                  const TextStyle(fontSize: 12, color: Colors.white),
+                  TextStyle(fontSize: 12, color: c.chartTooltipText),
                 );
               },
             ),
@@ -1344,7 +1349,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
                   barRods: [
                     BarChartRodData(
                       toY: e.value.intake,
-                      color: Colors.blue.withValues(alpha: 0.75),
+                      color: c.chartIntake.withValues(alpha: 0.75),
                       width: barWidth,
                       borderRadius:
                           const BorderRadius.vertical(top: Radius.circular(3)),
@@ -1355,7 +1360,7 @@ class _CalorieTrendBarChart extends StatelessWidget {
                           ? BackgroundBarChartRodData(
                               show: true,
                               toY: target,
-                              color: Colors.red.withValues(alpha: 0.10),
+                              color: c.chartTarget.withValues(alpha: 0.10),
                             )
                           : BackgroundBarChartRodData(show: false),
                     ),
@@ -1382,6 +1387,7 @@ class _MacroAverageRow extends StatelessWidget {
     if (nutrition.isEmpty) return const _NoData();
 
     final l = AppLocalizations.of(context)!;
+    final c = context.colors;
     final n = nutrition.length;
     final protein = nutrition.fold(0.0, (s, d) => s + d.protein) / n;
     final fat = nutrition.fold(0.0, (s, d) => s + d.fat) / n;
@@ -1395,17 +1401,17 @@ class _MacroAverageRow extends StatelessWidget {
             _MacroChip(
                 label: l.nutrientProtein,
                 value: protein,
-                color: Colors.green.shade600),
+                color: c.macroProtein),
             const SizedBox(width: 8),
             _MacroChip(
                 label: l.nutrientFat,
                 value: fat,
-                color: Colors.orange.shade600),
+                color: c.macroFat),
             const SizedBox(width: 8),
             _MacroChip(
                 label: l.nutrientCarbs,
                 value: carbs,
-                color: Colors.purple.shade400),
+                color: c.macroCarbs),
           ],
         ),
         if (total > 0) ...[
@@ -1416,14 +1422,13 @@ class _MacroAverageRow extends StatelessWidget {
               children: [
                 Flexible(
                     flex: (protein / total * 100).round(),
-                    child: Container(height: 8, color: Colors.green.shade600)),
+                    child: Container(height: 8, color: c.macroProtein)),
                 Flexible(
                     flex: (fat / total * 100).round(),
-                    child: Container(height: 8, color: Colors.orange.shade600)),
+                    child: Container(height: 8, color: c.macroFat)),
                 Flexible(
                     flex: (carbs / total * 100).round(),
-                    child:
-                        Container(height: 8, color: Colors.purple.shade400)),
+                    child: Container(height: 8, color: c.macroCarbs)),
               ],
             ),
           ),
@@ -1458,7 +1463,8 @@ class _MacroChip extends StatelessWidget {
                       color: color,
                       fontSize: 15)),
               Text(label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
+                  style: TextStyle(
+                      fontSize: 11, color: context.colors.onNeutralContainer)),
             ],
           ),
         ),
@@ -1478,6 +1484,7 @@ class _WaterTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final c = context.colors;
     final pts = _bucket(
       water.map((d) => (date: d.date, value: d.amountMl.toDouble())).toList(),
       range,
@@ -1498,7 +1505,7 @@ class _WaterTrendChart extends StatelessWidget {
             drawHorizontalLine: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                FlLine(color: c.chartGrid, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
@@ -1509,7 +1516,7 @@ class _WaterTrendChart extends StatelessWidget {
                     : '';
                 return BarTooltipItem(
                   '$date\n${(rod.toY / 1000).toStringAsFixed(2)} L',
-                  const TextStyle(fontSize: 12, color: Colors.white),
+                  TextStyle(fontSize: 12, color: c.chartTooltipText),
                 );
               },
             ),
@@ -1540,13 +1547,13 @@ class _WaterTrendChart extends StatelessWidget {
             horizontalLines: [
               HorizontalLine(
                 y: waterGoal,
-                color: Colors.blue.withValues(alpha: 0.5),
+                color: c.chartIntake.withValues(alpha: 0.5),
                 strokeWidth: 1.5,
                 dashArray: [6, 4],
                 label: HorizontalLineLabel(
                   show: true,
                   alignment: Alignment.topRight,
-                  style: const TextStyle(fontSize: 10, color: Colors.blue),
+                  style: TextStyle(fontSize: 10, color: c.chartIntake),
                   labelResolver: (_) => l.reportsGoalLine,
                 ),
               ),
@@ -1561,8 +1568,8 @@ class _WaterTrendChart extends StatelessWidget {
                       BarChartRodData(
                         toY: e.value.value,
                         color: e.value.value >= waterGoal
-                            ? Colors.blue
-                            : Colors.blue.shade300,
+                            ? c.chartIntake
+                            : c.chartIntake.withValues(alpha: 0.55),
                         width: (280 / pts.length).clamp(4, 20),
                         borderRadius: BorderRadius.circular(2),
                       ),
@@ -1586,6 +1593,7 @@ class _WeightTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final c = context.colors;
     if (weight.isEmpty) return const _NoData();
 
     // Weight line
@@ -1651,7 +1659,7 @@ class _WeightTrendChart extends StatelessWidget {
             drawHorizontalLine: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                FlLine(color: c.chartGrid, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           lineTouchData: LineTouchData(
@@ -1675,7 +1683,8 @@ class _WeightTrendChart extends StatelessWidget {
                   } else {
                     value = '$dateLabel\n${barSpot.y.toStringAsFixed(1)}';
                   }
-                  return LineTooltipItem(value, const TextStyle(color: Colors.white));
+                  return LineTooltipItem(
+                      value, TextStyle(color: c.chartTooltipText));
                 }).toList();
               },
             ),
@@ -1737,12 +1746,12 @@ class _WeightTrendChart extends StatelessWidget {
                   .toList(),
               isCurved: true,
               curveSmoothness: 0.2,
-              color: Colors.deepOrange,
+              color: c.chartWeight,
               barWidth: 2,
               dotData: FlDotData(
                   show: wPts.length <= 10,
                   getDotPainter: (_, __, ___, ____) =>
-                      FlDotCirclePainter(radius: 3, color: Colors.deepOrange)),
+                      FlDotCirclePainter(radius: 3, color: c.chartWeight)),
             ),
             if (normalizedBfPts.isNotEmpty)
               LineChartBarData(
@@ -1751,7 +1760,7 @@ class _WeightTrendChart extends StatelessWidget {
                     .toList(),
                 isCurved: true,
                 curveSmoothness: 0.2,
-                color: Colors.purple.shade300,
+                color: c.chartBodyFat,
                 barWidth: 1.5,
                 dashArray: [4, 3],
                 dotData: const FlDotData(show: false),

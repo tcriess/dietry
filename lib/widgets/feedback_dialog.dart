@@ -4,6 +4,7 @@ import '../app_config.dart';
 import '../app_features.dart';
 import '../services/feedback_service.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 class FeedbackDialog extends StatefulWidget {
   final FeedbackService feedbackService;
@@ -64,7 +65,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.feedbackThankYou),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
       }
@@ -147,7 +148,7 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
                 return IconButton(
                   icon: Icon(
                     star <= (_rating ?? 0) ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
+                    color: context.colors.highlight.base,
                   ),
                   onPressed: () => setState(
                     () => _rating = _rating == star ? null : star,
@@ -187,11 +188,11 @@ class _FeedbackDialogState extends State<FeedbackDialog> {
         ),
         FilledButton.icon(
           icon: _submitting
-              ? const SizedBox(
+              ? SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+                      strokeWidth: 2, color: context.scheme.onPrimary),
                 )
               : const Icon(Icons.send),
           label: Text(l.feedbackSubmit),

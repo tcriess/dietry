@@ -10,6 +10,7 @@ import '../services/activity_shortcuts_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/physical_activity_service.dart';
 import '../services/user_body_measurements_service.dart';
+import '../theme/app_colors.dart';
 import '../l10n/app_localizations.dart';
 
 /// Unified bottom sheet for adding a [PhysicalActivity] — the single entry
@@ -416,7 +417,7 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: context.colors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -425,7 +426,7 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
           padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
           child: Row(
             children: [
-              const Icon(Icons.directions_run, color: Colors.teal),
+              Icon(Icons.directions_run, color: context.colors.accent.base),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(l.addActivity,
@@ -574,7 +575,7 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
           padding: const EdgeInsets.all(24),
           child: Text(l.noSearchResults(_query),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey)),
+              style: TextStyle(color: context.colors.subtle)),
         ),
       );
     }
@@ -586,9 +587,9 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
         final isAdding = _addingId == item.id;
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.blue.shade50,
-            child: const Icon(Icons.fitness_center,
-                color: Colors.blue, size: 20),
+            backgroundColor: context.colors.info.container,
+            child: Icon(Icons.fitness_center,
+                color: context.colors.info.base, size: 20),
           ),
           title: Text(item.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
@@ -602,7 +603,8 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.add_circle_outline, color: Colors.teal),
+              : Icon(Icons.add_circle_outline,
+                  color: context.colors.accent.base),
           onTap: isAdding ? null : () => _pickSearchResult(item),
         );
       },
@@ -715,7 +717,7 @@ class _RecentActivityTab extends StatelessWidget {
     if (entries.isEmpty) {
       return Center(
         child: Text(l.noRecentActivities,
-            style: const TextStyle(color: Colors.grey)),
+            style: TextStyle(color: context.colors.subtle)),
       );
     }
     return Column(
@@ -723,10 +725,11 @@ class _RecentActivityTab extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          color: Colors.orange.shade50,
+          color: context.colors.warning.container,
           child: Text(
             l.recentTapHint,
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
+            style: TextStyle(
+                fontSize: 11, color: context.colors.warning.onContainer),
           ),
         ),
         Expanded(
@@ -744,9 +747,9 @@ class _RecentActivityTab extends StatelessWidget {
                       _activityRecurrenceThreshold;
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: e.activityType.color.withValues(alpha: 0.12),
+                  backgroundColor: e.activityType.color(context).withValues(alpha: 0.12),
                   child: Icon(e.activityType.icon,
-                      color: e.activityType.color, size: 20),
+                      color: e.activityType.color(context), size: 20),
                 ),
                 title: Row(
                   children: [
@@ -757,8 +760,8 @@ class _RecentActivityTab extends StatelessWidget {
                     ),
                     if (isRecurrent) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.repeat,
-                          size: 13, color: Colors.deepPurple),
+                      Icon(Icons.repeat,
+                          size: 13, color: context.colors.brand.base),
                     ],
                   ],
                 ),
@@ -773,8 +776,8 @@ class _RecentActivityTab extends StatelessWidget {
                         height: 24,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.add_circle_outline,
-                        color: Colors.teal),
+                    : Icon(Icons.add_circle_outline,
+                        color: context.colors.accent.base),
                 onTap: isAdding ? null : () => onTap(e),
                 onLongPress: isAdding ? null : () => onLongPress(e),
               );
@@ -807,7 +810,7 @@ class _FavouriteActivityTab extends StatelessWidget {
           child: Text(
             l.noFavoriteActivities,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: context.colors.subtle),
           ),
         ),
       );
@@ -820,8 +823,9 @@ class _FavouriteActivityTab extends StatelessWidget {
         final isAdding = addingId == item.id;
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.amber.shade50,
-            child: const Icon(Icons.star, color: Colors.amber, size: 20),
+            backgroundColor: context.colors.highlight.container,
+            child: Icon(Icons.star,
+                color: context.colors.highlight.base, size: 20),
           ),
           title: Text(item.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
@@ -835,7 +839,8 @@ class _FavouriteActivityTab extends StatelessWidget {
                   height: 24,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.add_circle_outline, color: Colors.teal),
+              : Icon(Icons.add_circle_outline,
+                  color: context.colors.accent.base),
           onTap: isAdding ? null : () => onTap(item),
         );
       },
@@ -866,7 +871,7 @@ class _ActivityShortcutsTab extends StatelessWidget {
           child: Text(
             l.noActivityShortcuts,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: context.colors.subtle),
           ),
         ),
       );
@@ -881,16 +886,17 @@ class _ActivityShortcutsTab extends StatelessWidget {
           key: Key(sc.id),
           direction: DismissDirection.endToStart,
           background: Container(
-            color: Colors.red,
+            color: context.colors.danger.base,
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 16),
-            child: const Icon(Icons.delete, color: Colors.white),
+            child: Icon(Icons.delete, color: context.colors.danger.on),
           ),
           onDismissed: (_) => onDelete(sc),
           child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFE0F2F1),
-              child: Icon(Icons.bolt, color: Colors.teal, size: 20),
+            leading: CircleAvatar(
+              backgroundColor: context.colors.accent.container,
+              child:
+                  Icon(Icons.bolt, color: context.colors.accent.base, size: 20),
             ),
             title: Text(sc.label, style: const TextStyle(fontSize: 14)),
             subtitle: Text(
@@ -904,7 +910,7 @@ class _ActivityShortcutsTab extends StatelessWidget {
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.bolt, color: Colors.orange),
+                : Icon(Icons.bolt, color: context.colors.warning.base),
             onTap: isAdding ? null : () => onTap(sc),
           ),
         );
@@ -925,19 +931,19 @@ class _ActivityAddedToast extends StatelessWidget {
     return Material(
       elevation: 4,
       borderRadius: BorderRadius.circular(8),
-      color: Colors.green.shade600,
+      color: context.colors.success.base,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 18),
+            Icon(Icons.check_circle, color: context.colors.success.on, size: 18),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 l.activityAdded(name),
-                style: const TextStyle(
-                    color: Colors.white,
+                style: TextStyle(
+                    color: context.colors.success.on,
                     fontSize: 13,
                     fontWeight: FontWeight.w500),
                 overflow: TextOverflow.ellipsis,
@@ -1079,13 +1085,13 @@ class _ConfirmActivityDialogState extends State<_ConfirmActivityDialog> {
             padding: const EdgeInsets.symmetric(
                 horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: context.colors.neutralContainer,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
                 Icon(widget.activityType.icon,
-                    color: widget.activityType.color, size: 18),
+                    color: widget.activityType.color(context), size: 18),
                 const SizedBox(width: 8),
                 Text(
                   kcal != null

@@ -3,6 +3,7 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import 'package:dietry/l10n/app_localizations.dart';
 import 'package:dietry/services/tutorial_prefs.dart';
+import 'package:dietry/theme/app_colors.dart';
 
 /// Spotlight coach-mark onboarding tour, shown once after a new user creates
 /// their first nutrition goal. It highlights the four bottom-nav destinations
@@ -57,13 +58,13 @@ class MainTutorial {
 
     TutorialCoachMark(
       targets: targets,
-      colorShadow: Colors.black,
+      colorShadow: context.colors.overlay,
       opacityShadow: 0.82,
       paddingFocus: 8,
       textSkip: l.tutorialSkip,
       alignSkip: Alignment.topRight,
-      textStyleSkip:
-          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      textStyleSkip: TextStyle(
+          color: context.colors.onOverlay, fontWeight: FontWeight.bold),
       onFinish: TutorialPrefs.setSeenMainTutorial,
       onSkip: () {
         TutorialPrefs.setSeenMainTutorial();
@@ -91,13 +92,14 @@ class MainTutorial {
         TargetContent(
           align: align,
           builder: (ctx, controller) =>
-              _bubble(title, body, l, controller, isLast: isLast),
+              _bubble(ctx, title, body, l, controller, isLast: isLast),
         ),
       ],
     );
   }
 
   static Widget _bubble(
+    BuildContext context,
     String title,
     String body,
     AppLocalizations l,
@@ -110,8 +112,8 @@ class MainTutorial {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: context.colors.onOverlay,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -119,7 +121,8 @@ class MainTutorial {
         const SizedBox(height: 8),
         Text(
           body,
-          style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.3),
+          style: TextStyle(
+              color: context.colors.onOverlay, fontSize: 15, height: 1.3),
         ),
         const SizedBox(height: 12),
         Align(
@@ -129,8 +132,8 @@ class MainTutorial {
             // which fires onFinish (marks the tour as seen).
             onPressed: () => controller.next(),
             style: TextButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
+              backgroundColor: context.colors.onOverlay,
+              foregroundColor: context.colors.overlay,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

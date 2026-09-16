@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/ai_model_controller.dart';
+import '../theme/app_colors.dart';
 
 /// Settings tile that manages the opt-in on-device LLM for "describe your meal".
 /// It's a pure observer of [AiModelController] (a singleton), so scrolling it
@@ -36,7 +37,7 @@ class _AiMealModelTileState extends State<AiMealModelTile> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome, color: Colors.deepPurple),
+                  Icon(Icons.auto_awesome, color: context.colors.brand.base),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(l.aiMealTitle,
@@ -53,7 +54,7 @@ class _AiMealModelTileState extends State<AiMealModelTile> {
               ),
               const SizedBox(height: 6),
               Text(l.aiMealDescription,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  style: TextStyle(color: context.colors.muted, fontSize: 13)),
               const SizedBox(height: 12),
               _buildControl(l),
             ],
@@ -72,7 +73,7 @@ class _AiMealModelTileState extends State<AiMealModelTile> {
           LinearProgressIndicator(value: p > 0 ? p : null),
           const SizedBox(height: 4),
           Text('${l.aiMealDownloading} ${(p * 100).round()}%',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+              style: TextStyle(color: context.colors.muted, fontSize: 12)),
         ],
       );
     }

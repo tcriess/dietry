@@ -15,6 +15,7 @@ import '../services/meal_parser.dart';
 import '../services/meal_suggestion_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/sync_service.dart';
+import '../theme/app_colors.dart';
 import 'food_database_screen.dart';
 
 /// "Describe your meal" — the user types (or dictates) a free-text meal, we
@@ -296,7 +297,7 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(l.describeMealIntro,
-                    style: TextStyle(color: Colors.grey.shade600)),
+                    style: TextStyle(color: context.colors.muted)),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _descCtrl,
@@ -309,7 +310,8 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
                     suffixIcon: _voiceSupported
                         ? IconButton(
                             icon: Icon(_listening ? Icons.stop : Icons.mic,
-                                color: _listening ? Colors.red : null),
+                                color:
+                                    _listening ? context.colors.danger.base : null),
                             tooltip: l.describeMealVoice,
                             onPressed: _toggleListen,
                           )
@@ -371,7 +373,7 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
           padding: const EdgeInsets.all(24),
           child: Text(l.describeMealEmpty,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600)),
+              style: TextStyle(color: context.colors.muted)),
         ),
       );
     }
@@ -382,12 +384,12 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Row(
               children: [
-                const Icon(Icons.auto_awesome,
-                    size: 16, color: Colors.deepPurple),
+                Icon(Icons.auto_awesome,
+                    size: 16, color: context.colors.brand.base),
                 const SizedBox(width: 6),
                 Text(l.aiMealTitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.deepPurple)),
+                    style: TextStyle(
+                        fontSize: 12, color: context.colors.brand.base)),
               ],
             ),
           ),
@@ -407,11 +409,11 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
     final s = r.suggestion;
     if (!s.matched) {
       return ListTile(
-        leading: Icon(Icons.help_outline, color: Colors.grey.shade400),
+        leading: Icon(Icons.help_outline, color: context.colors.faint),
         title: Text(s.parsed.query,
-            style: TextStyle(color: Colors.grey.shade500)),
+            style: TextStyle(color: context.colors.subtle)),
         subtitle: Text(l.describeMealNoMatch,
-            style: TextStyle(color: Colors.grey.shade400)),
+            style: TextStyle(color: context.colors.faint)),
         trailing: TextButton.icon(
           onPressed: () => _createFood(r),
           icon: const Icon(Icons.add, size: 18),
@@ -464,7 +466,7 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
                 child: Text(
                   '“${s.parsed.query}” → ${s.matchedVia}',
                   style: TextStyle(
-                      color: Colors.orange.shade800,
+                      color: context.colors.warning.base,
                       fontSize: 12,
                       fontStyle: FontStyle.italic),
                 ),
@@ -492,7 +494,7 @@ class _MealDescriptionScreenState extends State<MealDescriptionScreen> {
                         ? '$kcal kcal'
                         : '$kcal kcal · “${s.parsed.query}”',
                     style:
-                        TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                        TextStyle(color: context.colors.muted, fontSize: 12),
                   ),
                 ),
               ],

@@ -7,6 +7,7 @@ import '../models/gear.dart';
 import '../models/physical_activity.dart';
 import '../services/app_logger.dart';
 import '../services/sync_service.dart';
+import '../theme/app_colors.dart';
 import '../utils/number_utils.dart';
 
 /// Manage gear (running shoes, bikes, …) and see what each one has clocked up.
@@ -53,6 +54,7 @@ class _GearScreenState extends State<GearScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     final l = AppLocalizations.of(context)!;
+    final colors = context.colors;
     try {
       if (gear == null) {
         await SyncService.instance.saveGear(result);
@@ -64,7 +66,7 @@ class _GearScreenState extends State<GearScreen> {
       appLogger.e('❌ Fehler beim Speichern der Ausrüstung: $e');
       messenger.showSnackBar(SnackBar(
         content: Text(l.gearOfflineHint),
-        backgroundColor: Colors.red,
+        backgroundColor: colors.danger.base,
       ));
     }
   }
@@ -83,7 +85,7 @@ class _GearScreenState extends State<GearScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: ctx.colors.danger.base),
             child: Text(l.delete),
           ),
         ],
@@ -250,9 +252,9 @@ class _GearCard extends StatelessWidget {
                   // Past the wear budget the bar turns red — that's the whole
                   // point of setting one.
                   color: wear >= 1.0
-                      ? Colors.red
+                      ? context.colors.danger.base
                       : wear >= 0.8
-                          ? Colors.orange
+                          ? context.colors.warning.base
                           : theme.colorScheme.primary,
                 ),
                 const SizedBox(height: 4),

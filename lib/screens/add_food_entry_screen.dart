@@ -23,6 +23,7 @@ import '../services/app_logger.dart';
 import '../services/anonymous_auth_service.dart';
 import '../app_config.dart';
 import '../app_features.dart';
+import '../theme/app_colors.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/food_thumbnail_widget.dart';
 import '../widgets/tag_editor.dart';
@@ -804,7 +805,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
-                ?.copyWith(color: Colors.grey.shade700)),
+                ?.copyWith(color: context.colors.onNeutralContainer)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 8,
@@ -845,7 +846,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             distinguishRaw: _cookedYield != null);
 
     return Card(
-      color: Colors.blue.shade50,
+      color: context.colors.info.container,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -853,7 +854,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           children: [
             Text(
               l.totalForAmount('$amountStr$unitText'),
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: context.colors.muted),
             ),
             // Make the raw↔cooked conversion visible: the user should see which
             // weight the nutrition values are actually being scaled from.
@@ -862,7 +863,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                 _userCookedFactor != null
                     ? '${l.cookedHintRaw(formatAmount(_currentGrams()))} · ${l.cookedFactorOwn}'
                     : l.cookedHintRaw(formatAmount(_currentGrams())),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.colors.muted),
               ),
             const SizedBox(height: 8),
             Row(
@@ -1004,7 +1005,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         value: kAddPortionValue,
         child: Text(
           l.portionAddNew,
-          style: TextStyle(color: Theme.of(context).colorScheme.primary),
+          style: TextStyle(color: context.scheme.primary),
         ),
       ));
     }
@@ -1178,7 +1179,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.entrySaved),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
 
@@ -1191,7 +1192,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
           ),
         );
       }
@@ -1306,7 +1307,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('❌ Fehler: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: context.colors.danger.base,
             ),
           );
         }
@@ -1383,7 +1384,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('❌ Fehler: $e'),
-              backgroundColor: Colors.red,
+              backgroundColor: context.colors.danger.base,
             ),
           );
         }
@@ -1397,9 +1398,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (widget.dbService == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Bearbeitung ist im Gast-Modus nicht verfügbar'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('❌ Bearbeitung ist im Gast-Modus nicht verfügbar'),
+            backgroundColor: context.colors.warning.base,
           ),
         );
       }
@@ -1422,7 +1423,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ "${updated.name}" aktualisiert'),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
         _loadMyFoods();
@@ -1430,7 +1431,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler: $e'),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -1442,9 +1445,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     if (widget.dbService == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Löschung ist im Gast-Modus nicht verfügbar'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('❌ Löschung ist im Gast-Modus nicht verfügbar'),
+            backgroundColor: context.colors.warning.base,
           ),
         );
       }
@@ -1466,7 +1469,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style:
+                TextButton.styleFrom(foregroundColor: context.colors.danger.base),
             child: const Text('Löschen'),
           ),
         ],
@@ -1479,9 +1483,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
       await service.deleteFood(food.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Gelöscht'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('✅ Gelöscht'),
+            backgroundColor: context.colors.success.base,
           ),
         );
         // Falls das gelöschte Food gerade ausgewählt war, Auswahl aufheben
@@ -1501,7 +1505,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler: $e'),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -1787,7 +1793,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                               const SizedBox(height: 16),
                               Text(l.searchWaking,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.grey)),
+                                  style: TextStyle(
+                                      color: context.colors.subtle)),
                             ],
                           ],
                         ),
@@ -1802,11 +1809,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                             child: Column(
                               children: [
                                 Icon(Icons.no_food,
-                                    size: 48, color: Colors.grey.shade400),
+                                    size: 48, color: context.colors.faint),
                                 const SizedBox(height: 8),
                                 Text(
                                   l.foodDatabaseEmpty,
-                                  style: TextStyle(color: Colors.grey.shade600),
+                                  style:
+                                      TextStyle(color: context.colors.muted),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
@@ -1819,7 +1827,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                           child: Center(
                             child: Text(
                               l.noResults,
-                              style: TextStyle(color: Colors.grey.shade600),
+                              style: TextStyle(color: context.colors.muted),
                             ),
                           ),
                         )
@@ -1868,13 +1876,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                             materialTapTargetSize:
                                                 MaterialTapTargetSize
                                                     .shrinkWrap,
-                                            backgroundColor: Theme.of(context)
-                                                .colorScheme
-                                                .secondaryContainer,
+                                            backgroundColor: context
+                                                .scheme.secondaryContainer,
                                             labelStyle: TextStyle(
                                                 fontSize: 11,
-                                                color: Theme.of(context)
-                                                    .colorScheme
+                                                color: context.scheme
                                                     .onSecondaryContainer),
                                           );
                                         }).toList(),
@@ -1930,12 +1936,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                           PopupMenuItem(
                                             value: 'delete',
                                             child: ListTile(
-                                              leading: const Icon(
+                                              leading: Icon(
                                                   Icons.delete_outline,
-                                                  color: Colors.red),
+                                                  color: context
+                                                      .colors.danger.base),
                                               title: Text(l.delete,
-                                                  style: const TextStyle(
-                                                      color: Colors.red)),
+                                                  style: TextStyle(
+                                                      color: context
+                                                          .colors.danger.base)),
                                               contentPadding: EdgeInsets.zero,
                                             ),
                                           ),
@@ -2015,13 +2023,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                               materialTapTargetSize:
                                                   MaterialTapTargetSize
                                                       .shrinkWrap,
-                                              backgroundColor: Theme.of(context)
-                                                  .colorScheme
-                                                  .secondaryContainer,
+                                              backgroundColor: context
+                                                  .scheme.secondaryContainer,
                                               labelStyle: TextStyle(
                                                   fontSize: 11,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
+                                                  color: context.scheme
                                                       .onSecondaryContainer),
                                             );
                                           }).toList(),
@@ -2082,12 +2088,14 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                             PopupMenuItem(
                                               value: 'delete',
                                               child: ListTile(
-                                                leading: const Icon(
+                                                leading: Icon(
                                                     Icons.delete_outline,
-                                                    color: Colors.red),
+                                                    color: context
+                                                        .colors.danger.base),
                                                 title: Text(l.delete,
-                                                    style: const TextStyle(
-                                                        color: Colors.red)),
+                                                    style: TextStyle(
+                                                        color: context.colors
+                                                            .danger.base)),
                                                 contentPadding: EdgeInsets.zero,
                                               ),
                                             ),
@@ -2114,7 +2122,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                         child: Center(
                           child: Text(
                             l.noResults,
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(color: context.colors.muted),
                           ),
                         ),
                       ),
@@ -2126,13 +2134,13 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     // Info für manuelle Eingabe
                     if (_showManualEntry)
                       Card(
-                        color: Colors.blue.shade50,
+                        color: context.colors.info.container,
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
                               Icon(Icons.info_outline,
-                                  color: Colors.blue.shade700),
+                                  color: context.colors.info.strong),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -2142,7 +2150,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                       l.addToDbTip,
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.blue.shade900,
+                                        color: context.colors.info.onContainer,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -2150,7 +2158,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                       l.addToDbTipBody,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.blue.shade800,
+                                        color: context.colors.info.onContainer,
                                       ),
                                     ),
                                   ],
@@ -2163,7 +2171,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
                     if (_selectedFood != null)
                       Card(
-                        color: Colors.green.shade50,
+                        color: context.colors.success.container,
                         child: ListTile(
                           leading: _selectedFood!.hasImage
                               ? SizedBox(
@@ -2175,8 +2183,8 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                     imageCache: _imageCache,
                                   ),
                                 )
-                              : const Icon(Icons.check_circle,
-                                  color: Colors.green),
+                              : Icon(Icons.check_circle,
+                                  color: context.colors.success.base),
                           title: Text(_selectedFood!.name),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2190,7 +2198,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                   _selectedFood!.provenanceSummary!,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
-                                    color: Colors.blueGrey.shade700,
+                                    color: context.colors.muted,
                                   ),
                                 ),
                               Text(
@@ -2355,7 +2363,9 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                           _isLiquid
                               ? Icons.water_drop
                               : Icons.water_drop_outlined,
-                          color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                          color: _isLiquid
+                              ? context.colors.water.base
+                              : context.colors.subtle,
                         ),
                       ),
                     ] else ...[
@@ -2367,20 +2377,21 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          border: Border.all(color: Colors.orange.shade200),
+                          color: context.colors.warning.container,
+                          border:
+                              Border.all(color: context.colors.warning.border),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.info_outline,
-                                color: Colors.orange.shade700, size: 20),
+                                color: context.colors.warning.strong, size: 20),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 l.enterNutritionPer100,
                                 style: TextStyle(
-                                  color: Colors.orange.shade900,
+                                  color: context.colors.warning.onContainer,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                 ),
@@ -2640,7 +2651,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                                                     .bodySmall
                                                     ?.copyWith(
                                                       color:
-                                                          Colors.grey.shade600,
+                                                          context.colors.muted,
                                                     ),
                                                 textAlign: TextAlign.center,
                                               ),
@@ -2674,17 +2685,18 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                           child: FilledButton.icon(
                             onPressed: _isSaving ? null : _saveEntry,
                             icon: _isSaving
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white),
+                                        strokeWidth: 2,
+                                        color: context.colors.success.on),
                                   )
                                 : const Icon(Icons.check),
                             label: Text(_isSaving ? l.saving : l.save),
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
+                              backgroundColor: context.colors.success.base,
+                              foregroundColor: context.colors.success.on,
                               padding: const EdgeInsets.all(16),
                             ),
                           ),
@@ -2776,7 +2788,9 @@ Future<FoodItem?> createFoodFromScannedBarcode({
     appLogger.w('⚠️ Create-food-from-barcode failed: $e');
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('❌ $e'),
+            backgroundColor: context.colors.danger.base),
       );
     }
     return null;
@@ -3107,20 +3121,20 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: context.colors.info.container,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      color: Colors.blue.shade700, size: 20),
+                      color: context.colors.info.strong, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Alle Werte sind pro 100g bzw. 100ml',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.blue.shade900,
+                        color: context.colors.info.onContainer,
                       ),
                     ),
                   ),
@@ -3203,7 +3217,9 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
               contentPadding: EdgeInsets.zero,
               secondary: Icon(
                 _isLiquid ? Icons.water_drop : Icons.water_drop_outlined,
-                color: _isLiquid ? Colors.lightBlue : Colors.grey,
+                color: _isLiquid
+                    ? context.colors.water.base
+                    : context.colors.subtle,
               ),
             ),
 
@@ -3236,7 +3252,7 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                 child: Text(
                   'Keine Portionen definiert – Eingabe immer in g/ml',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
+                        color: context.colors.muted,
                       ),
                 ),
               )
@@ -3275,8 +3291,8 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.remove_circle_outline,
-                            color: Colors.red),
+                        icon: Icon(Icons.remove_circle_outline,
+                            color: context.colors.danger.base),
                         onPressed: () {
                           setState(() {
                             row.name.dispose();
@@ -3407,7 +3423,9 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
               contentPadding: EdgeInsets.zero,
               secondary: Icon(
                 _isPublic ? Icons.public : Icons.lock_outline,
-                color: _isPublic ? Colors.green : Colors.grey,
+                color: _isPublic
+                    ? context.colors.success.base
+                    : context.colors.subtle,
               ),
             ),
 
@@ -3436,8 +3454,8 @@ class _AddFoodToDatabaseDialogState extends State<_AddFoodToDatabaseDialog> {
         ElevatedButton(
           onPressed: _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
+            backgroundColor: context.colors.success.base,
+            foregroundColor: context.colors.success.on,
           ),
           child: const Text('Hinzufügen'),
         ),
@@ -3457,7 +3475,8 @@ class _PreviewMacro extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text(label,
+            style: TextStyle(fontSize: 11, color: context.colors.muted)),
         const SizedBox(height: 2),
         Text(
           value,

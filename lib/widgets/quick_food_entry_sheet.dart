@@ -18,6 +18,7 @@ import '../services/neon_database_service.dart';
 import '../services/user_food_prefs_service.dart';
 import '../services/app_logger.dart';
 import '../services/db_retry.dart';
+import '../theme/app_colors.dart';
 import '../l10n/app_localizations.dart';
 import 'barcode_scanner_sheet.dart';
 import 'portion_size_dialog.dart';
@@ -530,7 +531,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         // the sheet it's hidden, but it's already on the queue.
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(AppLocalizations.of(context)!.foodAdded(entry.name)),
-          backgroundColor: Colors.green,
+          backgroundColor: context.colors.success.base,
           duration: const Duration(seconds: 1),
         ));
       }
@@ -1107,7 +1108,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(AppLocalizations.of(context)!.shortcutSaved(label)),
-        backgroundColor: Colors.teal,
+        backgroundColor: context.colors.accent.base,
         duration: const Duration(seconds: 2),
       ));
     }
@@ -1127,7 +1128,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: context.colors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1137,7 +1138,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
           child: Row(
             children: [
-              const Icon(Icons.add_circle, color: Colors.teal),
+              Icon(Icons.add_circle, color: context.colors.accent.base),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(l.add,
@@ -1418,7 +1419,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
             const SizedBox(height: 16),
             Text(l.searchWaking,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey)),
+                style: TextStyle(color: context.colors.subtle)),
           ],
         ),
       );
@@ -1430,11 +1431,11 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_off, color: Colors.grey.shade400, size: 32),
+              Icon(Icons.cloud_off, color: context.colors.faint, size: 32),
               const SizedBox(height: 12),
               Text(l.searchUnreachable,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey)),
+                  style: TextStyle(color: context.colors.subtle)),
               const SizedBox(height: 8),
               FilledButton.tonalIcon(
                 onPressed: _runSearch,
@@ -1455,7 +1456,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
             children: [
               Text(l.noSearchResults(_query),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey)),
+                  style: TextStyle(color: context.colors.subtle)),
               const SizedBox(height: 12),
               // Nothing to pick means the food isn't known here — logging a
               // rough estimate under the typed name is the shortest way out.
@@ -1478,9 +1479,9 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         final isAdding = _addingId == food.id;
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.blue.shade50,
-            child:
-                const Icon(Icons.restaurant, color: Colors.blue, size: 20),
+            backgroundColor: context.colors.info.container,
+            child: Icon(Icons.restaurant,
+                color: context.colors.info.base, size: 20),
           ),
           title: Text(food.name, style: const TextStyle(fontSize: 14)),
           subtitle: Column(
@@ -1495,7 +1496,7 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.blueGrey.shade600,
+                    color: context.colors.muted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1520,8 +1521,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                       icon: Icon(
                         food.isFavourite ? Icons.star : Icons.star_border,
                         color: food.isFavourite
-                            ? Colors.amber.shade600
-                            : Colors.grey.shade400,
+                            ? context.colors.highlight.base
+                            : context.colors.faint,
                         size: 22,
                       ),
                       onPressed: () => _toggleFavourite(food),
@@ -1531,7 +1532,8 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
                       visualDensity: VisualDensity.compact,
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.add_circle_outline, color: Colors.teal),
+                    Icon(Icons.add_circle_outline,
+                        color: context.colors.accent.base),
                   ],
                 ),
           onTap: isAdding ? null : () => _pickFood(food),
@@ -1816,15 +1818,16 @@ class _SuggestionsRow extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      color: Colors.deepPurple.shade50,
+      color: context.colors.brand.container,
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome,
-              size: 14, color: Colors.deepPurple),
+          Icon(Icons.auto_awesome,
+              size: 14, color: context.colors.brand.base),
           const SizedBox(width: 6),
           Text(
             l.suggestionsHint,
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
+            style: TextStyle(
+                fontSize: 11, color: context.colors.brand.onContainer),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1846,7 +1849,7 @@ class _SuggestionsRow extends StatelessWidget {
                           style: const TextStyle(fontSize: 12)),
                       onPressed:
                           addingId == e.id ? null : () => onTap(e),
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       visualDensity: VisualDensity.compact,
                     ),
                     const SizedBox(width: 6),
@@ -1904,14 +1907,15 @@ class _MacroGapRow extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      color: Colors.orange.shade50,
+      color: context.colors.warning.container,
       child: Row(
         children: [
-          const Icon(Icons.flag, size: 14, color: Colors.deepOrange),
+          Icon(Icons.flag, size: 14, color: context.colors.warning.base),
           const SizedBox(width: 6),
           Text(
             _headerText(l),
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
+            style: TextStyle(
+                fontSize: 11, color: context.colors.warning.onContainer),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1935,7 +1939,7 @@ class _MacroGapRow extends StatelessWidget {
                       ),
                       onPressed:
                           addingId == e.id ? null : () => onTap(e),
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       visualDensity: VisualDensity.compact,
                     ),
                     const SizedBox(width: 6),
@@ -1962,19 +1966,19 @@ class _AddedToast extends StatelessWidget {
     return Material(
       elevation: 4,
       borderRadius: BorderRadius.circular(8),
-      color: Colors.green.shade600,
+      color: context.colors.success.base,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 18),
+            Icon(Icons.check_circle, color: context.colors.success.on, size: 18),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 l.foodAdded(name),
-                style: const TextStyle(
-                    color: Colors.white,
+                style: TextStyle(
+                    color: context.colors.success.on,
                     fontSize: 13,
                     fontWeight: FontWeight.w500),
                 overflow: TextOverflow.ellipsis,
@@ -2026,7 +2030,7 @@ class _RecentTab extends StatelessWidget {
     if (entries.isEmpty && s == null) {
       return Center(
         child: Text(l.noRecentEntries,
-            style: const TextStyle(color: Colors.grey)),
+            style: TextStyle(color: context.colors.subtle)),
       );
     }
     final isRepeating = addingId == 'repeat-meal';
@@ -2042,10 +2046,11 @@ class _RecentTab extends StatelessWidget {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          color: Colors.orange.shade50,
+          color: context.colors.warning.container,
           child: Text(
             l.recentTapHint,
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
+            style: TextStyle(
+                fontSize: 11, color: context.colors.warning.onContainer),
           ),
         ),
         Expanded(
@@ -2065,9 +2070,9 @@ class _RecentTab extends StatelessWidget {
                       : '$eCountStr × ${e.unit}');
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.orange.shade50,
-                  child: const Icon(Icons.history,
-                      color: Colors.orange, size: 20),
+                  backgroundColor: context.colors.warning.container,
+                  child: Icon(Icons.history,
+                      color: context.colors.warning.base, size: 20),
                 ),
                 title: Text(e.name, style: const TextStyle(fontSize: 14)),
                 subtitle: Text(
@@ -2080,8 +2085,8 @@ class _RecentTab extends StatelessWidget {
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.add_circle_outline,
-                        color: Colors.teal),
+                    : Icon(Icons.add_circle_outline,
+                        color: context.colors.accent.base),
                 onTap: isAdding ? null : () => onTap(e),
                 onLongPress: isAdding ? null : () => onLongPress(e),
               );
@@ -2192,7 +2197,7 @@ class _FavouritesTab extends StatelessWidget {
           child: Text(
             l.noFavorites,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: context.colors.subtle),
           ),
         ),
       );
@@ -2205,8 +2210,9 @@ class _FavouritesTab extends StatelessWidget {
         final isAdding = addingId == food.id;
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.amber.shade50,
-            child: const Icon(Icons.star, color: Colors.amber, size: 20),
+            backgroundColor: context.colors.highlight.container,
+            child: Icon(Icons.star,
+                color: context.colors.highlight.base, size: 20),
           ),
           title: Text(food.name, style: const TextStyle(fontSize: 14)),
           subtitle: Text(
@@ -2224,7 +2230,7 @@ class _FavouritesTab extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: Icon(Icons.star,
-                          color: Colors.amber.shade600, size: 22),
+                          color: context.colors.highlight.base, size: 22),
                       onPressed: () => onToggleFavourite(food),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -2232,7 +2238,8 @@ class _FavouritesTab extends StatelessWidget {
                       visualDensity: VisualDensity.compact,
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.add_circle_outline, color: Colors.teal),
+                    Icon(Icons.add_circle_outline,
+                        color: context.colors.accent.base),
                   ],
                 ),
           onTap: isAdding ? null : () => onTap(food),
@@ -2269,7 +2276,7 @@ class _ShortcutsTab extends StatelessWidget {
           child: Text(
             l.noShortcuts,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(color: context.colors.subtle),
           ),
         ),
       );
@@ -2285,15 +2292,15 @@ class _ShortcutsTab extends StatelessWidget {
           key: Key(sc.id),
           direction: DismissDirection.endToStart,
           background: Container(
-            color: Colors.red,
+            color: context.colors.danger.base,
             alignment: Alignment.centerRight,
             padding: const EdgeInsets.only(right: 16),
-            child: const Icon(Icons.delete, color: Colors.white),
+            child: Icon(Icons.delete, color: context.colors.danger.on),
           ),
           onDismissed: (_) => onDelete(sc),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.teal.shade50,
+              backgroundColor: context.colors.accent.container,
               child: Text(mealIcon, style: const TextStyle(fontSize: 18)),
             ),
             title: Text(sc.label, style: const TextStyle(fontSize: 14)),
@@ -2308,7 +2315,7 @@ class _ShortcutsTab extends StatelessWidget {
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.bolt, color: Colors.orange),
+                : Icon(Icons.bolt, color: context.colors.warning.base),
             onTap: isAdding ? null : () => onTap(sc),
           ),
         );
@@ -2796,7 +2803,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(l.estimateLabel,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            style: TextStyle(fontSize: 12, color: context.colors.muted)),
         const SizedBox(height: 4),
         Wrap(
           spacing: 6,
@@ -2845,7 +2852,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
-                color: Colors.blueGrey.shade600,
+                color: context.colors.muted,
               ),
             ),
           ],
@@ -2865,7 +2872,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
-                color: Colors.grey.shade600,
+                color: context.colors.muted,
               ),
             ),
           ],
@@ -2969,7 +2976,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
                 _userCookedFactor != null
                     ? '${l.cookedHintRaw(formatAmount(_currentAmountG()!))} · ${l.cookedFactorOwn}'
                     : l.cookedHintRaw(formatAmount(_currentAmountG()!)),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.colors.subtle),
               ),
             ),
           // Let the user replace the generic factor with their own — most of the
@@ -3092,7 +3099,7 @@ class _NutritionPreview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: context.colors.neutralContainer,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -3127,8 +3134,7 @@ class _MacroChip extends StatelessWidget {
             style: const TextStyle(
                 fontWeight: FontWeight.bold, fontSize: 13)),
         Text(label,
-            style:
-                const TextStyle(fontSize: 10, color: Colors.grey)),
+            style: TextStyle(fontSize: 10, color: context.colors.muted)),
       ],
     );
   }

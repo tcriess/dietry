@@ -8,6 +8,7 @@ import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
 import '../services/sync_service.dart';
 import '../services/app_logger.dart';
+import '../theme/app_colors.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/exercise_credit_dialog.dart';
 import '../widgets/move_copy_sheet.dart';
@@ -155,7 +156,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                 title: Text(g.name),
                 selected: g.id == activity.gearId,
                 trailing: g.id == activity.gearId
-                    ? const Icon(Icons.check, color: Colors.green)
+                    ? Icon(Icons.check, color: ctx.colors.success.base)
                     : null,
                 onTap: () => Navigator.of(ctx).pop((gear: g)),
               ),
@@ -220,7 +221,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(
+                  foregroundColor: context.colors.danger.base),
               child: Text(ld.delete),
             ),
           ],
@@ -236,7 +238,9 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     await SyncService.instance.deleteActivity(activity.id!);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.activityDeleted), backgroundColor: Colors.green),
+        SnackBar(
+            content: Text(l.activityDeleted),
+            backgroundColor: context.colors.success.base),
       );
     }
   }
@@ -327,7 +331,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
         content: Text(result.action == MoveCopyAction.copy
             ? l.activityCopied
             : l.activityMoved),
-        backgroundColor: Colors.green,
+        backgroundColor: context.colors.success.base,
       ),
     );
   }
@@ -374,9 +378,12 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: assigned ? Colors.blue.shade200 : Colors.orange.shade300,
+              color: assigned
+                  ? context.colors.info.border
+                  : context.colors.warning.border,
             ),
-            color: assigned ? Colors.blue.shade50 : Colors.transparent,
+            color:
+                assigned ? context.colors.info.containerHigh : Colors.transparent,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -384,15 +391,18 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
               Icon(
                 assigned ? gear.category.icon : Icons.help_outline,
                 size: 13,
-                color: assigned ? Colors.blue.shade700 : Colors.orange.shade800,
+                color: assigned
+                    ? context.colors.info.strong
+                    : context.colors.warning.base,
               ),
               const SizedBox(width: 4),
               Text(
                 assigned ? gear.name : l.gearAssignPrompt,
                 style: TextStyle(
                   fontSize: 11,
-                  color:
-                      assigned ? Colors.blue.shade800 : Colors.orange.shade800,
+                  color: assigned
+                      ? context.colors.info.onContainer
+                      : context.colors.warning.onContainer,
                 ),
               ),
             ],
@@ -410,12 +420,12 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.percent, size: 13, color: Colors.orange.shade800),
+          Icon(Icons.percent, size: 13, color: context.colors.warning.base),
           const SizedBox(width: 4),
           Text(
             l.exerciseCreditActivityOwn(
                 ExerciseCredit.formatPercent(activity.creditFactor!)),
-            style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
+            style: TextStyle(fontSize: 11, color: context.colors.warning.base),
           ),
         ],
       ),
@@ -497,7 +507,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
           if (activities.isNotEmpty)
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.blue.shade50,
+              color: context.colors.info.container,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -507,7 +517,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         Column(children: [
-                          const Icon(Icons.timer, color: Colors.blue),
+                          Icon(Icons.timer, color: context.colors.info.base),
                           const SizedBox(height: 4),
                           Text(_formatDuration(totalDuration),
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -515,7 +525,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                         ]),
                         if (totalCalories > 0)
                           Column(children: [
-                            const Icon(Icons.local_fire_department, color: Colors.orange),
+                            Icon(Icons.local_fire_department,
+                                color: context.colors.warning.base),
                             const SizedBox(height: 4),
                             // The credited figure leads, with the gross one
                             // underneath where the unit normally sits — the
@@ -530,7 +541,8 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                 style: Theme.of(context).textTheme.bodySmall),
                           ]),
                         Column(children: [
-                          const Icon(Icons.fitness_center, color: Colors.green),
+                          Icon(Icons.fitness_center,
+                              color: context.colors.success.base),
                           const SizedBox(height: 4),
                           Text('${activities.length}',
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -563,21 +575,21 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                 children: [
                                   Icon(Icons.directions_run,
                                       size: 64,
-                                      color: Colors.grey.shade400),
+                                      color: context.colors.faint),
                                   const SizedBox(height: 16),
                                   Text(l.activitiesEmpty,
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
                                           ?.copyWith(
-                                              color: Colors.grey.shade600)),
+                                              color: context.colors.muted)),
                                   const SizedBox(height: 8),
                                   Text(l.activitiesEmptyHint,
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
                                           ?.copyWith(
-                                              color: Colors.grey.shade500)),
+                                              color: context.colors.subtle)),
                                 ],
                               ),
                             ),
@@ -594,10 +606,11 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                             key: Key(activity.id!),
                             direction: DismissDirection.endToStart,
                             background: Container(
-                              color: Colors.red,
+                              color: context.colors.danger.base,
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 16),
-                              child: const Icon(Icons.delete, color: Colors.white),
+                              child: Icon(Icons.delete,
+                                  color: context.colors.danger.on),
                             ),
                             confirmDismiss: (direction) =>
                                 _confirmDeleteActivity(activity),
@@ -606,8 +619,9 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                               child: ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: Colors.blue.shade100,
-                                  child: const Icon(Icons.fitness_center, color: Colors.blue),
+                                  backgroundColor: context.colors.info.containerHigh,
+                                  child: Icon(Icons.fitness_center,
+                                      color: context.colors.info.base),
                                 ),
                                 title: Text(activity.displayName),
                                 subtitle: Column(
@@ -640,7 +654,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                     ? IconButton(
                                         icon: const Icon(Icons.delete_outline,
                                             size: 20),
-                                        color: Colors.red.shade400,
+                                        color: context.colors.danger.base,
                                         onPressed: () =>
                                             _deleteActivity(activity),
                                         tooltip: l.delete,
@@ -676,7 +690,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         child: Row(
           children: [
-            Icon(Icons.percent, size: 18, color: Colors.blue.shade700),
+            Icon(Icons.percent, size: 18, color: context.colors.info.strong),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -690,7 +704,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                         ? l.exerciseCreditDayFromProfile(label)
                         : l.exerciseCreditDayOwn(label),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade700,
+                          color: context.colors.muted,
                           fontWeight:
                               own == null ? FontWeight.normal : FontWeight.bold,
                         ),
@@ -726,7 +740,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.exerciseCreditSaveFailed),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.danger.base,
         ),
       );
     }

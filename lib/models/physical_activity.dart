@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// Physische Aktivität für Tracking und Health Connect Integration
 class PhysicalActivity {
   final String? id;
@@ -342,31 +344,34 @@ extension ActivityTypeExtension on ActivityType {
     }
   }
   
-  /// Farbe für UI-Darstellung
-  Color get color {
+  /// Farbe für UI-Darstellung, aus der Palette des aktuellen Themes.
+  Color color(BuildContext context) =>
+      context.colors.categories[_categoryIndex];
+
+  int get _categoryIndex {
     switch (this) {
       case ActivityType.walking:
       case ActivityType.running:
       case ActivityType.hiking:
-        return Colors.green;
+        return 0;
       case ActivityType.cycling:
-        return Colors.blue;
+        return 1;
       case ActivityType.swimming:
-        return Colors.cyan;
+        return 2;
       case ActivityType.weightTraining:
       case ActivityType.bodyweight:
-        return Colors.orange;
+        return 3;
       case ActivityType.football:
       case ActivityType.basketball:
       case ActivityType.tennis:
-        return Colors.red;
+        return 4;
       case ActivityType.yoga:
       case ActivityType.pilates:
-        return Colors.purple;
+        return 5;
       case ActivityType.dancing:
-        return Colors.pink;
+        return 6;
       case ActivityType.other:
-        return Colors.grey;
+        return 7;
     }
   }
   

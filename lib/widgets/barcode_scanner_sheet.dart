@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/app_localizations.dart';
 import '../services/app_logger.dart';
+import '../theme/app_colors.dart';
 
 bool _hasCameraScanner() {
   if (kIsWeb) return true;
@@ -113,17 +114,17 @@ class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: context.colors.overlay,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: context.colors.overlay,
+        foregroundColor: context.colors.onOverlay,
         title: Text(l?.barcodeScanTitle ?? 'Barcode scannen'),
         actions: [
           if (!kIsWeb)
             IconButton(
               icon: Icon(
                 _torchEnabled ? Icons.flash_on : Icons.flash_off,
-                color: Colors.white,
+                color: context.colors.onOverlay,
               ),
               onPressed: () async {
                 await _controller.toggleTorch();
@@ -143,7 +144,7 @@ class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
               width: 280,
               height: 160,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(color: context.colors.onOverlay, width: 2),
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -155,7 +156,7 @@ class _BarcodeScannerPageState extends State<_BarcodeScannerPage> {
             child: Text(
               l?.barcodeScanHint ?? 'Barcode in den Rahmen halten',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: context.colors.onOverlay, fontSize: 14),
             ),
           ),
         ],

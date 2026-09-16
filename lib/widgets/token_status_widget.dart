@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/neon_auth_service.dart';
+import '../theme/app_colors.dart';
 
 /// Debug-Widget das den Token-Status anzeigt
 class TokenStatusWidget extends StatefulWidget {
@@ -45,7 +46,8 @@ class _TokenStatusWidgetState extends State<TokenStatusWidget> {
       return const SizedBox.shrink();
     }
     
-    final color = isExpiringSoon ? Colors.orange : Colors.green;
+    final color =
+        isExpiringSoon ? context.colors.warning.base : context.colors.success.base;
     final icon = isExpiringSoon ? Icons.warning : Icons.check_circle;
     
     return Card(

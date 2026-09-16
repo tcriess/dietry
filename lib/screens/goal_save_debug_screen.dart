@@ -3,6 +3,7 @@ import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
 import '../services/app_logger.dart';
 import '../models/models.dart';
+import '../theme/app_colors.dart';
 
 /// Debug-Screen zum Testen der Goal-Speicherung
 /// 
@@ -151,12 +152,12 @@ class _GoalSaveDebugScreenState extends State<GoalSaveDebugScreen> {
                 FilledButton.icon(
                   onPressed: _isRunning ? null : _runTest,
                   icon: _isRunning
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: context.scheme.onPrimary,
                           ),
                         )
                       : const Icon(Icons.play_arrow),
@@ -180,16 +181,16 @@ class _GoalSaveDebugScreenState extends State<GoalSaveDebugScreen> {
                       IconData? icon;
 
                       if (log.contains('✅')) {
-                        color = Colors.green;
+                        color = context.colors.success.base;
                         icon = Icons.check_circle;
                       } else if (log.contains('❌')) {
-                        color = Colors.red;
+                        color = context.colors.danger.base;
                         icon = Icons.error;
                       } else if (log.contains('⚠️')) {
-                        color = Colors.orange;
+                        color = context.colors.warning.base;
                         icon = Icons.warning;
                       } else if (log.contains('🔍')) {
-                        color = Colors.blue;
+                        color = context.colors.info.base;
                         icon = Icons.search;
                       } else {
                         icon = Icons.info_outline;

@@ -13,6 +13,7 @@ import '../services/sync_service.dart';
 import '../services/food_image_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../utils/unit_utils.dart';
 import '../widgets/repeat_meal_picker.dart';
 import '../widgets/move_copy_sheet.dart';
@@ -572,7 +573,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                 mealType.localizedName(l),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
+                      color: context.colors.muted,
                     ),
               ),
             ],
@@ -663,7 +664,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     }
 
     return CircleAvatar(
-      backgroundColor: _getMealTypeColor(mealType),
+      backgroundColor: _getMealTypeColor(context, mealType),
       child: Text(mealType.icon, style: const TextStyle(fontSize: 20)),
     );
   }
@@ -685,7 +686,8 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style:
+                  TextButton.styleFrom(foregroundColor: context.colors.danger.base),
               child: Text(ld.delete),
             ),
           ],
@@ -709,7 +711,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.entryDeleted),
-          backgroundColor: Colors.green,
+          backgroundColor: context.colors.success.base,
         ),
       );
     }
@@ -778,7 +780,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       SnackBar(
         content: Text(
             result.action == MoveCopyAction.copy ? l.entryCopied : l.entryMoved),
-        backgroundColor: Colors.green,
+        backgroundColor: context.colors.success.base,
       ),
     );
   }
@@ -806,25 +808,23 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   }
 
   /// Farbe für Meal-Type Avatar
-  Color _getMealTypeColor(MealType mealType) {
+  Color _getMealTypeColor(BuildContext context, MealType mealType) {
+    final c = context.colors;
     switch (mealType) {
       case MealType.breakfast:
-        return Colors.orange.shade100;
+        return c.warning.containerHigh;
       case MealType.lunch:
-        return Colors.blue.shade100;
+        return c.info.containerHigh;
       case MealType.dinner:
-        return Colors.purple.shade100;
+        return c.plum.containerHigh;
       case MealType.snack:
-        return Colors.green.shade100;
+        return c.success.containerHigh;
     }
   }
 
-  // Bar colors — kept in sync with the daily nutrition overview (calories /
-  // protein / fat / carbs) so the whole app reads as one system.
-  static const Color _calorieColor = Colors.deepPurple;
-  static const Color _proteinColor = Colors.red;
-  static const Color _fatColor = Colors.orange;
-  static const Color _carbsColor = Colors.amber;
+  // Bar colors (context.colors.macro*) — kept in sync with the daily nutrition
+  // overview (calories / protein / fat / carbs) so the whole app reads as one
+  // system.
 
   /// One food entry rendered as a card: the name spans the full first row, a
   /// prominent full-width calories bar comes next (the headline metric), and the
@@ -871,11 +871,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                     '${entry.calories.toStringAsFixed(0)} kcal',
                     entry.calories,
                     _store.goal?.calories,
-                    _calorieColor,
+                    context.colors.macroCalories,
                     height: 7,
                     labelStyle: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: _calorieColor,
+                      color: context.colors.macroCalories,
                     ),
                   ),
                 ],
@@ -922,7 +922,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                       if (DateUtils.isSameDay(entry.entryDate, DateTime.now()))
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 20),
-                          color: Colors.red.shade400,
+                          color: context.colors.danger.base,
                           onPressed: () => _deleteEntry(entry),
                           tooltip: l.delete,
                           padding: EdgeInsets.zero,
@@ -970,11 +970,13 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
     final goal = _store.goal;
     final proteinOnly = goal?.proteinOnlyEffective == true;
 
+    final c = context.colors;
+
     final bars = <Widget>[
-      _macroBar(context, 'P', entry.protein, goal?.protein, _proteinColor),
+      _macroBar(context, 'P', entry.protein, goal?.protein, c.macroProtein),
       if (!proteinOnly) ...[
-        _macroBar(context, 'F', entry.fat, goal?.fat, _fatColor),
-        _macroBar(context, 'C', entry.carbs, goal?.carbs, _carbsColor),
+        _macroBar(context, 'F', entry.fat, goal?.fat, c.macroFat),
+        _macroBar(context, 'C', entry.carbs, goal?.carbs, c.macroCarbs),
       ],
     ];
 
@@ -1211,7 +1213,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.no_food,
-                                      size: 64, color: Colors.grey.shade400),
+                                      size: 64, color: context.colors.faint),
                                   const SizedBox(height: 16),
                                   Text(
                                     l.entriesEmpty,
@@ -1219,7 +1221,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                         .textTheme
                                         .titleMedium
                                         ?.copyWith(
-                                          color: Colors.grey.shade600,
+                                          color: context.colors.muted,
                                         ),
                                   ),
                                   const SizedBox(height: 8),
@@ -1229,7 +1231,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                         .textTheme
                                         .bodyMedium
                                         ?.copyWith(
-                                          color: Colors.grey.shade500,
+                                          color: context.colors.subtle,
                                         ),
                                   ),
                                 ],
@@ -1271,7 +1273,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                         Text(
                                           '${mealEntries.fold(0.0, (sum, e) => sum + e.calories).toStringAsFixed(0)} kcal',
                                           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                            color: Colors.grey.shade600,
+                                            color: context.colors.muted,
                                           ),
                                         ),
                                       // Turn this meal into a template. Starts
@@ -1300,10 +1302,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                       ? DismissDirection.none
                                       : DismissDirection.endToStart,
                                   background: Container(
-                                    color: Colors.red,
+                                    color: context.colors.danger.base,
                                     alignment: Alignment.centerRight,
                                     padding: const EdgeInsets.only(right: 16),
-                                    child: const Icon(Icons.delete, color: Colors.white),
+                                    child: Icon(Icons.delete,
+                                        color: context.colors.danger.on),
                                   ),
                                   confirmDismiss: (direction) =>
                                       _confirmDeleteEntry(entry),

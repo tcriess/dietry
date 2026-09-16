@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/exercise_credit.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import 'edit_on_close.dart';
 
 /// What the user chose in [showExerciseCreditDialog]: [factor] is the level's
@@ -135,7 +136,7 @@ class _ExerciseCreditDialogState extends State<_ExerciseCreditDialog> {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: Colors.grey.shade600),
+                  ?.copyWith(color: context.colors.muted),
             ),
           ],
         ),

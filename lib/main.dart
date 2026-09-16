@@ -77,6 +77,7 @@ import 'services/tutorial_prefs.dart';
 import 'widgets/main_tutorial.dart';
 import 'screens/info_screen.dart';
 import 'screens/reports_screen.dart';
+import 'theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -288,14 +289,14 @@ class LoginScreen extends StatelessWidget {
             if (AppConfig.showDeveloperBanner)
               Container(
                 width: double.infinity,
-                color: Colors.orange.shade700,
+                color: context.colors.warning.strong,
                 padding:
                     const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                 child: Text(
                   l.devBannerText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.warning.on,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -304,14 +305,14 @@ class LoginScreen extends StatelessWidget {
             if (GuestModeService.isGuestMode)
               Container(
                 width: double.infinity,
-                color: Colors.blue.shade600,
+                color: context.colors.info.base,
                 padding:
                     const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                 child: Text(
                   l.guestModeBannerText,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.info.on,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -349,7 +350,7 @@ class LoginScreen extends StatelessWidget {
                     Text(
                       l.appSubtitle,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.grey.shade600,
+                            color: context.colors.muted,
                           ),
                       textAlign: TextAlign.center,
                     ),
@@ -396,6 +397,7 @@ class LoginScreen extends StatelessWidget {
                         onPressed: () async {
                           final messenger = ScaffoldMessenger.of(context);
                           final lErr = AppLocalizations.of(context)!;
+                          final palette = context.colors;
                           try {
                             // WEB: Redirect zu auth_callback.html (übernimmt kompletten OAuth-Flow)
                             if (kIsWeb) {
@@ -527,7 +529,7 @@ class LoginScreen extends StatelessWidget {
                                       SnackBar(
                                         content: Text(
                                             'Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: palette.success.strong,
                                       ),
                                     );
                                   }
@@ -572,7 +574,7 @@ class LoginScreen extends StatelessWidget {
                                         SnackBar(
                                           content: Text(
                                               'Login erfolgreich: ${authService.session?['user']?['email'] ?? ''}'),
-                                          backgroundColor: Colors.green,
+                                          backgroundColor: palette.success.strong,
                                         ),
                                       );
                                     }
@@ -592,7 +594,7 @@ class LoginScreen extends StatelessWidget {
                               messenger.showSnackBar(
                                 SnackBar(
                                   content: Text(lErr.loginFailed(e.toString())),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: palette.danger.base,
                                   duration: const Duration(seconds: 5),
                                 ),
                               );
@@ -613,7 +615,7 @@ class LoginScreen extends StatelessWidget {
                           child: Text(
                             l.orContinueWith,
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade500),
+                                fontSize: 12, color: context.colors.subtle),
                           ),
                         ),
                         const Expanded(child: Divider()),
@@ -662,7 +664,7 @@ class LoginScreen extends StatelessWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(l.guestModeError),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: context.colors.danger.base,
                                 ),
                               );
                             }
@@ -678,7 +680,7 @@ class LoginScreen extends StatelessWidget {
                       l.guestModeNote,
                       textAlign: TextAlign.center,
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          TextStyle(fontSize: 12, color: context.colors.muted),
                     ),
 
                     const SizedBox(height: 20),
@@ -688,7 +690,7 @@ class LoginScreen extends StatelessWidget {
                       l.privacyNote,
                       textAlign: TextAlign.center,
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                          TextStyle(fontSize: 12, color: context.colors.subtle),
                     ),
 
                     const SizedBox(height: 12),
@@ -709,7 +711,7 @@ class LoginScreen extends StatelessWidget {
                         label: Text(l.serverConfigButton,
                             style: const TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey.shade600,
+                          foregroundColor: context.colors.muted,
                         ),
                         onPressed: () async {
                           final changed = await showDialog<bool>(
@@ -767,7 +769,7 @@ class _FeatureRow extends StatelessWidget {
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
               Text(subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  style: TextStyle(fontSize: 12, color: context.colors.muted)),
             ],
           ),
         ),
@@ -886,7 +888,7 @@ class _ServerConfigDialogState extends State<_ServerConfigDialog> {
                   Text(
                     l.serverConfigCustomActive,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.orange.shade700,
+                          color: context.colors.warning.strong,
                         ),
                   ),
                 ],
@@ -1001,7 +1003,7 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(e.toString()),
-                        backgroundColor: Colors.red,
+                        backgroundColor: context.colors.danger.base,
                       ));
                     }
                   }
@@ -1045,7 +1047,7 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content:
               Text(AppLocalizations.of(context)!.loginFailed(e.toString())),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.danger.base,
           duration: const Duration(seconds: 5),
         ));
       }
@@ -1061,8 +1063,8 @@ class _EmailLoginSectionState extends State<_EmailLoginSection> {
     if (_pendingVerificationEmail != null) {
       return Column(
         children: [
-          const Icon(Icons.mark_email_unread_outlined,
-              size: 48, color: Colors.green),
+          Icon(Icons.mark_email_unread_outlined,
+              size: 48, color: context.colors.success.base),
           const SizedBox(height: 16),
           Text(l.emailVerificationTitle,
               style: Theme.of(context).textTheme.titleMedium,
@@ -1209,6 +1211,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         useMaterial3: true,
         snackBarTheme:
             const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+        extensions: const [AppColors.light],
       );
 
   static ThemeData get _darkTheme => ThemeData(
@@ -1217,6 +1220,7 @@ class _AuthAppState extends State<AuthApp> with WidgetsBindingObserver {
         useMaterial3: true,
         snackBarTheme:
             const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+        extensions: const [AppColors.dark],
       );
 
   Future<void> _loadThemeMode() async {
@@ -2307,7 +2311,7 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.deleteGuestDataSuccess),
-          backgroundColor: Colors.green,
+          backgroundColor: context.colors.success.base,
         ),
       );
       Navigator.of(context).pushAndRemoveUntil(
@@ -2319,7 +2323,7 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.errorPrefix(e.toString())),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.danger.base,
         ),
       );
     }
@@ -2348,13 +2352,13 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                         width: double.infinity,
                         height: _kBannerHeight,
                         alignment: Alignment.center,
-                        color: Colors.orange.shade700,
+                        color: context.colors.warning.strong,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           l.devBannerText,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.colors.warning.on,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2362,7 +2366,7 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                       ),
                     if (widget.isGuestMode)
                       Material(
-                        color: Colors.blue.shade600,
+                        color: context.colors.info.base,
                         child: InkWell(
                           onTap: _startGuestSignIn,
                           child: Container(
@@ -2378,16 +2382,16 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                                   child: Text(
                                     l.guestModeBannerText,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: context.colors.info.on,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                const Icon(Icons.login,
-                                    size: 14, color: Colors.white),
+                                Icon(Icons.login,
+                                    size: 14, color: context.colors.info.on),
                               ],
                             ),
                           ),
@@ -2703,16 +2707,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   ///  - offline — no connection; queued changes replay on their own.
   ///  - pending — online with a backlog, offer to flush it now.
   Widget _buildSyncBar(BuildContext context, AppLocalizations l) {
-    const textStyle = TextStyle(color: Colors.white, fontSize: 12);
-
     if (_sync.sessionExpired) {
+      final danger = context.colors.danger;
+      final textStyle = TextStyle(color: danger.on, fontSize: 12);
       return Material(
-        color: Colors.red.shade700,
+        color: danger.base,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
             children: [
-              const Icon(Icons.lock_outline, color: Colors.white, size: 16),
+              Icon(Icons.lock_outline, color: danger.on, size: 16),
               const SizedBox(width: 8),
               Expanded(child: Text(l.sessionExpired, style: textStyle)),
               TextButton(
@@ -2731,15 +2735,18 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       return const SizedBox.shrink();
     }
 
+    final role =
+        _sync.isOnline ? context.colors.warning : context.colors.danger;
+    final textStyle = TextStyle(color: role.on, fontSize: 12);
     return Material(
-      color: _sync.isOnline ? Colors.orange.shade700 : Colors.red.shade700,
+      color: role.base,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Row(
           children: [
             Icon(
               _sync.isOnline ? Icons.sync : Icons.wifi_off,
-              color: Colors.white,
+              color: role.on,
               size: 16,
             ),
             const SizedBox(width: 8),
@@ -3616,7 +3623,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 Icon(
                   Icons.flag_outlined,
                   size: 80,
-                  color: Colors.grey.shade400,
+                  color: context.colors.faint,
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -4008,7 +4015,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
           ),
           if (_store.isLoading)
             Container(
-              color: Colors.black26,
+              color: context.colors.shadow,
               child: Center(
                 child: Card(
                   child: Padding(
@@ -4171,15 +4178,16 @@ class OverviewScreen extends StatelessWidget {
 
   /// Calorie progress bar, with a translucent ±σ band overlaid when the day's
   /// uncertainty is meaningful (see [showCalorieBand]).
-  Widget _calorieBar() {
+  Widget _calorieBar(BuildContext context) {
+    final brand = context.colors.brand.base;
     final barValue = goal.calories > 0
         ? (totalCalories / goal.calories).clamp(0.0, 1.0)
         : 0.0;
     final bar = LinearProgressIndicator(
       value: barValue,
       minHeight: 12,
-      backgroundColor: Colors.grey[300],
-      color: Colors.deepPurple,
+      backgroundColor: context.colors.neutralContainerHigh,
+      color: brand,
     );
     if (!showCalorieBand || goal.calories <= 0) return bar;
     final lo = ((totalCalories - caloriesSigma) / goal.calories).clamp(0.0, 1.0);
@@ -4220,9 +4228,9 @@ class OverviewScreen extends StatelessWidget {
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                           colors: [
-                            Colors.deepPurple.withValues(alpha: 0.0),
-                            Colors.deepPurple.withValues(alpha: 0.55),
-                            Colors.deepPurple.withValues(alpha: 0.0),
+                            brand.withValues(alpha: 0.0),
+                            brand.withValues(alpha: 0.55),
+                            brand.withValues(alpha: 0.0),
                           ],
                           stops: [0.0, peak, 1.0],
                         ),
@@ -4235,22 +4243,22 @@ class OverviewScreen extends StatelessWidget {
                       top: 2,
                       height: 10,
                       width: 2,
-                      child: const ColoredBox(color: Colors.deepPurple)),
+                      child: ColoredBox(color: brand)),
                   Positioned(
                       left: hi * w - 1,
                       top: 2,
                       height: 10,
                       width: 2,
-                      child: const ColoredBox(color: Colors.deepPurple)),
+                      child: ColoredBox(color: brand)),
                   // Expectation dot at μ (the value).
                   Positioned(
                     left: mu * w - 5,
                     top: 2,
                     width: 10,
                     height: 10,
-                    child: const DecoratedBox(
+                    child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.deepPurple,
+                        color: brand,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -4264,7 +4272,7 @@ class OverviewScreen extends StatelessWidget {
         Text(
           '${loKcal.toStringAsFixed(0)} – ${hiKcal.toStringAsFixed(0)} kcal',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          style: TextStyle(fontSize: 11, color: context.colors.muted),
         ),
       ],
     );
@@ -4308,7 +4316,7 @@ class OverviewScreen extends StatelessWidget {
 
   /// A "consumed" table cell: the value, plus a small "± σ" line when the day
   /// has meaningful uncertainty. [sigmaStr] is the pre-formatted σ.
-  Widget _consumedCell(String value, String sigmaStr) {
+  Widget _consumedCell(BuildContext context, String value, String sigmaStr) {
     if (!showCalorieBand) {
       return Text(value, overflow: TextOverflow.ellipsis);
     }
@@ -4318,7 +4326,7 @@ class OverviewScreen extends StatelessWidget {
       children: [
         Text(value, overflow: TextOverflow.ellipsis),
         Text('± $sigmaStr',
-            style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+            style: TextStyle(fontSize: 10, color: context.colors.muted)),
       ],
     );
   }
@@ -4369,7 +4377,7 @@ class OverviewScreen extends StatelessWidget {
                     (
                       label: l.caloriesBurned,
                       value: burnedValue,
-                      color: Colors.green.shade700
+                      color: context.colors.success.strong
                     ),
                 ];
 
@@ -4394,7 +4402,7 @@ class OverviewScreen extends StatelessWidget {
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(
-                                      color: Colors.grey.shade600,
+                                      color: context.colors.muted,
                                     ),
                               ),
                             ),
@@ -4431,7 +4439,7 @@ class OverviewScreen extends StatelessWidget {
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
-                                    color: Colors.grey.shade600,
+                                    color: context.colors.muted,
                                     fontSize: s.color != null ? 11 : null,
                                   ),
                             ),
@@ -4458,7 +4466,7 @@ class OverviewScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: context.colors.neutralContainer,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Row(
@@ -4467,7 +4475,7 @@ class OverviewScreen extends StatelessWidget {
                   Text(
                     AppLocalizations.of(context)!.remaining,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                          color: context.colors.muted,
                         ),
                   ),
                   Text(
@@ -4477,8 +4485,8 @@ class OverviewScreen extends StatelessWidget {
                           color: remainingValue.contains('too much') ||
                                   remainingValue.contains('zu viel') ||
                                   remainingValue.contains('demasiado')
-                              ? Colors.red
-                              : Colors.green,
+                              ? context.colors.danger.base
+                              : context.colors.success.base,
                         ),
                   ),
                 ],
@@ -4514,7 +4522,7 @@ class OverviewScreen extends StatelessWidget {
                   : '${totalCalories.toStringAsFixed(0)} kcal',
               totalCaloriesBurned > 0 ? _burnedLabel(l) : '-',
               _formatRemainingCalories(remainingCalories, l),
-              Colors.deepPurple,
+              context.colors.macroCalories,
             ),
           _buildNutrientCard(
             context,
@@ -4525,7 +4533,7 @@ class OverviewScreen extends StatelessWidget {
                 : '${totalProtein.toStringAsFixed(1)} g',
             '-',
             '${remainingProtein.toStringAsFixed(1)} g',
-            Colors.red,
+            context.colors.macroProtein,
           ),
           // Protein-only mode: fat & carbs have no target, so they're omitted
           // from the compliance overview (still shown in the pie chart / entries).
@@ -4539,7 +4547,7 @@ class OverviewScreen extends StatelessWidget {
                   : '${totalFat.toStringAsFixed(1)} g',
               '-',
               '${remainingFat.toStringAsFixed(1)} g',
-              Colors.orange,
+              context.colors.macroFat,
             ),
             _buildNutrientCard(
               context,
@@ -4550,7 +4558,7 @@ class OverviewScreen extends StatelessWidget {
                   : '${totalCarbs.toStringAsFixed(1)} g',
               '-',
               '${remainingCarbs.toStringAsFixed(1)} g',
-              Colors.amber,
+              context.colors.macroCarbs,
             ),
           ],
         ],
@@ -4575,18 +4583,20 @@ class OverviewScreen extends StatelessWidget {
                   Text(l.nutrientCalories, overflow: TextOverflow.ellipsis)),
               DataCell(Text(goal.calories.toStringAsFixed(0),
                   overflow: TextOverflow.ellipsis)),
-              DataCell(_consumedCell(totalCalories.toStringAsFixed(0),
+              DataCell(_consumedCell(context, totalCalories.toStringAsFixed(0),
                   caloriesSigma.toStringAsFixed(0))),
               DataCell(Text(
                 _burnedLabel(l, withUnit: false),
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.green.shade700),
+                style: TextStyle(color: context.colors.success.strong),
               )),
               DataCell(Text(
                 _formatRemainingCalories(remainingCalories, l),
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: remainingCalories >= 0 ? Colors.green : Colors.red,
+                  color: remainingCalories >= 0
+                      ? context.colors.success.base
+                      : context.colors.danger.base,
                 ),
               )),
             ]),
@@ -4594,7 +4604,7 @@ class OverviewScreen extends StatelessWidget {
             DataCell(Text(l.nutrientProtein, overflow: TextOverflow.ellipsis)),
             DataCell(Text(goal.protein.toStringAsFixed(1),
                 overflow: TextOverflow.ellipsis)),
-            DataCell(_consumedCell(totalProtein.toStringAsFixed(1),
+            DataCell(_consumedCell(context, totalProtein.toStringAsFixed(1),
                 proteinSigma.toStringAsFixed(1))),
             const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
             DataCell(Text(remainingProtein.toStringAsFixed(1),
@@ -4607,7 +4617,7 @@ class OverviewScreen extends StatelessWidget {
               DataCell(Text(l.nutrientFat, overflow: TextOverflow.ellipsis)),
               DataCell(Text(goal.fat.toStringAsFixed(1),
                   overflow: TextOverflow.ellipsis)),
-              DataCell(_consumedCell(totalFat.toStringAsFixed(1),
+              DataCell(_consumedCell(context, totalFat.toStringAsFixed(1),
                   fatSigma.toStringAsFixed(1))),
               const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
               DataCell(Text(remainingFat.toStringAsFixed(1),
@@ -4617,7 +4627,7 @@ class OverviewScreen extends StatelessWidget {
               DataCell(Text(l.nutrientCarbs, overflow: TextOverflow.ellipsis)),
               DataCell(Text(goal.carbs.toStringAsFixed(1),
                   overflow: TextOverflow.ellipsis)),
-              DataCell(_consumedCell(totalCarbs.toStringAsFixed(1),
+              DataCell(_consumedCell(context, totalCarbs.toStringAsFixed(1),
                   carbsSigma.toStringAsFixed(1))),
               const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
               DataCell(Text(remainingCarbs.toStringAsFixed(1),
@@ -4652,7 +4662,7 @@ class OverviewScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.water_drop, color: Colors.blue),
+                Icon(Icons.water_drop, color: context.colors.water.base),
                 const SizedBox(width: 8),
                 Text(l.waterTitle,
                     style: Theme.of(context).textTheme.titleMedium),
@@ -4662,8 +4672,8 @@ class OverviewScreen extends StatelessWidget {
             LinearProgressIndicator(
               value: progress,
               minHeight: 10,
-              backgroundColor: Colors.blue.shade100,
-              color: Colors.blue,
+              backgroundColor: context.colors.water.container,
+              color: context.colors.water.base,
             ),
             const SizedBox(height: 8),
             Row(
@@ -4804,16 +4814,16 @@ class OverviewScreen extends StatelessWidget {
                         style: const TextStyle(fontSize: 12),
                       ),
                       backgroundColor: streak >= 7
-                          ? Colors.orange.shade50
+                          ? context.colors.warning.container
                           : streak > 0
-                              ? Colors.amber.shade50
-                              : Colors.grey.shade100,
+                              ? context.colors.highlight.container
+                              : context.colors.neutralContainer,
                       side: BorderSide(
                         color: streak >= 7
-                            ? Colors.orange.shade300
+                            ? context.colors.warning.border
                             : streak > 0
-                                ? Colors.amber.shade300
-                                : Colors.grey.shade300,
+                                ? context.colors.highlight.border
+                                : context.colors.border,
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       visualDensity: VisualDensity.compact,
@@ -4832,12 +4842,12 @@ class OverviewScreen extends StatelessWidget {
                 ),
                 selected: isCheatDay,
                 onSelected: (_) => onToggleCheatDay(),
-                selectedColor: Colors.orange.shade100,
-                checkmarkColor: Colors.orange.shade800,
+                selectedColor: context.colors.warning.containerHigh,
+                checkmarkColor: context.colors.warning.onContainer,
                 side: BorderSide(
                   color: isCheatDay
-                      ? Colors.orange.shade400
-                      : Colors.grey.shade300,
+                      ? context.colors.warning.border
+                      : context.colors.border,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 visualDensity: VisualDensity.compact,
@@ -4849,10 +4859,10 @@ class OverviewScreen extends StatelessWidget {
           if (isCheatDay) ...[
             const SizedBox(height: 8),
             Card(
-              color: Colors.orange.shade50,
+              color: context.colors.warning.container,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.orange.shade200),
+                side: BorderSide(color: context.colors.warning.border),
               ),
               child: Padding(
                 padding:
@@ -4871,7 +4881,7 @@ class OverviewScreen extends StatelessWidget {
                             ? l.holidayBanner(holidayLabel!)
                             : l.cheatDayBanner,
                         style: TextStyle(
-                          color: Colors.orange.shade900,
+                          color: context.colors.warning.onContainer,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -4886,7 +4896,7 @@ class OverviewScreen extends StatelessWidget {
             const SizedBox(height: 16),
             // Kalorien-Fortschritt (mit verbrannten Kalorien)
             Text(l.nutrientCalories),
-            _calorieBar(),
+            _calorieBar(context),
             LayoutBuilder(
               builder: (context, constraints) {
                 final stats = <({String label, String value, Color? color})>[
@@ -4899,7 +4909,7 @@ class OverviewScreen extends StatelessWidget {
                     (
                       label: l.caloriesBurned,
                       value: _burnedLabel(l),
-                      color: Colors.green.shade700
+                      color: context.colors.success.strong
                     ),
                   (
                     label: l.goal,
@@ -4971,8 +4981,8 @@ class OverviewScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: (goal.calories - totalCalories + creditedCaloriesBurned) >=
                         0
-                    ? Colors.green
-                    : Colors.red,
+                    ? context.colors.success.base
+                    : context.colors.danger.base,
               ),
             ),
             if (probUnderGoalPct != null)
@@ -4980,7 +4990,7 @@ class OverviewScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
                   l.estimateProbUnderGoal(probUnderGoalPct!),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 12, color: context.colors.muted),
                 ),
               ),
           ],
@@ -4993,17 +5003,17 @@ class OverviewScreen extends StatelessWidget {
                 sections: [
                   PieChartSectionData(
                     value: totalProtein,
-                    color: Colors.blue,
+                    color: context.colors.macroProtein,
                     title: l.nutrientProtein,
                   ),
                   PieChartSectionData(
                     value: totalFat,
-                    color: Colors.orange,
+                    color: context.colors.macroFat,
                     title: l.nutrientFat,
                   ),
                   PieChartSectionData(
                     value: totalCarbs,
-                    color: Colors.green,
+                    color: context.colors.macroCarbs,
                     title: l.nutrientCarbs,
                   ),
                 ],
@@ -5073,8 +5083,8 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
           IconButton.filled(
             icon: const Icon(Icons.remove),
             style: IconButton.styleFrom(
-              backgroundColor: Colors.blue.shade100,
-              foregroundColor: Colors.blue,
+              backgroundColor: context.colors.water.container,
+              foregroundColor: context.colors.water.base,
             ),
             tooltip: l.waterRemove,
             onPressed: widget.waterIntakeMl >= 200
@@ -5085,7 +5095,7 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
           Text(
             '200 ml',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.blue,
+                  color: context.colors.water.base,
                   fontWeight: FontWeight.bold,
                 ),
           ),
@@ -5093,8 +5103,8 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
           IconButton.filled(
             icon: const Icon(Icons.add),
             style: IconButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
+              backgroundColor: context.colors.water.base,
+              foregroundColor: context.colors.water.on,
             ),
             tooltip: l.waterAdd,
             onPressed: () => widget.onWaterChanged(200),
@@ -5110,8 +5120,8 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
         IconButton.filled(
           icon: const Icon(Icons.remove),
           style: IconButton.styleFrom(
-            backgroundColor: Colors.blue.shade100,
-            foregroundColor: Colors.blue,
+            backgroundColor: context.colors.water.container,
+            foregroundColor: context.colors.water.base,
           ),
           tooltip: l.waterRemove,
           onPressed: widget.waterIntakeMl >= _selectedMl
@@ -5135,14 +5145,14 @@ class _WaterAmountControlsState extends State<_WaterAmountControls> {
         const SizedBox(width: 4),
         Text(
           'ml',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          style: TextStyle(color: context.colors.muted, fontSize: 13),
         ),
         const SizedBox(width: 8),
         IconButton.filled(
           icon: const Icon(Icons.add),
           style: IconButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+            backgroundColor: context.colors.water.base,
+            foregroundColor: context.colors.water.on,
           ),
           tooltip: l.waterAdd,
           onPressed: () => widget.onWaterChanged(_selectedMl),
@@ -5236,8 +5246,9 @@ class AddFoodScreen extends StatelessWidget {
                                 'Kcal: ${entry.calories.toStringAsFixed(0)}',
                               ),
                               trailing: entry.isLiquid && entry.unit == 'ml'
-                                  ? const Icon(Icons.water_drop,
-                                      color: Colors.lightBlue, size: 20)
+                                  ? Icon(Icons.water_drop,
+                                      color: context.colors.water.base,
+                                      size: 20)
                                   : null,
                             ),
                           )),

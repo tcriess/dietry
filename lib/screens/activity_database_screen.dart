@@ -5,6 +5,7 @@ import '../models/activity_item.dart';
 import '../services/activity_database_service.dart';
 import '../services/neon_database_service.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../widgets/edit_on_close.dart';
 
 /// Screen zur Verwaltung eigener Aktivitäten in der Datenbank.
@@ -42,7 +43,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('Fehler beim Laden: $e'),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     } finally {
@@ -66,7 +67,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
           final l = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text(l.entryUpdated), backgroundColor: Colors.green),
+                content: Text(l.entryUpdated),
+                backgroundColor: context.colors.success.base),
           );
           _loadActivities();
         }
@@ -76,7 +78,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content: Text(l.errorPrefix(e.toString())),
-                backgroundColor: Colors.red),
+                backgroundColor: context.colors.danger.base),
           );
         }
       }
@@ -118,7 +120,9 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Fehler: $e'),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -139,7 +143,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style:
+                  TextButton.styleFrom(foregroundColor: context.colors.danger.base),
               child: Text(l.delete),
             ),
           ],
@@ -155,7 +160,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(l.activityDeleted), backgroundColor: Colors.green),
+              content: Text(l.activityDeleted),
+              backgroundColor: context.colors.success.base),
         );
         _loadActivities();
       }
@@ -165,7 +171,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(l.errorPrefix(e.toString())),
-              backgroundColor: Colors.red),
+              backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -184,20 +190,20 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.fitness_center,
-                          size: 64, color: Colors.grey.shade400),
+                          size: 64, color: context.colors.faint),
                       const SizedBox(height: 16),
                       Text(
                         l.activitiesEmpty,
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Colors.grey.shade600,
+                                  color: context.colors.muted,
                                 ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         l.activitiesEmptyHint,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey.shade500,
+                              color: context.colors.subtle,
                             ),
                       ),
                     ],
@@ -211,7 +217,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                     final activity = _activities[index];
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade50,
+                        backgroundColor: context.colors.info.container,
                         child: Text(
                           activity.categoryIcon,
                           style: const TextStyle(fontSize: 20),
@@ -237,8 +243,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                                   style: const TextStyle(fontSize: 11),
                                 ),
                                 backgroundColor: activity.isApproved
-                                    ? Colors.green.shade100
-                                    : Colors.orange.shade100,
+                                    ? context.colors.success.containerHigh
+                                    : context.colors.warning.containerHigh,
                                 padding: EdgeInsets.zero,
                                 visualDensity: VisualDensity.compact,
                               ),
@@ -250,8 +256,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                                   : Icons.star_border,
                               size: 20,
                               color: activity.isFavourite
-                                  ? Colors.amber.shade600
-                                  : Colors.grey.shade400,
+                                  ? context.colors.highlight.base
+                                  : context.colors.faint,
                             ),
                             tooltip: activity.isFavourite
                                 ? 'Aus Favoriten entfernen'
@@ -274,8 +280,8 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                                 PopupMenuItem(
                                   value: 'delete',
                                   child: Text(lp.delete,
-                                      style:
-                                          const TextStyle(color: Colors.red)),
+                                      style: TextStyle(
+                                          color: context.colors.danger.base)),
                                 ),
                               ];
                             },
@@ -290,6 +296,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
           final l = AppLocalizations.of(context)!;
+          final colors = context.colors;
           final result = await showDialog<ActivityItem>(
             context: context,
             builder: (context) => const ActivityEditDialog(
@@ -305,7 +312,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                 messenger.showSnackBar(
                   SnackBar(
                     content: Text(l.foodAdded(created.name)),
-                    backgroundColor: Colors.green,
+                    backgroundColor: colors.success.base,
                   ),
                 );
                 _loadActivities();
@@ -315,7 +322,7 @@ class _ActivityDatabaseScreenState extends State<ActivityDatabaseScreen> {
                 messenger.showSnackBar(
                   SnackBar(
                       content: Text(l.errorPrefix(e.toString())),
-                      backgroundColor: Colors.red),
+                      backgroundColor: colors.danger.base),
                 );
               }
             }
@@ -438,20 +445,21 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: context.colors.warning.container,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
+                  border: Border.all(color: context.colors.warning.border),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.warning_amber,
-                        color: Colors.orange.shade700, size: 20),
+                        color: context.colors.warning.strong, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Dieser Eintrag ist öffentlich freigegeben. Eine Bearbeitung setzt die Freigabe zurück.',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.orange.shade900),
+                            fontSize: 12,
+                            color: context.colors.warning.onContainer),
                       ),
                     ),
                   ],
@@ -463,19 +471,19 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: context.colors.info.container,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      color: Colors.blue.shade700, size: 20),
+                      color: context.colors.info.strong, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'MET = Vielfaches des Ruheenergieverbrauchs',
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.blue.shade900),
+                      style: TextStyle(
+                          fontSize: 12, color: context.colors.info.onContainer),
                     ),
                   ),
                 ],
@@ -601,8 +609,8 @@ class ActivityEditDialogState extends State<ActivityEditDialog> {
               ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+                  backgroundColor: context.colors.success.base,
+                  foregroundColor: context.colors.success.on,
                 ),
                 child: Text(l.add),
               ),

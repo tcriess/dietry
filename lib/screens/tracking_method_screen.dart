@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/nutrition_calculator.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 /// Screen zur Auswahl der Tracking-Methode und Anzeige der Empfehlung
 class TrackingMethodScreen extends StatefulWidget {
@@ -327,7 +328,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                 l.nutrientProtein,
                 '${_recommendation!.protein.round()}g',
                 _recommendation!.macroPercentages['protein']!.round(),
-                Colors.red,
+                context.colors.macroProtein,
               ),
             ),
             const SizedBox(width: 8),
@@ -336,7 +337,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                 l.nutrientFat,
                 '${_recommendation!.fat.round()}g',
                 _recommendation!.macroPercentages['fat']!.round(),
-                Colors.orange,
+                context.colors.macroFat,
               ),
             ),
             const SizedBox(width: 8),
@@ -345,7 +346,7 @@ class _TrackingMethodScreenState extends State<TrackingMethodScreen> {
                 l.nutrientCarbs,
                 '${_recommendation!.carbs.round()}g',
                 _recommendation!.macroPercentages['carbs']!.round(),
-                Colors.green,
+                context.colors.macroCarbs,
               ),
             ),
           ],

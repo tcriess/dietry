@@ -7,6 +7,7 @@ import '../services/food_image_service.dart';
 import '../services/tag_service.dart';
 import '../services/app_logger.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../widgets/tag_editor.dart';
 import 'add_food_entry_screen.dart';
 
@@ -97,7 +98,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                           if (widget.food.category != null) widget.food.category,
                         ].join(' • '),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey.shade600,
+                              color: context.colors.muted,
                             ),
                       ),
                     ),
@@ -181,7 +182,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(
             height: 200,
-            color: Colors.grey.shade200,
+            color: context.colors.neutralContainerHigh,
             child: const Center(child: CircularProgressIndicator()),
           );
         }

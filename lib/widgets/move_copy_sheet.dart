@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/food_entry.dart' show MealType;
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 /// Whether the user chose to duplicate an entry (leaving the original in
 /// place), to relocate it, or to delete it outright.
@@ -140,7 +141,7 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
             const SizedBox(height: 6),
             Text(dateLabel,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
+                      color: context.colors.muted,
                     )),
             const SizedBox(height: 16),
 
@@ -168,7 +169,7 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
                 IconButton.outlined(
                   icon: const Icon(Icons.delete_outline),
                   style: IconButton.styleFrom(
-                      foregroundColor: Colors.red.shade400),
+                      foregroundColor: context.colors.danger.base),
                   tooltip: l.delete,
                   onPressed: () => Navigator.of(context).pop(
                     MoveCopyResult(

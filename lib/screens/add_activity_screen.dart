@@ -14,6 +14,7 @@ import '../services/app_logger.dart';
 import '../services/anonymous_auth_service.dart';
 import '../app_config.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../widgets/exercise_credit_dialog.dart';
 import '../widgets/gear_dropdown.dart';
 import 'activity_database_screen.dart';
@@ -325,7 +326,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.measurementSaved),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
 
@@ -339,7 +340,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(l.errorPrefix(e.toString())),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
           ),
         );
       }
@@ -473,6 +474,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                 onPressed: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   final lCtx = AppLocalizations.of(context)!;
+                  final colors = context.colors;
                   final result = await showDialog<ActivityItem>(
                     context: context,
                     builder: (context) => const ActivityEditDialog(
@@ -501,7 +503,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text(lCtx.foodAdded(created.name)),
-                              backgroundColor: Colors.green,
+                              backgroundColor: colors.success.base,
                             ),
                           );
                         }
@@ -511,7 +513,7 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                         messenger.showSnackBar(
                           SnackBar(
                             content: Text(lCtx.errorPrefix(e.toString())),
-                            backgroundColor: Colors.red,
+                            backgroundColor: colors.danger.base,
                           ),
                         );
                       }
@@ -672,8 +674,8 @@ class _AddActivityScreenState extends State<AddActivityScreen> {
                     : const Icon(Icons.check),
                 label: Text(_isSaving ? l.saving : l.save),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+                  backgroundColor: context.colors.success.base,
+                  foregroundColor: context.colors.success.on,
                   padding: const EdgeInsets.all(16),
                 ),
               ),

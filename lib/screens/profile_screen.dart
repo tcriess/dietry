@@ -18,6 +18,7 @@ import '../services/app_logger.dart';
 import '../app_config.dart';
 import '../app_features.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../utils/app_features_utils.dart';
 import '../widgets/main_tutorial.dart';
 import '../widgets/ai_meal_model_tile.dart';
@@ -388,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.healthConnectSuccessBody(saved)),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
         _loadData();
@@ -396,7 +397,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectError(e.toString())), backgroundColor: Colors.red),
+          SnackBar(content: Text(AppLocalizations.of(context)!.healthConnectError(e.toString())), backgroundColor: context.colors.danger.base),
         );
       }
     }
@@ -421,7 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     Widget? badge;
     if (AppFeatures.isPaid) {
-      badge = const _PlanBadge(label: 'Pro', color: Colors.amber);
+      badge = _PlanBadge(label: 'Pro', role: context.colors.highlight);
     }
 
     return Card(
@@ -455,7 +456,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.person, size: 64, color: Colors.grey.shade400),
+              Icon(Icons.person, size: 64, color: context.colors.faint),
               const SizedBox(height: 16),
               Text(
                 l.guestModeSignIn,
@@ -465,7 +466,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'Profile management requires signing in',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade600,
+                      color: context.colors.muted,
                     ),
               ),
             ],
@@ -533,11 +534,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Center(
                             child: Column(
                               children: [
-                                Icon(Icons.flag_outlined, size: 48, color: Colors.grey.shade400),
+                                Icon(Icons.flag_outlined, size: 48, color: context.colors.faint),
                                 const SizedBox(height: 12),
                                 Text(
                                   l.goalEmpty,
-                                  style: TextStyle(color: Colors.grey.shade600),
+                                  style: TextStyle(color: context.colors.muted),
                                 ),
                                 const SizedBox(height: 8),
                                 ElevatedButton.icon(
@@ -554,13 +555,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.local_fire_department,
                               label: l.nutrientCalories,
                               value: '${_goal!.calories.toInt()} kcal',
-                              color: Colors.orange,
+                              color: context.colors.warning.base,
                             ),
                           _buildDataRow(
                             icon: Icons.egg_alt,
                             label: l.nutrientProtein,
                             value: '${_goal!.protein.toInt()} g',
-                            color: Colors.red,
+                            color: context.colors.danger.base,
                           ),
                           // Protein-only mode: fat & carbs have no target.
                           if (!_goal!.proteinOnlyEffective) ...[
@@ -568,13 +569,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.grain,
                               label: l.nutrientCarbs,
                               value: '${_goal!.carbs.toInt()} g',
-                              color: Colors.amber,
+                              color: context.colors.highlight.base,
                             ),
                             _buildDataRow(
                               icon: Icons.opacity,
                               label: l.nutrientFat,
                               value: '${_goal!.fat.toInt()} g',
-                              color: Colors.blue,
+                              color: context.colors.info.base,
                             ),
                           ],
                           _buildWaterGoalRow(l),
@@ -626,11 +627,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Center(
                             child: Column(
                               children: [
-                                Icon(Icons.person_outline, size: 48, color: Colors.grey.shade400),
+                                Icon(Icons.person_outline, size: 48, color: context.colors.faint),
                                 const SizedBox(height: 12),
                                 Text(
                                   l.profileDataEmpty,
-                                  style: TextStyle(color: Colors.grey.shade600),
+                                  style: TextStyle(color: context.colors.muted),
                                 ),
                                 const SizedBox(height: 8),
                                 ElevatedButton.icon(
@@ -648,7 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.cake,
                               label: l.birthdate,
                               value: '${_profile!.birthdate!.day}.${_profile!.birthdate!.month}.${_profile!.birthdate!.year} (${l.ageYears(_profile!.age!)})',
-                              color: Colors.purple,
+                              color: context.colors.plum.base,
                             ),
 
                           // Größe
@@ -657,7 +658,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.height,
                               label: l.height,
                               value: '${_profile!.height!.toStringAsFixed(0)} cm',
-                              color: Colors.green,
+                              color: context.colors.success.base,
                             ),
 
                           // Geschlecht
@@ -666,7 +667,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.wc,
                               label: l.gender,
                               value: _profile!.gender!.localizedName(l),
-                              color: Colors.indigo,
+                              color: context.colors.brand.base,
                             ),
 
                           const Divider(height: 24),
@@ -677,7 +678,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.directions_run,
                               label: l.activityLevelLabel,
                               value: _profile!.activityLevel!.localizedName(l),
-                              color: Colors.teal,
+                              color: context.colors.accent.base,
                             ),
 
                           // Gewichtsziel
@@ -686,7 +687,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.flag,
                               label: l.weightGoalLabel,
                               value: _profile!.weightGoal!.localizedName(l),
-                              color: Colors.amber,
+                              color: context.colors.highlight.base,
                             ),
                         ],
                       ],
@@ -701,7 +702,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // =======================================
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.percent, color: Colors.orange),
+                    leading: Icon(Icons.percent, color: context.colors.warning.base),
                     title: Text(l.exerciseCreditTitle),
                     subtitle: Text(l.exerciseCreditSubtitle),
                     trailing: Text(
@@ -709,7 +710,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _exerciseCreditFactor ?? ExerciseCredit.full),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange,
+                            color: context.colors.warning.base,
                           ),
                     ),
                     onTap: () => _editExerciseCredit(l),
@@ -809,11 +810,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Center(
                             child: Column(
                               children: [
-                                Icon(Icons.monitor_weight_outlined, size: 48, color: Colors.grey.shade400),
+                                Icon(Icons.monitor_weight_outlined, size: 48, color: context.colors.faint),
                                 const SizedBox(height: 12),
                                 Text(
                                   l.measurementEmpty,
-                                  style: TextStyle(color: Colors.grey.shade600),
+                                  style: TextStyle(color: context.colors.muted),
                                 ),
                                 const SizedBox(height: 8),
                                 ElevatedButton.icon(
@@ -821,8 +822,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   icon: const Icon(Icons.add),
                                   label: Text(l.addWeight),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.teal,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: context.colors.accent.base,
+                                    foregroundColor: context.colors.accent.on,
                                   ),
                                 ),
                               ],
@@ -834,7 +835,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: Icons.monitor_weight,
                             label: l.weight,
                             value: '${_currentMeasurement!.weight.toStringAsFixed(1)} kg',
-                            color: Colors.blue,
+                            color: context.colors.info.base,
                           ),
 
                           // Körperfett
@@ -843,7 +844,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.science,
                               label: l.bodyFat,
                               value: '${_currentMeasurement!.bodyFatPercentage!.toStringAsFixed(1)} %',
-                              color: Colors.orange,
+                              color: context.colors.warning.base,
                             ),
 
                           // Muskelmasse
@@ -852,7 +853,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.fitness_center,
                               label: l.muscleMass,
                               value: '${_currentMeasurement!.muscleMassKg!.toStringAsFixed(1)} kg',
-                              color: Colors.red,
+                              color: context.colors.danger.base,
                             ),
 
                           // Taillenumfang
@@ -861,7 +862,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.straighten,
                               label: l.waist,
                               value: '${_currentMeasurement!.waistCm!.toStringAsFixed(0)} cm',
-                              color: Colors.deepPurple,
+                              color: context.colors.brand.base,
                             ),
                           
                           // Messdatum
@@ -872,7 +873,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               AppLocalizations.of(context)!.measuredOn(
                                   '${_currentMeasurement!.measuredAt.day}.${_currentMeasurement!.measuredAt.month}.${_currentMeasurement!.measuredAt.year}'),
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
+                                color: context.colors.muted,
                               ),
                             ),
                           ),
@@ -973,17 +974,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Info-Card
                 if (_profile != null && _currentMeasurement != null)
                   Card(
-                    color: Colors.green.shade50,
+                    color: context.colors.success.container,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          Icon(Icons.check_circle, color: Colors.green.shade700),
+                          Icon(Icons.check_circle, color: context.colors.success.strong),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               l.profileInfoText,
-                              style: TextStyle(color: Colors.green.shade900),
+                              style: TextStyle(color: context.colors.success.onContainer),
                             ),
                           ),
                         ],
@@ -1005,8 +1006,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 8),
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.beach_access_outlined,
-                        color: Colors.orange),
+                    leading: Icon(Icons.beach_access_outlined,
+                        color: context.colors.warning.base),
                     title: Text(l.holidaysTitle),
                     subtitle: Text(l.holidaysProfileSubtitle),
                     trailing: const Icon(Icons.chevron_right),
@@ -1025,7 +1026,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Card(
                   child: ListTile(
                     leading:
-                        const Icon(Icons.school_outlined, color: Colors.blue),
+                        Icon(Icons.school_outlined, color: context.colors.info.base),
                     title: Text(l.replayTutorialTitle),
                     subtitle: Text(l.replayTutorialSubtitle),
                     trailing: const Icon(Icons.chevron_right),
@@ -1094,7 +1095,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.exerciseCreditSaveFailed),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.danger.base,
         ),
       );
     }
@@ -1105,7 +1106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(Icons.water_drop, color: Colors.lightBlue, size: 24),
+          Icon(Icons.water_drop, color: context.colors.water.base, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(l.waterTitle,
@@ -1115,7 +1116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             '$_effectiveWaterGoal ml',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.lightBlue,
+              color: context.colors.water.base,
             ),
           ),
           const SizedBox(width: 4),
@@ -1139,7 +1140,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _waterReminderEnabled
                 ? Icons.notifications_active
                 : Icons.notifications_off_outlined,
-            color: _waterReminderEnabled ? Colors.lightBlue : Colors.grey,
+            color: _waterReminderEnabled
+                ? context.colors.water.base
+                : context.colors.subtle,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -1151,14 +1154,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: Theme.of(context).textTheme.bodyLarge),
                 Text(l.waterReminderSubtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                          color: context.colors.muted,
                         )),
               ],
             ),
           ),
           Switch(
             value: _waterReminderEnabled,
-            activeThumbColor: Colors.lightBlue,
+            activeThumbColor: context.colors.water.base,
             onChanged: (value) {
               // Optimistic update: show the new state immediately
               setState(() => _waterReminderEnabled = value);
@@ -1191,7 +1194,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _foodLogReminderEnabled
                 ? Icons.notifications_active
                 : Icons.notifications_off_outlined,
-            color: _foodLogReminderEnabled ? Colors.orange : Colors.grey,
+            color: _foodLogReminderEnabled
+                ? context.colors.warning.base
+                : context.colors.subtle,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -1203,14 +1208,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: Theme.of(context).textTheme.bodyLarge),
                 Text(l.foodLogReminderSubtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                          color: context.colors.muted,
                         )),
               ],
             ),
           ),
           Switch(
             value: _foodLogReminderEnabled,
-            activeThumbColor: Colors.orange,
+            activeThumbColor: context.colors.warning.base,
             onChanged: (value) {
               setState(() => _foodLogReminderEnabled = value);
               FoodLogReminderService.setEnabled(value).then((actual) {
@@ -1245,7 +1250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.water_drop, color: Colors.lightBlue),
+            Icon(Icons.water_drop, color: context.colors.water.base),
             const SizedBox(width: 8),
             Text(l.waterTitle),
           ],
@@ -1396,12 +1401,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            color: Colors.blue,
+            color: context.colors.info.base,
             barWidth: 3,
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.blue.withValues(alpha: 0.2),
+              color: context.colors.info.base.withValues(alpha: 0.2),
             ),
           ),
         ],
@@ -1474,7 +1479,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final measurement = sortedMeasurements[spot.x.toInt()];
                 return LineTooltipItem(
                   '${measurement.weight.toStringAsFixed(1)} kg\n${measurement.measuredAt.day}.${measurement.measuredAt.month}.${measurement.measuredAt.year}',
-                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  TextStyle(
+                      color: context.colors.chartTooltipText,
+                      fontWeight: FontWeight.bold),
                 );
               }).toList();
             },
@@ -1490,14 +1497,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     return Card(
       elevation: isLatest ? 4 : 1,
-      color: isLatest ? Colors.blue.shade50 : null,
+      color: isLatest ? context.colors.info.container : null,
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isLatest ? Colors.blue : Colors.grey.shade400,
+          backgroundColor: isLatest ? context.colors.info.base : context.colors.faint,
           child: Icon(
             Icons.monitor_weight,
-            color: Colors.white,
+            color: context.colors.info.on,
             size: 20,
           ),
         ),
@@ -1515,13 +1522,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.blue,
+                  color: context.colors.info.base,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   l.latestBadge,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.info.on,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1543,7 +1550,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (measurement.muscleMassKg != null)
                     'Muskeln: ${measurement.muscleMassKg!.toStringAsFixed(1)}kg',
                 ].join(' • '),
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: context.colors.muted),
               ),
           ],
         ),
@@ -1569,9 +1576,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               tooltip: l.edit,
             ),
             IconButton(
-              icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+              icon: Icon(Icons.delete, size: 20, color: context.colors.danger.base),
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
+                final colors = context.colors;
                 final lCtx = AppLocalizations.of(context)!;
                 final dateStr = '${measurement.measuredAt.day}.${measurement.measuredAt.month}.${measurement.measuredAt.year}';
                 final confirmed = await showDialog<bool>(
@@ -1588,7 +1596,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(true),
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          style: TextButton.styleFrom(foregroundColor: context.colors.danger.base),
                           child: Text(ld.delete),
                         ),
                       ],
@@ -1608,7 +1616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text(lCtx.measurementDeleted),
-                          backgroundColor: Colors.green,
+                          backgroundColor: colors.success.strong,
                         ),
                       );
                       _loadData();
@@ -1618,7 +1626,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text(lCtx.errorPrefix(e.toString())),
-                          backgroundColor: Colors.red,
+                          backgroundColor: colors.danger.strong,
                         ),
                       );
                     }
@@ -1658,7 +1666,7 @@ class _AccountSectionState extends State<_AccountSection> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l.exportDataError(e.toString())),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.danger.base,
         ));
       }
     } finally {
@@ -1685,7 +1693,7 @@ class _AccountSectionState extends State<_AccountSection> {
                 ld.deleteAccountCredentialsHint,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade600,
+                  color: ctx.colors.muted,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -1698,7 +1706,7 @@ class _AccountSectionState extends State<_AccountSection> {
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: ctx.colors.danger.base),
               child: Text(ld.deleteAccountConfirmButton),
             ),
           ],
@@ -1716,7 +1724,7 @@ class _AccountSectionState extends State<_AccountSection> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l.deleteAccountError(e.toString())),
-          backgroundColor: Colors.red,
+          backgroundColor: context.colors.danger.base,
         ));
       }
     } finally {
@@ -1742,7 +1750,7 @@ class _AccountSectionState extends State<_AccountSection> {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.download_outlined, color: Colors.blue),
+              leading: Icon(Icons.download_outlined, color: context.colors.info.base),
               title: Text(l.exportDataButton),
               subtitle: Text(l.exportDataDescription),
               trailing: _isWorking
@@ -1756,10 +1764,10 @@ class _AccountSectionState extends State<_AccountSection> {
             const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade600),
+              leading: Icon(Icons.delete_forever_outlined, color: context.colors.danger.strong),
               title: Text(
                 l.deleteAccountButton,
-                style: TextStyle(color: Colors.red.shade700),
+                style: TextStyle(color: context.colors.danger.strong),
               ),
               subtitle: Text(l.deleteAccountDescription),
               trailing: const Icon(Icons.chevron_right),
@@ -1774,17 +1782,19 @@ class _AccountSectionState extends State<_AccountSection> {
 
 class _PlanBadge extends StatelessWidget {
   final String label;
-  final Color color;
 
-  const _PlanBadge({required this.label, required this.color});
+  /// The badge's role — its tint and its text colour come from this.
+  final ColorRole role;
+
+  const _PlanBadge({required this.label, required this.role});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        border: Border.all(color: color.withAlpha(160)),
+        color: role.base.withAlpha(30),
+        border: Border.all(color: role.base.withAlpha(160)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -1792,7 +1802,7 @@ class _PlanBadge extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: color == Colors.amber ? Colors.amber.shade800 : Colors.blue.shade700,
+          color: role.onContainer,
         ),
       ),
     );

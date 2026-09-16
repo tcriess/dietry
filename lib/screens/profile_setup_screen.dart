@@ -5,6 +5,7 @@ import '../services/user_profile_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 /// Screen für statische Profildaten (einmalig)
 class ProfileSetupScreen extends StatefulWidget {
@@ -113,7 +114,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.birthdateRequired),
-          backgroundColor: Colors.orange,
+          backgroundColor: context.colors.warning.base,
         ),
       );
       return;
@@ -144,7 +145,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.profileSaved),
-            backgroundColor: Colors.green,
+            backgroundColor: context.colors.success.base,
           ),
         );
 
@@ -156,7 +157,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(lCtx.errorPrefix(e.toString())),
-            backgroundColor: Colors.red,
+            backgroundColor: context.colors.danger.base,
           ),
         );
       }
@@ -193,17 +194,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           children: [
             // Info
             Card(
-              color: Colors.blue.shade50,
+              color: context.colors.info.container,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700),
+                    Icon(Icons.info_outline, color: context.colors.info.strong),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         l.profileInfoText,
-                        style: TextStyle(color: Colors.blue.shade900),
+                        style: TextStyle(color: context.colors.info.onContainer),
                       ),
                     ),
                   ],
@@ -227,7 +228,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ? '${_selectedBirthdate!.day}.${_selectedBirthdate!.month}.${_selectedBirthdate!.year}'
                       : l.birthdateSelect,
                   style: TextStyle(
-                    color: _selectedBirthdate != null ? null : Colors.grey.shade600,
+                    color: _selectedBirthdate != null ? null : context.colors.muted,
                   ),
                 ),
               ),
@@ -238,7 +239,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               Text(
                 l.ageYears(UserProfile(birthdate: _selectedBirthdate).age ?? 0),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
+                  color: context.colors.muted,
                 ),
               ),
             ],
@@ -358,8 +359,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       : const Icon(Icons.check),
                   label: Text(_isSaving ? l.saving : l.save),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                    backgroundColor: context.colors.info.base,
+                    foregroundColor: context.colors.info.on,
                     padding: const EdgeInsets.all(16),
                   ),
                 ),
