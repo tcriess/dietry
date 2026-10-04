@@ -194,6 +194,7 @@ After:
   ☐ .aab downloaded from the cloud release, uploaded to the Play Console
   ☐ ce.dietry.de / cloud.dietry.de serving the new build
   ☐ landing page updated if needed
+  ☐ manual screenshots still match the UI (Appendix shot list in manual.html)
 ```
 
 ---
