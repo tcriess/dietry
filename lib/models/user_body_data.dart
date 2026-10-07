@@ -1,3 +1,5 @@
+import 'tracking_method.dart';
+
 /// Zeitbasierte Körpermessungen (weight, body_fat, etc.)
 /// Veränderlich - kann regelmäßig getrackt werden
 class UserBodyMeasurement {
@@ -247,6 +249,29 @@ extension ActivityLevelExtension on ActivityLevel {
         return 'Sehr aktiv (6-7x/Woche Sport)';
       case ActivityLevel.veryActive:
         return 'Extrem aktiv (2x täglich Training)';
+    }
+  }
+
+  /// Label matching how [method] uses the level.
+  String localizedNameFor(TrackingMethod? method, dynamic l) =>
+      method == TrackingMethod.tdeeHybrid
+          ? localizedDailyName(l)
+          : localizedName(l);
+
+  /// Job/daily-life wording, for when sport is logged separately
+  /// ([TrackingMethod.tdeeHybrid]).
+  String localizedDailyName(dynamic l) {
+    switch (this) {
+      case ActivityLevel.sedentary:
+        return l.activityDailySedentary as String;
+      case ActivityLevel.light:
+        return l.activityDailyLight as String;
+      case ActivityLevel.moderate:
+        return l.activityDailyModerate as String;
+      case ActivityLevel.active:
+        return l.activityDailyActive as String;
+      case ActivityLevel.veryActive:
+        return l.activityDailyVeryActive as String;
     }
   }
 

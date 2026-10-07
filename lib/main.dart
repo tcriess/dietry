@@ -2130,6 +2130,7 @@ enum _HomeMenuAction {
   admin,
   feedback,
   profile,
+  goal,
   gear,
   deleteGuestData,
   signIn,
@@ -2253,6 +2254,16 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
           );
         }
         // Nach Rückkehr: Ziel könnte geändert worden sein → neu laden.
+        _dietryHomeKey.currentState?._loadCurrentGoal();
+        break;
+      case _HomeMenuAction.goal:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                GoalRecommendationScreen(dbService: widget.dbService),
+          ),
+        );
         _dietryHomeKey.currentState?._loadCurrentGoal();
         break;
       case _HomeMenuAction.gear:
@@ -2497,6 +2508,12 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                   PopupMenuItem(
                     value: _HomeMenuAction.profile,
                     child: _menuRow(Icons.person, lm.profileTooltip),
+                  ),
+                // Guests already land on the goal screen via "Profile".
+                if (!widget.isGuestMode && widget.dbService != null)
+                  PopupMenuItem(
+                    value: _HomeMenuAction.goal,
+                    child: _menuRow(Icons.flag, lm.goalCardTitle),
                   ),
                 if (widget.isGuestMode || widget.dbService != null)
                   PopupMenuItem(

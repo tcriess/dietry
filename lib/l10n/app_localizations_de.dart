@@ -182,6 +182,23 @@ class AppLocalizationsDe extends AppLocalizations {
   String get activityLevelVeryActive => 'Extrem aktiv (2x täglich Training)';
 
   @override
+  String get activityDailySedentary => 'Überwiegend sitzend (z. B. Büro)';
+
+  @override
+  String get activityDailyLight => 'Teils stehend oder gehend';
+
+  @override
+  String get activityDailyModerate =>
+      'Viel auf den Beinen (z. B. Pflege, Gastronomie)';
+
+  @override
+  String get activityDailyActive => 'Körperliche Arbeit (z. B. Handwerk)';
+
+  @override
+  String get activityDailyVeryActive =>
+      'Schwere körperliche Arbeit (z. B. Bau)';
+
+  @override
   String get weightGoalLose => 'Abnehmen (0.5 kg/Woche)';
 
   @override
@@ -799,7 +816,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get advancedOptional => 'Erweitert (optional)';
 
   @override
-  String get goalRecTitle => 'Goal-Empfehlung';
+  String get goalRecTitle => 'Ernährungsziel berechnen';
+
+  @override
+  String get recalculateGoal => 'Ziel neu berechnen';
 
   @override
   String get bodyDataTitle => 'Deine Körperdaten';
@@ -943,70 +963,75 @@ class AppLocalizationsDe extends AppLocalizations {
   String get trackingUseMethod => 'Diese Methode verwenden';
 
   @override
-  String get trackingMethodBmrOnlyName => 'BMR + Tracking';
+  String get trackingMethodBmrOnlyName =>
+      'Grundumsatz + jede Bewegung eintragen';
 
   @override
-  String get trackingMethodBmrOnlyShort => 'Alle Aktivitäten tracken';
+  String get trackingMethodBmrOnlyShort =>
+      'Ziel = Grundumsatz, jede Bewegung eintragen';
 
   @override
   String get trackingMethodBmrOnlyDetail =>
-      'Dein Kalorienziel basiert nur auf deinem Grundumsatz (BMR). Du musst ALLE körperlichen Aktivitäten tracken (Gehen, Sport, Hausarbeit). Diese Methode ist am genauesten, erfordert aber konsequentes Tracking.';
+      'Dein Kalorienziel ist nur dein Grundumsatz – was dein Körper in völliger Ruhe verbraucht. Alles darüber musst du als Aktivität eintragen, auch Gehen und Hausarbeit. Stehen, Sitzen oder Verdauen lassen sich kaum eintragen, daher liegt das Ziel meist etwas unter deinem tatsächlichen Bedarf.';
 
   @override
   String get trackingMethodBmrOnlyRecommended =>
-      'Empfohlen für:\n• Maximale Präzision\n• Du trackst gerne alles\n• Sehr variable Aktivität';
+      'Geeignet, wenn:\n• ein Fitness-Tracker deinen ganzen Tagesverbrauch erfasst\n• du bewusst vorsichtig planen willst';
 
   @override
   String get trackingMethodBmrOnlyActivityHint =>
-      'Activity Level wird ignoriert (immer = 1.0)';
+      'Wird bei dieser Methode nicht verwendet – deine Bewegung kommt aus den eingetragenen Aktivitäten.';
 
   @override
   String get trackingMethodBmrOnlyTrackingGuideline =>
-      '✅ Tracken: ALLE Aktivitäten\n• Gehen (>10 Min)\n• Sport (Gym, Laufen, etc.)\n• Hausarbeit (Putzen, Gartenarbeit)\n• Treppen steigen (>5 Etagen)';
+      '✅ Eintragen: jede Bewegung\n• Spaziergänge und Wege zu Fuß\n• Sport\n• Haus- und Gartenarbeit\n\nAm einfachsten mit einem Fitness-Tracker über Health Connect.';
 
   @override
-  String get trackingMethodTdeeCompleteName => 'TDEE komplett';
+  String get trackingMethodTdeeCompleteName => 'Alles inklusive';
 
   @override
-  String get trackingMethodTdeeCompleteShort => 'Kaum Tracking nötig';
+  String get trackingMethodTdeeCompleteShort =>
+      'Alltag und Sport sind eingerechnet';
 
   @override
   String get trackingMethodTdeeCompleteDetail =>
-      'Dein Kalorienziel basiert auf deinem Gesamtumsatz (TDEE) inkl. deinem Aktivitätslevel. Deine täglichen Aktivitäten sind bereits eingerechnet. Du musst nur außergewöhnliche Aktivitäten tracken (z.B. 2h Wandern, Marathon). Ideal bei konstanter Routine.';
+      'Dein Kalorienziel ist dein geschätzter Gesamtverbrauch: Grundumsatz × Aktivitätslevel. Wähle das Level nach einer typischen Woche, inklusive Sport. Normales Training trägst du nicht ein, sonst zählt es doppelt – nur Ausnahmen wie eine Ganztagswanderung.';
 
   @override
   String get trackingMethodTdeeCompleteRecommended =>
-      'Empfohlen für:\n• Wenig Tracking-Aufwand\n• Konstante tägliche Routine\n• Regelmäßiger Sport (gleiche Menge)';
+      'Geeignet, wenn:\n• deine Wochen ähnlich ablaufen\n• du möglichst wenig eintragen willst';
 
   @override
   String get trackingMethodTdeeCompleteActivityHint =>
-      'Wähle dein Activity Level basierend auf GESAMTER täglicher Aktivität (inkl. Sport)';
+      'Deine gesamte Bewegung in einer typischen Woche, Sport eingeschlossen.';
 
   @override
   String get trackingMethodTdeeCompleteTrackingGuideline =>
-      '✅ Tracken: Nur außergewöhnliche Aktivitäten\n• Marathon / Halbmarathon\n• Ganztags-Wanderung\n• Extra lange Trainingseinheiten (>2h)\n\n❌ NICHT tracken: Normale tägliche Aktivitäten\n• Reguläres Training\n• Alltags-Bewegung';
+      '✅ Eintragen: nur Ausnahmen\n• Ganztägige Wanderung oder Radtour\n• Wettkampf, Marathon\n\n❌ Nicht eintragen: normales Training und Alltagsbewegung – beides steckt schon im Ziel.';
 
   @override
-  String get trackingMethodTdeeHybridName => 'TDEE + Sport-Tracking';
+  String get trackingMethodTdeeHybridName =>
+      'Alltag inklusive + Sport eintragen';
 
   @override
-  String get trackingMethodTdeeHybridShort => 'Nur Sport tracken';
+  String get trackingMethodTdeeHybridShort =>
+      'Alltag ist eingerechnet, Sport trägst du ein';
 
   @override
   String get trackingMethodTdeeHybridDetail =>
-      'Dein Kalorienziel basiert auf deinem Gesamtumsatz (TDEE) nur für den Alltag. Wähle dein Activity Level basierend auf deiner täglichen Arbeit (z.B. Bürojob = sedentary). Alle sportlichen Aktivitäten (Gym, Laufen, etc.) trackst du separat. Ideal bei variabler Sport-Routine.';
+      'Dein Kalorienziel ist dein Verbrauch im Alltag ohne Sport: Grundumsatz × Aktivitätslevel. Wähle das Level nur nach Job und Alltag. Jedes Training trägst du als Aktivität ein; es erhöht dein Budget an diesem Tag.';
 
   @override
   String get trackingMethodTdeeHybridRecommended =>
-      'Empfohlen für:\n• Balance zwischen Genauigkeit und Aufwand\n• Variable Sport-Routine\n• Klare Trennung Alltag/Sport';
+      'Geeignet, wenn:\n• du unregelmäßig Sport machst\n• du Training sowieso aufzeichnest (z. B. Smartwatch)';
 
   @override
   String get trackingMethodTdeeHybridActivityHint =>
-      'Wähle dein Activity Level NUR basierend auf deiner täglichen Arbeit (ohne Sport)';
+      'Nur Job und Alltag – Sport nicht mitzählen, den trägst du separat ein.';
 
   @override
   String get trackingMethodTdeeHybridTrackingGuideline =>
-      '✅ Tracken: Alle sportlichen Aktivitäten\n• Gym / Krafttraining\n• Laufen / Joggen\n• Radfahren\n• Schwimmen\n• Sport-Kurse\n\n❌ NICHT tracken: Alltags-Bewegung\n• Arbeitsweg\n• Einkaufen\n• Normale Hausarbeit';
+      '✅ Eintragen: jedes Training\n• Krafttraining, Laufen, Radfahren, Schwimmen\n• Sportkurse\n\n❌ Nicht eintragen: Alltagsbewegung wie Arbeitsweg, Einkaufen, Hausarbeit – die steckt im Aktivitätslevel.';
 
   @override
   String get appSubtitle => 'Dein persönliches Ernährungstagebuch';
@@ -1371,6 +1396,14 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get waterGoalFieldHint =>
       'Empfehlung: ca. 25 ml pro kg Körpergewicht (nur Getränke)';
+
+  @override
+  String waterGoalRecommended(int amount) {
+    return 'Empfehlung: $amount ml (nur Getränke)';
+  }
+
+  @override
+  String get useRecommendation => 'Empfehlung übernehmen';
 
   @override
   String get waterReminderTitle => 'Trink-Erinnerungen';

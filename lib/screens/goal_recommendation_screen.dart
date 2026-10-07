@@ -61,6 +61,9 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   /// and omits nulls, so it is safe either way.)
   double? _exerciseCreditFactor;
 
+  TrackingMethod get _effectiveMethod =>
+      _macroOnly ? TrackingMethod.tdeeComplete : _trackingMethod;
+
   @override
   void initState() {
     super.initState();
@@ -113,8 +116,15 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
             _weightController.text = measurement.weight.toStringAsFixed(1);
           }
           _bodyFatPercentage = measurement?.bodyFatPercentage ?? recentBodyFat;
-          if (currentGoal != null && currentGoal.waterGoalCustom) {
-            _customWaterMl = currentGoal.waterGoalMl;
+          if (currentGoal != null) {
+            if (currentGoal.trackingMethod != null) {
+              _trackingMethod = currentGoal.trackingMethod!;
+            }
+            _macroOnly = currentGoal.macroOnly;
+            _proteinOnly = currentGoal.proteinOnly;
+            if (currentGoal.waterGoalCustom) {
+              _customWaterMl = currentGoal.waterGoalMl;
+            }
           }
         });
       }
@@ -170,7 +180,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         bodyFatPercentage: _bodyFatPercentage,
       );
 
-      final method = _macroOnly ? TrackingMethod.tdeeComplete : _trackingMethod;
+      final method = _effectiveMethod;
       final recommendation = NutritionCalculator.calculateMacros(bodyData, method: method);
       final autoWater = NutritionCalculator.calculateWaterGoal(bodyData.weight);
 
@@ -544,37 +554,6 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
 
               const SizedBox(height: 24),
 
-              // Aktivitätslevel
-              Text(
-                l.activitySectionTitle,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField<ActivityLevel>(
-                initialValue: _activityLevel,
-                decoration: InputDecoration(
-                  labelText: l.activityRecLabel,
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.directions_run),
-                ),
-                items: ActivityLevel.values.map((level) {
-                  return DropdownMenuItem(
-                    value: level,
-                    child: Text(level.localizedName(l)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _activityLevel = value;
-                    });
-                  }
-                },
-              ),
-
-              const SizedBox(height: 24),
-
               // Gewichtsziel
               Text(
                 l.goalSectionTitle,
@@ -641,15 +620,21 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<TrackingMethod>(
                   initialValue: _trackingMethod,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: l.trackingMethodRecLabel,
+                    helperText: _trackingMethod.localizedDetailedDescription(l),
+                    helperMaxLines: 8,
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.track_changes),
                   ),
                   items: TrackingMethod.values.map((method) {
                     return DropdownMenuItem(
                       value: method,
-                      child: Text(method.localizedName(l)),
+                      child: Text(
+                        method.localizedName(l),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -657,6 +642,44 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
                   },
                 ),
               ],
+
+              const SizedBox(height: 24),
+
+              // Aktivitätslevel — wording and meaning depend on the method
+              Text(
+                l.activitySectionTitle,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<ActivityLevel>(
+                initialValue: _activityLevel,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l.activityRecLabel,
+                  helperText: _effectiveMethod.localizedActivityLevelHint(l),
+                  helperMaxLines: 3,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.directions_run),
+                ),
+                items: ActivityLevel.values.map((level) {
+                  return DropdownMenuItem(
+                    value: level,
+                    child: Text(
+                      level.localizedNameFor(_effectiveMethod, l),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                // Ignored by the resting-rate method.
+                onChanged: _effectiveMethod == TrackingMethod.bmrOnly
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _activityLevel = value);
+                        }
+                      },
+              ),
 
               // Empfehlung anzeigen
               if (_recommendation != null) ...[
@@ -924,9 +947,19 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: l.waterGoalFieldLabel,
-                helperText: l.waterGoalFieldHint,
+                helperText: l.waterGoalRecommended(_autoWaterMl),
                 suffixText: 'ml',
                 border: const OutlineInputBorder(),
+                suffixIcon: _waterGoalMl == _autoWaterMl
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.restart_alt),
+                        tooltip: l.useRecommendation,
+                        onPressed: () => setState(() {
+                          _waterGoalMl = _autoWaterMl;
+                          _waterGoalController.text = '$_autoWaterMl';
+                        }),
+                      ),
               ),
               onChanged: (v) {
                 final parsed = int.tryParse(v);

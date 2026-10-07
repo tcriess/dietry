@@ -182,6 +182,23 @@ class AppLocalizationsEs extends AppLocalizations {
   String get activityLevelVeryActive => 'Muy activo (entrenamiento 2x diario)';
 
   @override
+  String get activityDailySedentary => 'Mayormente sentado (p. ej. oficina)';
+
+  @override
+  String get activityDailyLight => 'En parte de pie o caminando';
+
+  @override
+  String get activityDailyModerate =>
+      'Mucho tiempo de pie (p. ej. enfermería, hostelería)';
+
+  @override
+  String get activityDailyActive => 'Trabajo físico (p. ej. oficios)';
+
+  @override
+  String get activityDailyVeryActive =>
+      'Trabajo físico pesado (p. ej. construcción)';
+
+  @override
   String get weightGoalLose => 'Perder Peso (0.5 kg/semana)';
 
   @override
@@ -801,7 +818,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get advancedOptional => 'Avanzado (opcional)';
 
   @override
-  String get goalRecTitle => 'Recomendación de Objetivo';
+  String get goalRecTitle => 'Calcular objetivo nutricional';
+
+  @override
+  String get recalculateGoal => 'Recalcular objetivo';
 
   @override
   String get bodyDataTitle => 'Tus Datos Corporales';
@@ -946,73 +966,74 @@ class AppLocalizationsEs extends AppLocalizations {
   String get trackingUseMethod => 'Usar Este Método';
 
   @override
-  String get trackingMethodBmrOnlyName => 'BMR + Seguimiento';
+  String get trackingMethodBmrOnlyName => 'Metabolismo basal + registrar todo';
 
   @override
   String get trackingMethodBmrOnlyShort =>
-      'Haz seguimiento de todas las actividades';
+      'Objetivo = metabolismo basal, registra todo movimiento';
 
   @override
   String get trackingMethodBmrOnlyDetail =>
-      'Tu objetivo de calorías se basa únicamente en tu Tasa Metabólica Basal (BMR). Debes hacer seguimiento de TODAS las actividades físicas (caminar, ejercicio, tareas del hogar). Este método es el más preciso pero requiere seguimiento consistente.';
+      'Tu objetivo de calorías es solo tu metabolismo basal: lo que tu cuerpo gasta en reposo total. Todo lo demás debes registrarlo como actividad, incluso caminar y las tareas domésticas. Estar de pie, sentado o la digestión apenas se pueden registrar, así que el objetivo suele quedar algo por debajo de lo que realmente necesitas.';
 
   @override
   String get trackingMethodBmrOnlyRecommended =>
-      'Recomendado para:\n• Máxima precisión\n• Te gusta hacer seguimiento de todo\n• Niveles de actividad muy variables';
+      'Adecuado si:\n• un monitor de actividad registra todo tu día\n• quieres planificar de forma conservadora';
 
   @override
   String get trackingMethodBmrOnlyActivityHint =>
-      'El Nivel de Actividad se ignora (siempre = 1.0)';
+      'No se usa con este método: tu movimiento proviene de las actividades que registras.';
 
   @override
   String get trackingMethodBmrOnlyTrackingGuideline =>
-      '✅ Hacer seguimiento: TODAS las actividades\n• Caminar (>10 min)\n• Ejercicio (gym, correr, etc.)\n• Tareas del hogar (limpiar, jardinería)\n• Subir escaleras (>5 pisos)';
+      '✅ Registra: todo movimiento\n• Paseos y trayectos a pie\n• Deporte\n• Tareas domésticas y jardinería\n\nLo más fácil es con un monitor de actividad vía Health Connect.';
 
   @override
-  String get trackingMethodTdeeCompleteName => 'TDEE Completo';
+  String get trackingMethodTdeeCompleteName => 'Todo incluido';
 
   @override
   String get trackingMethodTdeeCompleteShort =>
-      'Se necesita seguimiento mínimo';
+      'Vida diaria y deporte incluidos';
 
   @override
   String get trackingMethodTdeeCompleteDetail =>
-      'Tu objetivo de calorías se basa en tu Gasto Energético Total Diario (TDEE) incluyendo tu nivel de actividad. Tus actividades diarias ya están contabilizadas. Solo necesitas hacer seguimiento de actividades excepcionales (p.ej., caminata de 2 horas, maratón). Ideal para rutinas consistentes.';
+      'Tu objetivo de calorías es tu gasto total estimado: metabolismo basal × nivel de actividad. Elige el nivel según una semana típica, deporte incluido. No registres tu entrenamiento habitual o contará dos veces; solo excepciones como una excursión de todo el día.';
 
   @override
   String get trackingMethodTdeeCompleteRecommended =>
-      'Recomendado para:\n• Esfuerzo de seguimiento mínimo\n• Rutina diaria consistente\n• Ejercicio regular (misma cantidad)';
+      'Adecuado si:\n• tus semanas son parecidas\n• quieres registrar lo menos posible';
 
   @override
   String get trackingMethodTdeeCompleteActivityHint =>
-      'Elige tu Nivel de Actividad basado en la actividad diaria TOTAL (incluyendo ejercicio)';
+      'Todo tu movimiento en una semana típica, deporte incluido.';
 
   @override
   String get trackingMethodTdeeCompleteTrackingGuideline =>
-      '✅ Hacer seguimiento: Solo actividades excepcionales\n• Maratón / Media maratón\n• Caminata de todo el día\n• Sesiones de entrenamiento extra largas (>2h)\n\n❌ NO hacer seguimiento: Actividades diarias normales\n• Entrenamiento regular\n• Movimiento diario';
+      '✅ Registra: solo excepciones\n• Excursión o ruta en bici de todo el día\n• Competición, maratón\n\n❌ No registres: entrenamiento habitual ni movimiento diario; ambos ya están en el objetivo.';
 
   @override
-  String get trackingMethodTdeeHybridName => 'TDEE + Seguimiento de Deportes';
+  String get trackingMethodTdeeHybridName =>
+      'Vida diaria incluida + registrar deporte';
 
   @override
   String get trackingMethodTdeeHybridShort =>
-      'Solo haz seguimiento de deportes';
+      'La vida diaria está incluida, registras el deporte';
 
   @override
   String get trackingMethodTdeeHybridDetail =>
-      'Tu objetivo de calorías se basa en tu Gasto Energético Total Diario (TDEE) solo para la vida diaria. Elige tu Nivel de Actividad basado en tu trabajo diario (p.ej., trabajo de escritorio = sedentario). Haz seguimiento de todas las actividades de ejercicio (gym, correr, etc.) por separado. Ideal para rutinas de ejercicio variables.';
+      'Tu objetivo de calorías es tu gasto en la vida diaria sin deporte: metabolismo basal × nivel de actividad. Elige el nivel solo según tu trabajo y tu rutina. Registra cada entrenamiento como actividad; aumenta tu presupuesto de ese día.';
 
   @override
   String get trackingMethodTdeeHybridRecommended =>
-      'Recomendado para:\n• Balance entre precisión y esfuerzo\n• Rutina de ejercicio variable\n• Separación clara entre diario y ejercicio';
+      'Adecuado si:\n• tu entrenamiento varía de una semana a otra\n• ya registras tus entrenamientos (p. ej. reloj inteligente)';
 
   @override
   String get trackingMethodTdeeHybridActivityHint =>
-      'Elige tu Nivel de Actividad SOLO basado en tu trabajo diario (sin ejercicio)';
+      'Solo trabajo y rutina diaria: no cuentes el deporte, lo registras aparte.';
 
   @override
   String get trackingMethodTdeeHybridTrackingGuideline =>
-      '✅ Hacer seguimiento: Todas las actividades de ejercicio\n• Gym / Entrenamiento de fuerza\n• Correr / Trotar\n• Ciclismo\n• Natación\n• Clases de deportes\n\n❌ NO hacer seguimiento: Movimiento diario\n• Viaje al trabajo\n• Compras\n• Tareas del hogar normales';
+      '✅ Registra: cada entrenamiento\n• Fuerza, correr, ciclismo, natación\n• Clases deportivas\n\n❌ No registres: movimiento diario como ir al trabajo, compras o tareas domésticas; eso está en el nivel de actividad.';
 
   @override
   String get appSubtitle => 'Tu diario de nutrición personal';
@@ -1379,6 +1400,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get waterGoalFieldHint =>
       'Recomendación: aprox. 25 ml por kg de peso corporal (solo bebidas)';
+
+  @override
+  String waterGoalRecommended(int amount) {
+    return 'Recomendado: $amount ml (solo bebidas)';
+  }
+
+  @override
+  String get useRecommendation => 'Usar recomendación';
 
   @override
   String get waterReminderTitle => 'Recordatorios de agua';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/user_body_data.dart';
+import '../models/tracking_method.dart';
 import '../services/user_profile_service.dart';
 import '../services/neon_database_service.dart';
 import '../services/nutrition_goal_service.dart';
@@ -12,10 +13,14 @@ class ProfileSetupScreen extends StatefulWidget {
   final NeonDatabaseService dbService;
   final UserProfile? existingProfile;
 
+  /// Method of the current goal; decides how activity levels are worded.
+  final TrackingMethod? trackingMethod;
+
   const ProfileSetupScreen({
     super.key,
     required this.dbService,
     this.existingProfile,
+    this.trackingMethod,
   });
 
   @override
@@ -301,12 +306,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               initialValue: _selectedActivityLevel,
               decoration: InputDecoration(
                 labelText: l.activityLevelFieldLabel,
+                helperText: widget.trackingMethod?.localizedActivityLevelHint(l),
+                helperMaxLines: 3,
                 border: const OutlineInputBorder(),
               ),
               items: ActivityLevel.values.map((level) {
                 return DropdownMenuItem(
                   value: level,
-                  child: Text(level.localizedName(l)),
+                  child: Text(level.localizedNameFor(widget.trackingMethod, l)),
                 );
               }).toList(),
               onChanged: (value) {

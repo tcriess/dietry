@@ -301,6 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => ProfileSetupScreen(
+          trackingMethod: _goal?.trackingMethod,
           dbService: widget.dbService,
           existingProfile: _profile,
         ),
@@ -583,6 +584,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildWaterReminderRow(l),
                           if (FoodLogReminderService.isSupported)
                             _buildFoodLogReminderRow(l),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.tonalIcon(
+                              onPressed: _openGoalRecommendation,
+                              icon: const Icon(Icons.calculate),
+                              label: Text(l.recalculateGoal),
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -677,7 +687,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildDataRow(
                               icon: Icons.directions_run,
                               label: l.activityLevelLabel,
-                              value: _profile!.activityLevel!.localizedName(l),
+                              value: _profile!.activityLevel!
+                                  .localizedNameFor(_goal?.trackingMethod, l),
                               color: context.colors.accent.base,
                             ),
 
@@ -1053,14 +1064,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Displayed water goal — matches overview fallback exactly.
   int get _effectiveWaterGoal => _goal?.waterGoalMl ?? 2000;
 
+  int? get _waterRecommendation => _currentMeasurement == null
+      ? null
+      : NutritionCalculator.calculateWaterGoal(_currentMeasurement!.weight);
+
   // Smarter suggestion for the edit dialog pre-fill.
-  int get _waterGoalSuggestion {
-    if (_goal?.waterGoalMl != null) return _goal!.waterGoalMl!;
-    if (_currentMeasurement != null) {
-      return NutritionCalculator.calculateWaterGoal(_currentMeasurement!.weight);
-    }
-    return 2000;
-  }
+  int get _waterGoalSuggestion =>
+      _goal?.waterGoalMl ?? _waterRecommendation ?? 2000;
 
   /// Edits the profile-level default. Individual days and single activities
   /// may still override it — this is only the value they fall back on.
@@ -1235,6 +1245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _editWaterGoal(AppLocalizations l) async {
+    final recommendation = _waterRecommendation;
     final controller =
         TextEditingController(text: _waterGoalSuggestion.toString());
     // Applies on close — see [EditOnClose]. A goal of zero or less is not
@@ -1260,18 +1271,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: l.waterGoalFieldLabel,
-            helperText: l.waterGoalFieldHint,
+            helperText: recommendation != null
+                ? l.waterGoalRecommended(recommendation)
+                : l.waterGoalFieldHint,
             suffixText: 'ml',
             border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
-        actions: const [EditDoneButton()],
+        actions: [
+          if (recommendation != null)
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(recommendation),
+              child: Text(l.useRecommendation),
+            ),
+          const EditDoneButton(),
+        ],
         ),
       ),
     );
 
     if (newValue == null || !mounted) return;
+    // Only a value off the recommendation is custom; closing unchanged saves nothing.
+    final custom = newValue != recommendation;
+    if (newValue == _goal?.waterGoalMl &&
+        custom == (_goal?.waterGoalCustom ?? false)) {
+      return;
+    }
 
     final updatedGoal = NutritionGoal(
       id: _goal?.id,
@@ -1283,7 +1309,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       validFrom: _goal?.validFrom,
       trackingMethod: _goal?.trackingMethod,
       waterGoalMl: newValue,
-      waterGoalCustom: true,
+      waterGoalCustom: custom,
       macroOnly: _goal?.macroOnly ?? false,
       proteinOnly: _goal?.proteinOnly ?? false,
     );
