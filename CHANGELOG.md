@@ -27,6 +27,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.9.0] — 2026-10-07
+
+### Added
+- **Goals you can actually reach**: the summary now treats calories as a limit
+  and protein and water as targets. The calorie bar turns red once you are over
+  budget; protein and water show "goal reached" in green, and going over them is
+  fine.
+- **Body fat counts**: with a body fat reading from the last 60 days, your
+  calories are calculated from your lean mass, and protein is based on lean mass
+  instead of total weight.
+- **Your own water goal stays**: a water goal you set by hand is no longer
+  overwritten when a new weight recalculates your goals. "Use recommendation"
+  switches it back to the calculated value.
+- **"Calculate nutrition goal"** (formerly "Goal Recommendation") is now in the
+  main menu and behind a "Recalculate goal" button on the goal card in your
+  profile.
+
+### Changed
+- **Realistic protein and water targets**: protein is now 1.2 g/kg to maintain,
+  1.5 to lose and 1.6 to gain (was 2 g/kg), based on at most your weight at
+  BMI 25. Water is 25 ml/kg from drinks only, 1.5–2.5 l (was 35 ml/kg, which
+  counted the water in food too). New targets apply at your next weigh-in or
+  recalculation.
+- **Tracking methods explained plainly**, with new names: "Daily life included
+  + log workouts", "All inclusive" and "Resting rate + log all movement". You
+  pick the method first, and the activity level follows it.
+
+### Fixed
+- **Sport counted twice**: activity levels were described by how often you
+  train, even with the method where workouts are logged separately. With that
+  method they now describe your job and daily routine.
+- The goal screen always started on the default tracking method and switched
+  macro-only mode off, so recalculating there silently changed your method.
+- Changing the water goal in the profile switched macro-only and protein-only
+  mode off.
+
+### Self-hosting
+- Run migration **V11** (`water_goal_custom` on `nutrition_goals`) before
+  updating the app; older app versions keep working with it.
+
+---
+
 ## [1.8.1] — 2026-10-04
 
 ### Changed
