@@ -1359,7 +1359,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get waterGoalFieldHint =>
-      'Recommended: approx. 35 ml per kg body weight';
+      'Recommended: approx. 25 ml per kg body weight (drinks only)';
 
   @override
   String get waterReminderTitle => 'Drink reminders';

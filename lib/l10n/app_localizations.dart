@@ -2564,7 +2564,7 @@ abstract class AppLocalizations {
   /// No description provided for @waterGoalFieldHint.
   ///
   /// In de, this message translates to:
-  /// **'Empfehlung: ca. 35 ml pro kg Körpergewicht'**
+  /// **'Empfehlung: ca. 25 ml pro kg Körpergewicht (nur Getränke)'**
   String get waterGoalFieldHint;
 
   /// No description provided for @waterReminderTitle.

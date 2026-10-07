@@ -611,7 +611,7 @@
   "devBannerText": "⚠️ Preview build · Development database · Data is not permanently stored",
   "guestModeBannerText": "👤 Guest mode · Data stored locally · Sign in to sync",
   "waterGoalFieldLabel": "Water goal",
-  "waterGoalFieldHint": "Recommended: approx. 35 ml per kg body weight",
+  "waterGoalFieldHint": "Recommended: approx. 25 ml per kg body weight (drinks only)",
   "waterReminderTitle": "Drink reminders",
   "waterReminderSubtitle": "Remind to drink water every 4 hours",
   "foodLogReminderTitle": "Meal log reminder",

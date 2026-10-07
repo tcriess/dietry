@@ -628,7 +628,7 @@
   "devBannerText": "⚠️ Vorab-Version · Entwicklungsdatenbank · Daten werden nicht dauerhaft gespeichert",
   "guestModeBannerText": "👤 Gastmodus · Daten werden lokal gespeichert · Melde dich an, um zu synchronisieren",
   "waterGoalFieldLabel": "Wasserziel",
-  "waterGoalFieldHint": "Empfehlung: ca. 35 ml pro kg Körpergewicht",
+  "waterGoalFieldHint": "Empfehlung: ca. 25 ml pro kg Körpergewicht (nur Getränke)",
   "waterReminderTitle": "Trink-Erinnerungen",
   "waterReminderSubtitle": "Alle 4 Stunden an Wasser trinken erinnern",
   "foodLogReminderTitle": "Essens-Erinnerung",

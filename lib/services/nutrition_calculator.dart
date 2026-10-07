@@ -77,7 +77,7 @@ class NutritionCalculator {
   /// Berechnet Makronährstoff-Empfehlungen
   /// 
   /// Standard-Verteilung:
-  /// - Protein: 2g/kg Körpergewicht (wichtig für Muskelerhalt)
+  /// - Protein: 1.2–1.6 g/kg Referenzgewicht (siehe [proteinPerKg])
   /// - Fett: 25-30% der Kalorien
   /// - Kohlenhydrate: Rest
   static MacroRecommendation calculateMacros(
@@ -88,8 +88,8 @@ class NutritionCalculator {
     final tdee = calculateTDEE(data);
     final targetCalories = calculateTargetCalories(data, method: method);
     
-    // Protein: 2g pro kg Körpergewicht
-    final protein = data.weight * 2.0;
+    final protein = proteinReferenceWeight(data.weight, data.height) *
+        proteinPerKg(data.weightGoal);
     
     // Fett: 25% der Kalorien (1g Fett = 9 kcal)
     final fatCalories = targetCalories * 0.25;
@@ -111,10 +111,30 @@ class NutritionCalculator {
     );
   }
 
-  /// Berechnet die empfohlene Wassermenge in ml (35 ml/kg, gerundet auf 250 ml)
+  /// Protein g/kg: 1.2 halten, 1.5 abnehmen (Muskelerhalt), 1.6 Muskelaufbau.
+  static double proteinPerKg(WeightGoal goal) {
+    switch (goal) {
+      case WeightGoal.lose:
+        return 1.5;
+      case WeightGoal.maintain:
+        return 1.2;
+      case WeightGoal.gain:
+        return 1.6;
+    }
+  }
+
+  /// Gewicht, höchstens beim BMI 25 — Fettmasse braucht kein Protein.
+  static double proteinReferenceWeight(double weightKg, double heightCm) {
+    final h = heightCm / 100;
+    final bmi25Weight = 25 * h * h;
+    return weightKg < bmi25Weight ? weightKg : bmi25Weight;
+  }
+
+  /// Trinkmenge in ml (25 ml/kg, 1500–2500, gerundet auf 250 ml).
+  /// Nur Getränke — Wasser aus fester Nahrung wird nicht erfasst.
   static int calculateWaterGoal(double weightKg) {
-    final raw = weightKg * 35;
-    final clamped = raw.clamp(1500, 3500);
+    final raw = weightKg * 25;
+    final clamped = raw.clamp(1500, 2500);
     return ((clamped / 250).round() * 250).toInt();
   }
 

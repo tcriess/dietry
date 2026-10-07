@@ -611,7 +611,7 @@
   "devBannerText": "⚠️ Versión preliminar · Base de datos de desarrollo · Los datos no se guardan permanentemente",
   "guestModeBannerText": "👤 Modo invitado · Datos almacenados localmente · Inicia sesión para sincronizar",
   "waterGoalFieldLabel": "Objetivo de agua",
-  "waterGoalFieldHint": "Recomendación: aprox. 35 ml por kg de peso corporal",
+  "waterGoalFieldHint": "Recomendación: aprox. 25 ml por kg de peso corporal (solo bebidas)",
   "waterReminderTitle": "Recordatorios de agua",
   "waterReminderSubtitle": "Recordar beber agua cada 4 horas",
   "foodLogReminderTitle": "Recordatorio de comidas",
