@@ -1283,6 +1283,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       validFrom: _goal?.validFrom,
       trackingMethod: _goal?.trackingMethod,
       waterGoalMl: newValue,
+      waterGoalCustom: true,
+      macroOnly: _goal?.macroOnly ?? false,
+      proteinOnly: _goal?.proteinOnly ?? false,
     );
 
     try {

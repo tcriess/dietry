@@ -39,6 +39,11 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   
   MacroRecommendation? _recommendation;
   int _waterGoalMl = 2000;
+  int _autoWaterMl = 2000;
+
+  /// Hand-set water goal of the current goal, kept across recalculation.
+  int? _customWaterMl;
+  double? _bodyFatPercentage;
   final _waterGoalController = TextEditingController(text: '2000');
   final _scrollController = ScrollController();
   bool _isCalculating = false;
@@ -66,6 +71,8 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
     try {
       UserProfile? profile;
       UserBodyMeasurement? measurement;
+      NutritionGoal? currentGoal;
+      double? recentBodyFat;
 
       if (widget.dbService != null) {
         // Remote mode: load from server
@@ -75,14 +82,20 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         final results = await Future.wait([
           profileService.getCurrentProfile(),
           measurementService.getCurrentMeasurement(),
+          NutritionGoalService(widget.dbService!).getCurrentGoal(),
+          measurementService.getRecentBodyFat(),
         ]);
 
         profile = results[0] as UserProfile?;
         measurement = results[1] as UserBodyMeasurement?;
+        currentGoal = results[2] as NutritionGoal?;
+        recentBodyFat = results[3] as double?;
       } else {
         // Guest mode: load from local database
         profile = await LocalDataService.instance.getUserProfile();
         measurement = await LocalDataService.instance.getCurrentMeasurement();
+        currentGoal =
+            await LocalDataService.instance.getGoalForDate(DateTime.now());
       }
 
       if (mounted) {
@@ -98,6 +111,10 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
           }
           if (measurement != null) {
             _weightController.text = measurement.weight.toStringAsFixed(1);
+          }
+          _bodyFatPercentage = measurement?.bodyFatPercentage ?? recentBodyFat;
+          if (currentGoal != null && currentGoal.waterGoalCustom) {
+            _customWaterMl = currentGoal.waterGoalMl;
           }
         });
       }
@@ -150,6 +167,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         age: _ageFromBirthdate()!,
         activityLevel: _activityLevel,
         weightGoal: _weightGoal,
+        bodyFatPercentage: _bodyFatPercentage,
       );
 
       final method = _macroOnly ? TrackingMethod.tdeeComplete : _trackingMethod;
@@ -160,8 +178,9 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         _isCalculating = false;
         _recommendation = recommendation;
         _currentBodyData = bodyData;
-        _waterGoalMl = autoWater;
-        _waterGoalController.text = autoWater.toString();
+        _autoWaterMl = autoWater;
+        _waterGoalMl = _customWaterMl ?? autoWater;
+        _waterGoalController.text = _waterGoalMl.toString();
       });
 
       appLogger.i('✅ Empfehlung berechnet: ${recommendation.calories.toInt()} kcal (${method.displayName})');
@@ -225,6 +244,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         carbs: baseGoal.carbs,
         trackingMethod: baseGoal.trackingMethod,
         waterGoalMl: _waterGoalMl,
+        waterGoalCustom: _waterGoalMl != _autoWaterMl,
         macroOnly: _macroOnly,
         proteinOnly: _macroOnly && _proteinOnly,
       );

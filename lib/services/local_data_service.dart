@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 11;  // Version 11: exercise credit factors
+  static const int _version = 12;  // Version 12: custom water goal flag
 
   Database? _db;
   bool _initialized = false;
@@ -153,6 +153,7 @@ class LocalDataService {
           protein_only INTEGER NOT NULL DEFAULT 0,
           tracking_method TEXT,
           water_goal_ml INTEGER,
+          water_goal_custom INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -599,6 +600,17 @@ class LocalDataService {
       }
       appLogger.i('✅ Migration 10→11 complete (exercise credit factors)');
     }
+
+    if (oldVersion < 12) {
+      // Mirrors sql/migrations/V11.
+      try {
+        await db.execute(
+            'ALTER TABLE nutrition_goals ADD COLUMN water_goal_custom INTEGER NOT NULL DEFAULT 0');
+        appLogger.d('✅ Added water_goal_custom column to nutrition_goals');
+      } catch (e) {
+        appLogger.d('ℹ️ water_goal_custom column already exists: $e');
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -714,6 +726,7 @@ class LocalDataService {
       final json = Map<String, dynamic>.from(results.first);
       json['macro_only'] = (json['macro_only'] as int? ?? 0) != 0;
       json['protein_only'] = (json['protein_only'] as int? ?? 0) != 0;
+      json['water_goal_custom'] = (json['water_goal_custom'] as int? ?? 0) != 0;
       return NutritionGoal.fromJson(json);
     } catch (e) {
       appLogger.e('❌ Error fetching nutrition goal: $e');
@@ -767,6 +780,7 @@ class LocalDataService {
         'protein_only': goal.proteinOnly ? 1 : 0,
         'tracking_method': goal.trackingMethod?.name,
         'water_goal_ml': goal.waterGoalMl,
+        'water_goal_custom': goal.waterGoalCustom ? 1 : 0,
         'created_at': now,
         'updated_at': now,
       };
@@ -789,6 +803,7 @@ class LocalDataService {
         validFrom: goal.validFrom,
         trackingMethod: goal.trackingMethod,
         waterGoalMl: goal.waterGoalMl,
+        waterGoalCustom: goal.waterGoalCustom,
         macroOnly: goal.macroOnly,
         proteinOnly: goal.proteinOnly,
       );

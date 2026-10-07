@@ -37,6 +37,36 @@ class UserBodyMeasurementsService {
     }
   }
 
+  /// Jüngster Körperfettanteil der letzten [days] Tage, oder null.
+  Future<double?> getRecentBodyFat({int days = 60}) async {
+    try {
+      final tokenValid = await _db.ensureValidToken(minMinutesValid: 5);
+      if (!tokenValid) return null;
+
+      final userId = _userId;
+      if (userId == null) return null;
+
+      final since = DateTime.now()
+          .subtract(Duration(days: days))
+          .toIso8601String()
+          .split('T')[0];
+      final response = await _db.client
+          .from('user_body_measurements')
+          .select('body_fat_percentage')
+          .eq('user_id', userId)
+          .not('body_fat_percentage', 'is', null)
+          .gte('measured_at', since)
+          .order('measured_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      return (response?['body_fat_percentage'] as num?)?.toDouble();
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Laden des Körperfettanteils: $e');
+      return null;
+    }
+  }
+
   /// Hole Messung für bestimmtes Datum
   Future<UserBodyMeasurement?> getMeasurementForDate(DateTime date) async {
     try {

@@ -25,6 +25,9 @@ class NutritionGoal {
   final DateTime? validFrom;
   final TrackingMethod? trackingMethod;
   final int? waterGoalMl;
+
+  /// Water goal set by hand — automatic recalculation keeps it.
+  final bool waterGoalCustom;
   final bool macroOnly;
 
   /// Sub-mode of [macroOnly]: only protein has a hard target. Fat and carbs are
@@ -42,6 +45,7 @@ class NutritionGoal {
     this.validFrom,
     this.trackingMethod,
     this.waterGoalMl,
+    this.waterGoalCustom = false,
     this.macroOnly = false,
     this.proteinOnly = false,
   });
@@ -69,6 +73,7 @@ class NutritionGoal {
           )
         : null,
       waterGoalMl: json['water_goal_ml'] as int?,
+      waterGoalCustom: json['water_goal_custom'] as bool? ?? false,
       macroOnly: json['macro_only'] as bool? ?? false,
       proteinOnly: json['protein_only'] as bool? ?? false,
     );
@@ -84,6 +89,7 @@ class NutritionGoal {
     if (validFrom != null) 'valid_from': validFrom!.toIso8601String().split('T')[0],
     if (trackingMethod != null) 'tracking_method': trackingMethod!.name,
     if (waterGoalMl != null) 'water_goal_ml': waterGoalMl,
+    'water_goal_custom': waterGoalCustom,
     'macro_only': macroOnly,
     'protein_only': proteinOnly,
   };

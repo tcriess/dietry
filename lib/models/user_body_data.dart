@@ -149,6 +149,7 @@ class UserBodyData {
   final int age;  // (berechnet von Profile.birthdate)
   final ActivityLevel activityLevel;  // (von Profile)
   final WeightGoal weightGoal;  // (von Profile)
+  final double? bodyFatPercentage;  // % (letzte Messung, optional)
   final DateTime? measuredAt;
   
   // Berechnete Werte
@@ -164,6 +165,7 @@ class UserBodyData {
     required this.age,
     required this.activityLevel,
     required this.weightGoal,
+    this.bodyFatPercentage,
     this.measuredAt,
     this.bmr,
     this.tdee,

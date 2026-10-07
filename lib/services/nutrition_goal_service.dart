@@ -217,7 +217,8 @@ class NutritionGoalService {
       final preserveProteinOnly = currentGoal?.proteinOnly ?? false;
 
       final profile = await UserProfileService(db).getCurrentProfile();
-      final measurement = await UserBodyMeasurementsService(db).getCurrentMeasurement();
+      final measurements = UserBodyMeasurementsService(db);
+      final measurement = await measurements.getCurrentMeasurement();
 
       if (profile == null || measurement == null) {
         return null;
@@ -235,10 +236,17 @@ class NutritionGoalService {
         age: age,
         activityLevel: profile.activityLevel!,
         weightGoal: profile.weightGoal!,
+        bodyFatPercentage: measurement.bodyFatPercentage ??
+            await measurements.getRecentBodyFat(),
       );
 
       final recommendation = NutritionCalculator.calculateMacros(bodyData, method: method);
-      final waterGoalMl = NutritionCalculator.calculateWaterGoal(measurement.weight);
+      final keepWater = currentGoal != null &&
+          currentGoal.waterGoalCustom &&
+          currentGoal.waterGoalMl != null;
+      final waterGoalMl = keepWater
+          ? currentGoal.waterGoalMl!
+          : NutritionCalculator.calculateWaterGoal(measurement.weight);
       final baseGoal = NutritionCalculator.createGoalFromRecommendation(recommendation);
       final goal = NutritionGoal(
         calories: baseGoal.calories,
@@ -247,6 +255,7 @@ class NutritionGoalService {
         carbs: baseGoal.carbs,
         trackingMethod: baseGoal.trackingMethod,
         waterGoalMl: waterGoalMl,
+        waterGoalCustom: keepWater,
         macroOnly: preserveMacroOnly,
         proteinOnly: preserveProteinOnly,
       );

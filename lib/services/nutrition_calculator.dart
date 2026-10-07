@@ -14,7 +14,11 @@ class NutritionCalculator {
   /// Mifflin-St Jeor Formel:
   /// Männer: BMR = (10 × Gewicht kg) + (6,25 × Größe cm) − (5 × Alter Jahre) + 5
   /// Frauen: BMR = (10 × Gewicht kg) + (6,25 × Größe cm) − (5 × Alter Jahre) − 161
+  /// Mit Körperfettanteil: Katch-McArdle (370 + 21,6 × Magermasse kg).
   static double calculateBMR(UserBodyData data) {
+    final lbm = leanBodyMass(data);
+    if (lbm != null) return 370 + 21.6 * lbm;
+
     double bmr = (10 * data.weight) + (6.25 * data.height) - (5 * data.age);
     
     if (data.gender == Gender.male) {
@@ -88,8 +92,8 @@ class NutritionCalculator {
     final tdee = calculateTDEE(data);
     final targetCalories = calculateTargetCalories(data, method: method);
     
-    final protein = proteinReferenceWeight(data.weight, data.height) *
-        proteinPerKg(data.weightGoal);
+    final protein =
+        proteinReferenceWeight(data) * proteinPerKg(data.weightGoal);
     
     // Fett: 25% der Kalorien (1g Fett = 9 kcal)
     final fatCalories = targetCalories * 0.25;
@@ -123,11 +127,26 @@ class NutritionCalculator {
     }
   }
 
-  /// Gewicht, höchstens beim BMI 25 — Fettmasse braucht kein Protein.
-  static double proteinReferenceWeight(double weightKg, double heightCm) {
-    final h = heightCm / 100;
-    final bmi25Weight = 25 * h * h;
-    return weightKg < bmi25Weight ? weightKg : bmi25Weight;
+  /// Magermasse in kg, oder null ohne plausiblen Körperfettanteil.
+  static double? leanBodyMass(UserBodyData data) {
+    final bf = data.bodyFatPercentage;
+    if (bf == null || bf < 3 || bf > 70) return null;
+    return data.weight * (1 - bf / 100);
+  }
+
+  /// Gewicht, für das die g/kg-Faktoren gelten — Fettmasse braucht kein
+  /// Protein. Mit Körperfett: Magermasse bei 20 % (m) / 28 % (w) Fett,
+  /// sonst Gewicht bei BMI 25. Nie mehr als das tatsächliche Gewicht.
+  static double proteinReferenceWeight(UserBodyData data) {
+    final lbm = leanBodyMass(data);
+    final double cap;
+    if (lbm != null) {
+      cap = lbm / (data.gender == Gender.male ? 0.80 : 0.72);
+    } else {
+      final h = data.height / 100;
+      cap = 25 * h * h;
+    }
+    return data.weight < cap ? data.weight : cap;
   }
 
   /// Trinkmenge in ml (25 ml/kg, 1500–2500, gerundet auf 250 ml).
