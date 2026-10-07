@@ -202,6 +202,12 @@ abstract class AppLocalizations {
   /// **'Verbleibend'**
   String get remaining;
 
+  /// No description provided for @goalReached.
+  ///
+  /// In de, this message translates to:
+  /// **'Ziel erreicht'**
+  String get goalReached;
+
   /// No description provided for @today.
   ///
   /// In de, this message translates to:

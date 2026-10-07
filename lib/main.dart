@@ -4183,11 +4183,13 @@ class OverviewScreen extends StatelessWidget {
     final barValue = goal.calories > 0
         ? (totalCalories / goal.calories).clamp(0.0, 1.0)
         : 0.0;
+    // Calories are a limit: the bar turns red once the budget is exceeded.
+    final over = goal.calories - totalCalories + creditedCaloriesBurned < 0;
     final bar = LinearProgressIndicator(
       value: barValue,
       minHeight: 12,
       backgroundColor: context.colors.neutralContainerHigh,
-      color: brand,
+      color: over ? context.colors.danger.base : brand,
     );
     if (!showCalorieBand || goal.calories <= 0) return bar;
     final lo = ((totalCalories - caloriesSigma) / goal.calories).clamp(0.0, 1.0);
@@ -4338,8 +4340,10 @@ class OverviewScreen extends StatelessWidget {
     String consumedValue,
     String burnedValue,
     String remainingValue,
-    Color? color,
-  ) {
+    Color? color, {
+    String? remainingLabel,
+    Color? remainingColor,
+  }) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -4473,7 +4477,7 @@ class OverviewScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    AppLocalizations.of(context)!.remaining,
+                    remainingLabel ?? AppLocalizations.of(context)!.remaining,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: context.colors.muted,
                         ),
@@ -4482,11 +4486,7 @@ class OverviewScreen extends StatelessWidget {
                     remainingValue,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: remainingValue.contains('too much') ||
-                                  remainingValue.contains('zu viel') ||
-                                  remainingValue.contains('demasiado')
-                              ? context.colors.danger.base
-                              : context.colors.success.base,
+                          color: remainingColor,
                         ),
                   ),
                 ],
@@ -4503,6 +4503,14 @@ class OverviewScreen extends StatelessWidget {
         goal.calories - totalCalories + creditedCaloriesBurned;
     final remainingProtein =
         (goal.protein - totalProtein).clamp(0, goal.protein);
+    // Protein is a minimum: reaching it is the success state.
+    final proteinReached = goal.protein > 0 && totalProtein >= goal.protein;
+    final proteinRemainingText = proteinReached
+        ? '+${(totalProtein - goal.protein).toStringAsFixed(1)} g'
+        : '${remainingProtein.toStringAsFixed(1)} g';
+    final caloriesColor = remainingCalories >= 0
+        ? context.colors.success.base
+        : context.colors.danger.base;
     final remainingFat = (goal.fat - totalFat).clamp(0, goal.fat);
     final remainingCarbs = (goal.carbs - totalCarbs).clamp(0, goal.carbs);
 
@@ -4523,6 +4531,7 @@ class OverviewScreen extends StatelessWidget {
               totalCaloriesBurned > 0 ? _burnedLabel(l) : '-',
               _formatRemainingCalories(remainingCalories, l),
               context.colors.macroCalories,
+              remainingColor: caloriesColor,
             ),
           _buildNutrientCard(
             context,
@@ -4532,8 +4541,10 @@ class OverviewScreen extends StatelessWidget {
                 ? '${totalProtein.toStringAsFixed(1)} ± ${proteinSigma.toStringAsFixed(1)} g'
                 : '${totalProtein.toStringAsFixed(1)} g',
             '-',
-            '${remainingProtein.toStringAsFixed(1)} g',
+            proteinRemainingText,
             context.colors.macroProtein,
+            remainingLabel: proteinReached ? l.goalReached : null,
+            remainingColor: proteinReached ? context.colors.success.base : null,
           ),
           // Protein-only mode: fat & carbs have no target, so they're omitted
           // from the compliance overview (still shown in the pie chart / entries).
@@ -4593,11 +4604,7 @@ class OverviewScreen extends StatelessWidget {
               DataCell(Text(
                 _formatRemainingCalories(remainingCalories, l),
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: remainingCalories >= 0
-                      ? context.colors.success.base
-                      : context.colors.danger.base,
-                ),
+                style: TextStyle(color: caloriesColor),
               )),
             ]),
           DataRow(cells: [
@@ -4607,8 +4614,15 @@ class OverviewScreen extends StatelessWidget {
             DataCell(_consumedCell(context, totalProtein.toStringAsFixed(1),
                 proteinSigma.toStringAsFixed(1))),
             const DataCell(Text('-', overflow: TextOverflow.ellipsis)),
-            DataCell(Text(remainingProtein.toStringAsFixed(1),
-                overflow: TextOverflow.ellipsis)),
+            DataCell(Text(
+              proteinReached
+                  ? '✓ +${(totalProtein - goal.protein).toStringAsFixed(1)}'
+                  : remainingProtein.toStringAsFixed(1),
+              overflow: TextOverflow.ellipsis,
+              style: proteinReached
+                  ? TextStyle(color: context.colors.success.base)
+                  : null,
+            )),
           ]),
           // Protein-only mode: fat & carbs have no target, so they're omitted
           // from the compliance table (still shown in the pie chart / entries).
@@ -4653,6 +4667,7 @@ class OverviewScreen extends StatelessWidget {
     final waterGoal = goal.waterGoalMl ?? 2000;
     final totalLiquidMl = waterIntakeMl + liquidFoodIntakeMl;
     final progress = (totalLiquidMl / waterGoal).clamp(0.0, 1.0);
+    final reached = totalLiquidMl >= waterGoal;
 
     return Card(
       child: Padding(
@@ -4673,7 +4688,9 @@ class OverviewScreen extends StatelessWidget {
               value: progress,
               minHeight: 10,
               backgroundColor: context.colors.water.container,
-              color: context.colors.water.base,
+              color: reached
+                  ? context.colors.success.base
+                  : context.colors.water.base,
             ),
             const SizedBox(height: 8),
             Row(
@@ -4689,9 +4706,14 @@ class OverviewScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    l.waterGoalLabel(waterGoal),
+                    reached
+                        ? '✓ ${l.waterGoalLabel(waterGoal)}'
+                        : l.waterGoalLabel(waterGoal),
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
+                    style: reached
+                        ? TextStyle(color: context.colors.success.base)
+                        : null,
                   ),
                 ),
               ],

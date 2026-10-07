@@ -60,6 +60,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get remaining => 'Verbleibend';
 
   @override
+  String get goalReached => 'Ziel erreicht';
+
+  @override
   String get today => 'Heute';
 
   @override

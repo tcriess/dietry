@@ -16,6 +16,7 @@
   "goal": "Goal",
   "consumed": "Consumed",
   "remaining": "Remaining",
+  "goalReached": "Goal reached",
   "today": "Today",
   "yesterday": "Yesterday",
   "tomorrow": "Tomorrow",

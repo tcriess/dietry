@@ -16,6 +16,7 @@
   "goal": "Meta",
   "consumed": "Consumido",
   "remaining": "Restante",
+  "goalReached": "Objetivo alcanzado",
   "today": "Hoy",
   "yesterday": "Ayer",
   "tomorrow": "Mañana",
