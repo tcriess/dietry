@@ -556,13 +556,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.local_fire_department,
                               label: l.nutrientCalories,
                               value: '${_goal!.calories.toInt()} kcal',
-                              color: context.colors.warning.base,
+                              color: context.colors.macroCalories,
                             ),
                           _buildDataRow(
                             icon: Icons.egg_alt,
                             label: l.nutrientProtein,
                             value: '${_goal!.protein.toInt()} g',
-                            color: context.colors.danger.base,
+                            color: context.colors.macroProtein,
                           ),
                           // Protein-only mode: fat & carbs have no target.
                           if (!_goal!.proteinOnlyEffective) ...[
@@ -570,13 +570,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.grain,
                               label: l.nutrientCarbs,
                               value: '${_goal!.carbs.toInt()} g',
-                              color: context.colors.highlight.base,
+                              color: context.colors.macroCarbs,
                             ),
                             _buildDataRow(
                               icon: Icons.opacity,
                               label: l.nutrientFat,
                               value: '${_goal!.fat.toInt()} g',
-                              color: context.colors.info.base,
+                              color: context.colors.macroFat,
                             ),
                           ],
                           _buildWaterGoalRow(l),

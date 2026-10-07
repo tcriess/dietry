@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ### Fixed
-- 
+- The goal screen and the goal card in your profile now use the same macro
+  colours as the rest of the app.
 
 ### Deprecated
 - 

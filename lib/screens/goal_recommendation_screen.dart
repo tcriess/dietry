@@ -907,7 +907,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               'g',
               macroPercentages['protein']!,
               Icons.egg,
-              context.colors.danger.base,
+              context.colors.macroProtein,
             ),
             const SizedBox(height: 8),
             _buildMacroRow(
@@ -916,7 +916,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               'g',
               macroPercentages['fat']!,
               Icons.water_drop,
-              context.colors.warning.base,
+              context.colors.macroFat,
             ),
             const SizedBox(height: 8),
             _buildMacroRow(
@@ -925,7 +925,7 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
               'g',
               macroPercentages['carbs']!,
               Icons.grass,
-              context.colors.success.base,
+              context.colors.macroCarbs,
             ),
 
             const SizedBox(height: 16),
