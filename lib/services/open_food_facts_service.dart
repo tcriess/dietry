@@ -408,9 +408,19 @@ class OpenFoodFactsService {
       'en:condiments': 'Würzmittel',
       'en:frozen-foods': 'Tiefkühlprodukte',
     };
-    for (final tag in tags) {
-      // Ensure tag is a string before using as map key
-      if (tag is! String) continue;
+    // Checked first: OFF lists tags broad to specific, and the broad
+    // 'cereals-and-potatoes' would hide the cooking yield of pasta or rice.
+    const specific = {
+      'en:pastas': 'Nudeln',
+      'en:rices': 'Reis',
+      'en:legumes': 'Hülsenfrüchte',
+    };
+    final strings = tags.whereType<String>();
+    for (final tag in strings) {
+      final category = specific[tag];
+      if (category != null) return category;
+    }
+    for (final tag in strings) {
       final category = mapping[tag];
       if (category != null) return category;
     }

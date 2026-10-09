@@ -88,6 +88,12 @@ class CookingYield {
     'tiefkuhl', 'tiefkühl', 'frozen meal',
   ];
 
+  /// Categories that span foods with opposite yields — pasta gains water,
+  /// potatoes lose it — so they say nothing about the factor.
+  static const List<String> _mixedCategories = [
+    'Getreide & Kartoffeln',
+  ];
+
   /// Names that state the food is already on a cooked basis. Both BLS and FDC
   /// ship explicit cooked variants, and the seed data contains "Reis (gekocht)",
   /// "Kartoffel (gekocht)" and friends — converting those would divide twice.
@@ -204,7 +210,12 @@ class CookingYield {
   static CookingYieldInfo? defaultFor(FoodItem food) {
     if (alreadyCooked(food)) return null;
 
-    final haystack = normalize('${food.name} ${food.category ?? ''}');
+    final category = food.category;
+    final usableCategory = category == null ||
+            _mixedCategories.any((c) => normalize(c) == normalize(category))
+        ? ''
+        : category;
+    final haystack = normalize('${food.name} $usableCategory');
     if (_excluded.any((e) => haystack.contains(normalize(e)))) return null;
 
     for (final rule in _rules) {

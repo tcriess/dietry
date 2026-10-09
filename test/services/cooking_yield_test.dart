@@ -64,6 +64,19 @@ void main() {
       expect(CookingYield.defaultFor(food('Pasta-Sauce Bolognese')), isNull);
     });
 
+    test('a mixed category does not pick the yield', () {
+      // OFF files pasta under "cereals and potatoes"; the potato rule (0.82)
+      // turned 125 g cooked into 152 g dry.
+      expect(
+          CookingYield.defaultFor(
+              food('Girandole Torsades No34', category: 'Getreide & Kartoffeln')),
+          isNull);
+      expect(
+          CookingYield.defaultFor(
+              food('Girandole Torsades No34', category: 'Nudeln'))?.factor,
+          2.2);
+    });
+
     test('unrelated foods get no factor', () {
       expect(CookingYield.defaultFor(food('Vollmilch 3,5%')), isNull);
       expect(CookingYield.defaultFor(food('Gouda')), isNull);

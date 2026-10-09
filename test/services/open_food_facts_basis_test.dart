@@ -38,6 +38,22 @@ Map<String, dynamic> nutriments({
 void main() {
   final service = OpenFoodFactsService();
 
+  group('category', () {
+    test('a specific tag beats the broad group before it', () {
+      final r = service.parseProduct({
+        ...product(name: 'Girandole', nutriments: nutriments(kcal: 359)),
+        'categories_tags': [
+          'en:plant-based-foods-and-beverages',
+          'en:cereals-and-potatoes',
+          'en:pastas',
+          'en:dry-pastas',
+        ],
+      });
+
+      expect(r!.food.category, 'Nudeln');
+    });
+  });
+
   group('nutrition basis', () {
     test('per-100 g values are taken as they are', () {
       final r = service.parseProduct(product(
