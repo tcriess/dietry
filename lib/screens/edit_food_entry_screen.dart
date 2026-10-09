@@ -730,7 +730,6 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
       if (seenNames.add(p.name)) portions.add(p);
     }
 
-    final isCooked = _selectedPortion == null && _customUnit == kUnitGramCooked;
     final currentKey = _selectedPortion != null
         ? 'p:${_selectedPortion!.name}'
         : _customUnit;
@@ -741,15 +740,8 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
           value: 'p:${p.name}',
           child: Text('${p.name} (${formatAmount(p.amountG)}g)'),
         ),
-      DropdownMenuItem(
-          value: 'g', child: Text(unitLabel('g', l, distinguishRaw: isCooked))),
+      const DropdownMenuItem(value: 'g', child: Text('g')),
       const DropdownMenuItem(value: 'ml', child: Text('ml')),
-      // Only offered when the entry was logged as a cooked weight — the dropdown
-      // needs an item matching the current value, and switching a plain g/ml
-      // entry to a cooked basis would need a yield factor we don't have here.
-      if (isCooked)
-        DropdownMenuItem(
-            value: kUnitGramCooked, child: Text(unitLabel(kUnitGramCooked, l))),
     ];
 
     return DropdownButtonFormField<String>(
@@ -781,10 +773,13 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
     );
   }
 
-  /// Read-only unit label — shown in totals mode (meal / unresolved portion).
+  /// Read-only unit label — shown in totals mode (meal / unresolved portion)
+  /// and for a cooked weight, whose per-100 values are on a cooked basis and
+  /// whose yield factor the entry does not record.
   Widget _buildUnitLabel() {
     final l = AppLocalizations.of(context)!;
-    final text = widget.entry.isMeal ? 'Portion' : widget.entry.unit;
+    final text =
+        widget.entry.isMeal ? 'Portion' : unitLabel(widget.entry.unit, l);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1075,7 +1070,9 @@ class _EditFoodEntryScreenState extends State<EditFoodEntryScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _per100gMode ? _buildUnitSelector() : _buildUnitLabel(),
+                  child: _per100gMode && !_isCookedBasis
+                      ? _buildUnitSelector()
+                      : _buildUnitLabel(),
                 ),
               ],
             ),
