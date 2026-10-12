@@ -1,5 +1,6 @@
 import 'package:dietry/services/app_logger.dart';
 import 'package:dio/dio.dart';
+import '../models/food_entry.dart';
 import '../models/tag.dart';
 import 'neon_database_service.dart';
 
@@ -221,6 +222,68 @@ class TagService {
       appLogger.e('❌ Fehler beim Abrufen von Tags für Food: $e');
       return [];
     }
+  }
+
+  /// Visible tags of several foods at once, keyed by food id.
+  Future<Map<String, List<Tag>>> getTagsForFoods(Iterable<String> foodIds) =>
+      _tagsByParent('user_food_tags', 'food_id', foodIds);
+
+  /// The user's tags of several meal templates, keyed by template id.
+  /// Cloud only — the table is not in the community schema.
+  Future<Map<String, List<Tag>>> getTagsForMealTemplates(
+          Iterable<String> templateIds) =>
+      _tagsByParent('meal_template_tags', 'template_id', templateIds);
+
+  Future<Map<String, List<Tag>>> _tagsByParent(
+      String table, String column, Iterable<String> ids) async {
+    final unique = ids.toSet();
+    if (unique.isEmpty) return {};
+    try {
+      final response = await _db.dioClient.get(
+        '/$table',
+        queryParameters: {
+          'select': '$column,tags(id,name,slug)',
+          column: 'in.(${unique.join(',')})',
+        },
+      );
+      final result = <String, List<Tag>>{};
+      for (final row in response.data as List) {
+        final tagData = row['tags'];
+        if (tagData is! Map<String, dynamic>) continue;
+        final tags = result.putIfAbsent(row[column] as String, () => []);
+        final tag = Tag.fromJson(tagData);
+        // Owner and user may both have set the same tag.
+        if (!tags.contains(tag)) tags.add(tag);
+      }
+      return result;
+    } catch (e) {
+      appLogger.e('❌ Fehler beim Abrufen von Tags aus $table: $e');
+      return {};
+    }
+  }
+
+  /// Tags every entry of [entries] carries, sorted by name. An entry's tags
+  /// come from its meal template if it has one, else from its food; an entry
+  /// with neither has none, so it rules out every tag.
+  static List<Tag> commonTags(
+    List<FoodEntry> entries, {
+    required Map<String, List<Tag>> foodTags,
+    required Map<String, List<Tag>> templateTags,
+  }) {
+    if (entries.isEmpty) return [];
+    Set<Tag>? common;
+    for (final e in entries) {
+      final tags = (e.mealTemplateId != null
+              ? templateTags[e.mealTemplateId]
+              : e.foodId != null
+                  ? foodTags[e.foodId]
+                  : null) ??
+          const <Tag>[];
+      common = common == null ? tags.toSet() : common.intersection(tags.toSet());
+      if (common.isEmpty) return [];
+    }
+    return common!.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
   /// Hole alle vom aktuellen User erstellten Tags inkl. (globaler) Nutzungsanzahl.

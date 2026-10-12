@@ -52,6 +52,7 @@ import 'app_config.dart';
 import 'services/server_config_service.dart';
 import 'services/feedback_service.dart';
 import 'services/app_logger.dart';
+import 'widgets/day_tags_row.dart';
 import 'widgets/feedback_dialog.dart';
 
 // Models
@@ -4893,6 +4894,8 @@ class OverviewScreen extends StatelessWidget {
               ),
             ],
           ),
+
+          DayTagsRow(entries: entries, dbService: dbService),
 
           // ── Cheat Day banner ────────────────────────────────────────────
           if (isCheatDay) ...[
