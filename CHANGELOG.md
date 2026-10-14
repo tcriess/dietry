@@ -8,18 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Close a day: once you're done for the day, close it from the overview. A
-  closed day can't be changed until you reopen it, and it silences the
-  reminders. Needs database migration V12.
+- 
 
 ### Changed
 - 
 
 ### Fixed
-- "Clear my data" in guest mode now also removes per-day exercise credit
-  settings.
-- The goal screen and the goal card in your profile now use the same macro
-  colours as the rest of the app.
+- 
 
 ### Deprecated
 - 
@@ -29,6 +24,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - 
+
+---
+
+## [1.10.0] — 2026-10-14
+
+### Added
+- **Close a day**: done eating? Close the day from the overview. A closed day
+  is read-only — no adding, editing, moving or deleting, on any tab — until you
+  tap "Reopen". Its food-log and water reminders stay quiet. Works in guest
+  mode and syncs across your devices.
+- **Day tags**: tags that every entry of the day shares (e.g. "vegan") now show
+  on the overview.
+
+### Fixed
+- Pasta and rice from Open Food Facts were treated like potatoes when converting
+  cooked to dry weight, so 125 g cooked pasta became 152 g dry.
+- Editing an entry logged by cooked weight let you switch it to raw grams,
+  which silently changed its nutrition values; the unit is now locked.
+- "Clear my data" in guest mode left per-day exercise credit settings behind.
+- The goal screen and the goal card in your profile now use the same macro
+  colours as the rest of the app.
+
+### Self-hosting
+- Run migration **V12** (new `closed_days` table) before updating the app;
+  older app versions keep working with it.
 
 ---
 
