@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ### Fixed
-- 
+- A food entered by hand could be saved without a name once the form was
+  scrolled down to the Save button.
 
 ### Deprecated
 - 

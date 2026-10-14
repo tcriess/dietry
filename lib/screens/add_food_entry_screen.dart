@@ -1057,7 +1057,11 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
 
   /// Speichere Food Entry
   Future<void> _saveEntry() async {
-    if (!_formKey.currentState!.validate()) {
+    final invalid = _formKey.currentState!.validateGranularly();
+    if (invalid.isNotEmpty) {
+      // The Save button sits below the form; bring the error into view.
+      Scrollable.ensureVisible(invalid.first.context,
+          duration: const Duration(milliseconds: 200), alignment: 0.1);
       return;
     }
 
@@ -1648,8 +1652,12 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
         child: Column(
           children: [
             Expanded(
-              child: ListView(
+              // Not a ListView: a lazy list disposes off-screen fields, and
+              // validate() then skips them.
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
+                child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Food-Suche (nur wenn nicht manuell und noch nichts ausgewählt)
                   if (!_showManualEntry && _selectedFood == null) ...[
@@ -2671,6 +2679,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
                     ],
                   ],
                 ],
+                ),
               ),
             ),
             AnimatedSize(
