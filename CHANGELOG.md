@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - A food entered by hand could be saved without a name once the form was
   scrolled down to the Save button.
+- On the overview, "Consumed" was cut off ("1450 …") when burned calories
+  were shown next to it; the figures now stack when they don't fit.
 
 ### Deprecated
 - 

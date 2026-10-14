@@ -5007,7 +5007,25 @@ class OverviewScreen extends StatelessWidget {
 
                 // Narrow screens: stack label:value rows vertically so the
                 // actual numbers stay visible instead of being ellipsis'd away.
-                final isNarrow = constraints.maxWidth < 360;
+                // Measured rather than a width cutoff: the row splits its
+                // width evenly, so "Consumed: 1450 kcal" next to a burned
+                // figure gets cut off on ordinary phones.
+                final cellWidth = (constraints.maxWidth - 4 * (stats.length - 1)) /
+                    stats.length;
+                final style = DefaultTextStyle.of(context).style;
+                final isNarrow = constraints.maxWidth < 360 ||
+                    stats.any((s) {
+                      final painter = TextPainter(
+                        text: TextSpan(
+                            text: '${s.label}: ${s.value}', style: style),
+                        textDirection: Directionality.of(context),
+                        textScaler: MediaQuery.textScalerOf(context),
+                        maxLines: 1,
+                      )..layout();
+                      final fits = painter.width <= cellWidth;
+                      painter.dispose();
+                      return !fits;
+                    });
 
                 if (isNarrow) {
                   return Column(
