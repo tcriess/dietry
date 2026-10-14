@@ -2006,6 +2006,7 @@ class LocalDataService {
         'water_intake',
         'cheat_days',
         'closed_days',
+        'exercise_credit_days',
         'user_profile',
         'user_body_measurements',
       ];
