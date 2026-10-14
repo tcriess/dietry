@@ -2687,6 +2687,42 @@ abstract class AppLocalizations {
   /// **'Cheat Day entfernt'**
   String get cheatDayRemoved;
 
+  /// No description provided for @closeDay.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag abschließen'**
+  String get closeDay;
+
+  /// No description provided for @dayClosedBanner.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag abgeschlossen. Zum Ändern wieder öffnen.'**
+  String get dayClosedBanner;
+
+  /// No description provided for @reopenDay.
+  ///
+  /// In de, this message translates to:
+  /// **'Öffnen'**
+  String get reopenDay;
+
+  /// No description provided for @dayClosedSnack.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag abgeschlossen 🔒'**
+  String get dayClosedSnack;
+
+  /// No description provided for @dayReopenedSnack.
+  ///
+  /// In de, this message translates to:
+  /// **'Tag wieder geöffnet'**
+  String get dayReopenedSnack;
+
+  /// No description provided for @moveTargetDayClosed.
+  ///
+  /// In de, this message translates to:
+  /// **'Dieser Tag ist abgeschlossen.'**
+  String get moveTargetDayClosed;
+
   /// No description provided for @cheatDayMonthlyNudge.
   ///
   /// In de, this message translates to:

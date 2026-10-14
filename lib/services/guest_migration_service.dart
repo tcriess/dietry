@@ -5,6 +5,7 @@ import 'gear_service.dart';
 import 'physical_activity_service.dart';
 import 'water_intake_service.dart';
 import 'cheat_day_service.dart';
+import 'closed_day_service.dart';
 import 'exercise_credit_service.dart';
 import 'user_profile_service.dart';
 import 'nutrition_goal_service.dart';
@@ -242,6 +243,23 @@ class GuestMigrationService {
       } catch (e) {
         appLogger.w('⚠️ Error migrating exercise credit: $e');
         result.errors.add('Exercise credit: $e');
+      }
+
+      // 9. Migrate closed days
+      try {
+        final closedDays = await local.getAllClosedDays();
+        final closedService = ClosedDayService(db);
+        for (final date in closedDays) {
+          try {
+            await closedService.setClosed(date, true);
+          } catch (e) {
+            appLogger.w('⚠️ Error migrating closed day $date: $e');
+          }
+        }
+        appLogger.d('✅ ${closedDays.length} closed days migrated');
+      } catch (e) {
+        appLogger.w('⚠️ Error migrating closed days: $e');
+        result.errors.add('Closed days: $e');
       }
 
       appLogger.i('✅ Guest data migration completed');

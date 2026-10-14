@@ -44,6 +44,7 @@ import 'services/water_intake_service.dart';
 import 'services/water_reminder_service.dart';
 import 'services/food_log_reminder_service.dart';
 import 'services/cheat_day_service.dart';
+import 'services/closed_day_service.dart';
 import 'services/guest_mode_service.dart';
 import 'services/guest_migration_service.dart';
 import 'services/user_body_measurements_service.dart';
@@ -52,6 +53,7 @@ import 'app_config.dart';
 import 'services/server_config_service.dart';
 import 'services/feedback_service.dart';
 import 'services/app_logger.dart';
+import 'widgets/closed_day_banner.dart';
 import 'widgets/day_tags_row.dart';
 import 'widgets/feedback_dialog.dart';
 
@@ -2604,6 +2606,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   int _todayWaterGoalMl = 2000;
   bool _todayHasFoodEntry = false;
   bool _todayIsCheatDay = false;
+  bool _todayIsClosed = false;
   DateTime? _reminderSnapshotDay;
 
   @override
@@ -2636,9 +2639,11 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         () => (_todayWaterIntakeMl, _todayWaterGoalMl);
     FoodLogReminderService.onInAppReminder = _showFoodLogReminder;
     FoodLogReminderService.getHasLoggedToday = () => _todayHasFoodEntry;
-    // Suppress both reminders on a cheat day.
-    WaterReminderService.getIsCheatDay = () => _todayIsCheatDay;
-    FoodLogReminderService.getIsCheatDay = () => _todayIsCheatDay;
+    // Suppress both reminders on a cheat day or a closed day.
+    WaterReminderService.getIsQuietDay =
+        () => _todayIsCheatDay || _todayIsClosed;
+    FoodLogReminderService.getIsQuietDay =
+        () => _todayIsCheatDay || _todayIsClosed;
     MainTutorial.replayRequests.addListener(_onReplayTutorialRequested);
   }
 
@@ -2649,10 +2654,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     _store.removeListener(_onStoreChanged);
     WaterReminderService.onInAppReminder = null;
     WaterReminderService.getWaterStatus = null;
-    WaterReminderService.getIsCheatDay = null;
+    WaterReminderService.getIsQuietDay = null;
     FoodLogReminderService.onInAppReminder = null;
     FoodLogReminderService.getHasLoggedToday = null;
-    FoodLogReminderService.getIsCheatDay = null;
+    FoodLogReminderService.getIsQuietDay = null;
     MainTutorial.replayRequests.removeListener(_onReplayTutorialRequested);
     super.dispose();
   }
@@ -2881,6 +2886,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   /// Wird vom Reminder-Snackbar aufgerufen — immer für heute, egal welcher
   /// Tag gerade in der Navigation ausgewählt ist.
   Future<void> _addWaterToday(int deltaMl) async {
+    if (_todayIsClosed) return;
     final today = DateTime.now();
     if (DateUtils.isSameDay(_selectedDay, today)) {
       // Heute ist ausgewählt → normaler Pfad, aktualisiert auch die UI.
@@ -3156,7 +3162,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
   }
 
   /// Refreshes the day-precise reminder snapshot ([_todayWaterIntakeMl],
-  /// [_todayHasFoodEntry], [_todayIsCheatDay], …) and re-arms the scheduled
+  /// [_todayHasFoodEntry], [_todayIsCheatDay], [_todayIsClosed], …) and re-arms the scheduled
   /// notifications when it changes.
   ///
   /// When today is the selected day the snapshot is taken from the store for
@@ -3175,6 +3181,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         goal: _store.goal?.waterGoalMl ?? 2000,
         hasFood: _store.foodEntries.isNotEmpty,
         isCheat: _store.isCheatDay,
+        isClosed: _store.isDayClosed,
         force: force,
       );
       return;
@@ -3198,16 +3205,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
       final int intakeMl;
       final List<FoodEntry> entries;
       final bool isCheat;
+      final bool isClosed;
       final db = widget.dbService;
       if (widget.isGuestMode || db == null) {
         final local = LocalDataService.instance;
         intakeMl = await local.getWaterIntakeForDate(today);
         entries = await local.getFoodEntriesForDate(today);
         isCheat = await local.isCheatDay(today);
+        isClosed = await local.isDayClosed(today);
       } else {
         intakeMl = await WaterIntakeService(db).getIntakeForDate(today);
         entries = await FoodEntryService(db).getFoodEntriesForDate(today);
         isCheat = await CheatDayService(db).isCheatDay(today);
+        isClosed = await ClosedDayService(db).isClosed(today);
       }
       if (!mounted) return;
       final liquidMl = entries
@@ -3219,6 +3229,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
         goal: _store.goal?.waterGoalMl ?? 2000,
         hasFood: entries.isNotEmpty,
         isCheat: isCheat,
+        isClosed: isClosed,
       );
     } catch (_) {
       // Keep the previous snapshot on error.
@@ -3232,16 +3243,19 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     required int goal,
     required bool hasFood,
     required bool isCheat,
+    required bool isClosed,
     bool force = false,
   }) {
     final changed = intake != _todayWaterIntakeMl ||
         goal != _todayWaterGoalMl ||
         hasFood != _todayHasFoodEntry ||
-        isCheat != _todayIsCheatDay;
+        isCheat != _todayIsCheatDay ||
+        isClosed != _todayIsClosed;
     _todayWaterIntakeMl = intake;
     _todayWaterGoalMl = goal;
     _todayHasFoodEntry = hasFood;
     _todayIsCheatDay = isCheat;
+    _todayIsClosed = isClosed;
     if (changed || force) {
       WaterReminderService.refreshSchedule();
       FoodLogReminderService.refreshSchedule();
@@ -3704,7 +3718,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // body-measurements import now runs as part of the global refresh
     // (gated by HealthConnectPrefs) and via the Profile chart's refresh icon.
     Widget? fab;
-    if (_selectedIndex == 2) {
+    if (_store.isDayClosed) {
+      // Closed day: nothing to add until it is reopened.
+    } else if (_selectedIndex == 2) {
       final db = widget.dbService;
 
       // Single entry point: one unified add sheet, parallel to the food
@@ -3983,6 +3999,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 onWaterChanged: _onWaterChanged,
                 dbService: widget.dbService,
                 isCheatDay: _store.isCheatDay,
+                isDayClosed: _store.isDayClosed,
                 holidayLabel: _store.holidayLabel,
                 dayCreditFactor: _store.dayCreditFactor,
                 profileCreditFactor: _store.profileCreditFactor,
@@ -4105,6 +4122,9 @@ class OverviewScreen extends StatelessWidget {
   final NeonDatabaseService? dbService;
   final bool isCheatDay;
 
+  /// The user closed this day: edit controls are hidden until it is reopened.
+  final bool isDayClosed;
+
   /// Name of the holiday this day belongs to, when it belongs to a named one.
   /// Only read while [isCheatDay] is true.
   final String? holidayLabel;
@@ -4136,6 +4156,7 @@ class OverviewScreen extends StatelessWidget {
     required this.onWaterChanged,
     required this.dbService,
     required this.isCheatDay,
+    required this.isDayClosed,
     this.holidayLabel,
     this.dayCreditFactor,
     this.profileCreditFactor,
@@ -4748,11 +4769,13 @@ class OverviewScreen extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-            const SizedBox(height: 12),
-            _WaterAmountControls(
-              waterIntakeMl: waterIntakeMl,
-              onWaterChanged: onWaterChanged,
-            ),
+            if (!isDayClosed) ...[
+              const SizedBox(height: 12),
+              _WaterAmountControls(
+                waterIntakeMl: waterIntakeMl,
+                onWaterChanged: onWaterChanged,
+              ),
+            ],
           ],
         ),
       ),
@@ -4881,7 +4904,7 @@ class OverviewScreen extends StatelessWidget {
                   style: const TextStyle(fontSize: 12),
                 ),
                 selected: isCheatDay,
-                onSelected: (_) => onToggleCheatDay(),
+                onSelected: isDayClosed ? null : (_) => onToggleCheatDay(),
                 selectedColor: context.colors.warning.containerHigh,
                 checkmarkColor: context.colors.warning.onContainer,
                 side: BorderSide(
@@ -4892,7 +4915,29 @@ class OverviewScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 visualDensity: VisualDensity.compact,
               ),
+              FilterChip(
+                avatar: Icon(
+                  isDayClosed ? Icons.lock : Icons.lock_open,
+                  size: 16,
+                ),
+                label: Text(
+                  l.closeDay,
+                  style: const TextStyle(fontSize: 12),
+                ),
+                selected: isDayClosed,
+                showCheckmark: false,
+                onSelected: (closed) =>
+                    toggleDayClosed(context, selectedDay, closed: closed),
+                side: BorderSide(color: context.colors.border),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                visualDensity: VisualDensity.compact,
+              ),
             ],
+          ),
+
+          ClosedDayBanner(
+            selectedDay: selectedDay,
+            margin: const EdgeInsets.only(top: 8),
           ),
 
           DayTagsRow(entries: entries, dbService: dbService),

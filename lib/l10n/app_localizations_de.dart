@@ -1442,6 +1442,24 @@ class AppLocalizationsDe extends AppLocalizations {
   String get cheatDayRemoved => 'Cheat Day entfernt';
 
   @override
+  String get closeDay => 'Tag abschließen';
+
+  @override
+  String get dayClosedBanner => 'Tag abgeschlossen. Zum Ändern wieder öffnen.';
+
+  @override
+  String get reopenDay => 'Öffnen';
+
+  @override
+  String get dayClosedSnack => 'Tag abgeschlossen 🔒';
+
+  @override
+  String get dayReopenedSnack => 'Tag wieder geöffnet';
+
+  @override
+  String get moveTargetDayClosed => 'Dieser Tag ist abgeschlossen.';
+
+  @override
   String cheatDayMonthlyNudge(int count) {
     return 'Du hattest diesen Monat $count Cheat Days. Alles gut, kein Stress!';
   }

@@ -639,6 +639,12 @@
   "markAsCheatDay": "Día Trampa",
   "cheatDayMarked": "Día trampa marcado ✓",
   "cheatDayRemoved": "Día trampa eliminado",
+  "closeDay": "Cerrar día",
+  "dayClosedBanner": "Día cerrado. Reábrelo para hacer cambios.",
+  "reopenDay": "Reabrir",
+  "dayClosedSnack": "Día cerrado 🔒",
+  "dayReopenedSnack": "Día reabierto",
+  "moveTargetDayClosed": "Este día está cerrado.",
   "cheatDayMonthlyNudge": "Has tenido {count} días trampa este mes. ¡Sin problema, sin juicios!",
   "@cheatDayMonthlyNudge": {
     "placeholders": {

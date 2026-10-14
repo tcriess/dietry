@@ -18,6 +18,7 @@ import '../utils/unit_utils.dart';
 import '../widgets/repeat_meal_picker.dart';
 import '../widgets/move_copy_sheet.dart';
 import 'edit_food_entry_screen.dart';
+import '../widgets/closed_day_banner.dart';
 
 /// Screen zur Anzeige und Verwaltung aller Food-Entries eines Tages
 class FoodEntriesListScreen extends StatefulWidget {
@@ -83,7 +84,9 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   /// chips on an otherwise empty day instead of the bare "no entries"
   /// placeholder (which would hide the repeat feature entirely).
   bool get _canRepeatPreviousDay =>
-      _previousDayEntries != null && _previousDayEntries!.isNotEmpty;
+      !_store.isDayClosed &&
+      _previousDayEntries != null &&
+      _previousDayEntries!.isNotEmpty;
 
   @override
   void initState() {
@@ -484,6 +487,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
   /// empty and non-empty meal groups.
   List<({String label, List<FoodEntry> sources})> _repeatSuggestionsFor(
       AppLocalizations l, MealType mealType, List<FoodEntry> todayEntries) {
+    if (_store.isDayClosed) return const [];
     final prev = _previousDayEntries;
     final suggestions = <({String label, List<FoodEntry> sources})>[];
 
@@ -919,7 +923,8 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                       // log only: a mis-tap while browsing an older day would
                       // drop history that is no longer being watched. Past
                       // entries are deleted from the long-press sheet.
-                      if (DateUtils.isSameDay(entry.entryDate, DateTime.now()))
+                      if (!_store.isDayClosed &&
+                          DateUtils.isSameDay(entry.entryDate, DateTime.now()))
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 20),
                           color: context.colors.danger.base,
@@ -954,8 +959,12 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
               // opening the editor mid-selection would throw the selection away.
               onTap: _selecting
                   ? () => _toggleSelected(entry)
-                  : () => _editEntry(entry),
-              onLongPress: _selecting ? null : () => _moveCopyEntry(entry),
+                  : _store.isDayClosed
+                      ? null
+                      : () => _editEntry(entry),
+              onLongPress: _selecting || _store.isDayClosed
+                  ? null
+                  : () => _moveCopyEntry(entry),
               child: content,
             )
           : content,
@@ -1106,6 +1115,10 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                   ],
                 ),
               ),
+              ClosedDayBanner(
+                selectedDay: widget.selectedDay,
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              ),
               if (entries.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(32),
@@ -1195,6 +1208,11 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
             ),
           ),
 
+          ClosedDayBanner(
+            selectedDay: widget.selectedDay,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          ),
+
           const Divider(height: 1),
 
           // Entry-Liste
@@ -1224,16 +1242,18 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                           color: context.colors.muted,
                                         ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    l.entriesEmptyHint,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: context.colors.subtle,
-                                        ),
-                                  ),
+                                  if (!_store.isDayClosed) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      l.entriesEmptyHint,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: context.colors.subtle,
+                                          ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1298,7 +1318,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                                 // Entries für diese Mahlzeit
                                 ...mealEntries.map((entry) => Dismissible(
                                   key: Key(entry.id),
-                                  direction: _selecting
+                                  direction: _selecting || _store.isDayClosed
                                       ? DismissDirection.none
                                       : DismissDirection.endToStart,
                                   background: Container(

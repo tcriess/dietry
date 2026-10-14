@@ -6,6 +6,7 @@ import 'nutrition_goal_service.dart';
 import 'water_intake_service.dart';
 import 'serial_day_writer.dart';
 import 'cheat_day_service.dart';
+import 'closed_day_service.dart';
 import 'exercise_credit_service.dart';
 import 'user_profile_service.dart';
 import 'streak_service.dart';
@@ -58,6 +59,7 @@ class DataStore extends ChangeNotifier {
   NutritionGoal? _goal;
   int _waterIntakeMl = 0;
   bool _isCheatDay = false;
+  bool _isDayClosed = false;
 
   /// Name of the holiday the selected day belongs to, when it belongs to one.
   /// Null for a hand-toggled cheat day, an unnamed holiday, or a normal day.
@@ -145,6 +147,10 @@ class DataStore extends ChangeNotifier {
       .fold(0, (sum, e) => sum + e.amountMl!.round());
 
   bool get isCheatDay => _isCheatDay;
+
+  /// Whether the user closed the selected day. A closed day is shown read-only
+  /// until reopened; the lock is enforced by the UI only.
+  bool get isDayClosed => _isDayClosed;
 
   /// Holiday name for the selected day, or null when it is not a named
   /// holiday day. Only meaningful while [isCheatDay] is true.
@@ -241,6 +247,7 @@ class DataStore extends ChangeNotifier {
     _activities = [];
     _waterIntakeMl = 0;
     _isCheatDay = false;
+    _isDayClosed = false;
     _holidayLabel = null;
     _holidayId = null;
     _dayCreditFactor = null;
@@ -282,6 +289,7 @@ class DataStore extends ChangeNotifier {
         _loadActivitiesLocal(date),
         _loadWaterIntakeLocal(date),
         _loadCheatDayLocal(date),
+        _loadClosedDayLocal(date),
         _loadExerciseCreditLocal(date),
       ]);
       _isLoading = false;
@@ -338,6 +346,7 @@ class DataStore extends ChangeNotifier {
         _loadActivitiesDelta(date),
         _loadWaterIntake(date),
         _loadCheatDay(date),
+        _loadClosedDay(date),
         _loadExerciseCredit(date),
       ]);
     } else {
@@ -350,6 +359,7 @@ class DataStore extends ChangeNotifier {
         _loadActivities(date),
         _loadWaterIntake(date),
         _loadCheatDay(date),
+        _loadClosedDay(date),
         _loadExerciseCredit(date),
         _loadStreak(),
       ]);
@@ -384,6 +394,7 @@ class DataStore extends ChangeNotifier {
       final activities = await cache.getActivitiesForDate(date);
       final water = await cache.getWaterIntakeForDate(date);
       final cheat = await cache.getCheatDay(date);
+      final closed = await cache.isDayClosed(date);
       final dayCredit = await cache.getExerciseCreditForDate(date);
       final profileCredit = await cache.getUserExerciseCreditFactor();
 
@@ -391,6 +402,7 @@ class DataStore extends ChangeNotifier {
       _activities = activities;
       _waterIntakeMl = water;
       _applyCheatDay(cheat);
+      _isDayClosed = closed;
       _dayCreditFactor = dayCredit;
       // Deliberately not marked as loaded: the mirror is a first paint, and the
       // authoritative value still has to come from the server below.
@@ -426,6 +438,7 @@ class DataStore extends ChangeNotifier {
       } else {
         await cache.unmarkCheatDay(date);
       }
+      await cache.setDayClosed(date, _isDayClosed);
       await cache.setExerciseCreditForDate(date, _dayCreditFactor);
       if (_profileCreditFactorLoaded) {
         await cache.setUserExerciseCreditFactor(_profileCreditFactor);
@@ -620,6 +633,48 @@ class DataStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Closed day ────────────────────────────────────────────────────────────
+
+  /// Whether [date] is closed — for days other than the one on screen, e.g.
+  /// the target of a move. Falls back to the offline mirror, then to open.
+  Future<bool> isClosedOn(DateTime date) async {
+    final loaded = _loadedDate;
+    if (loaded != null &&
+        loaded.year == date.year &&
+        loaded.month == date.month &&
+        loaded.day == date.day) {
+      return _isDayClosed;
+    }
+    if (_local != null) return _local!.isDayClosed(date);
+    if (_db != null) {
+      try {
+        return await ClosedDayService(_db!).isClosed(date);
+      } catch (e) {
+        appLogger.w('⚠️ Closed-day lookup failed, using cache: $e');
+      }
+    }
+    return await _cache?.isDayClosed(date) ?? false;
+  }
+
+  /// Closes or reopens [date] — optimistically, reverting if the write fails.
+  Future<void> setDayClosed(DateTime date, bool closed) async {
+    final previous = _isDayClosed;
+    _isDayClosed = closed;
+    notifyListeners();
+    try {
+      if (_local != null) {
+        await _local!.setDayClosed(date, closed);
+      } else if (_db != null) {
+        await ClosedDayService(_db!).setClosed(date, closed);
+      }
+      await _cache?.setDayClosed(date, closed);
+    } catch (e) {
+      _isDayClosed = previous;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   // ── Exercise credit ───────────────────────────────────────────────────────
 
   /// Sets (or, with a null [factor], clears) the exercise-credit override for
@@ -745,6 +800,14 @@ class DataStore extends ChangeNotifier {
       _applyCheatDay(await CheatDayService(_db!).getCheatDay(date));
     } catch (_) {
       // Bestehenden Cheat-Day-Status beibehalten.
+    }
+  }
+
+  Future<void> _loadClosedDay(DateTime date) async {
+    try {
+      _isDayClosed = await ClosedDayService(_db!).isClosed(date);
+    } catch (_) {
+      // Keep the current state.
     }
   }
 
@@ -964,5 +1027,9 @@ class DataStore extends ChangeNotifier {
       appLogger.e('❌ Error loading cheat day locally: $e');
       _applyCheatDay(null);
     }
+  }
+
+  Future<void> _loadClosedDayLocal(DateTime date) async {
+    _isDayClosed = await _local!.isDayClosed(date);
   }
 }

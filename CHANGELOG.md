@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- 
+- Close a day: once you're done for the day, close it from the overview. A
+  closed day can't be changed until you reopen it, and it silences the
+  reminders. Needs database migration V12.
 
 ### Changed
 - 

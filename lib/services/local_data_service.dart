@@ -22,7 +22,7 @@ class LocalDataService {
   /// partitioned by the `user_id` column. Was a const `'guest'`.
   String _userId = 'guest';
   static const String _dbName = 'dietry_local.db';
-  static const int _version = 12;  // Version 12: custom water goal flag
+  static const int _version = 13;  // Version 13: closed days
 
   Database? _db;
   bool _initialized = false;
@@ -237,6 +237,16 @@ class LocalDataService {
           factor REAL NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
+        )
+      ''');
+
+      // closed_days table: days the user closed. Mirrors sql/migrations/V12.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS closed_days (
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          created_at TEXT NOT NULL,
           PRIMARY KEY (user_id, date)
         )
       ''');
@@ -610,6 +620,19 @@ class LocalDataService {
       } catch (e) {
         appLogger.d('ℹ️ water_goal_custom column already exists: $e');
       }
+    }
+
+    if (oldVersion < 13) {
+      // Mirrors sql/migrations/V12.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS closed_days (
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, date)
+        )
+      ''');
+      appLogger.d('✅ Created closed_days table');
     }
   }
 
@@ -1256,6 +1279,72 @@ class LocalDataService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Closed days
+  // ─────────────────────────────────────────────────────────────────────────
+  // Guest mode: the only store. Logged-in: the offline mirror of `closed_days`.
+
+  Future<bool> isDayClosed(DateTime date) async {
+    if (!_initialized || _db == null) return false;
+    try {
+      final rows = await _db!.query(
+        'closed_days',
+        columns: ['date'],
+        where: 'user_id = ? AND date = ?',
+        whereArgs: [_userId, date.toIso8601String().split('T')[0]],
+        limit: 1,
+      );
+      return rows.isNotEmpty;
+    } catch (e) {
+      appLogger.e('❌ Error reading closed day: $e');
+      return false;
+    }
+  }
+
+  Future<void> setDayClosed(DateTime date, bool closed) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    final dateStr = date.toIso8601String().split('T')[0];
+    try {
+      if (!closed) {
+        await _db!.delete('closed_days',
+            where: 'user_id = ? AND date = ?', whereArgs: [_userId, dateStr]);
+        return;
+      }
+      await _db!.insert(
+        'closed_days',
+        {
+          'user_id': _userId,
+          'date': dateStr,
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    } catch (e) {
+      appLogger.e('❌ Error writing closed day: $e');
+      rethrow;
+    }
+  }
+
+  /// Every closed day. Used by the guest→account migration.
+  Future<List<DateTime>> getAllClosedDays() async {
+    if (!_initialized || _db == null) return const [];
+    try {
+      final rows = await _db!.query(
+        'closed_days',
+        columns: ['date'],
+        where: 'user_id = ?',
+        whereArgs: [_userId],
+        orderBy: 'date',
+      );
+      return rows.map((r) => DateTime.parse(r['date'] as String)).toList();
+    } catch (e) {
+      appLogger.e('❌ Error listing closed days: $e');
+      return const [];
+    }
+  }
+
   /// The profile-level default, or null when the user never set one.
   Future<double?> getUserExerciseCreditFactor() async {
     final profile = await getUserProfile();
@@ -1884,6 +1973,7 @@ class LocalDataService {
       'water_intake',
       'cheat_days',
       'exercise_credit_days',
+      'closed_days',
       'user_profile',
       'user_body_measurements',
     ];
@@ -1915,6 +2005,7 @@ class LocalDataService {
         'gear',
         'water_intake',
         'cheat_days',
+        'closed_days',
         'user_profile',
         'user_body_measurements',
       ];

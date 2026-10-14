@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/food_entry.dart' show MealType;
 import '../l10n/app_localizations.dart';
+import '../services/data_store.dart';
 import '../theme/app_colors.dart';
 
 /// Whether the user chose to duplicate an entry (leaving the original in
@@ -29,7 +30,8 @@ class MoveCopyResult {
 /// Copy or Move. The day starts on **today**, which is where an entry pulled up
 /// from an older day almost always wants to go. The sheet also carries the
 /// delete action, which is the only way to remove an entry that is not on
-/// today's log. Returns the chosen [MoveCopyResult], or null if dismissed.
+/// today's log. Move and Copy are disabled while the target day is closed.
+/// Returns the chosen [MoveCopyResult], or null if dismissed.
 ///
 /// Shared by the food log and the activity log so both behave identically.
 Future<MoveCopyResult?> showMoveCopySheet(
@@ -65,11 +67,27 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
   late DateTime _day;
   late MealType _meal;
 
+  /// Whether [_day] is closed; null while the lookup is running.
+  bool? _targetClosed;
+
   @override
   void initState() {
     super.initState();
-    _day = DateUtils.dateOnly(DateTime.now());
     _meal = widget.initialMeal;
+    _setDay(DateUtils.dateOnly(DateTime.now()));
+  }
+
+  void _setDay(DateTime day) {
+    setState(() {
+      _day = day;
+      _targetClosed = null;
+    });
+    DataStore.instance.isClosedOn(day).then((closed) {
+      // Drop answers for a day the user has already moved away from.
+      if (mounted && DateUtils.isSameDay(_day, day)) {
+        setState(() => _targetClosed = closed);
+      }
+    });
   }
 
   Future<void> _pickDate() async {
@@ -80,7 +98,7 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
       firstDate: DateTime(now.year - 2),
       lastDate: DateTime(now.year + 2),
     );
-    if (picked != null) setState(() => _day = DateUtils.dateOnly(picked));
+    if (picked != null) _setDay(DateUtils.dateOnly(picked));
   }
 
   @override
@@ -129,7 +147,7 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
                   ChoiceChip(
                     label: Text(label),
                     selected: DateUtils.isSameDay(_day, day),
-                    onSelected: (_) => setState(() => _day = day),
+                    onSelected: (_) => _setDay(day),
                   ),
                 ActionChip(
                   avatar: const Icon(Icons.calendar_today, size: 18),
@@ -143,6 +161,20 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: context.colors.muted,
                     )),
+            if (_targetClosed == true) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.lock_outline,
+                      size: 16, color: context.colors.danger.base),
+                  const SizedBox(width: 6),
+                  Text(l.moveTargetDayClosed,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: context.colors.danger.base,
+                          )),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
 
             // ── Meal ─────────────────────────────────────────────────────
@@ -181,7 +213,9 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.drive_file_move_outline),
                     label: Text(l.move),
-                    onPressed: () => Navigator.of(context).pop(
+                    onPressed: _targetClosed != false
+                        ? null
+                        : () => Navigator.of(context).pop(
                       MoveCopyResult(
                           day: _day, meal: _meal, action: MoveCopyAction.move),
                     ),
@@ -192,7 +226,9 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.copy_all_outlined),
                     label: Text(l.copy),
-                    onPressed: () => Navigator.of(context).pop(
+                    onPressed: _targetClosed != false
+                        ? null
+                        : () => Navigator.of(context).pop(
                       MoveCopyResult(
                           day: _day, meal: _meal, action: MoveCopyAction.copy),
                     ),

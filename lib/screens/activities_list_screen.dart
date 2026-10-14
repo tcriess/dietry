@@ -6,6 +6,7 @@ import '../models/physical_activity.dart';
 import '../models/food_entry.dart' show MealType;
 import '../services/neon_database_service.dart';
 import '../services/data_store.dart';
+import '../widgets/closed_day_banner.dart';
 import '../services/sync_service.dart';
 import '../services/app_logger.dart';
 import '../theme/app_colors.dart';
@@ -371,7 +372,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: InkWell(
-        onTap: () => _pickGear(activity),
+        onTap: _store.isDayClosed ? null : () => _pickGear(activity),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -557,6 +558,11 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
               ),
             ),
 
+          ClosedDayBanner(
+            selectedDay: widget.selectedDay,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          ),
+
           const Divider(height: 1),
 
           Expanded(
@@ -583,13 +589,15 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                           .titleMedium
                                           ?.copyWith(
                                               color: context.colors.muted)),
-                                  const SizedBox(height: 8),
-                                  Text(l.activitiesEmptyHint,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                              color: context.colors.subtle)),
+                                  if (!_store.isDayClosed) ...[
+                                    const SizedBox(height: 8),
+                                    Text(l.activitiesEmptyHint,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                                color: context.colors.subtle)),
+                                  ],
                                 ],
                               ),
                             ),
@@ -604,7 +612,9 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                           final timeFormat = DateFormat.Hm();
                           return Dismissible(
                             key: Key(activity.id!),
-                            direction: DismissDirection.endToStart,
+                            direction: _store.isDayClosed
+                                ? DismissDirection.none
+                                : DismissDirection.endToStart,
                             background: Container(
                               color: context.colors.danger.base,
                               alignment: Alignment.centerRight,
@@ -649,8 +659,9 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                 // older day would drop history that is no longer
                                 // being watched. Past activities are deleted
                                 // from the long-press sheet.
-                                trailing: DateUtils.isSameDay(
-                                        activity.startTime, DateTime.now())
+                                trailing: !_store.isDayClosed &&
+                                        DateUtils.isSameDay(
+                                            activity.startTime, DateTime.now())
                                     ? IconButton(
                                         icon: const Icon(Icons.delete_outline,
                                             size: 20),
@@ -660,8 +671,12 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                                         tooltip: l.delete,
                                       )
                                     : null,
-                                onTap: () => _editActivity(activity),
-                                onLongPress: () => _moveCopyActivity(activity),
+                                onTap: _store.isDayClosed
+                                    ? null
+                                    : () => _editActivity(activity),
+                                onLongPress: _store.isDayClosed
+                                    ? null
+                                    : () => _moveCopyActivity(activity),
                               ),
                             ),
                           );
@@ -684,7 +699,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
     final label = ExerciseCredit.formatPercent(_store.effectiveDayCreditFactor);
 
     return InkWell(
-      onTap: _editDayCredit,
+      onTap: _store.isDayClosed ? null : _editDayCredit,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
@@ -712,7 +727,7 @@ class _ActivitiesListScreenState extends State<ActivitiesListScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.edit, size: 16),
+            if (!_store.isDayClosed) const Icon(Icons.edit, size: 16),
           ],
         ),
       ),

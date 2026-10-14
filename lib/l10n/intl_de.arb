@@ -656,6 +656,12 @@
   "markAsCheatDay": "Cheat Day",
   "cheatDayMarked": "Cheat Day markiert ✓",
   "cheatDayRemoved": "Cheat Day entfernt",
+  "closeDay": "Tag abschließen",
+  "dayClosedBanner": "Tag abgeschlossen. Zum Ändern wieder öffnen.",
+  "reopenDay": "Öffnen",
+  "dayClosedSnack": "Tag abgeschlossen 🔒",
+  "dayReopenedSnack": "Tag wieder geöffnet",
+  "moveTargetDayClosed": "Dieser Tag ist abgeschlossen.",
   "cheatDayMonthlyNudge": "Du hattest diesen Monat {count} Cheat Days. Alles gut, kein Stress!",
   "@cheatDayMonthlyNudge": {
     "placeholders": {
