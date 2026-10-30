@@ -130,4 +130,39 @@ void main() {
 
     await tester.runAsync(() => local.setDayClosed(today, false));
   });
+
+  testWidgets('move/copy sheet offers only Copy for a closed source day',
+      (tester) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    DataStore.instance.initLocal(local);
+
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => showMoveCopySheet(context,
+                title: 'Apple', initialMeal: MealType.lunch, sourceClosed: true),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await tester.pumpAndSettle();
+
+    expect(await tester.runAsync(() => local.isDayClosed(today)), isFalse);
+    expect(find.text('Move'), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Copy'))
+            .onPressed,
+        isNotNull);
+  });
 }

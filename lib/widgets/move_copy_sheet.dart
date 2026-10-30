@@ -31,6 +31,7 @@ class MoveCopyResult {
 /// from an older day almost always wants to go. The sheet also carries the
 /// delete action, which is the only way to remove an entry that is not on
 /// today's log. Move and Copy are disabled while the target day is closed.
+/// With [sourceClosed] the entry's own day is closed: only Copy is offered.
 /// Returns the chosen [MoveCopyResult], or null if dismissed.
 ///
 /// Shared by the food log and the activity log so both behave identically.
@@ -38,6 +39,7 @@ Future<MoveCopyResult?> showMoveCopySheet(
   BuildContext context, {
   required String title,
   required MealType initialMeal,
+  bool sourceClosed = false,
 }) {
   return showModalBottomSheet<MoveCopyResult>(
     context: context,
@@ -46,6 +48,7 @@ Future<MoveCopyResult?> showMoveCopySheet(
     builder: (ctx) => _MoveCopySheet(
       title: title,
       initialMeal: initialMeal,
+      sourceClosed: sourceClosed,
     ),
   );
 }
@@ -53,10 +56,12 @@ Future<MoveCopyResult?> showMoveCopySheet(
 class _MoveCopySheet extends StatefulWidget {
   final String title;
   final MealType initialMeal;
+  final bool sourceClosed;
 
   const _MoveCopySheet({
     required this.title,
     required this.initialMeal,
+    required this.sourceClosed,
   });
 
   @override
@@ -121,7 +126,7 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.moveOrCopy,
+            Text(widget.sourceClosed ? l.copy : l.moveOrCopy,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                     )),
@@ -198,30 +203,36 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
             // ── Actions ──────────────────────────────────────────────────
             Row(
               children: [
-                IconButton.outlined(
-                  icon: const Icon(Icons.delete_outline),
-                  style: IconButton.styleFrom(
-                      foregroundColor: context.colors.danger.base),
-                  tooltip: l.delete,
-                  onPressed: () => Navigator.of(context).pop(
-                    MoveCopyResult(
-                        day: _day, meal: _meal, action: MoveCopyAction.delete),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.drive_file_move_outline),
-                    label: Text(l.move),
-                    onPressed: _targetClosed != false
-                        ? null
-                        : () => Navigator.of(context).pop(
+                if (!widget.sourceClosed) ...[
+                  IconButton.outlined(
+                    icon: const Icon(Icons.delete_outline),
+                    style: IconButton.styleFrom(
+                        foregroundColor: context.colors.danger.base),
+                    tooltip: l.delete,
+                    onPressed: () => Navigator.of(context).pop(
                       MoveCopyResult(
-                          day: _day, meal: _meal, action: MoveCopyAction.move),
+                          day: _day,
+                          meal: _meal,
+                          action: MoveCopyAction.delete),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.drive_file_move_outline),
+                      label: Text(l.move),
+                      onPressed: _targetClosed != false
+                          ? null
+                          : () => Navigator.of(context).pop(
+                                MoveCopyResult(
+                                    day: _day,
+                                    meal: _meal,
+                                    action: MoveCopyAction.move),
+                              ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: FilledButton.icon(
                     icon: const Icon(Icons.copy_all_outlined),
@@ -229,9 +240,11 @@ class _MoveCopySheetState extends State<_MoveCopySheet> {
                     onPressed: _targetClosed != false
                         ? null
                         : () => Navigator.of(context).pop(
-                      MoveCopyResult(
-                          day: _day, meal: _meal, action: MoveCopyAction.copy),
-                    ),
+                              MoveCopyResult(
+                                  day: _day,
+                                  meal: _meal,
+                                  action: MoveCopyAction.copy),
+                            ),
                   ),
                 ),
               ],

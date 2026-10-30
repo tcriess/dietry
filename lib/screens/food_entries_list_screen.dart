@@ -748,6 +748,7 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
       context,
       title: entry.name,
       initialMeal: entry.mealType,
+      sourceClosed: _store.isDayClosed,
     );
     if (result == null || !mounted) return;
 
@@ -962,9 +963,8 @@ class _FoodEntriesListScreenState extends State<FoodEntriesListScreen> {
                   : _store.isDayClosed
                       ? null
                       : () => _editEntry(entry),
-              onLongPress: _selecting || _store.isDayClosed
-                  ? null
-                  : () => _moveCopyEntry(entry),
+              // On a closed day the sheet offers Copy only.
+              onLongPress: _selecting ? null : () => _moveCopyEntry(entry),
               child: content,
             )
           : content,
