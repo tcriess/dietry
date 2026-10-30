@@ -131,10 +131,12 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
+        # A full storage quota must not block the release attach below.
+        continue-on-error: true
         with:
           name: dietry-ce-web
           path: dietry-ce-web.tar.gz
-          retention-days: 30
+          retention-days: 3
 
       - name: Attach to GitHub release
         if: github.event_name == 'release'
@@ -209,10 +211,12 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
+        # A full storage quota must not block the release attach below.
+        continue-on-error: true
         with:
           name: dietry-ce-linux
           path: dietry-ce-linux-x64.tar.gz
-          retention-days: 30
+          retention-days: 3
 
       - name: Attach to GitHub release
         if: github.event_name == 'release'
@@ -303,12 +307,14 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
+        # A full storage quota must not block the release attach below.
+        continue-on-error: true
         with:
           name: dietry-ce-android
           path: |
             dietry-ce-*.apk
             dietry-ce-*.aab
-          retention-days: 30
+          retention-days: 3
 
       - name: Attach to GitHub release
         if: github.event_name == 'release'
@@ -355,10 +361,12 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
+        # A full storage quota must not block the release attach below.
+        continue-on-error: true
         with:
           name: dietry-ce-macos
           path: dietry-ce-macos.zip
-          retention-days: 30
+          retention-days: 3
 
 
   # ── 6. Windows Desktop ──────────────────────────────────────────────────────
@@ -401,10 +409,12 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
+        # A full storage quota must not block the release attach below.
+        continue-on-error: true
         with:
           name: dietry-ce-windows
           path: dietry-ce-windows.zip
-          retention-days: 30
+          retention-days: 3
 
 
   # ── 7. iOS ──────────────────────────────────────────────────────────────────
@@ -471,7 +481,9 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
+        # A full storage quota must not block the release attach below.
+        continue-on-error: true
         with:
           name: dietry-ce-ios
           path: build/ios/ipa/*.ipa
-          retention-days: 30
+          retention-days: 3
