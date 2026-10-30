@@ -14,10 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ### Fixed
-- A food entered by hand could be saved without a name once the form was
-  scrolled down to the Save button.
-- On the overview, "Consumed" was cut off ("1450 …") when burned calories
-  were shown next to it; the figures now stack when they don't fit.
+- 
 
 ### Deprecated
 - 
@@ -27,6 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - 
+
+---
+
+## [1.10.1] — 2026-10-30
+
+### Changed
+- **Copy from a closed day**: long-press a food entry on a closed day to copy
+  it to another day or meal. The closed day itself stays untouched — moving
+  and deleting are still off until you reopen it.
+
+### Fixed
+- A food entered by hand could be saved without a name once the form was
+  scrolled down to the Save button.
+- On the overview, "Consumed" was cut off ("1450 …") when burned calories
+  were shown next to it; the figures now stack when they don't fit.
 
 ---
 
