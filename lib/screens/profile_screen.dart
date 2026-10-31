@@ -588,7 +588,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildWaterReminderRow(l),
                           if (FoodLogReminderService.isSupported)
                             _buildFoodLogReminderRow(l),
-                          _buildAutoCloseRow(l),
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
@@ -599,6 +598,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ],
+                        // Not goal-related, so shown without a goal too.
+                        _buildAutoCloseRow(l),
                       ],
                     ),
                   ),
