@@ -2136,6 +2136,7 @@ enum _HomeMenuAction {
   profile,
   goal,
   gear,
+  autoClose,
   deleteGuestData,
   signIn,
   logout,
@@ -2180,6 +2181,8 @@ class DietryHomeWithLogout extends StatefulWidget {
 class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
   final _dietryHomeKey = GlobalKey<_DietryHomeState>();
   FeedbackService? _feedbackService;
+  // Guests have no profile screen, so the switch lives in the menu.
+  bool _autoClose = true;
 
   @override
   void initState() {
@@ -2187,6 +2190,11 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
     // Only initialize FeedbackService in remote mode
     if (!widget.isGuestMode && widget.dbService != null) {
       _feedbackService = FeedbackService(widget.dbService!);
+    }
+    if (widget.isGuestMode) {
+      AutoCloseDays.isEnabled().then((v) {
+        if (mounted) setState(() => _autoClose = v);
+      });
     }
   }
 
@@ -2277,6 +2285,11 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
           context,
           MaterialPageRoute(builder: (_) => const GearScreen()),
         );
+        break;
+      case _HomeMenuAction.autoClose:
+        final value = !_autoClose;
+        setState(() => _autoClose = value);
+        await AutoCloseDays.setEnabled(value);
         break;
       case _HomeMenuAction.deleteGuestData:
         await _confirmAndDeleteGuestData(context);
@@ -2523,6 +2536,12 @@ class _DietryHomeWithLogoutState extends State<DietryHomeWithLogout> {
                   PopupMenuItem(
                     value: _HomeMenuAction.gear,
                     child: _menuRow(Icons.directions_run, lm.gearTitle),
+                  ),
+                if (widget.isGuestMode)
+                  CheckedPopupMenuItem(
+                    value: _HomeMenuAction.autoClose,
+                    checked: _autoClose,
+                    child: Text(lm.autoCloseDaysTitle),
                   ),
                 if (widget.isGuestMode)
                   PopupMenuItem(
