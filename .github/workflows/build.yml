@@ -131,7 +131,8 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
-        # A full storage quota must not block the release attach below.
+        # Releases attach the files instead; skipping saves artifact quota.
+        if: github.event_name != 'release'
         continue-on-error: true
         with:
           name: dietry-ce-web
@@ -211,7 +212,8 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
-        # A full storage quota must not block the release attach below.
+        # Releases attach the files instead; skipping saves artifact quota.
+        if: github.event_name != 'release'
         continue-on-error: true
         with:
           name: dietry-ce-linux
@@ -307,7 +309,8 @@ jobs:
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
-        # A full storage quota must not block the release attach below.
+        # Releases attach the files instead; skipping saves artifact quota.
+        if: github.event_name != 'release'
         continue-on-error: true
         with:
           name: dietry-ce-android
