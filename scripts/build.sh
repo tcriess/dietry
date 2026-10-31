@@ -28,7 +28,7 @@ Usage: ./scripts/build.sh <ce|cloud> <dev|prod> <web|linux|android> [options]
 
 Targets:
   web       release WASM build, tarred; add --deploy to publish it
-  linux     release x64 bundle, tarred next to the repo
+  linux     release x64 bundle, tarred
   android   release APK (+ .aab unless --no-bundle)
 
 Options:
@@ -141,7 +141,7 @@ case "$target" in
 
   linux)
     run flutter build linux --release "${defines[@]}"
-    tarball="$(dirname -- "$REPO_ROOT")/$stem-linux-x64.tar.gz"
+    tarball="$REPO_ROOT/$stem-linux-x64.tar.gz"
     run tar -C "$REPO_ROOT/build/linux/x64/release/bundle" -czf "$tarball" .
     info "Linux  $tarball"
     ;;

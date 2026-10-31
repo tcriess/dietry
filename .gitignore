@@ -66,6 +66,7 @@ archive/
 dietry-*.apk
 dietry-*.aab
 dietry-*.tar.bz2
+dietry-*.tar.gz
 
 # macOS deferred; iOS is now tracked and under active development
 /macos
