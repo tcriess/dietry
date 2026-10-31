@@ -27,6 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.2] — 2026-10-31
+
+### Added
+- **Past days close themselves**: a day with entries is closed automatically
+  once the day after it is over, so yesterday stays open all of today. A day
+  you reopen stays open. Turn it off in your profile, or in the ⋮ menu in
+  guest mode.
+
+### Changed
+- **Reports count today once it is closed**: until then, today is still left
+  out of averages and totals, as before.
+
+---
+
 ## [1.10.1] — 2026-10-30
 
 ### Changed
