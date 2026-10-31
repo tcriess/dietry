@@ -2717,6 +2717,18 @@ abstract class AppLocalizations {
   /// **'Tag wieder geöffnet'**
   String get dayReopenedSnack;
 
+  /// No description provided for @autoCloseDaysTitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Tage automatisch abschließen'**
+  String get autoCloseDaysTitle;
+
+  /// No description provided for @autoCloseDaysSubtitle.
+  ///
+  /// In de, this message translates to:
+  /// **'Schließt einen Tag ab, sobald der Folgetag vorbei ist'**
+  String get autoCloseDaysSubtitle;
+
   /// No description provided for @moveTargetDayClosed.
   ///
   /// In de, this message translates to:

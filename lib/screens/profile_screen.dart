@@ -14,6 +14,7 @@ import '../services/health_connect_prefs.dart';
 import '../services/account_service.dart';
 import '../services/water_reminder_service.dart';
 import '../services/food_log_reminder_service.dart';
+import '../services/auto_close_days.dart';
 import '../services/app_logger.dart';
 import '../app_config.dart';
 import '../app_features.dart';
@@ -57,6 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   _MeasurementRange _selectedRange = _MeasurementRange.months3;
   bool _waterReminderEnabled = false;
   bool _foodLogReminderEnabled = false;
+  bool _autoCloseEnabled = true;
   bool _hcImportEnabled = false;
 
   /// The default share of a workout's burn added to the daily budget, or null
@@ -103,6 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ]);
       final reminderEnabled = await WaterReminderService.isEnabled();
       final foodLogReminderEnabled = await FoodLogReminderService.isEnabled();
+      final autoCloseEnabled = await AutoCloseDays.isEnabled();
       final hcEnabled = await HealthConnectPrefs.isEnabled();
 
       final profile = results[0] as UserProfile?;
@@ -119,6 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _goal = goal;
           _waterReminderEnabled = reminderEnabled;
           _foodLogReminderEnabled = foodLogReminderEnabled;
+          _autoCloseEnabled = autoCloseEnabled;
           _hcImportEnabled = hcEnabled;
           _isLoading = false;
         });
@@ -584,6 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildWaterReminderRow(l),
                           if (FoodLogReminderService.isSupported)
                             _buildFoodLogReminderRow(l),
+                          _buildAutoCloseRow(l),
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
@@ -1236,6 +1241,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (mounted) {
                   setState(() => _foodLogReminderEnabled = !value);
                 }
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoCloseRow(AppLocalizations l) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            _autoCloseEnabled ? Icons.lock_clock : Icons.lock_open,
+            color:
+                _autoCloseEnabled ? context.colors.accent.base : context.colors.subtle,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.autoCloseDaysTitle,
+                    style: Theme.of(context).textTheme.bodyLarge),
+                Text(l.autoCloseDaysSubtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.colors.muted,
+                        )),
+              ],
+            ),
+          ),
+          Switch(
+            value: _autoCloseEnabled,
+            activeThumbColor: context.colors.accent.base,
+            onChanged: (value) {
+              setState(() => _autoCloseEnabled = value);
+              AutoCloseDays.setEnabled(value).catchError((_) {
+                if (mounted) setState(() => _autoCloseEnabled = !value);
               });
             },
           ),

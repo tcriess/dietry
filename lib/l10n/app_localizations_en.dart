@@ -1447,6 +1447,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dayReopenedSnack => 'Day reopened';
 
   @override
+  String get autoCloseDaysTitle => 'Close days automatically';
+
+  @override
+  String get autoCloseDaysSubtitle =>
+      'Closes a day once the day after it is over';
+
+  @override
   String get moveTargetDayClosed => 'This day is closed.';
 
   @override

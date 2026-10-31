@@ -45,6 +45,7 @@ import 'services/water_reminder_service.dart';
 import 'services/food_log_reminder_service.dart';
 import 'services/cheat_day_service.dart';
 import 'services/closed_day_service.dart';
+import 'services/auto_close_days.dart';
 import 'services/guest_mode_service.dart';
 import 'services/guest_migration_service.dart';
 import 'services/user_body_measurements_service.dart';
@@ -2799,6 +2800,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // Guest mode: no remote sync needed, just reload from local
     if (widget.isGuestMode || db == null) {
       await _store.loadDay(_selectedDay, silent: true);
+      await _autoCloseDays();
       return;
     }
 
@@ -2806,6 +2808,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     if (db.userId == null) return;
     await _store.loadDay(_selectedDay, silent: true, delta: true);
     _sync.processPendingQueue();
+    await _autoCloseDays();
   }
 
   /// User-triggered refresh: reload data for the current day, force a Reports
@@ -3298,6 +3301,7 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     if (widget.isGuestMode || widget.dbService == null) {
       await _store.loadDay(_selectedDay);
       await _refreshCanGoBack();
+      await _autoCloseDays();
       return;
     }
 
@@ -3350,6 +3354,16 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
     // Background: warm the cache with recent days so past-day browsing is
     // instant/offline. Fire-and-forget, low priority — never blocks the UI.
     _store.backfillRecentDays().ignore();
+    await _autoCloseDays();
+  }
+
+  /// Closes past days that came due — see [AutoCloseDays]. Cheap when none are.
+  Future<void> _autoCloseDays() async {
+    final scope = widget.isGuestMode || widget.dbService == null
+        ? 'guest'
+        : widget.dbService!.userId;
+    if (scope == null) return;
+    await AutoCloseDays.run(scope);
   }
 
   Future<void> _loadCurrentGoal() async {

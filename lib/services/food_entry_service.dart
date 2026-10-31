@@ -271,6 +271,29 @@ class FoodEntryService {
     }
   }
 
+  /// The days in [start, end] (inclusive) that have at least one food entry.
+  /// Throws instead of returning empty on failure — auto-close must not mistake
+  /// an unreachable server for days without entries.
+  Future<Set<DateTime>> getEntryDatesInRange(DateTime start, DateTime end) async {
+    if (!await _db.ensureValidToken(minMinutesValid: 5)) {
+      throw Exception('Token invalid');
+    }
+    final userId = _db.userId;
+    if (userId == null) throw Exception('No user ID');
+
+    final response = await _db.client
+        .from('food_entries')
+        .select('entry_date')
+        .eq('user_id', userId)
+        .gte('entry_date', start.toIso8601String().split('T')[0])
+        .lte('entry_date', end.toIso8601String().split('T')[0]);
+
+    return {
+      for (final row in response as List)
+        DateTime.parse(row['entry_date'] as String),
+    };
+  }
+
   /// Hole alle Food Entries für einen Datumsbereich [start, end] (inklusiv).
   /// Best-effort: leere Liste bei fehlendem Token/Fehler (Cache-Backfill).
   Future<List<FoodEntry>> getFoodEntriesForRange(DateTime start, DateTime end) async {

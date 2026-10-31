@@ -675,6 +675,41 @@ class DataStore extends ChangeNotifier {
     }
   }
 
+  /// The days in [start, end] that have a food entry. Throws when the backend
+  /// can't answer — never falls back to the offline mirror.
+  Future<Set<DateTime>> foodEntryDatesInRange(
+      DateTime start, DateTime end) async {
+    if (_local != null) return _local!.getFoodEntryDatesInRange(start, end);
+    if (_db != null) {
+      return FoodEntryService(_db!).getEntryDatesInRange(start, end);
+    }
+    throw StateError('DataStore has no backend');
+  }
+
+  /// Closes each of [dates] — the background counterpart of [setDayClosed].
+  /// Unlike it, only touches the in-memory flag when a date is the day on
+  /// screen. Stops at the first failed write.
+  Future<void> closeDays(Iterable<DateTime> dates) async {
+    for (final date in dates) {
+      if (_local != null) {
+        await _local!.setDayClosed(date, true);
+      } else if (_db != null) {
+        await ClosedDayService(_db!).setClosed(date, true);
+      }
+      await _cache?.setDayClosed(date, true);
+
+      final loaded = _loadedDate;
+      if (loaded != null &&
+          loaded.year == date.year &&
+          loaded.month == date.month &&
+          loaded.day == date.day &&
+          !_isDayClosed) {
+        _isDayClosed = true;
+        notifyListeners();
+      }
+    }
+  }
+
   // ── Exercise credit ───────────────────────────────────────────────────────
 
   /// Sets (or, with a null [factor], clears) the exercise-credit override for

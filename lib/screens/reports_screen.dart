@@ -8,6 +8,7 @@ import '../app_features.dart';
 import '../utils/app_features_utils.dart';
 import '../l10n/app_localizations.dart';
 import '../models/models.dart';
+import '../services/data_store.dart';
 import '../services/neon_database_service.dart';
 import '../services/nutrition_calculator.dart';
 import '../services/nutrition_goal_service.dart';
@@ -54,6 +55,11 @@ extension _RangeExt on ReportRange {
       ReportRange.allTime => (null, to),
     };
   }
+
+  /// [dates], or [datesThroughToday] once today is closed — a closed day is
+  /// complete, so it no longer skews the curves.
+  (DateTime?, DateTime) window({required bool includeToday}) =>
+      includeToday ? datesThroughToday : dates;
 
   /// Group daily points into display buckets.
   /// Week/month → daily; year → weekly avg; allTime → monthly avg.
@@ -171,6 +177,10 @@ class _ReportsData {
   /// mode, or when the user hasn't entered body data.
   final UserBodyData? bodyData;
 
+  /// Whether the window ends today rather than yesterday — see
+  /// [_RangeExt.window].
+  final bool includesToday;
+
   const _ReportsData({
     required this.nutrition,
     required this.water,
@@ -179,6 +189,7 @@ class _ReportsData {
     this.goalHistory = const [],
     this.gear = const [],
     this.bodyData,
+    this.includesToday = false,
   });
 }
 
@@ -275,10 +286,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
       throw Exception('Token validation failed');
     }
 
-    final (from, to) = _range.dates;
-    final (gearFrom, gearTo) = _range.datesThroughToday;
     final now = DateTime.now();
     final todayDate = DateTime(now.year, now.month, now.day);
+    final todayClosed = await DataStore.instance.isClosedOn(todayDate);
+    final (from, to) = _range.window(includeToday: todayClosed);
+    final (gearFrom, gearTo) = _range.datesThroughToday;
 
     final results = await Future.wait([
       _svc.getNutritionTrend(from, to),
@@ -303,6 +315,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       goalHistory: results[4] as List<NutritionGoal>,
       bodyData: results[5] as UserBodyData?,
       gear: results[6] as List<GearReportItem>,
+      includesToday: todayClosed,
     );
     _lastData = result;
     return result;
@@ -316,7 +329,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _exportBusy = true);
     try {
       final l = AppLocalizations.of(context)!;
-      final (from, to) = _range.dates;
+      final (from, to) = _range.window(includeToday: data.includesToday);
       final success = await premiumFeatures.exportReportsData(
         ceExporter: exporter.exportCsvFiles,
         range: _range.name,
@@ -563,6 +576,8 @@ class _ReportsBody extends StatelessWidget {
     //   • tdeeHybrid   → base = TDEE (everyday only), add logged exercise
     // Null base (no body data) makes the cloud chart fall back to its old
     // intake − exercise behaviour.
+    final (from, to) = range.window(includeToday: data.includesToday);
+
     double? maintenanceCalories;
     bool? maintenanceAddsExercise;
     final bodyData = data.bodyData;
@@ -587,7 +602,12 @@ class _ReportsBody extends StatelessWidget {
         // ── CE charts ──────────────────────────────────────────────────────
         // Hide calorie-related reports in macro-only mode
         if (goal?.macroOnly != true) ...[
-          _StatsSummaryCard(nutrition: data.nutrition, water: data.water, goal: goal),
+          _StatsSummaryCard(
+            nutrition: data.nutrition,
+            water: data.water,
+            goal: goal,
+            includeToday: data.includesToday,
+          ),
           const SizedBox(height: 12),
           _CalorieTrendCard(
             nutrition: data.nutrition,
@@ -631,8 +651,8 @@ class _ReportsBody extends StatelessWidget {
             userId: userId,
             authToken: authToken,
             apiUrl: NeonDatabaseService.dataApiUrl,
-            fromDate: range.dates.$1 != null ? _fmt(range.dates.$1!) : null,
-            toDate: _fmt(range.dates.$2),
+            fromDate: from != null ? _fmt(from) : null,
+            toDate: _fmt(to),
             nutritionRows: data.nutrition
                 .map((d) => ReportsCloudNutritionRow(
                       date: _fmt(d.date),
@@ -918,14 +938,23 @@ class _StatsSummaryCard extends StatelessWidget {
   final List<DailyWaterData> water;
   final NutritionGoal? goal;
 
-  const _StatsSummaryCard(
-      {required this.nutrition, required this.water, required this.goal});
+  /// Today is closed, so it counts like any finished day.
+  final bool includeToday;
+
+  const _StatsSummaryCard({
+    required this.nutrition,
+    required this.water,
+    required this.goal,
+    this.includeToday = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    // Exclude today from averages — the day is incomplete and skews stats.
-    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    // Exclude today from averages unless it's closed — an open day is
+    // incomplete and skews stats.
+    final todayStr =
+        includeToday ? null : DateTime.now().toIso8601String().split('T')[0];
     final completed = nutrition
         .where((d) => d.date.toIso8601String().split('T')[0] != todayStr)
         .toList();

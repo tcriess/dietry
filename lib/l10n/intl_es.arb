@@ -644,6 +644,8 @@
   "reopenDay": "Reabrir",
   "dayClosedSnack": "Día cerrado 🔒",
   "dayReopenedSnack": "Día reabierto",
+  "autoCloseDaysTitle": "Cerrar días automáticamente",
+  "autoCloseDaysSubtitle": "Cierra un día cuando ha terminado el día siguiente",
   "moveTargetDayClosed": "Este día está cerrado.",
   "cheatDayMonthlyNudge": "Has tenido {count} días trampa este mes. ¡Sin problema, sin juicios!",
   "@cheatDayMonthlyNudge": {

@@ -661,6 +661,8 @@
   "reopenDay": "Öffnen",
   "dayClosedSnack": "Tag abgeschlossen 🔒",
   "dayReopenedSnack": "Tag wieder geöffnet",
+  "autoCloseDaysTitle": "Tage automatisch abschließen",
+  "autoCloseDaysSubtitle": "Schließt einen Tag ab, sobald der Folgetag vorbei ist",
   "moveTargetDayClosed": "Dieser Tag ist abgeschlossen.",
   "cheatDayMonthlyNudge": "Du hattest diesen Monat {count} Cheat Days. Alles gut, kein Stress!",
   "@cheatDayMonthlyNudge": {

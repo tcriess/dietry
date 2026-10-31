@@ -1327,6 +1327,26 @@ class LocalDataService {
     }
   }
 
+  /// The days in [start, end] (inclusive) that have at least one food entry.
+  Future<Set<DateTime>> getFoodEntryDatesInRange(
+      DateTime start, DateTime end) async {
+    if (!_initialized || _db == null) {
+      throw Exception('LocalDataService not initialized');
+    }
+    final rows = await _db!.query(
+      'food_entries',
+      columns: ['entry_date'],
+      distinct: true,
+      where: 'user_id = ? AND entry_date >= ? AND entry_date <= ?',
+      whereArgs: [
+        _userId,
+        start.toIso8601String().split('T')[0],
+        end.toIso8601String().split('T')[0],
+      ],
+    );
+    return {for (final r in rows) DateTime.parse(r['entry_date'] as String)};
+  }
+
   /// Every closed day. Used by the guest→account migration.
   Future<List<DateTime>> getAllClosedDays() async {
     if (!_initialized || _db == null) return const [];

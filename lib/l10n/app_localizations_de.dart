@@ -1457,6 +1457,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dayReopenedSnack => 'Tag wieder geöffnet';
 
   @override
+  String get autoCloseDaysTitle => 'Tage automatisch abschließen';
+
+  @override
+  String get autoCloseDaysSubtitle =>
+      'Schließt einen Tag ab, sobald der Folgetag vorbei ist';
+
+  @override
   String get moveTargetDayClosed => 'Dieser Tag ist abgeschlossen.';
 
   @override
