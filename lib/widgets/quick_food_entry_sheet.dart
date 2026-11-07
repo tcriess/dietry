@@ -2801,36 +2801,69 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     );
   }
 
-  /// Compact "how sure?" override — a small row of chips, pre-set to the
-  /// auto-derived level; tapping marks it user-overridden.
-  Widget _buildEstimateRow(AppLocalizations l) {
+  /// Small label over a dense dropdown; two of these share one row.
+  Widget _labeledDropdown(String label, Widget dropdown) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(l.estimateLabel,
+        Text(label,
             style: TextStyle(fontSize: 12, color: context.colors.muted)),
-        const SizedBox(height: 4),
-        Wrap(
-          spacing: 6,
-          children: EstimateLevel.values.map((lvl) {
-            // ExcludeFocus: keep the chip from stealing focus so tapping it
-            // doesn't dismiss the keyboard and drop the tap. See
-            // add_food_entry_screen for the full explanation.
-            return ExcludeFocus(
-              child: ChoiceChip(
-                label: Text(lvl.localizedName(l),
-                    style: const TextStyle(fontSize: 12)),
-                selected: _estimateLevel == lvl,
-                visualDensity: VisualDensity.compact,
-                onSelected: (_) => setState(() {
-                  _estimateLevel = lvl;
-                  _userSetEstimate = true;
-                }),
-              ),
-            );
-          }).toList(),
-        ),
+        // ExcludeFocus: opening the menu must not drop the keyboard focus.
+        ExcludeFocus(child: dropdown),
       ],
+    );
+  }
+
+  /// "How sure?" — pre-set to the auto-derived level; a pick marks it
+  /// user-overridden.
+  Widget _buildEstimateDropdown(AppLocalizations l) {
+    return _labeledDropdown(
+      l.estimateLabel,
+      DropdownButton<EstimateLevel>(
+        value: _estimateLevel,
+        isDense: true,
+        isExpanded: true,
+        items: EstimateLevel.values
+            .map((lvl) => DropdownMenuItem(
+                  value: lvl,
+                  child: Text(lvl.localizedName(l),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13)),
+                ))
+            .toList(),
+        onChanged: (lvl) {
+          if (lvl == null) return;
+          setState(() {
+            _estimateLevel = lvl;
+            _userSetEstimate = true;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildMealDropdown(AppLocalizations l) {
+    return _labeledDropdown(
+      l.mealType,
+      DropdownButton<MealType>(
+        value: _mealType,
+        isDense: true,
+        isExpanded: true,
+        items: MealType.values
+            .map((mt) => DropdownMenuItem(
+                  value: mt,
+                  child: Text('${mt.icon} ${mt.localizedName(l)}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13)),
+                ))
+            .toList(),
+        onChanged: (mt) {
+          if (mt == null) return;
+          setState(() => _mealType = mt);
+          widget.onMealTypeChanged(mt);
+        },
+      ),
     );
   }
 
@@ -2841,6 +2874,13 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
     final provenance = food?.provenanceSummary;
     final units = _availableUnits();
     return AlertDialog(
+      // Scrolls rather than letting the actions cover the content when the
+      // keyboard leaves little room.
+      scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(8, 4, 12, 8),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -3005,52 +3045,28 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
           // Nutrition preview
           _NutritionPreview(entry: _buildEntry()),
           const SizedBox(height: 12),
-          // How sure? — auto-derived from the portion type, overridable.
-          _buildEstimateRow(l),
-          const SizedBox(height: 12),
-          // Meal type — compact dropdown rather than a row of chips. The chip
-          // version wrapped to two lines on narrow phones and the second row
-          // got clipped behind the dialog's action buttons, leaving some
-          // meal types unselectable.
+          // Meal and "how sure?" share one row of dropdowns to keep the
+          // dialog short enough to sit above the keyboard.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${l.mealType}:', style: const TextStyle(fontSize: 13)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButton<MealType>(
-                  value: _mealType,
-                  isDense: true,
-                  isExpanded: true,
-                  items: MealType.values
-                      .map((mt) => DropdownMenuItem(
-                            value: mt,
-                            child: Text(
-                              '${mt.icon} ${mt.localizedName(l)}',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ))
-                      .toList(),
-                  onChanged: (mt) {
-                    if (mt == null) return;
-                    setState(() => _mealType = mt);
-                    widget.onMealTypeChanged(mt);
-                  },
-                ),
-              ),
+              Expanded(child: _buildMealDropdown(l)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildEstimateDropdown(l)),
             ],
           ),
         ],
       ),
       actions: [
-        // Save as shortcut
-        TextButton.icon(
+        // Save as shortcut — icon only, so Cancel/Add stay on one line.
+        IconButton(
+          tooltip: l.shortcut,
           icon: _savingShortcut
               ? const SizedBox(
-                  width: 14,
-                  height: 14,
+                  width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.push_pin_outlined, size: 16),
-          label: Text(l.shortcut),
+              : const Icon(Icons.push_pin_outlined),
           onPressed: _savingShortcut
               ? null
               : () async {
@@ -3145,3 +3161,49 @@ class _MacroChip extends StatelessWidget {
   }
 }
 
+
+/// Test hook: the per-item confirm dialog without the sheet around it.
+@visibleForTesting
+Widget debugConfirmDialog({
+  required String name,
+  required MealType mealType,
+  required FoodItem food,
+  required NeonDatabaseService dbService,
+}) =>
+    _ConfirmDialog(
+      name: name,
+      initialAmount: 100,
+      unit: 'g',
+      mealType: mealType,
+      calories: food.calories,
+      protein: food.protein,
+      fat: food.fat,
+      carbs: food.carbs,
+      foodId: food.id,
+      scaleByAmount: true,
+      food: food,
+      isLiquid: false,
+      isMeal: false,
+      userId: 'test-user',
+      dbService: dbService,
+      date: DateTime(2026, 11, 7),
+      onMealTypeChanged: (_) {},
+      onSaveAsShortcut: ({
+        required String label,
+        required String? foodId,
+        required String mealType,
+        required double amount,
+        required String unit,
+        required double calories,
+        required double protein,
+        required double fat,
+        required double carbs,
+        double? fiber,
+        double? sugar,
+        double? sodium,
+        double? saturatedFat,
+        bool isLiquid = false,
+        double? amountMl,
+        bool isMeal = false,
+      }) async {},
+    );
