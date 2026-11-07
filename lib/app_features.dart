@@ -11,7 +11,7 @@ const _kPremiumRoleOverride = String.fromEnvironment('PREMIUM_ROLE');
 ///
 /// Kombiniert zwei Ebenen:
 ///   1. Build-Zeit: [AppConfig.isCloudEdition] — Community vs. Cloud
-///   2. Laufzeit:   JWT `role`-Claim — Free / Basic / Pro innerhalb Cloud
+///   2. Laufzeit:   `user_roles`-Tabelle — free / pro / admin innerhalb Cloud
 ///
 /// Community-Builds: alle Premium-Gates geben immer `false` zurück.
 /// Cloud-Builds: Gates abhängig vom JWT-Claim nach dem Login.
@@ -67,9 +67,9 @@ class AppFeatures {
 
   // ── Rollen-Checks ─────────────────────────────────────────────────────────
 
-  /// True für bezahlte Cloud-Nutzer (Pro-Tier, intern auch 'basic' genannt).
+  /// True für bezahlte Cloud-Nutzer (Pro-Tier).
   /// Admins erhalten automatisch Pro-Zugang.
-  static bool get isPaid => _isCloud && (_role == 'pro' || _role == 'basic' || _role == 'admin');
+  static bool get isPaid => _isCloud && (_role == 'pro' || _role == 'admin');
 
   /// True für Admin-Nutzer (Cloud, Web only).
   static bool get isAdmin => _isCloud && kIsWeb && _role == 'admin';

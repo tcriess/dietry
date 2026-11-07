@@ -436,7 +436,7 @@ abstract class PremiumFeatures {
   // ── Nutzer-Rolle ─────────────────────────────────────────────────────────
 
   /// Fetches the user's subscription role from the [user_roles] DB table.
-  /// Returns 'free' on any error or if no row exists.
+  /// Returns 'free' if no row exists; throws if the lookup fails.
   Future<String> fetchUserRole({
     required String userId,
     required String authToken,

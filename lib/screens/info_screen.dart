@@ -436,19 +436,14 @@ class _EditionBadge extends StatelessWidget {
       bg = context.colors.neutralContainerHigh;
       fg = context.colors.onNeutralContainer;
     } else {
-      switch (role) {
-        case 'pro':
-          label = 'Cloud Edition · Pro';
-          bg = context.colors.highlight.container;
-          fg = context.colors.highlight.onContainer;
-        case 'basic':
-          label = 'Cloud Edition · Basic';
-          bg = Theme.of(context).colorScheme.primaryContainer;
-          fg = Theme.of(context).colorScheme.onPrimaryContainer;
-        default:
-          label = 'Cloud Edition · Free';
-          bg = context.colors.accent.container;
-          fg = context.colors.accent.strong;
+      if (AppFeatures.isPaid) {
+        label = role == 'admin' ? 'Cloud Edition · Pro (Admin)' : 'Cloud Edition · Pro';
+        bg = context.colors.highlight.container;
+        fg = context.colors.highlight.onContainer;
+      } else {
+        label = 'Cloud Edition · Free';
+        bg = context.colors.accent.container;
+        fg = context.colors.accent.strong;
       }
     }
 
