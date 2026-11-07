@@ -492,7 +492,12 @@ class _QuickActivityEntrySheetState extends State<QuickActivityEntrySheet>
           ),
         ),
         Expanded(
-          child: _query.isEmpty ? _buildBrowse() : _buildSearchResults(),
+          // Modal sheets don't avoid the keyboard; end the list above it.
+          child: Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom),
+            child: _query.isEmpty ? _buildBrowse() : _buildSearchResults(),
+          ),
         ),
       ],
     );

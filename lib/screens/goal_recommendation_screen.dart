@@ -379,10 +379,36 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    // Keyboard up: the sticky bar would eat the form's space, so its main
+    // action moves into the app bar until the keyboard closes.
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final busy = _isCalculating || _isSaving;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.goalRecTitle),
+        actions: [
+          if (keyboardOpen && !_isLoadingProfile)
+            IconButton(
+              icon: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : _recommendation == null
+                      ? const Icon(Icons.calculate)
+                      : Icon(Icons.save, color: context.colors.success.base),
+              tooltip: _recommendation == null
+                  ? l.calculateButton
+                  : l.saveAsGoal,
+              onPressed: busy
+                  ? null
+                  : (_recommendation == null
+                      ? _calculateRecommendation
+                      : _saveGoal),
+            ),
+        ],
       ),
       body: _isLoadingProfile
           ? const Center(child: CircularProgressIndicator())
@@ -693,7 +719,10 @@ class _GoalRecommendationScreenState extends State<GoalRecommendationScreen> {
         ),
       ),
           ),
-          _buildStickyBar(l),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            child: keyboardOpen ? const SizedBox.shrink() : _buildStickyBar(l),
+          ),
         ],
       ),
     );

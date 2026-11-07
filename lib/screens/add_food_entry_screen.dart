@@ -1550,10 +1550,26 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+    final canSave = _selectedFood != null || _showManualEntry;
+    // Keyboard up: the pinned Save bar would eat the form's space, so it
+    // moves into the app bar until the keyboard closes.
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       appBar: AppBar(
         title: Text(l.addFoodScreenTitle),
         actions: [
+          if (canSave && keyboardOpen)
+            IconButton(
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(Icons.check, color: context.colors.success.base),
+              tooltip: l.save,
+              onPressed: _isSaving ? null : _saveEntry,
+            ),
           // Sort order (only in My DB authenticated mode)
           if (widget.dbService != null &&
               !_showManualEntry &&
@@ -2684,7 +2700,7 @@ class _AddFoodEntryScreenState extends State<AddFoodEntryScreen> {
             ),
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              child: (_selectedFood != null || _showManualEntry)
+              child: canSave && !keyboardOpen
                   ? SafeArea(
                       top: false,
                       child: Padding(

@@ -1244,35 +1244,40 @@ class _QuickFoodEntrySheetState extends State<QuickFoodEntrySheet>
         // Content: live search results while a query is entered,
         // browse tabs (Recent / Favourites / Shortcuts) otherwise.
         Expanded(
-          child: Stack(
-            children: [
-              _query.isEmpty ? _buildBrowse() : _buildSearchResults(),
-              // In-sheet "added" confirmation. Overlaid on the bottom of the
-              // list (not in the column flow) so showing/hiding it never
-              // shifts the rows the user is rapidly tapping. Lives inside the
-              // 85%-tall sheet because a ScaffoldMessenger SnackBar would be
-              // occluded by it. IgnorePointer lets taps fall through to the
-              // list rows it briefly covers.
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 16,
-                child: IgnorePointer(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: _lastAddedName == null
-                        ? const SizedBox.shrink()
-                        : Padding(
-                            key: ValueKey(_lastAddedName),
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: Center(
-                                child: _AddedToast(name: _lastAddedName!)),
-                          ),
+          // Modal sheets don't avoid the keyboard; end the list above it.
+          child: Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom),
+            child: Stack(
+              children: [
+                _query.isEmpty ? _buildBrowse() : _buildSearchResults(),
+                // In-sheet "added" confirmation. Overlaid on the bottom of the
+                // list (not in the column flow) so showing/hiding it never
+                // shifts the rows the user is rapidly tapping. Lives inside the
+                // 85%-tall sheet because a ScaffoldMessenger SnackBar would be
+                // occluded by it. IgnorePointer lets taps fall through to the
+                // list rows it briefly covers.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 16,
+                  child: IgnorePointer(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: _lastAddedName == null
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              key: ValueKey(_lastAddedName),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Center(
+                                  child: _AddedToast(name: _lastAddedName!)),
+                            ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],

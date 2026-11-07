@@ -3779,7 +3779,9 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
           builder: (ctx) => FractionallySizedBox(
-            heightFactor: 0.85,
+            // Full height while typing, so the keyboard leaves room.
+            heightFactor:
+                MediaQuery.viewInsetsOf(ctx).bottom > 0 ? 1.0 : 0.85,
             child: QuickActivityEntrySheet(
               dbService: db,
               date: _selectedDay,
@@ -3933,8 +3935,10 @@ class _DietryHomeState extends State<DietryHome> with WidgetsBindingObserver {
                 f += e.fat;
                 c += e.carbs;
               }
+              // Full height while typing, so the keyboard leaves room.
+              final typing = MediaQuery.viewInsetsOf(ctx).bottom > 0;
               return FractionallySizedBox(
-                heightFactor: 0.85,
+                heightFactor: typing ? 1.0 : 0.85,
                 child: QuickFoodEntrySheet(
                   dbService: db,
                   date: _selectedDay,
