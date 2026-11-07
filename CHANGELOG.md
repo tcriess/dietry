@@ -27,6 +27,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.3] — 2026-11-07
+
+### Fixed
+- **Entry forms stay usable with the keyboard open**: adding food or an
+  activity, and the goal recommendation, no longer get squashed when the
+  keyboard slides in. Save moves to the top bar while you type.
+- **Smaller quick-add confirmation**: meal and "how sure?" are now dropdowns
+  side by side, so the buttons no longer cover the meal choice.
+- **Staying signed in is more reliable**: the login token is refreshed in
+  time, and a brief connection problem no longer risks signing you out.
+
+---
+
 ## [1.10.2] — 2026-10-31
 
 ### Added
