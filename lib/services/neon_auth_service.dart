@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math' show min;
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:http/http.dart' as http;
@@ -18,36 +17,41 @@ class EmailVerificationPendingException implements Exception {
   const EmailVerificationPendingException(this.email);
 }
 
-/// Neon Auth Service - Implementiert den Better Auth Client Flow
-/// 
-/// Folgt dem offiziellen Neon Auth Pattern:
-/// 1. OAuth redirected zu App mit ?neon_auth_session_verifier=XXX
-/// 2. App extrahiert Verifier aus URL
-/// 3. /get-session mit Verifier holt Session und JWT
-/// 
-/// WICHTIG: Der Cookie-Name hat einen Tippfehler!
-/// Der Neon Auth Server verwendet: session_challange (mit einem 'l')
-/// Nicht session_challenge (mit zwei 'l') - das ist ein bekannter Bug im Server!
+/// Neon Auth (Managed Better Auth) client.
+///
+/// Session: an opaque session cookie (native: stored and sent by hand; web:
+/// held by the browser). API access: a short-lived JWT, taken from the
+/// `set-auth-jwt` header of `/get-session`, or from `/token` when absent.
+///
+/// OAuth: `/sign-in/social` sets a one-time challenge cookie, the provider
+/// redirects back with `?neon_auth_session_verifier=…`, and `/get-session`
+/// with verifier + challenge cookie creates the session.
 class NeonAuthService extends ChangeNotifier {
   static String get neonAuthBaseUrl => ServerConfigService.effectiveAuthBaseUrl;
-  
+
   static const String _sessionKey = 'neon_session';
   static const String _jwtKey = 'neon_jwt';
   static const String _cookieKey = 'neon_cookie';
-  // Separater Key für das OAuth Challenge-Cookie (wird von Token-Refresh NICHT überschrieben)
+  // Own key: a token refresh must not overwrite a pending OAuth challenge.
   static const String _challengeCookieKey = 'neon_challenge_cookie';
-  
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  final http.Client _client = createAuthHttpClient();
-  
+
+  /// Refresh this long before the JWT expires.
+  static const Duration _refreshLead = Duration(minutes: 1);
+
+  /// Floor for the refresh timer, so a token that arrives nearly expired
+  /// (clock skew) cannot spin a refresh loop.
+  static const Duration _minRefreshDelay = Duration(seconds: 30);
+
+  final FlutterSecureStorage _storage;
+  final http.Client _client;
+
   String? _jwt;
   Map<String, dynamic>? _session;
   String? _cookie;
   bool _isLoading = true;
   Timer? _refreshTimer;
-  int _refreshAttempts = 0;  // ✅ Endlosschleifen-Protection
-  static const int _maxRefreshAttempts = 3;
-  
+  Future<bool>? _refreshing;
+
   String? get jwt => _jwt;
   Map<String, dynamic>? get session => _session;
   bool get isLoggedIn => _jwt != null && _session != null;
@@ -57,842 +61,146 @@ class NeonAuthService extends ChangeNotifier {
   String? get userName =>
       (_session?['user'] as Map<String, dynamic>?)?['name'] as String?;
   bool get isLoading => _isLoading;
-  
-  /// Gibt zurück wann das Token abläuft (oder null wenn kein Token)
-  DateTime? get tokenExpirationDate {
-    if (_jwt == null) return null;
-    
-    final payload = JwtHelper.decodeToken(_jwt!);
-    if (payload == null || payload['exp'] == null) return null;
-    
-    final exp = payload['exp'] as int;
-    return DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-  }
-  
-  /// Gibt zurück wie lange das Token noch gültig ist
-  Duration? get timeUntilTokenExpiry {
-    final expiration = tokenExpirationDate;
-    if (expiration == null) return null;
-    
-    return expiration.difference(DateTime.now());
-  }
-  
-  /// Prüft ob Token bald abläuft (< 5 Minuten)
+
+  DateTime? get tokenExpirationDate =>
+      _jwt == null ? null : JwtHelper.getExpiry(_jwt!)?.toLocal();
+
+  Duration? get timeUntilTokenExpiry =>
+      tokenExpirationDate?.difference(DateTime.now());
+
+  /// Less than 5 minutes left.
   bool get isTokenExpiringSoon {
     final timeLeft = timeUntilTokenExpiry;
-    if (timeLeft == null) return false;
-
-    return timeLeft.inMinutes < 5;
+    return timeLeft != null && timeLeft.inMinutes < 5;
   }
 
-  /// Prüft ob Token in weniger als 1 Stunde abläuft (für aggressives Refresh)
-  bool get isTokenExpiringWithinHour {
-    final timeLeft = timeUntilTokenExpiry;
-    if (timeLeft == null) return false;
+  /// [client] and [storage] are for tests.
+  NeonAuthService({http.Client? client, FlutterSecureStorage? storage})
+      : _client = client ?? createAuthHttpClient(),
+        _storage = storage ?? const FlutterSecureStorage() {
+    _initialized = _initialize();
+  }
 
-    return timeLeft.inMinutes < 60;
-  }
-  
-  NeonAuthService() {
-    _initialize();
-  }
-  
+  /// Completes once the stored session is loaded (and refreshed if expired).
+  late final Future<void> _initialized;
+  Future<void> get initialized => _initialized;
+
   Future<void> _initialize() async {
     await _loadFromStorage();
-    
-    // Prüfe ob Token noch gültig ist
-    if (_jwt != null) {
-      await _checkAndRefreshToken();
-    }
-    
+    if (_jwt != null) await _ensureFreshOnStart();
     _isLoading = false;
     notifyListeners();
   }
-  
-  /// Prüft ob Token abgelaufen ist und refresht es bei Bedarf
-  Future<void> _checkAndRefreshToken() async {
-    if (_jwt == null) return;
 
-    // Snapshot before any await.  If setJWT() is called concurrently (e.g. from
-    // _checkWebJWT() delivering a fresh OAuth JWT), we skip the signOut() so we
-    // don't clobber the new valid session.
-    final jwtAtStart = _jwt;
-
-    try {
-      // Prüfe ob Token dekodierbar ist
-      final payload = JwtHelper.decodeToken(_jwt!);
-      if (payload == null) {
-        appLogger.d('❌ JWT kann nicht dekodiert werden - invalider Token');
-        _refreshAttempts++;
-
-        // ✅ Endlosschleifen-Protection
-        if (_refreshAttempts >= _maxRefreshAttempts) {
-          appLogger.d('❌ Maximale Refresh-Versuche erreicht ($_maxRefreshAttempts) - Logout erforderlich');
-          if (_jwt != jwtAtStart) {
-            appLogger.d('⚠️ JWT geändert während Check — kein Logout');
-            return;
-          }
-          await signOut();
-          return;
-        }
-
-        // Warte kurz vor erneutem Versuch (Exponential Backoff)
-        await Future.delayed(Duration(seconds: _refreshAttempts * 2));
-
-        appLogger.d('⚠️ JWT invalide - versuche Refresh (Versuch $_refreshAttempts/$_maxRefreshAttempts)...');
-        await refreshToken();
-        return;
-      }
-
-      // Reset Retry-Counter bei erfolgreichem Dekodieren
-      _refreshAttempts = 0;
-
-      // Prüfe Expiration
-      final isExpired = JwtHelper.isExpired(_jwt!);
-
-      if (isExpired) {
-        appLogger.d('⚠️ JWT ist abgelaufen - versuche mit Retry zu refreshen...');
-        // Retry bei Startup: Netzwerk kann kurzzeitig unavailable sein
-        final success = await refreshTokenWithRetry(maxAttempts: 3);
-        if (!success) {
-          // Kein forced logout mehr bei transientem Fehlschlag (offline / 5xx):
-          // refreshToken() loggt bereits intern aus, wenn der Server die Session
-          // echt ablehnt (401 / leere Session) — das nullt _jwt. Ist _jwt danach
-          // noch vorhanden, war es ein Netzwerkfehler. Wir behalten dann die
-          // (abgelaufene) Session, damit die App offline aus dem lokalen Mirror
-          // weiterläuft; der Token wird bei App-Resume und beim nächsten 401
-          // (DB-Interceptor) erneut refreshed.
-          appLogger.d(
-              '⚠️ Token-Refresh beim Start fehlgeschlagen — Session bleibt (offline-fähig), Retry bei Resume/401');
-        }
-      } else {
-        // Prüfe wann Token abläuft
-        if (payload['exp'] != null) {
-          final exp = payload['exp'] as int;
-          final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-          final timeUntilExpiry = expirationDate.difference(DateTime.now());
-
-          appLogger.d('⏰ JWT läuft ab in: ${timeUntilExpiry.inMinutes} Minuten');
-
-          // Starte Timer für automatisches Refresh (5 Minuten vor Ablauf)
-          _scheduleTokenRefresh(timeUntilExpiry);
-        }
-      }
-    } catch (e) {
-      appLogger.d('❌ Fehler beim Token-Check: $e');
-      _refreshAttempts++;
-
-      // ✅ Endlosschleifen-Protection
-      if (_refreshAttempts >= _maxRefreshAttempts) {
-        appLogger.d('❌ Maximale Fehler erreicht - Logout erforderlich');
-        if (_jwt != jwtAtStart) {
-          appLogger.d('⚠️ JWT geändert während Check — kein Logout');
-          return;
-        }
-        await signOut();
-      }
+  /// Startup/setJWT: refresh now if the token is expired or unreadable,
+  /// otherwise arm the timer.
+  Future<void> _ensureFreshOnStart() async {
+    final jwt = _jwt;
+    if (jwt == null) return;
+    final expiry = JwtHelper.getExpiry(jwt);
+    final unreadable = JwtHelper.decodeToken(jwt) == null;
+    if (unreadable ||
+        (expiry != null &&
+            !expiry.isAfter(DateTime.now().toUtc().add(_refreshLead)))) {
+      appLogger.d('⚠️ JWT expired or unreadable — refreshing');
+      // A failed refresh keeps the session (offline use); refreshToken()
+      // signs out itself when the server rejects it.
+      await refreshTokenWithRetry(maxAttempts: 3);
+      return;
     }
+    _armRefreshTimer();
   }
-  
-  /// Plant automatisches Token-Refresh
-  void _scheduleTokenRefresh(Duration timeUntilExpiry) {
+
+  void _armRefreshTimer() {
     _refreshTimer?.cancel();
-    
-    // Refresh 5 Minuten vor Ablauf (oder sofort wenn < 5 Min)
-    final refreshIn = timeUntilExpiry - const Duration(minutes: 5);
-    final delay = refreshIn.isNegative ? Duration.zero : refreshIn;
-    
-    appLogger.d('🔄 Token-Refresh geplant in: ${delay.inMinutes} Minuten');
-    
-    _refreshTimer = Timer(delay, () async {
-      appLogger.d('🔄 Automatisches Token-Refresh...');
-      await refreshToken();
-    });
+    final jwt = _jwt;
+    if (jwt == null) return;
+    final expiry = JwtHelper.getExpiry(jwt);
+    if (expiry == null) return; // no exp claim: never expires
+    var delay = expiry.difference(DateTime.now().toUtc()) - _refreshLead;
+    if (delay < _minRefreshDelay) delay = _minRefreshDelay;
+    appLogger.d('🔄 Token refresh in ${delay.inSeconds}s');
+    _refreshTimer = Timer(delay, () => refreshToken());
   }
-  
-  /// Refresht das JWT-Token mit Retry-Logik (für Startup und Resume)
-  ///
-  /// Bei Fehler wird bis zu maxAttempts mal wiederholt mit exponentieller Backoff.
-  /// Dies verbessert die Session-Persistenz nach App-Restart oder bei Netzwerkfehlern.
+
+  /// Retries with backoff (2s, 4s, …) for startup and app resume.
   Future<bool> refreshTokenWithRetry({int maxAttempts = 3}) async {
-    int attempt = 0;
-
-    while (attempt < maxAttempts) {
-      attempt++;
-      appLogger.d('🔄 Token refresh attempt $attempt/$maxAttempts...');
-
-      final success = await refreshToken();
-      if (success) {
-        return true;
-      }
-
-      // Retry nur wenn noch Versuche übrig
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (await refreshToken()) return true;
+      if (_jwt == null) return false; // signed out: no point retrying
       if (attempt < maxAttempts) {
-        // Exponential backoff: 2s, 4s, 8s
-        final delaySeconds = 1 << attempt;
-        final delay = Duration(seconds: delaySeconds);
-        appLogger.d('⏱️ Waiting ${delay.inSeconds}s before retry...');
-        await Future.delayed(delay);
+        await Future.delayed(Duration(seconds: 1 << attempt));
       }
     }
-
     appLogger.d('❌ Token refresh failed after $maxAttempts attempts');
     return false;
   }
 
-  /// Refresht das JWT-Token
-  Future<bool> refreshToken() async {
+  /// Fetches a fresh JWT. Concurrent callers (timer, 401 handler, resume)
+  /// share one request.
+  Future<bool> refreshToken() =>
+      _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+
+  Future<bool> _refresh() async {
+    // If setJWT() lands a fresh login while this is in flight, a stale
+    // failure must not sign that new session out.
+    final jwtAtStart = _jwt;
     try {
-      appLogger.d('🔄 Refreshe JWT-Token...');
-
-      // Snapshot the JWT before the async network call.  If setJWT() is called
-      // concurrently (e.g. _checkWebJWT() in main.dart delivers a fresh OAuth JWT
-      // while this refresh is in-flight), we must not sign the user out when the
-      // stale refresh finishes — the new JWT is already in place.
-      final jwtAtStart = _jwt;
-
-      // Hole neue Session vom Server.
-      // Native: Cookie manuell mitschicken.
-      // Web: Browser-Cookies werden via withCredentials gesendet; zusätzlich
-      //      das aktuelle JWT als Bearer-Token, da session-Cookies bei
-      //      cross-origin-Requests oft durch SameSite-Policy blockiert werden.
       final response = await _client.get(
         Uri.parse('$neonAuthBaseUrl/get-session'),
         headers: {
           if (!kIsWeb && _cookie != null) 'Cookie': _cookie!,
+          // Web: SameSite often blocks the cross-origin cookie; the JWT helps.
           if (jwtAtStart != null) 'Authorization': 'Bearer $jwtAtStart',
           'Accept': 'application/json',
         },
       );
 
-      appLogger.d('📥 Refresh response: ${response.statusCode} body: ${response.body.length > 80 ? response.body.substring(0, 80) : response.body}');
+      final data = response.statusCode == 200
+          ? _tryDecodeBody(response.body)
+          : null;
 
-      if (response.statusCode == 200) {
-        final dynamic decoded = response.body.trim().isEmpty
-            ? null
-            : jsonDecode(response.body);
-        final data = decoded is Map ? decoded as Map<String, dynamic> : null;
-
-        if (data != null) {
-          _session = data;
-          
-          // Update Cookie (nur für Native relevant)
-          if (!kIsWeb) {
-            final newCookie = response.headers['set-cookie'];
-            if (newCookie != null) {
-              _cookie = newCookie;
-              await _storage.write(key: _cookieKey, value: _cookie);
-              appLogger.d('🍪 Cookie aktualisiert (Native)');
-            }
-          }
-          
-          // ✅ JWT extrahieren aus set-auth-jwt Header (NICHT aus session.token!)
-          _jwt = response.headers['set-auth-jwt'];
-          
-          if (_jwt == null || _jwt!.isEmpty) {
-            appLogger.d('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
-            // Fallback: session.token
-            final sessionData = data['session'] as Map<String, dynamic>?;
-            _jwt = sessionData?['token'] as String?;
-          }
-          
-          if (_jwt == null || _jwt!.isEmpty) {
-            appLogger.d('⚠️ Kein JWT gefunden - versuche /token endpoint');
-            await _fetchJWT();
-          } else {
-            await _storage.write(key: _jwtKey, value: _jwt);
-          }
-          
-          await _saveToStorage();
-          
-          // Plane nächstes Refresh (nur wenn JWT gültig dekodierbar ist)
-          if (_jwt != null) {
-            final payload = JwtHelper.decodeToken(_jwt!);
-            if (payload != null) {
-              _refreshAttempts = 0; // Reset bei Erfolg
-              await _checkAndRefreshToken();
-            } else {
-              appLogger.d('⚠️ JWT konnte nicht dekodiert werden - kein Refresh geplant');
-            }
-          }
-          
-          notifyListeners();
-          
-          appLogger.d('✅ Token erfolgreich refreshed');
-          return true;
-        }
-      } else if (response.statusCode == 401) {
-        // Session abgelaufen - User muss neu einloggen
-        appLogger.d('❌ Session abgelaufen - Logout erforderlich');
-        if (_jwt != jwtAtStart) {
-          appLogger.d('⚠️ JWT wurde während des Refreshes geändert (setJWT concurrent) — kein Logout');
-          return false;
-        }
+      // 401, or 200 with an empty body: the server has no session for us.
+      if (response.statusCode == 401 ||
+          (response.statusCode == 200 && data == null)) {
+        if (_jwt != jwtAtStart) return false;
+        appLogger.d('❌ Session gone (${response.statusCode}) — signing out');
         await signOut();
         return false;
       }
-
-      // 200 mit leerem/ungültigem Body: Neon Auth signalisiert "keine Session".
-      // Stale _jwt/_session würden sonst isLoggedIn=true lassen, während jeder
-      // API-Call 401 liefert (profile funktioniert aus _session-Cache, der Rest
-      // zeigt "kein Ziel"). Nur für 200 auslogggen — bei 5xx/Netzwerkfehlern
-      // nicht, um transiente Fehler nicht in einen forced logout zu drehen.
-      if (response.statusCode == 200) {
-        appLogger.d('❌ /get-session 200 mit leerem Body — Session verloren, Logout');
-        if (_jwt != jwtAtStart) {
-          appLogger.d('⚠️ JWT wurde während des Refreshes geändert (setJWT concurrent) — kein Logout');
-          return false;
-        }
-        await signOut();
-        return false;
-      }
-
-      appLogger.d('⚠️ Token-Refresh: transienter Fehler (Status ${response.statusCode}) — kein Logout');
-      return false;
-      
-    } catch (e) {
-      appLogger.d('❌ Fehler beim Token-Refresh: $e');
-      return false;
-    }
-  }
-  
-  /// Setzt JWT manuell (z.B. nach Web-Login via auth_callback.html)
-  ///
-  /// Wird verwendet wenn JWT bereits aus localStorage geladen wurde
-  Future<void> setJWT(String jwt) async {
-    try {
-      appLogger.i('🔑 Setze JWT im AuthService...');
-
-      // Validiere JWT
-      final payload = JwtHelper.decodeToken(jwt);
-      if (payload == null) {
-        throw Exception('JWT kann nicht dekodiert werden');
-      }
-
-      if (JwtHelper.isTokenExpired(jwt)) {
-        throw Exception('JWT ist bereits abgelaufen');
-      }
-
-      _jwt = jwt;
-
-      // Erstelle minimale Session
-      _session = {
-        'token': jwt,
-        'user': {
-          'id': payload['sub'],
-          'email': payload['email'],
-          'name': payload['name'],
-        },
-      };
-
-      await _saveToStorage();
-
-      // Plane Token-Refresh
-      await _checkAndRefreshToken();
-
-      notifyListeners();
-
-      appLogger.i('✅ JWT im AuthService gesetzt');
-    } catch (e) {
-      appLogger.e('❌ Fehler beim Setzen des JWT: $e');
-      rethrow;
-    }
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
-  }
-  
-  /// Lädt gespeicherte Session aus SecureStorage
-  Future<void> _loadFromStorage() async {
-    try {
-      final sessionJson = await _storage.read(key: _sessionKey);
-      final jwt = await _storage.read(key: _jwtKey);
-      _cookie = await _storage.read(key: _cookieKey);
-
-      if (sessionJson != null) {
-        _session = jsonDecode(sessionJson);
-      }
-      _jwt = jwt;
-
-      appLogger.d('📦 Loaded from storage: JWT=${_jwt != null}, Session=${_session != null}');
-    } catch (e) {
-      appLogger.d('⚠️ Error loading from storage — clearing auth state: $e');
-      // ✅ WICHTIG: Nur Auth-Keys löschen, NICHT deleteAll()!
-      // deleteAll() würde auch den _challengeCookieKey löschen, der gerade für einen
-      // laufenden OAuth-Flow benötigt wird (Race Condition: _initialize() läuft parallel
-      // zu startOAuthFlow()).
-      try { await _storage.delete(key: _sessionKey); } catch (_) {}
-      try { await _storage.delete(key: _jwtKey); } catch (_) {}
-      try { await _storage.delete(key: _cookieKey); } catch (_) {}
-      appLogger.d('✅ Auth state cleared after error (challenge cookie preserved)');
-    }
-  }
-  
-  /// Speichert Session in SecureStorage
-  Future<void> _saveToStorage() async {
-    appLogger.d('[_saveToStorage] Starting save operation');
-    try {
-      appLogger.d('[_saveToStorage] Saving session data (session=${_session != null})');
-      if (_session != null) {
-        try {
-          final encoded = jsonEncode(_session);
-          appLogger.d('[_saveToStorage] ✓ Session JSON encoded (${encoded.length} bytes)');
-          await _storage.write(key: _sessionKey, value: encoded);
-          appLogger.d('[_saveToStorage] ✓ Session written to storage');
-        } catch (e) {
-          appLogger.d('[_saveToStorage] ❌ Error saving session: $e');
-          rethrow;
-        }
-      } else {
-        appLogger.d('[_saveToStorage] Session is null, deleting from storage');
-        await _storage.delete(key: _sessionKey);
-        appLogger.d('[_saveToStorage] ✓ Deleted session from storage');
-      }
-
-      appLogger.d('[_saveToStorage] Saving JWT (jwt=${_jwt != null ? "SET (${_jwt!.length} bytes)" : "NULL"})');
-      if (_jwt != null) {
-        try {
-          await _storage.write(key: _jwtKey, value: _jwt!);
-          appLogger.d('[_saveToStorage] ✓ JWT written to storage');
-        } catch (e) {
-          appLogger.d('[_saveToStorage] ❌ Error saving JWT: $e');
-          rethrow;
-        }
-      } else {
-        appLogger.d('[_saveToStorage] JWT is null, deleting from storage');
-        await _storage.delete(key: _jwtKey);
-        appLogger.d('[_saveToStorage] ✓ Deleted JWT from storage');
-      }
-
-      appLogger.d('[_saveToStorage] Saving cookie (cookie=${_cookie != null ? "SET (${_cookie!.length} bytes)" : "NULL"})');
-      if (_cookie != null) {
-        try {
-          await _storage.write(key: _cookieKey, value: _cookie!);
-          appLogger.d('[_saveToStorage] ✓ Cookie written to storage');
-        } catch (e) {
-          appLogger.d('[_saveToStorage] ❌ Error saving cookie: $e');
-          rethrow;
-        }
-      } else {
-        appLogger.d('[_saveToStorage] Cookie is null, skipping');
-      }
-
-      appLogger.d('[_saveToStorage] ✅ All data saved successfully');
-      appLogger.d('💾 Saved to storage: JWT=${_jwt != null}, Session=${_session != null}');
-    } catch (e) {
-      appLogger.d('[_saveToStorage] ❌ CRITICAL ERROR in _saveToStorage: $e');
-      appLogger.d('[_saveToStorage] ❌ Exception type: ${e.runtimeType}');
-      appLogger.e('⚠️ Error saving to storage: $e');
-      rethrow;
-    }
-  }
-  
-  /// Startet OAuth Flow und gibt die Authorization URL zurück
-  /// 
-  /// Der Flow:
-  /// 1. POST /sign-in/social → Erhalte OAuth URL
-  /// 2. User authentifiziert sich beim Provider
-  /// 3. OAuth redirected zurück zu callbackUrl mit ?neon_auth_session_verifier=XXX
-  Future<String> startOAuthFlow({
-    required String provider,
-    required String callbackUrl,
-  }) async {
-    try {
-      appLogger.d('🚀 Starting OAuth flow: provider=$provider, callback=$callbackUrl');
-      
-      // Derive Origin header from the callbackUrl — no hardcoded domains.
-      String? origin;
-      if (callbackUrl.isNotEmpty) {
-        final cbUri = Uri.parse(callbackUrl);
-        final defaultPort = cbUri.scheme == 'https' ? 443 : 80;
-        final portStr = (cbUri.hasPort && cbUri.port != defaultPort)
-            ? ':${cbUri.port}'
-            : '';
-        origin = '${cbUri.scheme}://${cbUri.host}$portStr';
-      }
-      
-      final response = await _client.post(
-        Uri.parse('$neonAuthBaseUrl/sign-in/social'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (origin != null) 'Origin': origin,
-          if (_cookie != null) 'Cookie': _cookie!,
-        },
-        body: jsonEncode({
-          'provider': provider,
-          'callbackURL': callbackUrl,
-        }),
-      );
-      
-      appLogger.d('📥 OAuth response: ${response.statusCode}');
-      appLogger.d('   Response headers: ${response.headers}');
-      appLogger.d('   Origin used: $origin');
-      
-      // Challenge-Cookie separat speichern (wird NICHT vom Token-Refresh überschrieben!)
-      // WICHTIG: Der Server sendet das neon_auth_session_challange Cookie (Server-Tippfehler!)
-      final setCookie = response.headers['set-cookie'];
-      if (setCookie != null) {
-        final cookies = _parseCookies(setCookie);
-        if (cookies.isNotEmpty) {
-          // Separater Key: Token-Refresh schreibt nur in _cookieKey, nicht hier!
-          await _storage.write(key: _challengeCookieKey, value: cookies);
-          appLogger.d('🍪 Challenge-Cookie gespeichert: ${cookies.substring(0, min(100, cookies.length))}...');
-        } else {
-          appLogger.d('⚠️ No challenge cookie found in response!');
-        }
-      } else {
-        appLogger.d('⚠️ No Set-Cookie header in OAuth response!');
-      }
-      
-      if (response.statusCode != 200) {
-        throw Exception('OAuth start failed: ${response.statusCode} - ${response.body}');
-      }
-      
-      final data = jsonDecode(response.body);
-      final url = data['url'] as String?;
-      
-      if (url == null) {
-        throw Exception('No OAuth URL in response: $data');
-      }
-      
-      appLogger.d('✅ OAuth URL: $url');
-      return url;
-      
-    } catch (e) {
-      appLogger.d('❌ Error starting OAuth: $e');
-      rethrow;
-    }
-  }
-  
-  /// Holt Session mit dem Verifier vom OAuth Callback
-  /// 
-  /// Nach OAuth Redirect hat die URL: ?neon_auth_session_verifier=XXX
-  /// Dieser Verifier wird an /get-session gesendet, um die Session zu erstellen
-  /// 
-  /// WICHTIG: 
-  /// - Native: Der Request MUSS das Challenge-Cookie vom OAuth-Start mitschicken!
-  /// - Web: Browser sendet Cookies automatisch
-  Future<bool> getSessionWithVerifier(String verifier) async {
-    try {
-      appLogger.d('🔐 getSessionWithVerifier called with verifier=$verifier');
-      final verifierPreview = verifier.length > 20 ? verifier.substring(0, 20) : verifier;
-      appLogger.d('🔑 Getting session with verifier: $verifierPreview...');
-      appLogger.d('   Reading challenge cookie from storage...');
-
-      // Native: Challenge-Cookie aus separatem Key laden (nie vom Token-Refresh überschrieben)
-      // Web: Browser sendet Cookies automatisch
-      String? cookieToSend;
-      if (!kIsWeb) {
-        appLogger.d('   Is native platform');
-        final challengeCookie = await _storage.read(key: _challengeCookieKey);
-        appLogger.d('   challengeCookie from storage: ${challengeCookie != null ? "SET" : "NULL"}');
-        cookieToSend = challengeCookie ?? _cookie;
-        appLogger.d('   cookieToSend: ${cookieToSend != null ? "SET" : "NULL"}');
-
-        final preview = cookieToSend != null
-            ? cookieToSend.substring(0, min(100, cookieToSend.length))
-            : 'NONE';
-        appLogger.d('📱 Native-Plattform: Challenge-Cookie = $preview...');
-
-        if (cookieToSend == null) {
-          appLogger.d('❌ ERROR: No challenge cookie found! OAuth flow incomplete.');
-          appLogger.d('❌ ERROR: No challenge cookie found! OAuth flow incomplete.');
-          return false;
-        }
-      } else {
-        appLogger.d('   Is web platform');
-      }
-
-      // Sende Request mit Challenge-Cookie
-      final requestUrl = '$neonAuthBaseUrl/get-session?neon_auth_session_verifier=$verifier';
-      appLogger.d('   📤 Request URL: $requestUrl');
-      appLogger.d('   📤 Request headers: Cookie=${cookieToSend != null ? "SET (${cookieToSend.length} bytes)" : "NULL"}');
-
-      final response = await _client.get(
-        Uri.parse(requestUrl),
-        headers: {
-          if (!kIsWeb && cookieToSend != null) 'Cookie': cookieToSend,
-          'Accept': 'application/json',
-        },
-      );
-      appLogger.d('   📥 Response status: ${response.statusCode}');
-      try {
-        appLogger.d('   📥 Getting headers...');
-        appLogger.d('   📥 Response headers: ${response.headers}');
-      } catch (e) {
-        appLogger.d('   ❌ Error printing headers: $e');
-      }
-      try {
-        appLogger.d('   📥 Response body length: ${response.body.length} bytes');
-        appLogger.d('   📥 Response body preview: ${response.body.substring(0, min(200, response.body.length))}');
-      } catch (e) {
-        appLogger.d('   ❌ Error reading response body: $e');
-      }
-
-      // [1] Challenge-Cookie löschen (einmalig gültig)
-      appLogger.d('[1] 🔑 Deleting challenge cookie after use...');
-      try {
-        if (!kIsWeb) {
-          await _storage.delete(key: _challengeCookieKey);
-          appLogger.d('[1] ✓ Challenge cookie deleted from storage');
-        }
-      } catch (e) {
-        appLogger.d('[1] ❌ Error deleting challenge cookie: $e');
-        // Continue anyway, this is not critical
-      }
-
-      // [2] Status Code Check
-      appLogger.d('[2] 📊 Status code: ${response.statusCode}');
-      if (response.statusCode != 200) {
-        appLogger.d('[2] ❌ Status code is not 200: ${response.statusCode}');
-        appLogger.d('[2] ❌ Response body: ${response.body}');
-        throw Exception('Get session failed: ${response.statusCode} - ${response.body}');
-      }
-      appLogger.d('[2] ✓ Status code OK (200)');
-
-      // [3] Log response details
-      appLogger.d('[3] 📥 Response headers: ${response.headers.keys.toList()}');
-      appLogger.d('[3] 📥 Response body length: ${response.body.length} bytes');
-      appLogger.d('[3] 📥 Response body preview: ${response.body.substring(0, min(500, response.body.length))}');
-
-      // [4] Parse JSON response
-      appLogger.d('[4] 📦 Parsing JSON response body...');
-      dynamic data;
-      try {
-        data = jsonDecode(response.body);
-        appLogger.d('[4] ✓ JSON parsed successfully');
-        appLogger.d('[4] ✓ Data type: ${data.runtimeType}');
-        if (data is Map<String, dynamic>) {
-          appLogger.d('[4] ✓ Top-level keys: ${data.keys.toList()}');
-        }
-      } catch (e) {
-        appLogger.d('[4] ❌ JSON parse error: $e');
-        appLogger.d('[4] ❌ Body was: ${response.body}');
-        rethrow;
-      }
-
-      // [5] Validate parsed data
-      appLogger.d('[5] 🔍 Validating parsed data...');
       if (data == null) {
-        appLogger.d('[5] ❌ Parsed data is null');
+        appLogger.d('⚠️ Token refresh: status ${response.statusCode}, keeping session');
         return false;
       }
-      appLogger.d('[5] ✓ Data is not null');
 
-      // [6] Handle set-cookie header (native only)
-      appLogger.d('[6] 🍪 Processing session cookie...');
-      if (!kIsWeb) {
-        try {
-          final newCookie = response.headers['set-cookie'];
-          appLogger.d('[6] ℹ️  set-cookie header: ${newCookie != null ? "present (${newCookie.length} bytes)" : "MISSING"}');
-          if (newCookie != null && newCookie.isNotEmpty) {
-            _cookie = newCookie;
-            await _storage.write(key: _cookieKey, value: _cookie);
-            appLogger.d('[6] ✓ Cookie updated and saved to storage');
-          } else {
-            appLogger.d('[6] ℹ️  No new cookie, keeping existing');
-          }
-        } catch (e) {
-          appLogger.d('[6] ❌ Error processing cookie: $e');
-          // Continue anyway, cookie is not critical
-        }
-      }
-
-      // [7] Store session data
-      appLogger.d('[7] 💾 Storing session data...');
-      try {
-        _session = data;
-        appLogger.d('[7] ✓ Session data stored in memory');
-      } catch (e) {
-        appLogger.d('[7] ❌ Error storing session: $e');
-        rethrow;
-      }
-
-      // [8] Extract JWT from set-auth-jwt header
-      appLogger.d('[8] 🔑 Extracting JWT from response header...');
-      try {
-        _jwt = response.headers['set-auth-jwt'];
-        if (_jwt != null && _jwt!.isNotEmpty) {
-          appLogger.d('[8] ✓ JWT found in set-auth-jwt header');
-          appLogger.d('[8] ✓ JWT length: ${_jwt!.length} bytes');
-          appLogger.d('[8] ✓ JWT prefix: ${_jwt!.substring(0, min(30, _jwt!.length))}...');
-        } else {
-          appLogger.d('[8] ℹ️  set-auth-jwt header empty or missing, trying fallback...');
-        }
-      } catch (e) {
-        appLogger.d('[8] ❌ Error reading set-auth-jwt header: $e');
-        _jwt = null;
-      }
-
-      // [9] Fallback JWT extraction from session.token
-      if (_jwt == null || _jwt!.isEmpty) {
-        appLogger.d('[9] 🔄 JWT fallback: extracting from session.token...');
-        try {
-          final sessionData = data['session'] as Map<String, dynamic>?;
-          appLogger.d('[9] ℹ️  session field: ${sessionData != null ? "present" : "missing"}');
-          if (sessionData != null) {
-            appLogger.d('[9] ℹ️  session keys: ${sessionData.keys.toList()}');
-            _jwt = sessionData['token'] as String?;
-            if (_jwt != null && _jwt!.isNotEmpty) {
-              appLogger.d('[9] ✓ JWT extracted from session.token');
-              appLogger.d('[9] ✓ JWT length: ${_jwt!.length} bytes');
-            } else {
-              appLogger.d('[9] ℹ️  session.token is null or empty');
-            }
-          }
-        } catch (e) {
-          appLogger.d('[9] ❌ Error extracting from session.token: $e');
-          _jwt = null;
-        }
-      }
-
-      // [10] Third fallback: fetch JWT from /token endpoint
-      if (_jwt == null || _jwt!.isEmpty) {
-        appLogger.d('[10] 🔄 JWT fallback 2: fetching from /token endpoint...');
-        try {
-          await _fetchJWT();
-          appLogger.d('[10] ✓ _fetchJWT completed');
-          if (_jwt != null && _jwt!.isNotEmpty) {
-            appLogger.d('[10] ✓ JWT obtained from /token endpoint');
-          } else {
-            appLogger.d('[10] ❌ _fetchJWT did not set JWT');
-          }
-        } catch (e) {
-          appLogger.d('[10] ❌ Error in _fetchJWT: $e');
-        }
-      }
-
-      // [11] Final JWT validation
-      appLogger.d('[11] 🔑 Final JWT validation...');
-      if (_jwt == null || _jwt!.isEmpty) {
-        appLogger.d('[11] ❌ CRITICAL: No JWT obtained from any source');
-        appLogger.e('❌ No JWT available after all fallbacks');
+      await _storeSessionCookie(response);
+      final newJwt = await _obtainJwt(response);
+      if (newJwt == null) {
+        appLogger.d('⚠️ Token refresh: no JWT in response, keeping session');
         return false;
       }
-      appLogger.d('[11] ✓ JWT is valid and ready');
-      appLogger.d('[11] ✓ JWT length: ${_jwt!.length}');
-
-      // [12] Save all data to persistent storage
-      appLogger.d('[12] 💾 Saving authentication data to persistent storage...');
-      try {
-        await _saveToStorage();
-        appLogger.d('[12] ✓ All data saved to storage');
-      } catch (e) {
-        appLogger.d('[12] ❌ Error saving to storage: $e');
-        appLogger.d('[12] ❌ Exception type: ${e.runtimeType}');
-        appLogger.d('[12] ❌ Stack trace: $e');
-        rethrow;
-      }
-
-      // [13] Notify listeners
-      appLogger.d('[13] 📢 Notifying listeners of authentication change...');
-      try {
-        notifyListeners();
-        appLogger.d('[13] ✓ Listeners notified successfully');
-      } catch (e) {
-        appLogger.d('[13] ❌ Error notifying listeners: $e');
-        rethrow;
-      }
-
-      // [14] Start token refresh timer
-      appLogger.d('[14] ⏰ Setting up token refresh timer...');
-      try {
-        if (_jwt != null && !JwtHelper.isExpired(_jwt!)) {
-          appLogger.d('[14] ℹ️  Token not expired, starting refresh timer');
-          await _checkAndRefreshToken();
-          appLogger.d('[14] ✓ Token refresh timer started');
-        } else {
-          appLogger.d('[14] ⚠️  Token is expired or null, skipping refresh timer');
-        }
-      } catch (e) {
-        appLogger.d('[14] ⚠️  Error setting up refresh timer: $e');
-        // Continue anyway, refresh can happen later
-      }
-
-      // [15] Final success log
-      appLogger.d('[15] ✅ SUCCESS: Session flow complete');
-      final userEmail = data['user']?['email'] ?? 'unknown';
-      appLogger.d('[15] ✅ User: $userEmail');
-      appLogger.d('[15] ✅ JWT prefix: ${_jwt!.substring(0, min(30, _jwt!.length))}...');
-      appLogger.d('✅ Session established: user=$userEmail');
+      _session = data;
+      _jwt = newJwt;
+      await _saveToStorage();
+      _armRefreshTimer();
+      notifyListeners();
       return true;
-      
-    } catch (e, stackTrace) {
-      appLogger.d('❌ EXCEPTION in getSessionWithVerifier');
-      appLogger.d('❌ Exception type: ${e.runtimeType}');
-      appLogger.d('❌ Exception message: $e');
-      appLogger.d('❌ Stack trace: $stackTrace');
-      appLogger.e('❌ Error getting session with verifier: $e\n$stackTrace');
+    } catch (e) {
+      appLogger.d('❌ Token refresh error: $e');
       return false;
     }
   }
-  
-  /// Holt die aktuelle Session (mit Cache)
-  Future<Map<String, dynamic>?> getSession() async {
-    try {
-      // Nutze gecachte Session falls vorhanden
-      if (_session != null) {
-        return _session;
-      }
-      
-      appLogger.d('🔄 Fetching fresh session...');
-      
-      final response = await _client.get(
-        Uri.parse('$neonAuthBaseUrl/get-session'),
-        headers: {
-          // Native: Sende Cookie
-          // Web: Browser macht das automatisch
-          if (!kIsWeb && _cookie != null) 'Cookie': _cookie!,
-        },
-      );
-      
-      appLogger.d('📥 Session response: ${response.statusCode}');
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        if (data != null) {
-          _session = data;
-          
-          // ✅ JWT extrahieren aus set-auth-jwt Header (NICHT aus session.token!)
-          _jwt = response.headers['set-auth-jwt'];
-          
-          if (_jwt == null || _jwt!.isEmpty) {
-            appLogger.d('⚠️ Kein JWT im set-auth-jwt Header - versuche session.token');
-            final sessionData = data['session'] as Map<String, dynamic>?;
-            _jwt = sessionData?['token'] as String?;
-          }
-          
-          if (_jwt == null || _jwt!.isEmpty) {
-            appLogger.d('⚠️ Kein JWT gefunden - versuche /token endpoint');
-            await _fetchJWT();
-          } else {
-            await _storage.write(key: _jwtKey, value: _jwt);
-          }
-          
-          await _saveToStorage();
-          notifyListeners();
-          
-          return _session;
-        }
-      }
-      
-      return null;
-      
-    } catch (e) {
-      appLogger.d('❌ Error getting session: $e');
-      return null;
-    }
+
+  /// JWT from the `set-auth-jwt` header, else from `/token`.
+  /// Never `session.token`: that is the opaque session token, not a JWT.
+  Future<String?> _obtainJwt(http.Response response) async {
+    final header = response.headers['set-auth-jwt'];
+    if (header != null && header.isNotEmpty) return header;
+    return _fetchJwt();
   }
-  
-  /// Holt JWT vom /token Endpunkt
-  Future<void> _fetchJWT() async {
+
+  Future<String?> _fetchJwt() async {
     try {
-      appLogger.d('🔑 Fetching JWT from /token endpoint...');
-      
       final response = await _client.get(
         Uri.parse('$neonAuthBaseUrl/token'),
         headers: {
@@ -901,45 +209,195 @@ class NeonAuthService extends ChangeNotifier {
           'Accept': 'application/json',
         },
       );
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _jwt = data['token'] as String?;
-        
-        if (_jwt != null) {
-          await _storage.write(key: _jwtKey, value: _jwt);
-          appLogger.d('✅ JWT fetched successfully');
-        }
-      }
-      
+      if (response.statusCode != 200) return null;
+      final token = _tryDecodeBody(response.body)?['token'];
+      return token is String && token.isNotEmpty ? token : null;
     } catch (e) {
-      appLogger.d('⚠️ Error fetching JWT: $e');
+      appLogger.d('⚠️ /token failed: $e');
+      return null;
     }
   }
-  
-  /// Parse Set-Cookie header und extrahiere relevante Auth-Cookies
-  /// Der Server kann mehrere Cookies senden, wir brauchen das Challenge-Cookie
-  String _parseCookies(String setCookieHeader) {
-    // Set-Cookie kann mehrere Cookies enthalten (getrennt durch Komma)
-    // Beispiel: "cookie1=value1; Path=/; HttpOnly, cookie2=value2; Path=/"
-    final cookies = <String>[];
-    
-    // Einfache Implementierung: Nimm alle Cookie-Werte
-    // In Produktion: Parse richtig und filtere nach Namen
-    final parts = setCookieHeader.split(',');
-    for (final part in parts) {
-      final cookiePart = part.trim();
-      if (cookiePart.isNotEmpty) {
-        // Extrahiere nur "name=value" Teil (ohne Attributes)
-        final cookieValue = cookiePart.split(';').first.trim();
-        if (cookieValue.isNotEmpty && cookieValue.contains('=')) {
-          cookies.add(cookieValue);
-        }
+
+  /// Native only: keep the session cookie the server just set.
+  Future<void> _storeSessionCookie(http.Response response) async {
+    if (kIsWeb) return;
+    final cookie = response.headers['set-cookie'];
+    if (cookie == null || cookie.isEmpty) return;
+    _cookie = cookie;
+    await _storage.write(key: _cookieKey, value: cookie);
+  }
+
+  /// Sets a JWT obtained elsewhere (web: auth_callback.html via localStorage).
+  Future<void> setJWT(String jwt) async {
+    final payload = JwtHelper.decodeToken(jwt);
+    if (payload == null) throw Exception('JWT kann nicht dekodiert werden');
+    if (JwtHelper.isTokenExpired(jwt)) throw Exception('JWT ist bereits abgelaufen');
+
+    _jwt = jwt;
+    _session = {
+      'user': {
+        'id': payload['sub'],
+        'email': payload['email'],
+        'name': payload['name'],
+      },
+    };
+    await _saveToStorage();
+    _armRefreshTimer();
+    notifyListeners();
+    appLogger.i('✅ JWT im AuthService gesetzt');
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadFromStorage() async {
+    try {
+      final sessionJson = await _storage.read(key: _sessionKey);
+      _jwt = await _storage.read(key: _jwtKey);
+      _cookie = await _storage.read(key: _cookieKey);
+      if (sessionJson != null) _session = jsonDecode(sessionJson);
+    } catch (e) {
+      appLogger.d('⚠️ Error loading auth state — clearing it: $e');
+      _jwt = null;
+      _session = null;
+      _cookie = null;
+      // Not deleteAll(): a running OAuth flow still needs the challenge cookie.
+      for (final key in [_sessionKey, _jwtKey, _cookieKey]) {
+        try {
+          await _storage.delete(key: key);
+        } catch (_) {}
       }
     }
-    
-    // Kombiniere alle Cookies mit "; " (Standard Cookie-Format)
-    return cookies.join('; ');
+  }
+
+  Future<void> _saveToStorage() async {
+    try {
+      if (_session != null) {
+        await _storage.write(key: _sessionKey, value: jsonEncode(_session));
+      } else {
+        await _storage.delete(key: _sessionKey);
+      }
+      if (_jwt != null) {
+        await _storage.write(key: _jwtKey, value: _jwt!);
+      } else {
+        await _storage.delete(key: _jwtKey);
+      }
+      if (_cookie != null) {
+        await _storage.write(key: _cookieKey, value: _cookie!);
+      }
+    } catch (e) {
+      appLogger.e('⚠️ Error saving auth state: $e');
+      rethrow;
+    }
+  }
+
+  /// Starts the OAuth flow and returns the provider URL to open.
+  Future<String> startOAuthFlow({
+    required String provider,
+    required String callbackUrl,
+  }) async {
+    // Origin must match the callback's origin (Neon's trusted-domain check).
+    String? origin;
+    if (callbackUrl.isNotEmpty) {
+      final cb = Uri.parse(callbackUrl);
+      final defaultPort = cb.scheme == 'https' ? 443 : 80;
+      final port = (cb.hasPort && cb.port != defaultPort) ? ':${cb.port}' : '';
+      origin = '${cb.scheme}://${cb.host}$port';
+    }
+
+    final response = await _client.post(
+      Uri.parse('$neonAuthBaseUrl/sign-in/social'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (origin != null) 'Origin': origin,
+        if (_cookie != null) 'Cookie': _cookie!,
+      },
+      body: jsonEncode({'provider': provider, 'callbackURL': callbackUrl}),
+    );
+
+    // The server sets the challenge cookie under both spellings
+    // (session_challenge and the legacy session_challange); keep both.
+    final setCookie = response.headers['set-cookie'];
+    if (setCookie != null) {
+      final cookies = _parseCookies(setCookie);
+      if (cookies.isNotEmpty) {
+        await _storage.write(key: _challengeCookieKey, value: cookies);
+      }
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception('OAuth start failed: ${response.statusCode} - ${response.body}');
+    }
+    final url = _tryDecodeBody(response.body)?['url'] as String?;
+    if (url == null) throw Exception('No OAuth URL in response: ${response.body}');
+    return url;
+  }
+
+  /// Exchanges the OAuth callback's verifier for a session and JWT.
+  /// Native sends the stored challenge cookie; web relies on the browser's.
+  Future<bool> getSessionWithVerifier(String verifier) async {
+    try {
+      String? challenge;
+      if (!kIsWeb) {
+        challenge = await _storage.read(key: _challengeCookieKey) ?? _cookie;
+        if (challenge == null) {
+          appLogger.e('❌ No challenge cookie — OAuth flow incomplete');
+          return false;
+        }
+      }
+
+      final response = await _client.get(
+        Uri.parse('$neonAuthBaseUrl/get-session'
+            '?neon_auth_session_verifier=${Uri.encodeQueryComponent(verifier)}'),
+        headers: {
+          if (challenge != null) 'Cookie': challenge,
+          'Accept': 'application/json',
+        },
+      );
+
+      // The challenge is single-use.
+      if (!kIsWeb) {
+        try {
+          await _storage.delete(key: _challengeCookieKey);
+        } catch (_) {}
+      }
+
+      if (response.statusCode != 200) {
+        throw Exception('Get session failed: ${response.statusCode} - ${response.body}');
+      }
+      final data = _tryDecodeBody(response.body);
+      if (data == null) return false;
+
+      await _storeSessionCookie(response);
+      final newJwt = await _obtainJwt(response);
+      if (newJwt == null) {
+        appLogger.e('❌ Session established but no JWT available');
+        return false;
+      }
+      _session = data;
+      _jwt = newJwt;
+      await _saveToStorage();
+      _armRefreshTimer();
+      notifyListeners();
+      appLogger.d('✅ Session established: ${data['user']?['email'] ?? 'unknown'}');
+      return true;
+    } catch (e, stackTrace) {
+      appLogger.e('❌ Error getting session with verifier: $e\n$stackTrace');
+      return false;
+    }
+  }
+
+  /// "name=value" pairs from a (comma-joined) Set-Cookie header, attributes
+  /// dropped, joined for a Cookie header.
+  String _parseCookies(String setCookieHeader) {
+    return setCookieHeader
+        .split(',')
+        .map((part) => part.trim().split(';').first.trim())
+        .where((c) => c.isNotEmpty && c.contains('='))
+        .join('; ');
   }
   
   // ── Email / Password Auth ──────────────────────────────────────────────────
@@ -1044,33 +502,16 @@ class NeonAuthService extends ChangeNotifier {
     }
   }
 
+  /// Sign-in/sign-up response: keep the session cookie and get a JWT.
+  /// False when no JWT is issued (sign-up awaiting e-mail verification).
   Future<bool> _handleEmailAuthResponse(http.Response response) async {
-    final data = _tryDecodeBody(response.body);
-
-    if (!kIsWeb) {
-      final cookie = response.headers['set-cookie'];
-      if (cookie != null) {
-        _cookie = cookie;
-        await _storage.write(key: _cookieKey, value: _cookie);
-      }
-    }
-
-    _session = data;
-    _jwt = response.headers['set-auth-jwt'];
-
-    if (_jwt == null || _jwt!.isEmpty) {
-      final sessionData = data?['session'] as Map<String, dynamic>?;
-      _jwt = sessionData?['token'] as String?;
-    }
-
-    if (_jwt == null || _jwt!.isEmpty) {
-      await _fetchJWT();
-    }
-
-    if (_jwt == null || _jwt!.isEmpty) return false;
-
+    await _storeSessionCookie(response);
+    final newJwt = await _obtainJwt(response);
+    if (newJwt == null) return false;
+    _session = _tryDecodeBody(response.body);
+    _jwt = newJwt;
     await _saveToStorage();
-    await _checkAndRefreshToken();
+    _armRefreshTimer();
     notifyListeners();
     return true;
   }
@@ -1147,6 +588,7 @@ class NeonAuthService extends ChangeNotifier {
       appLogger.d('⚠️ Error during sign-out: $e');
     } finally {
       // Clear local state regardless of server response
+      _refreshTimer?.cancel();
       _session = null;
       _jwt = null;
       _cookie = null;
