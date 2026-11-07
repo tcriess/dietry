@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.10.4] — 2026-11-07
+
+### Fixed
+- **Pro accounts show as Pro everywhere**: the info screen could show
+  "Cloud Edition · Free" for paid accounts, and some paid report sections were
+  missing for them.
+- **No accidental downgrade to Free**: if your plan can't be checked (offline,
+  server hiccup), the app keeps your last known plan instead of falling back
+  to Free.
+
+---
+
 ## [1.10.3] — 2026-11-07
 
 ### Fixed
